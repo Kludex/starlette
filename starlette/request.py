@@ -1,19 +1,33 @@
 from starlette.datastructures import URL, Headers, QueryParams
+from collections.abc import Mapping
 import json
+import typing
 
 
-class Request:
-    def __init__(self, scope, receive):
+class Request(Mapping):
+    def __init__(self, scope, receive=None):
         self._scope = scope
         self._receive = receive
         self._stream_consumed = False
 
+    def __getitem__(self, key):
+        return self._scope[key]
+
+    def __iter__(self):
+        return iter(self._scope)
+
+    def __len__(self):
+        return len(self._scope)
+
+    def set_receive_channel(self, receive):
+        self._receive = receive
+
     @property
-    def method(self):
+    def method(self) -> str:
         return self._scope["method"]
 
     @property
-    def url(self):
+    def url(self) -> URL:
         if not hasattr(self, "_url"):
             scheme = self._scope["scheme"]
             host, port = self._scope["server"]
@@ -32,7 +46,7 @@ class Request:
         return self._url
 
     @property
-    def headers(self):
+    def headers(self) -> Headers:
         if not hasattr(self, "_headers"):
             self._headers = Headers(
                 [
@@ -43,7 +57,7 @@ class Request:
         return self._headers
 
     @property
-    def query_params(self):
+    def query_params(self) -> QueryParams:
         if not hasattr(self, "_query_params"):
             query_string = self._scope["query_string"].decode()
             self._query_params = QueryParams(query_string)
@@ -56,6 +70,9 @@ class Request:
 
         if self._stream_consumed:
             raise RuntimeError("Stream consumed")
+
+        if self._receive is None:
+            raise RuntimeError("Receive channel has not been made available")
 
         self._stream_consumed = True
         while True:

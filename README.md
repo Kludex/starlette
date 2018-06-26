@@ -171,6 +171,9 @@ way as a `scope`.
 
 For instance: `request['path']` will return the ASGI path.
 
+If you don't need to access the request body you can instantiate a request
+without providing an argument to `receive`.
+
 #### Method
 
 The request method is accessed as `request.method`.

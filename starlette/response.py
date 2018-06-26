@@ -1,4 +1,5 @@
 from starlette.datastructures import MutableHeaders
+from starlette.types import Receive, Send
 import json
 import typing
 
@@ -25,7 +26,7 @@ class Response:
         self.set_content_type()
         self.set_content_length()
 
-    async def __call__(self, receive, send):
+    async def __call__(self, receive: Receive, send: Send) -> None:
         await send(
             {
                 "type": "http.response.start",
@@ -65,7 +66,7 @@ class JSONResponse(Response):
         "allow_nan": False,
         "indent": None,
         "separators": (",", ":"),
-    }
+    }  # type: typing.Dict[str, typing.Any]
 
     def render(self, content: typing.Any) -> bytes:
         return json.dumps(content, **self.options).encode("utf-8")
@@ -86,7 +87,7 @@ class StreamingResponse(Response):
             self.media_type = media_type
         self.set_content_type()
 
-    async def __call__(self, receive, send):
+    async def __call__(self, receive: Receive, send: Send) -> None:
         await send(
             {
                 "type": "http.response.start",

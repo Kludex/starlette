@@ -69,9 +69,9 @@ class QueryParams(typing.Mapping[str, str]):
             value = parse_qsl(value)
 
         if hasattr(value, "items"):
-            items = list(value.items())
+            items = list(typing.cast(StrDict, value).items())
         else:
-            items = list(value)
+            items = list(typing.cast(StrPairs, value))
         self._dict = {k: v for k, v in reversed(items)}
         self._list = items
 
@@ -123,9 +123,10 @@ class Headers(typing.Mapping[str, str]):
         if value is None:
             value = []
         if hasattr(value, "items"):
-            items = [(k.lower(), str(v)) for k, v in list(value.items())]
+            items = list(typing.cast(StrDict, value).items())
         else:
-            items = [(k.lower(), str(v)) for k, v in list(value)]
+            items = list(typing.cast(StrPairs, value))
+        items = [(k.lower(), str(v)) for k, v in items]
         self._dict = {k: v for k, v in reversed(items)}
         self._list = items
 

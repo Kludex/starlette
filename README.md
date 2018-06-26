@@ -1,6 +1,6 @@
-<p align="center">
-    <h1 align="center">Starlette</h1>
-</p>
+<h1 align="center">
+    Starlette
+</h1>
 <p align="center">
     <em>✨ The little ASGI library that shines. ✨</em>
 </p>
@@ -20,7 +20,7 @@
 
 Starlette is a small library for working with [ASGI](https://asgi.readthedocs.io/en/latest/).
 
-It gives you `Request` and `Response` classes, a test client, and a
+It gives you `Request` and `Response` classes, routing, a test client, and a
 decorator for writing super-minimal applications.
 
 **Requirements:**
@@ -221,6 +221,48 @@ raise an error.
 
 ---
 
+## Routing
+
+Starlette includes a `Router` class which is an ASGI application that
+dispatches to other ASGI applications.
+
+```python
+from starlette import Router, Path, PathPrefix
+from myproject import Homepage, StaticFiles
+
+
+app = Router([
+    Path('/', app=Homepage, methods=['GET']),
+    PathPrefix('/static', app=StaticFiles, methods=['GET'])
+])
+```
+
+Paths can use URI templating style to capture path components.
+
+```python
+Path('/users/{username}', app=User, methods=['GET'])
+```
+
+Path components are made available in the scope, as `scope["kwargs"]`.
+
+Because each target of the router is an ASGI instance itself, routers
+allow for easy composition. For example:
+
+```python
+app = Router([
+    Path('/', app=Homepage, methods=['GET']),
+    PathPrefix('/users', app=Router([
+        Path('/', app=Users, methods=['GET', 'POST']),
+        Path('/{username}', app=User, methods=['GET']),
+    ]))
+])
+```
+
+The router will respond with "404 Not found" or "406 Method not allowed"
+responses for requests which do not match.
+
+---
+
 ## Test Client
 
 The test client allows you to make requests against your ASGI application,
@@ -264,4 +306,4 @@ async def app(request):
 
 ---
 
-<p align="center"><i>API Star is <a href="https://github.com/tomchristie/apistar/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & built in Brighton, England.</i><br/>&mdash; ⭐️ &mdash;</p>
+<p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & built in Brighton, England.</i><br/>&mdash; ⭐️ &mdash;</p>

@@ -19,9 +19,6 @@ class Request(Mapping):
     def __len__(self):
         return len(self._scope)
 
-    def set_receive_channel(self, receive):
-        self._receive = receive
-
     @property
     def method(self) -> str:
         return self._scope["method"]

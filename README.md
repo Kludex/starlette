@@ -152,7 +152,7 @@ the incoming request, rather than accessing the ASGI scope and receive channel d
 
 ### Request
 
-Signature: `Request(scope, receive)`
+Signature: `Request(scope, receive=None)`
 
 ```python
 class App:
@@ -165,6 +165,11 @@ class App:
         response = Response(content, media_type='text/plain')
         await response(receive, send)
 ```
+
+Requests present a mapping interface, so you can use them in the same
+way as a `scope`.
+
+For instance: `request['path']` will return the ASGI path.
 
 #### Method
 

@@ -157,3 +157,37 @@ def test_request_json():
     client = TestClient(app)
     response = client.post("/", json={"a": "123"})
     assert response.json() == {"json": {"a": "123"}}
+
+
+def test_request_scope_interface():
+    """
+    A Request can be isntantiated with a scope, and presents a `Mapping`
+    interface.
+    """
+    request = Request({"method": "GET", "path": "/abc/"})
+    assert request["method"] == "GET"
+    assert dict(request) == {"method": "GET", "path": "/abc/"}
+    assert len(request) == 2
+
+
+def test_request_without_setting_receive():
+    """
+    If Request is instantiated without the receive channel, then .body()
+    is not available.
+    """
+
+    def app(scope):
+        async def asgi(receive, send):
+            request = Request(scope)
+            try:
+                data = await request.json()
+            except RuntimeError:
+                data = "Receive channel not available"
+            response = JSONResponse({"json": data})
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.post("/", json={"a": "123"})
+    assert response.json() == {"json": "Receive channel not available"}

@@ -20,7 +20,7 @@
 
 Starlette is a small library for working with [ASGI](https://asgi.readthedocs.io/en/latest/).
 
-It gives you `Request` and `Response` classes, routing, a test client, and a
+It gives you `Request` and `Response` classes, request routing, a test client, and a
 decorator for writing super-minimal applications.
 
 **Requirements:**
@@ -48,7 +48,7 @@ class App:
         await response(receive, send)
 ```
 
-You can run the application with any ASGI server, including [uvicorn](http://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://pgjones.gitlab.io/hypercorn/),
+You can run the application with any ASGI server, including [uvicorn](http://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://pgjones.gitlab.io/hypercorn/).
 
 <p align="center">&mdash; ⭐️ &mdash;</p>
 

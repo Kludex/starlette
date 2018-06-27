@@ -219,7 +219,7 @@ class App:
         body = b''
         async for chunk in request.stream():
             body += chunk
-        response = Response(content, media_type='text/plain')
+        response = Response(body, media_type='text/plain')
         await response(receive, send)
 ```
 
@@ -299,9 +299,13 @@ def test_app():
 
 ## Decorators
 
-The `asgi_application` decorator turns an `async` function into an ASGI application.
+The `asgi_application` decorator takes a request/response function and turns
+it into an ASGI application.
 
 The function must take a single `request` argument, and return a response.
+
+The decorator can be applied to either `async` functions, or to standard
+functions.
 
 ```python
 from starlette import asgi_application, HTMLResponse

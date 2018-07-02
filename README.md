@@ -1,6 +1,6 @@
-<h1 align="center">
-    Starlette
-</h1>
+<p align="center">
+  <img height="320" src="https://raw.githubusercontent.com/encode/starlette/master/docs/starlette.png" alt='starlette'>
+</p>
 <p align="center">
     <em>✨ The little ASGI library that shines. ✨</em>
 </p>

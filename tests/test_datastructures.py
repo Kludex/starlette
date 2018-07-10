@@ -16,7 +16,7 @@ def test_url():
 
 
 def test_headers():
-    h = Headers([("a", "123"), ("A", "456"), ("b", "789")])
+    h = Headers([(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h
     assert "A" in h
     assert "b" in h
@@ -32,11 +32,10 @@ def test_headers():
     assert list(h) == [("a", "123"), ("a", "456"), ("b", "789")]
     assert dict(h) == {"a": "123", "b": "789"}
     assert repr(h) == "Headers([('a', '123'), ('a', '456'), ('b', '789')])"
-    assert Headers({"a": "123", "b": "456"}) == Headers([("a", "123"), ("b", "456")])
-    assert Headers({"a": "123", "b": "456"}) == {"B": "456", "a": "123"}
-    assert Headers({"a": "123", "b": "456"}) == [("B", "456"), ("a", "123")]
-    assert {"B": "456", "a": "123"} == Headers({"a": "123", "b": "456"})
-    assert [("B", "456"), ("a", "123")] == Headers({"a": "123", "b": "456"})
+    assert h == Headers([(b"a", b"123"), (b"b", b"789"), (b"a", b"456")])
+    assert h != [(b"a", b"123"), (b"A", b"456"), (b"b", b"789")]
+    h = Headers()
+    assert not h.items()
 
 
 def test_queryparams():

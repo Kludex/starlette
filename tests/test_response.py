@@ -65,3 +65,24 @@ def test_response_headers():
     response = client.get("/")
     assert response.headers["x-header-1"] == "123"
     assert response.headers["x-header-2"] == "789"
+
+
+def test_streaming_response_headers():
+    def app(scope):
+        async def asgi(receive, send):
+            async def stream(msg):
+                yield "hello, world"
+
+            headers = {"x-header-1": "123", "x-header-2": "456"}
+            response = StreamingResponse(
+                stream("hello, world"), media_type="text/plain", headers=headers
+            )
+            response.headers["x-header-2"] = "789"
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.headers["x-header-1"] == "123"
+    assert response.headers["x-header-2"] == "789"

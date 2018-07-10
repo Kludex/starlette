@@ -131,14 +131,14 @@ class Headers(typing.Mapping[str, str]):
             self._list = value
 
     def keys(self):
-        return [key.decode('latin-1') for key, value in self._list]
+        return [key.decode("latin-1") for key, value in self._list]
 
     def values(self):
-        return [value.decode('latin-1') for key, value in self._list]
+        return [value.decode("latin-1") for key, value in self._list]
 
     def items(self):
         return [
-            (key.decode('latin-1'), value.decode('latin-1'))
+            (key.decode("latin-1"), value.decode("latin-1"))
             for key, value in self._list
         ]
 
@@ -149,17 +149,18 @@ class Headers(typing.Mapping[str, str]):
             return default
 
     def get_list(self, key: str) -> typing.List[str]:
-        get_header_key = key.lower().encode('latin-1')
+        get_header_key = key.lower().encode("latin-1")
         return [
-            item_value.decode('latin-1') for item_key, item_value in self._list
+            item_value.decode("latin-1")
+            for item_key, item_value in self._list
             if item_key == get_header_key
         ]
 
     def __getitem__(self, key: str):
-        get_header_key = key.lower().encode('latin-1')
+        get_header_key = key.lower().encode("latin-1")
         for header_key, header_value in self._list:
             if header_key == get_header_key:
-                return header_value.decode('latin-1')
+                return header_value.decode("latin-1")
         raise KeyError(key)
 
     def __contains__(self, key: str):
@@ -182,8 +183,8 @@ class Headers(typing.Mapping[str, str]):
 
 class MutableHeaders(Headers):
     def __setitem__(self, key: str, value: str):
-        set_key = key.lower().encode('latin-1')
-        set_value = value.encode('latin-1')
+        set_key = key.lower().encode("latin-1")
+        set_value = value.encode("latin-1")
 
         pop_indexes = []
         for idx, (item_key, item_value) in enumerate(self._list):

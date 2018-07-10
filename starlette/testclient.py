@@ -48,7 +48,8 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
 
         # Include other request headers.
         headers += [
-            [key.lower().encode(), value.encode()] for key, value in request.headers.items()
+            [key.lower().encode(), value.encode()]
+            for key, value in request.headers.items()
         ]
 
         scope = {

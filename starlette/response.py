@@ -13,7 +13,7 @@ class Response:
         content: typing.Any,
         status_code: int = 200,
         headers: dict = None,
-        media_type: str = None
+        media_type: str = None,
     ) -> None:
         self.body = self.render(content)
         self.status_code = status_code
@@ -33,7 +33,7 @@ class Response:
             missing_content_type = True
         else:
             raw_headers = [
-                (k.lower().encode('latin-1'), v.encode('latin-1'))
+                (k.lower().encode("latin-1"), v.encode("latin-1"))
                 for k, v in headers.items()
             ]
             missing_content_length = "content-length" not in headers
@@ -47,14 +47,14 @@ class Response:
             content_type = self.media_type
             if content_type.startswith("text/") and self.charset is not None:
                 content_type += "; charset=%s" % self.charset
-            content_type_value = content_type.encode('latin-1')
+            content_type_value = content_type.encode("latin-1")
             raw_headers.append((b"content-type", content_type_value))
 
         self.raw_headers = raw_headers
 
     @property
     def headers(self):
-        if not hasattr(self, '_headers'):
+        if not hasattr(self, "_headers"):
             self._headers = MutableHeaders(self.raw_headers)
         return self._headers
 
@@ -96,7 +96,7 @@ class StreamingResponse(Response):
         content: typing.Any,
         status_code: int = 200,
         headers: dict = None,
-        media_type: str = None
+        media_type: str = None,
     ) -> None:
         self.body_iterator = content
         self.status_code = status_code
@@ -126,7 +126,7 @@ class StreamingResponse(Response):
             missing_content_type = True
         else:
             raw_headers = [
-                (k.lower().encode('latin-1'), v.encode('latin-1'))
+                (k.lower().encode("latin-1"), v.encode("latin-1"))
                 for k, v in headers.items()
             ]
             missing_content_type = "content-type" not in headers
@@ -135,7 +135,7 @@ class StreamingResponse(Response):
             content_type = self.media_type
             if content_type.startswith("text/") and self.charset is not None:
                 content_type += "; charset=%s" % self.charset
-            content_type_value = content_type.encode('latin-1')
+            content_type_value = content_type.encode("latin-1")
             raw_headers.append((b"content-type", content_type_value))
 
         self.raw_headers = raw_headers

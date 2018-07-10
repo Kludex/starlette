@@ -63,11 +63,12 @@ Signature: `Response(content=b'', status_code=200, headers=None, media_type=None
 
 * `content` - A string or bytestring.
 * `status_code` - An integer HTTP status code.
-* `headers` - A dictionary of strings or list of pairs of strings.
-* `media_type` - A string giving the content type.
+* `headers` - A dictionary of strings.
+* `media_type` - A string giving the media type. eg. "text/html"
 
-Starlette will automatically include a content-length header. It will also
-set the content-type header, including a charset for text types.
+Starlette will automatically include a Content-Length header. It will also
+include a Content-Type header, based on the media_type and appending a charset
+for text types.
 
 Once you've instantiated a response, you can send it by calling it as an
 ASGI application instance.
@@ -95,7 +96,24 @@ class App:
         self.scope = scope
 
     async def __call__(self, receive, send):
-        response = HTMLResponse('<html><body><h1>Hello, world!</h1></body></html')
+        response = HTMLResponse('<html><body><h1>Hello, world!</h1></body></html>')
+        await response(receive, send)
+```
+
+### PlainTextResponse
+
+Takes some text or bytes and returns an plain text response.
+
+```python
+from starlette import PlainTextResponse
+
+
+class App:
+    def __init__(self, scope):
+        self.scope = scope
+
+    async def __call__(self, receive, send):
+        response = PlainTextResponse('Hello, world!')
         await response(receive, send)
 ```
 

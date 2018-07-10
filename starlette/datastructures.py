@@ -121,69 +121,76 @@ class Headers(typing.Mapping[str, str]):
 
     def __init__(self, value: typing.Union[StrDict, StrPairs] = None) -> None:
         if value is None:
-            value = []
-        if hasattr(value, "items"):
-            items = list(typing.cast(StrDict, value).items())
+            self._list = []
         else:
-            items = list(typing.cast(StrPairs, value))
-        items = [(k.lower(), str(v)) for k, v in items]
-        self._dict = {k: v for k, v in reversed(items)}
-        self._list = items
-
-    def get_list(self, key: str) -> typing.List[str]:
-        key_lower = key.lower()
-        return [
-            item_value for item_key, item_value in self._list if item_key == key_lower
-        ]
+            assert isinstance(value, list)
+            for header_key, header_value in value:
+                assert isinstance(header_key, bytes)
+                assert isinstance(header_value, bytes)
+                assert header_key == header_key.lower()
+            self._list = value
 
     def keys(self):
-        return [key for key, value in self._list]
+        return [key.decode('latin-1') for key, value in self._list]
 
     def values(self):
-        return [value for key, value in self._list]
+        return [value.decode('latin-1') for key, value in self._list]
 
     def items(self):
-        return list(self._list)
+        return [
+            (key.decode('latin-1'), value.decode('latin-1'))
+            for key, value in self._list
+        ]
 
     def get(self, key: str, default: str = None):
-        key = key.lower()
-        if key in self._dict:
-            return self._dict[key]
-        else:
+        try:
+            return self[key]
+        except KeyError:
             return default
 
+    def get_list(self, key: str) -> typing.List[str]:
+        get_header_key = key.lower().encode('latin-1')
+        return [
+            item_value.decode('latin-1') for item_key, item_value in self._list
+            if item_key == get_header_key
+        ]
+
     def __getitem__(self, key: str):
-        return self._dict[key.lower()]
+        get_header_key = key.lower().encode('latin-1')
+        for header_key, header_value in self._list:
+            if header_key == get_header_key:
+                return header_value.decode('latin-1')
+        raise KeyError(key)
 
     def __contains__(self, key: str):
-        return key.lower() in self._dict
+        return key.lower() in self.keys()
 
     def __iter__(self):
-        return iter(self._list)
+        return iter(self.items())
 
     def __len__(self):
         return len(self._list)
 
     def __eq__(self, other):
         if not isinstance(other, Headers):
-            other = Headers(other)
+            return False
         return sorted(self._list) == sorted(other._list)
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, repr(self._list))
+        return "%s(%s)" % (self.__class__.__name__, repr(self.items()))
 
 
 class MutableHeaders(Headers):
     def __setitem__(self, key: str, value: str):
-        key = key.lower()
-        value = str(value)
+        set_key = key.lower().encode('latin-1')
+        set_value = value.encode('latin-1')
 
-        if key not in self._dict:
-            self._dict[key] = value
-            self._list.append((key, value))
-        else:
-            self._dict[key] = value
-            self._list = [
-                (item_key, value) if item_key == key else (item_key, item_value)
-                for item_key, item_value in self._list
-            ]
+        pop_indexes = []
+        for idx, (item_key, item_value) in enumerate(self._list):
+            if item_key == set_key:
+                pop_indexes.append(idx)
+
+        for idx in reversed(pop_indexes):
+            del self._list[idx]
+
+        self._list.append((set_key, set_value))

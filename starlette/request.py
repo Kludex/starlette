@@ -28,7 +28,7 @@ class Request(Mapping):
         if not hasattr(self, "_url"):
             scheme = self._scope["scheme"]
             host, port = self._scope["server"]
-            path = self._scope["path"]
+            path = self._scope.get("root_path", "") + self._scope["path"]
             query_string = self._scope["query_string"]
 
             if (scheme == "http" and port != 80) or (scheme == "https" and port != 443):
@@ -45,12 +45,7 @@ class Request(Mapping):
     @property
     def headers(self) -> Headers:
         if not hasattr(self, "_headers"):
-            self._headers = Headers(
-                [
-                    (key.decode(), value.decode())
-                    for key, value in self._scope["headers"]
-                ]
-            )
+            self._headers = Headers(self._scope["headers"])
         return self._headers
 
     @property

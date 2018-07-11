@@ -26,4 +26,4 @@ __all__ = (
     "Request",
     "TestClient",
 )
-__version__ = "0.1.6"
+__version__ = "0.1.7"

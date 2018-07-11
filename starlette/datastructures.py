@@ -195,3 +195,20 @@ class MutableHeaders(Headers):
             del self._list[idx]
 
         self._list.append((set_key, set_value))
+
+    def set_default(self, key: str, value: str):
+        set_key = key.lower().encode("latin-1")
+        set_value = value.encode("latin-1")
+
+        is_set = False
+        pop_indexes = []
+        for idx, (item_key, item_value) in enumerate(self._list):
+            if item_key == set_key:
+                if not is_set:
+                    is_set = True
+                    self._list[idx] = set_value
+                else:
+                    pop_indexes.append(idx)
+
+        for idx in reversed(pop_indexes):
+            del self._list[idx]

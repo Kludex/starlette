@@ -44,6 +44,7 @@ setup(
     author_email='tom@tomchristie.com',
     packages=get_packages('starlette'),
     install_requires=[
+        'aiofiles',
         'requests',
     ],
     classifiers=[

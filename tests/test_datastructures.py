@@ -1,4 +1,4 @@
-from starlette.datastructures import Headers, QueryParams, URL
+from starlette.datastructures import Headers, MutableHeaders, QueryParams, URL
 
 
 def test_url():
@@ -25,7 +25,7 @@ def test_headers():
     assert h["a"] == "123"
     assert h.get("a") == "123"
     assert h.get("nope", default=None) is None
-    assert h.get_list("a") == ["123", "456"]
+    assert h.getlist("a") == ["123", "456"]
     assert h.keys() == ["a", "a", "b"]
     assert h.values() == ["123", "456", "789"]
     assert h.items() == [("a", "123"), ("a", "456"), ("b", "789")]
@@ -34,8 +34,21 @@ def test_headers():
     assert repr(h) == "Headers([('a', '123'), ('a', '456'), ('b', '789')])"
     assert h == Headers([(b"a", b"123"), (b"b", b"789"), (b"a", b"456")])
     assert h != [(b"a", b"123"), (b"A", b"456"), (b"b", b"789")]
-    h = Headers()
-    assert not h.items()
+
+
+def test_mutable_headers():
+    h = MutableHeaders()
+    assert dict(h) == {}
+    h["a"] = "1"
+    assert dict(h) == {"a": "1"}
+    h["a"] = "2"
+    assert dict(h) == {"a": "2"}
+    h.setdefault("a", "3")
+    assert dict(h) == {"a": "2"}
+    h.setdefault("b", "4")
+    assert dict(h) == {"a": "2", "b": "4"}
+    del h["a"]
+    assert dict(h) == {"b": "4"}
 
 
 def test_queryparams():
@@ -46,7 +59,7 @@ def test_queryparams():
     assert q["a"] == "123"
     assert q.get("a") == "123"
     assert q.get("nope", default=None) is None
-    assert q.get_list("a") == ["123", "456"]
+    assert q.getlist("a") == ["123", "456"]
     assert q.keys() == ["a", "a", "b"]
     assert q.values() == ["123", "456", "789"]
     assert q.items() == [("a", "123"), ("a", "456"), ("b", "789")]

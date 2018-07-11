@@ -161,6 +161,30 @@ class App:
         await response(receive, send)
 ```
 
+### FileResponse
+
+Asynchronously streams a file as the response.
+
+Takes a different set of arguments to instantiate than the other response types:
+
+* `path` - The filepath to the file to stream.
+* `headers` - Any custom headers to include, as a dictionary.
+* `media_type` - A string giving the media type. If unset, the filename or path will be used to infer a media type.
+* `filename` - If set, this will be included in the response `Content-Disposition`.
+
+```python
+from starlette import FileResponse
+
+
+class App:
+    def __init__(self, scope):
+        self.scope = scope
+
+    async def __call__(self, receive, send):
+        response = FileResponse('/statics/favicon.ico')
+        await response(receive, send)
+```
+
 ---
 
 ## Requests

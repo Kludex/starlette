@@ -1,4 +1,4 @@
-from starlette import Response, StreamingResponse, TestClient
+from starlette import FileResponse, Response, StreamingResponse, TestClient
 import asyncio
 
 
@@ -67,22 +67,18 @@ def test_response_headers():
     assert response.headers["x-header-2"] == "789"
 
 
-def test_streaming_response_headers():
+def test_file_response(tmpdir):
+    with open("xyz", "wb") as file:
+        file.write(b"<file content>")
+
     def app(scope):
-        async def asgi(receive, send):
-            async def stream(msg):
-                yield "hello, world"
-
-            headers = {"x-header-1": "123", "x-header-2": "456"}
-            response = StreamingResponse(
-                stream("hello, world"), media_type="text/plain", headers=headers
-            )
-            response.headers["x-header-2"] = "789"
-            await response(receive, send)
-
-        return asgi
+        return FileResponse(path="xyz", filename="example.png")
 
     client = TestClient(app)
     response = client.get("/")
-    assert response.headers["x-header-1"] == "123"
-    assert response.headers["x-header-2"] == "789"
+    assert response.status_code == 200
+    assert response.content == b"<file content>"
+    assert response.headers["content-type"] == "image/png"
+    assert (
+        response.headers["content-disposition"] == 'attachment; filename="example.png"'
+    )

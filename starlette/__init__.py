@@ -1,5 +1,6 @@
 from starlette.decorators import asgi_application
 from starlette.response import (
+    FileResponse,
     HTMLResponse,
     JSONResponse,
     Response,
@@ -13,6 +14,7 @@ from starlette.testclient import TestClient
 
 __all__ = (
     "asgi_application",
+    "FileResponse",
     "HTMLResponse",
     "JSONResponse",
     "Path",

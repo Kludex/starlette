@@ -1,3 +1,4 @@
+aiofiles
 requests
 
 # Testing

@@ -119,16 +119,15 @@ class Headers(typing.Mapping[str, str]):
     An immutable, case-insensitive multidict.
     """
 
-    def __init__(self, value: typing.Union[StrDict, StrPairs] = None) -> None:
-        if value is None:
+    def __init__(self, raw_headers=None) -> None:
+        if raw_headers is None:
             self._list = []
         else:
-            assert isinstance(value, list)
-            for header_key, header_value in value:
+            for header_key, header_value in raw_headers:
                 assert isinstance(header_key, bytes)
                 assert isinstance(header_value, bytes)
                 assert header_key == header_key.lower()
-            self._list = value
+            self._list = raw_headers
 
     def keys(self):
         return [key.decode("latin-1") for key, value in self._list]
@@ -148,7 +147,7 @@ class Headers(typing.Mapping[str, str]):
         except KeyError:
             return default
 
-    def get_list(self, key: str) -> typing.List[str]:
+    def getlist(self, key: str) -> typing.List[str]:
         get_header_key = key.lower().encode("latin-1")
         return [
             item_value.decode("latin-1")
@@ -164,7 +163,11 @@ class Headers(typing.Mapping[str, str]):
         raise KeyError(key)
 
     def __contains__(self, key: str):
-        return key.lower() in self.keys()
+        get_header_key = key.lower().encode("latin-1")
+        for header_key, header_value in self._list:
+            if header_key == get_header_key:
+                return True
+        return False
 
     def __iter__(self):
         return iter(self.items())
@@ -183,6 +186,9 @@ class Headers(typing.Mapping[str, str]):
 
 class MutableHeaders(Headers):
     def __setitem__(self, key: str, value: str):
+        """
+        Set the header `key` to `value`, removing any duplicate entries.
+        """
         set_key = key.lower().encode("latin-1")
         set_value = value.encode("latin-1")
 
@@ -196,19 +202,30 @@ class MutableHeaders(Headers):
 
         self._list.append((set_key, set_value))
 
-    def set_default(self, key: str, value: str):
+    def __delitem__(self, key: str):
+        """
+        Remove the header `key`.
+        """
+        del_key = key.lower().encode("latin-1")
+
+        pop_indexes = []
+        for idx, (item_key, item_value) in enumerate(self._list):
+            if item_key == del_key:
+                pop_indexes.append(idx)
+
+        for idx in reversed(pop_indexes):
+            del (self._list[idx])
+
+    def setdefault(self, key: str, value: str):
+        """
+        If the header `key` does not exist, then set it to `value`.
+        Returns the header value.
+        """
         set_key = key.lower().encode("latin-1")
         set_value = value.encode("latin-1")
 
-        is_set = False
-        pop_indexes = []
         for idx, (item_key, item_value) in enumerate(self._list):
             if item_key == set_key:
-                if not is_set:
-                    is_set = True
-                    self._list[idx] = set_value
-                else:
-                    pop_indexes.append(idx)
-
-        for idx in reversed(pop_indexes):
-            del self._list[idx]
+                return item_value.decode("latin-1")
+        self._list.append((set_key, set_value))
+        return value

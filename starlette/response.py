@@ -1,5 +1,7 @@
+from mimetypes import guess_type
 from starlette.datastructures import MutableHeaders
 from starlette.types import Receive, Send
+import aiofiles
 import json
 import typing
 import os
@@ -18,36 +20,47 @@ class Response:
     ) -> None:
         self.body = self.render(content)
         self.status_code = status_code
-        self.media_type = self.media_type if media_type is None else media_type
-        self.raw_headers = [] if headers is None else [
-            (k.lower().encode("latin-1"), v.encode("latin-1"))
-            for k, v in headers.items()
-        ]
-        self.headers = MutableHeaders(self.raw_headers)
-        self.set_default_headers()
+        if media_type is not None:
+            self.media_type = media_type
+        self.init_headers(headers)
 
     def render(self, content: typing.Any) -> bytes:
         if isinstance(content, bytes):
             return content
         return content.encode(self.charset)
 
-    def set_default_headers(self):
-        content_length = str(len(self.body)) if hasattr(self, 'body') else None
-        content_type = self.default_content_type
+    def init_headers(self, headers):
+        if headers is None:
+            raw_headers = []
+            populate_content_length = True
+            populate_content_type = True
+        else:
+            raw_headers = [
+                (k.lower().encode("latin-1"), v.encode("latin-1"))
+                for k, v in headers.items()
+            ]
+            keys = [h[0] for h in raw_headers]
+            populate_content_length = b"content-length" in keys
+            populate_content_type = b"content-type" in keys
 
-        if content_length is not None:
-            self.headers.set_default("content-length", content_length)
-        if content_type is not None:
-            self.headers.set_default("content-type", content_type)
+        body = getattr(self, "body", None)
+        if body is not None and populate_content_length:
+            content_length = str(len(body))
+            raw_headers.append((b"content-length", content_length.encode("latin-1")))
+
+        content_type = self.media_type
+        if content_type is not None and populate_content_type:
+            if content_type.startswith("text/"):
+                content_type += "; charset=" + self.charset
+            raw_headers.append((b"content-type", content_type.encode("latin-1")))
+
+        self.raw_headers = raw_headers
 
     @property
-    def default_content_type(self):
-        if self.media_type is None:
-            return None
-
-        if self.media_type.startswith('text/') and self.charset is not None:
-            return '%s; charset=%s' % (self.media_type, self.charset)
-        return self.media_type
+    def headers(self):
+        if not hasattr(self, "_headers"):
+            self._headers = MutableHeaders(self.raw_headers)
+        return self._headers
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         await send(
@@ -92,21 +105,14 @@ class StreamingResponse(Response):
         self.body_iterator = content
         self.status_code = status_code
         self.media_type = self.media_type if media_type is None else media_type
-        self.raw_headers = [] if headers is None else [
-            (k.lower().encode("latin-1"), v.encode("latin-1"))
-            for k, v in headers.items()
-        ]
-        self.headers = MutableHeaders(self.raw_headers)
-        self.set_default_headers()
+        self.init_headers(headers)
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         await send(
             {
                 "type": "http.response.start",
                 "status": self.status_code,
-                "headers": [
-                    [key.encode(), value.encode()] for key, value in self.headers
-                ],
+                "headers": self.raw_headers,
             }
         )
         async for chunk in self.body_iterator:
@@ -115,22 +121,41 @@ class StreamingResponse(Response):
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
-#
-# class FileResponse:
-#     def __init__(
-#         self,
-#         path: str,
-#         headers: dict = None,
-#         media_type: str = None,
-#         filename: str = None
-#     ) -> None:
-#         self.path = path
-#         self.status_code = 200
-#         if media_type is not None:
-#             self.media_type = media_type
-#         if filename is not None:
-#             self.filename = filename
-#         else:
-#             self.filename = os.path.basename(path)
-#
-#         self.set_default_headers(headers)
+
+class FileResponse(Response):
+    chunk_size = 4096
+
+    def __init__(
+        self,
+        path: str,
+        headers: dict = None,
+        media_type: str = None,
+        filename: str = None,
+    ) -> None:
+        self.path = path
+        self.status_code = 200
+        self.filename = filename
+        if media_type is None:
+            media_type = guess_type(filename or path)[0] or "text/plain"
+        self.media_type = media_type
+        self.init_headers(headers)
+        if self.filename is not None:
+            content_disposition = 'attachment; filename="{}"'.format(self.filename)
+            self.headers.setdefault("content-disposition", content_disposition)
+
+    async def __call__(self, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": self.status_code,
+                "headers": self.raw_headers,
+            }
+        )
+        async with aiofiles.open(self.path, mode="rb") as file:
+            more_body = True
+            while more_body:
+                chunk = await file.read(self.chunk_size)
+                more_body = len(chunk) == self.chunk_size
+                await send(
+                    {"type": "http.response.body", "body": chunk, "more_body": False}
+                )

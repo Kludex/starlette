@@ -75,7 +75,7 @@ class QueryParams(typing.Mapping[str, str]):
         self._dict = {k: v for k, v in reversed(items)}
         self._list = items
 
-    def get_list(self, key: str) -> typing.List[str]:
+    def getlist(self, key: str) -> typing.List[str]:
         return [item_value for item_key, item_value in self._list if item_key == key]
 
     def keys(self):

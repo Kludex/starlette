@@ -23,7 +23,7 @@ class StaticFiles:
         if scope["method"] not in ("GET", "HEAD"):
             return PlainTextResponse("Method not allowed", status_code=406)
         path = os.path.normpath(os.path.join(*scope["path"].split("/")))
-        if path.startswith('..'):
+        if path.startswith(".."):
             return PlainTextResponse("Not found", status_code=404)
         path = os.path.join(self.directory, path)
         if self.config_checked:

@@ -297,6 +297,14 @@ Path('/users/{username}', app=User, methods=['GET'])
 
 Path components are made available in the scope, as `scope["kwargs"]`.
 
+You can also use regular expressions for more complicated matching.
+
+Named capture groups will be included in `scope["kwargs"]`:
+
+```python
+Path('/users/(?P<username>[a-zA-Z0-9_]{1,20})', app=User, methods=['GET'])
+```
+
 Because each target of the router is an ASGI instance itself, routers
 allow for easy composition. For example:
 

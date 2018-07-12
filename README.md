@@ -321,7 +321,7 @@ As well as the `FileResponse` class, Starlette also includes ASGI applications
 for serving a specific file or directory:
 
 * `StaticFile(path)` - Serve a single file, given by `path`.
-* `StaticFiles(directory)` - Serve any files in the given directory.
+* `StaticFiles(directory)` - Serve any files in the given `directory`.
 
 You can combine these ASGI applications with Starlette's routing to provide
 comprehensive static file serving.

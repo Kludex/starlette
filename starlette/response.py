@@ -135,7 +135,7 @@ class FileResponse(Response):
         headers: dict = None,
         media_type: str = None,
         filename: str = None,
-        stat_result: os.stat_result = None
+        stat_result: os.stat_result = None,
     ) -> None:
         self.path = path
         self.status_code = 200

@@ -13,7 +13,7 @@ def test_staticfile(tmpdir):
     client = TestClient(app)
     response = client.get("/")
     assert response.status_code == 200
-    assert response.text == '<file content>'
+    assert response.text == "<file content>"
 
 
 def test_staticfile_post(tmpdir):
@@ -25,7 +25,7 @@ def test_staticfile_post(tmpdir):
     client = TestClient(app)
     response = client.post("/")
     assert response.status_code == 406
-    assert response.text == 'Method not allowed'
+    assert response.text == "Method not allowed"
 
 
 def test_staticfile_with_directory_raises_error(tmpdir):
@@ -33,16 +33,16 @@ def test_staticfile_with_directory_raises_error(tmpdir):
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         response = client.get("/")
-    assert 'is not a file' in str(exc)
+    assert "is not a file" in str(exc)
 
 
 def test_staticfile_with_missing_file_raises_error(tmpdir):
-    path = os.path.join(tmpdir, '404.txt')
+    path = os.path.join(tmpdir, "404.txt")
     app = StaticFile(path=path)
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         response = client.get("/")
-    assert 'does not exist' in str(exc)
+    assert "does not exist" in str(exc)
 
 
 def test_staticfiles(tmpdir):
@@ -54,7 +54,7 @@ def test_staticfiles(tmpdir):
     client = TestClient(app)
     response = client.get("/example.txt")
     assert response.status_code == 200
-    assert response.text == '<file content>'
+    assert response.text == "<file content>"
 
 
 def test_staticfiles_post(tmpdir):
@@ -66,7 +66,7 @@ def test_staticfiles_post(tmpdir):
     client = TestClient(app)
     response = client.post("/example.txt")
     assert response.status_code == 406
-    assert response.text == 'Method not allowed'
+    assert response.text == "Method not allowed"
 
 
 def test_staticfiles_with_directory_returns_404(tmpdir):
@@ -78,7 +78,7 @@ def test_staticfiles_with_directory_returns_404(tmpdir):
     client = TestClient(app)
     response = client.get("/")
     assert response.status_code == 404
-    assert response.text == 'Not found'
+    assert response.text == "Not found"
 
 
 def test_staticfiles_with_missing_file_returns_404(tmpdir):
@@ -90,7 +90,7 @@ def test_staticfiles_with_missing_file_returns_404(tmpdir):
     client = TestClient(app)
     response = client.get("/404.txt")
     assert response.status_code == 404
-    assert response.text == 'Not found'
+    assert response.text == "Not found"
 
 
 def test_staticfiles_configured_with_missing_directory(tmpdir):
@@ -99,7 +99,7 @@ def test_staticfiles_configured_with_missing_directory(tmpdir):
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         response = client.get("/example.txt")
-    assert 'does not exist' in str(exc)
+    assert "does not exist" in str(exc)
 
 
 def test_staticfiles_configured_with_file_instead_of_directory(tmpdir):
@@ -111,7 +111,7 @@ def test_staticfiles_configured_with_file_instead_of_directory(tmpdir):
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         response = client.get("/example.txt")
-    assert 'is not a directory' in str(exc)
+    assert "is not a directory" in str(exc)
 
 
 def test_staticfiles_config_check_occurs_only_once(tmpdir):

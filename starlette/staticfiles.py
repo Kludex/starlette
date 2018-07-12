@@ -9,8 +9,8 @@ class StaticFile:
         self.path = path
 
     def __call__(self, scope):
-        if scope['method'] not in ('GET', 'HEAD'):
-            return PlainTextResponse('Method not allowed', status_code=406)
+        if scope["method"] not in ("GET", "HEAD"):
+            return PlainTextResponse("Method not allowed", status_code=406)
         return _StaticFileResponder(scope, path=self.path)
 
 
@@ -20,9 +20,9 @@ class StaticFiles:
         self.config_checked = False
 
     def __call__(self, scope):
-        if scope['method'] not in ('GET', 'HEAD'):
-            return PlainTextResponse('Method not allowed', status_code=406)
-        split_path = scope['path'].split('/')
+        if scope["method"] not in ("GET", "HEAD"):
+            return PlainTextResponse("Method not allowed", status_code=406)
+        split_path = scope["path"].split("/")
         path = os.path.join(self.directory, *split_path)
         if self.config_checked:
             check_directory = None
@@ -68,7 +68,7 @@ class _StaticFilesResponder:
             stat_result = await aio_stat(directory)
         except FileNotFoundError:
             raise RuntimeError("StaticFiles directory '%s' does not exist." % directory)
-        if not stat.S_ISDIR(stat_result.st_mode):
+        if not (stat.S_ISDIR(stat_result.st_mode) or stat.S_ISLNK(stat_result.st_mode)):
             raise RuntimeError("StaticFiles path '%s' is not a directory." % directory)
 
     async def __call__(self, receive, send):
@@ -78,11 +78,11 @@ class _StaticFilesResponder:
         try:
             stat_result = await aio_stat(self.path)
         except FileNotFoundError:
-            response = PlainTextResponse('Not found', status_code=404)
+            response = PlainTextResponse("Not found", status_code=404)
         else:
             mode = stat_result.st_mode
             if not stat.S_ISREG(mode):
-                response = PlainTextResponse('Not found', status_code=404)
+                response = PlainTextResponse("Not found", status_code=404)
             else:
                 response = FileResponse(self.path, stat_result=stat_result)
 

@@ -1,5 +1,6 @@
 from starlette import FileResponse, Response, StreamingResponse, TestClient
 import asyncio
+import os
 
 
 def test_text_response():
@@ -68,11 +69,12 @@ def test_response_headers():
 
 
 def test_file_response(tmpdir):
-    with open("xyz", "wb") as file:
+    path = os.path.join(tmpdir, "xyz")
+    with open(path, "wb") as file:
         file.write(b"<file content>")
 
     def app(scope):
-        return FileResponse(path="xyz", filename="example.png")
+        return FileResponse(path=path, filename="example.png")
 
     client = TestClient(app)
     response = client.get("/")

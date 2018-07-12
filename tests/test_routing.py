@@ -1,4 +1,5 @@
-from starlette import Response, Path, PathPrefix, Router, TestClient
+from starlette import Response, TestClient
+from starlette.routing import Path, PathPrefix, Router
 
 
 def homepage(scope):

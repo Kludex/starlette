@@ -8,7 +8,6 @@ from starlette.response import (
     StreamingResponse,
 )
 from starlette.request import Request
-from starlette.routing import Path, PathPrefix, Router
 from starlette.testclient import TestClient
 
 
@@ -17,11 +16,8 @@ __all__ = (
     "FileResponse",
     "HTMLResponse",
     "JSONResponse",
-    "Path",
-    "PathPrefix",
     "PlainTextResponse",
     "Response",
-    "Router",
     "StreamingResponse",
     "Request",
     "TestClient",

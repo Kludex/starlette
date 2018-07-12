@@ -6,6 +6,7 @@ from starlette.types import Receive, Send
 import aiofiles
 import json
 import hashlib
+import os
 import stat
 import typing
 
@@ -134,6 +135,7 @@ class FileResponse(Response):
         headers: dict = None,
         media_type: str = None,
         filename: str = None,
+        stat_result: os.stat_result = None,
     ) -> None:
         self.path = path
         self.status_code = 200
@@ -145,6 +147,9 @@ class FileResponse(Response):
         if self.filename is not None:
             content_disposition = 'attachment; filename="{}"'.format(self.filename)
             self.headers.setdefault("content-disposition", content_disposition)
+        self.stat_result = stat_result
+        if stat_result is not None:
+            self.set_stat_headers(stat_result)
 
     def set_stat_headers(self, stat_result):
         content_length = str(stat_result.st_size)
@@ -156,8 +161,9 @@ class FileResponse(Response):
         self.headers.setdefault("etag", etag)
 
     async def __call__(self, receive: Receive, send: Send) -> None:
-        stat_result = await aio_stat(self.path)
-        self.set_stat_headers(stat_result)
+        if self.stat_result is None:
+            stat_result = await aio_stat(self.path)
+            self.set_stat_headers(stat_result)
         await send(
             {
                 "type": "http.response.start",

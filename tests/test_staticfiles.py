@@ -122,3 +122,18 @@ def test_staticfiles_config_check_occurs_only_once(tmpdir):
     assert app.config_checked
     response = client.get("/")
     assert app.config_checked
+
+
+def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
+    directory = os.path.join(tmpdir, 'foo')
+    os.mkdir(directory)
+
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("outside root dir")
+
+    app = StaticFiles(directory=directory)
+    # We can't test this with 'requests', so we call the app directly here.
+    response = app({'method': 'GET', 'path': '/../example.txt'})
+    assert response.status_code == 404
+    assert response.body == b"Not found"

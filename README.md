@@ -20,8 +20,8 @@
 
 Starlette is a small library for working with [ASGI](https://asgi.readthedocs.io/en/latest/).
 
-It gives you `Request` and `Response` classes, request routing, a test client, and a
-decorator for writing super-minimal applications.
+It gives you `Request` and `Response` classes, request routing, static files support,
+a test client, and a decorator for writing super-minimal applications.
 
 **Requirements:**
 
@@ -279,7 +279,7 @@ Starlette includes a `Router` class which is an ASGI application that
 dispatches to other ASGI applications.
 
 ```python
-from starlette import Router, Path, PathPrefix
+from starlette.routing import Router, Path, PathPrefix
 from myproject import Homepage, SubMountedApp
 
 
@@ -315,7 +315,7 @@ responses for requests which do not match.
 
 ---
 
-## Static files
+## Static Files
 
 As well as the `FileResponse` class, Starlette also includes ASGI applications
 for serving a specific file or directory:
@@ -332,10 +332,13 @@ from starlette.staticfiles import StaticFile, StaticFiles
 
 
 app = Router(routes=[
-    Path('/', app=StaticFile('index.html')),
+    Path('/', app=StaticFile(path='index.html')),
     PathPrefix('/static/', app=StaticFiles(directory='static')),
 ])
 ```
+
+Static files will respond with "404 Not found" or "406 Method not allowed"
+responses for requests which do not match.
 
 ---
 

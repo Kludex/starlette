@@ -1,10 +1,13 @@
+from aiofiles.os import stat as aio_stat
+from email.utils import formatdate
 from mimetypes import guess_type
 from starlette.datastructures import MutableHeaders
 from starlette.types import Receive, Send
 import aiofiles
 import json
+import hashlib
+import stat
 import typing
-import os
 
 
 class Response:
@@ -143,7 +146,18 @@ class FileResponse(Response):
             content_disposition = 'attachment; filename="{}"'.format(self.filename)
             self.headers.setdefault("content-disposition", content_disposition)
 
+    def set_stat_headers(self, stat_result):
+        content_length = str(stat_result.st_size)
+        last_modified = formatdate(stat_result.st_mtime, usegmt=True)
+        etag_base = str(stat_result.st_mtime) + "-" + str(stat_result.st_size)
+        etag = hashlib.md5(etag_base.encode()).hexdigest()
+        self.headers.setdefault("content-length", content_length)
+        self.headers.setdefault("last-modified", last_modified)
+        self.headers.setdefault("etag", etag)
+
     async def __call__(self, receive: Receive, send: Send) -> None:
+        stat_result = await aio_stat(self.path)
+        self.set_stat_headers(stat_result)
         await send(
             {
                 "type": "http.response.start",

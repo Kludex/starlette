@@ -76,9 +76,11 @@ def test_file_response(tmpdir):
 
     client = TestClient(app)
     response = client.get("/")
+    expected_disposition = 'attachment; filename="example.png"'
     assert response.status_code == 200
     assert response.content == b"<file content>"
     assert response.headers["content-type"] == "image/png"
-    assert (
-        response.headers["content-disposition"] == 'attachment; filename="example.png"'
-    )
+    assert response.headers["content-disposition"] == expected_disposition
+    assert "content-length" in response.headers
+    assert "last-modified" in response.headers
+    assert "etag" in response.headers

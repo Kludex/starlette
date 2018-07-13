@@ -1,4 +1,7 @@
 from starlette import Request, JSONResponse, TestClient
+from starlette.request import ClientDisconnect
+import asyncio
+import pytest
 
 
 def test_request_url():
@@ -209,3 +212,26 @@ def test_request_without_setting_receive():
     client = TestClient(app)
     response = client.post("/", json={"a": "123"})
     assert response.json() == {"json": "Receive channel not available"}
+
+
+def test_request_disconnect():
+    """
+    If a client disconnect occurs while reading request body
+    then ClientDisconnect should be raised.
+    """
+
+    def app(scope):
+        async def asgi(receive, send):
+            request = Request(scope, receive)
+            await request.body()
+
+        return asgi
+
+    async def receiver():
+        return {"type": "http.disconnect"}
+
+    scope = {"method": "POST", "path": "/"}
+    asgi_callable = app(scope)
+    loop = asyncio.get_event_loop()
+    with pytest.raises(ClientDisconnect):
+        loop.run_until_complete(asgi_callable(receiver, None))

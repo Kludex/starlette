@@ -5,6 +5,10 @@ import json
 import typing
 
 
+class ClientDisconnect(Exception):
+    pass
+
+
 class Request(Mapping):
     def __init__(self, scope, receive=None):
         self._scope = scope
@@ -86,6 +90,8 @@ class Request(Mapping):
                 yield message.get("body", b"")
                 if not message.get("more_body", False):
                     break
+            elif message["type"] == "http.disconnect":
+                raise ClientDisconnect()
 
     async def body(self):
         if not hasattr(self, "_body"):

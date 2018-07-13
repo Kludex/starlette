@@ -56,7 +56,7 @@ def test_headers_mutablecopy():
     c = h.mutablecopy()
     assert c.items() == [("a", "123"), ("a", "456"), ("b", "789")]
     c["a"] = "abc"
-    assert c.items() == [("b", "789"), ("a", "abc")]
+    assert c.items() == [("a", "abc"), ("b", "789")]
 
 def test_queryparams():
     q = QueryParams([("a", "123"), ("a", "456"), ("b", "789")])

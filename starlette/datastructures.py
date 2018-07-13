@@ -191,6 +191,7 @@ class MutableHeaders(Headers):
     def __setitem__(self, key: str, value: str):
         """
         Set the header `key` to `value`, removing any duplicate entries.
+        Retains insertion order.
         """
         set_key = key.lower().encode("latin-1")
         set_value = value.encode("latin-1")
@@ -200,10 +201,14 @@ class MutableHeaders(Headers):
             if item_key == set_key:
                 pop_indexes.append(idx)
 
-        for idx in reversed(pop_indexes):
+        for idx in reversed(pop_indexes[1:]):
             del self._list[idx]
 
-        self._list.append((set_key, set_value))
+        if pop_indexes:
+            idx = pop_indexes[0]
+            self._list[idx] = (set_key, set_value)
+        else:
+            self._list.append((set_key, set_value))
 
     def __delitem__(self, key: str):
         """

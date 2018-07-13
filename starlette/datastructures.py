@@ -155,6 +155,9 @@ class Headers(typing.Mapping[str, str]):
             if item_key == get_header_key
         ]
 
+    def mutablecopy(self):
+        return MutableHeaders(self._list[:])
+
     def __getitem__(self, key: str):
         get_header_key = key.lower().encode("latin-1")
         for header_key, header_value in self._list:
@@ -188,19 +191,24 @@ class MutableHeaders(Headers):
     def __setitem__(self, key: str, value: str):
         """
         Set the header `key` to `value`, removing any duplicate entries.
+        Retains insertion order.
         """
         set_key = key.lower().encode("latin-1")
         set_value = value.encode("latin-1")
 
-        pop_indexes = []
+        found_indexes = []
         for idx, (item_key, item_value) in enumerate(self._list):
             if item_key == set_key:
-                pop_indexes.append(idx)
+                found_indexes.append(idx)
 
-        for idx in reversed(pop_indexes):
+        for idx in reversed(found_indexes[1:]):
             del self._list[idx]
 
-        self._list.append((set_key, set_value))
+        if found_indexes:
+            idx = found_indexes[0]
+            self._list[idx] = (set_key, set_value)
+        else:
+            self._list.append((set_key, set_value))
 
     def __delitem__(self, key: str):
         """

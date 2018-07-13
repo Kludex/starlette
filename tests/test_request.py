@@ -19,6 +19,24 @@ def test_request_url():
     assert response.json() == {"method": "GET", "url": "https://example.org:123/"}
 
 
+def test_request_relative_url():
+    def app(scope):
+        async def asgi(receive, send):
+            request = Request(scope, receive)
+            data = {"method": request.method, "relative_url": request.relative_url}
+            response = JSONResponse(data)
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/123?a=abc")
+    assert response.json() == {"method": "GET", "relative_url": "/123?a=abc"}
+
+    response = client.get("https://example.org:123/")
+    assert response.json() == {"method": "GET", "relative_url": "/"}
+
+
 def test_request_query_params():
     def app(scope):
         async def asgi(receive, send):

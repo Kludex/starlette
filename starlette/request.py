@@ -1,5 +1,6 @@
 from starlette.datastructures import URL, Headers, QueryParams
 from collections.abc import Mapping
+from urllib.parse import unquote
 import json
 import typing
 
@@ -37,10 +38,22 @@ class Request(Mapping):
                 url = "%s://%s%s" % (scheme, host, path)
 
             if query_string:
-                url += "?" + query_string.decode()
+                url += "?" + unquote(query_string.decode())
 
             self._url = URL(url)
         return self._url
+
+    @property
+    def relative_url(self) -> URL:
+        if not hasattr(self, "_relative_url"):
+            url = self._scope["path"]
+            query_string = self._scope["query_string"]
+
+            if query_string:
+                url += "?" + unquote(query_string.decode())
+
+            self._relative_url = URL(url)
+        return self._relative_url
 
     @property
     def headers(self) -> Headers:

@@ -155,6 +155,9 @@ class Headers(typing.Mapping[str, str]):
             if item_key == get_header_key
         ]
 
+    def mutablecopy(self):
+        return MutableHeaders(self._list[:])
+
     def __getitem__(self, key: str):
         get_header_key = key.lower().encode("latin-1")
         for header_key, header_value in self._list:

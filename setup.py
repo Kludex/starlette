@@ -20,7 +20,7 @@ def get_long_description():
     """
     Return the README.
     """
-    return open('README.md', 'r').read()
+    return open('README.md', 'r', encoding="utf8").read()
 
 
 def get_packages(package):

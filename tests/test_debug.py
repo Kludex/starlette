@@ -43,3 +43,25 @@ def test_debug_after_response_sent():
     client = TestClient(DebugMiddleware(app))
     with pytest.raises(RuntimeError):
         response = client.get("/")
+
+
+def test_debug_error_during_scope():
+    def app(scope):
+        raise RuntimeError("Something went wrong")
+
+    app = DebugMiddleware(app)
+    client = TestClient(DebugMiddleware(app))
+    response = client.get("/", headers={"Accept": "text/html, */*"})
+    assert response.status_code == 500
+    assert response.headers["content-type"].startswith("text/html")
+    assert "RuntimeError" in response.text
+
+
+def test_debug_not_http():
+    def app(scope):
+        raise RuntimeError("Something went wrong")
+
+    app = DebugMiddleware(app)
+
+    with pytest.raises(RuntimeError):
+        app({"type": "websocket"})

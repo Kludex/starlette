@@ -9,19 +9,22 @@ class DebugMiddleware:
         self.app = app
 
     def __call__(self, scope):
+        if scope["type"] != "http":
+            return self.app(scope)
         return _DebugResponder(self.app, scope)
 
 
 class _DebugResponder:
     def __init__(self, app, scope):
+        self.app = app
         self.scope = scope
-        self.asgi_instance = app(scope)
         self.response_started = False
 
     async def __call__(self, receive, send):
         self.raw_send = send
         try:
-            await self.asgi_instance(receive, self.send)
+            asgi = self.app(self.scope)
+            await asgi(receive, self.send)
         except:
             if self.response_started:
                 raise

@@ -25,11 +25,11 @@ class _DebugResponder:
         except:
             if self.response_started:
                 raise
-            headers = Headers(self.scope.get('headers', []))
-            accept = headers.get('accept', '')
-            if 'text/html' in accept:
+            headers = Headers(self.scope.get("headers", []))
+            accept = headers.get("accept", "")
+            if "text/html" in accept:
                 exc_html = html.escape(traceback.format_exc())
-                content = f'<html><body><h1>500 Server Error</h1><pre>{exc_html}</pre></body></html>'
+                content = f"<html><body><h1>500 Server Error</h1><pre>{exc_html}</pre></body></html>"
                 response = HTMLResponse(content, status_code=500)
             else:
                 content = traceback.format_exc()
@@ -37,6 +37,6 @@ class _DebugResponder:
             await response(receive, send)
 
     async def send(self, message):
-        if message['type'] == 'http.response.start':
+        if message["type"] == "http.response.start":
             self.response_started = True
         await self.raw_send(message)

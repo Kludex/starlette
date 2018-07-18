@@ -376,6 +376,27 @@ def test_app():
 
 ---
 
+## Debugging
+
+You can use Starlette's `DebugMiddleware` to display simple error tracebacks in the browser.
+
+```python
+from starlette.debug import DebugMiddleware
+
+
+class App:
+    def __init__(self, scope):
+        self.scope = scope
+
+    async def __call__(self, receive, send):
+        raise RuntimeError('Something went wrong')
+
+
+app = DebugMiddleware(App)
+```
+
+---
+
 ## Decorators
 
 The `asgi_application` decorator takes a request/response function and turns

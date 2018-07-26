@@ -177,5 +177,9 @@ class FileResponse(Response):
                 chunk = await file.read(self.chunk_size)
                 more_body = len(chunk) == self.chunk_size
                 await send(
-                    {"type": "http.response.body", "body": chunk, "more_body": False}
+                    {
+                        "type": "http.response.body",
+                        "body": chunk,
+                        "more_body": more_body,
+                    }
                 )

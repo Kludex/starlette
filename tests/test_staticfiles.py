@@ -16,6 +16,21 @@ def test_staticfile(tmpdir):
     assert response.text == "<file content>"
 
 
+def test_large_staticfile(tmpdir):
+    path = os.path.join(tmpdir, "example.txt")
+    content = "this is a lot of content" * 200
+    print("content len = ", len(content))
+    with open(path, "w") as file:
+        file.write(content)
+
+    app = StaticFile(path=path)
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert len(content) == len(response.text)
+    assert content == response.text
+
+
 def test_staticfile_post(tmpdir):
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:

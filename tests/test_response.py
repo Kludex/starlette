@@ -70,8 +70,9 @@ def test_response_headers():
 
 def test_file_response(tmpdir):
     path = os.path.join(tmpdir, "xyz")
+    content = b"<file content>" * 1000
     with open(path, "wb") as file:
-        file.write(b"<file content>")
+        file.write(content)
 
     def app(scope):
         return FileResponse(path=path, filename="example.png")
@@ -80,7 +81,7 @@ def test_file_response(tmpdir):
     response = client.get("/")
     expected_disposition = 'attachment; filename="example.png"'
     assert response.status_code == 200
-    assert response.content == b"<file content>"
+    assert response.content == content
     assert response.headers["content-type"] == "image/png"
     assert response.headers["content-disposition"] == expected_disposition
     assert "content-length" in response.headers

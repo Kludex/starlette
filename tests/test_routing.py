@@ -1,5 +1,6 @@
 from starlette import Response, TestClient
-from starlette.routing import Path, PathPrefix, Router
+from starlette.routing import Path, PathPrefix, Router, ProtocolRouter
+from starlette.websockets import WebSocketSession
 
 
 def homepage(scope):
@@ -60,3 +61,33 @@ def test_router():
     response = client.post("/static/123")
     assert response.status_code == 406
     assert response.text == "Method not allowed"
+
+
+def http_endpoint(scope):
+    return Response("Hello, world", media_type="text/plain")
+
+
+def websocket_endpoint(scope):
+    async def asgi(receive, send):
+        session = WebSocketSession(scope, receive, send)
+        await session.accept()
+        await session.send_json({"hello": "world"})
+        await session.close()
+
+    return asgi
+
+
+mixed_protocol_app = ProtocolRouter(
+    {"http": http_endpoint, "websocket": websocket_endpoint}
+)
+
+
+def test_protocol_switch():
+    client = TestClient(mixed_protocol_app)
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.text == "Hello, world"
+
+    with client.wsconnect("/") as session:
+        assert session.receive_json() == {"hello": "world"}

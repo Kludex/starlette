@@ -182,7 +182,7 @@ def test_request_json():
 
 def test_request_scope_interface():
     """
-    A Request can be isntantiated with a scope, and presents a `Mapping`
+    A Request can be instantiated with a scope, and presents a `Mapping`
     interface.
     """
     request = Request({"method": "GET", "path": "/abc/"})

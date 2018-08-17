@@ -82,3 +82,12 @@ class Router:
 
     def not_found(self, scope: Scope) -> ASGIInstance:
         return Response("Not found", 404, media_type="text/plain")
+
+
+class ProtocolRouter:
+    def __init__(self, protocols: typing.Dict[str, ASGIApp]):
+        self.protocols = protocols
+
+    def __call__(self, scope: Scope) -> ASGIInstance:
+        app = self.protocols[scope["type"]]
+        return app(scope)

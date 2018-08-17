@@ -11,6 +11,7 @@ class ClientDisconnect(Exception):
 
 class Request(Mapping):
     def __init__(self, scope, receive=None):
+        assert scope["type"] == "http"
         self._scope = scope
         self._receive = receive
         self._stream_consumed = False
@@ -46,18 +47,6 @@ class Request(Mapping):
 
             self._url = URL(url)
         return self._url
-
-    @property
-    def relative_url(self) -> URL:
-        if not hasattr(self, "_relative_url"):
-            url = self._scope["path"]
-            query_string = self._scope["query_string"]
-
-            if query_string:
-                url += "?" + unquote(query_string.decode())
-
-            self._relative_url = URL(url)
-        return self._relative_url
 
     @property
     def headers(self) -> Headers:

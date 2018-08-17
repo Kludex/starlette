@@ -22,24 +22,6 @@ def test_request_url():
     assert response.json() == {"method": "GET", "url": "https://example.org:123/"}
 
 
-def test_request_relative_url():
-    def app(scope):
-        async def asgi(receive, send):
-            request = Request(scope, receive)
-            data = {"method": request.method, "relative_url": request.relative_url}
-            response = JSONResponse(data)
-            await response(receive, send)
-
-        return asgi
-
-    client = TestClient(app)
-    response = client.get("/123?a=abc")
-    assert response.json() == {"method": "GET", "relative_url": "/123?a=abc"}
-
-    response = client.get("https://example.org:123/")
-    assert response.json() == {"method": "GET", "relative_url": "/"}
-
-
 def test_request_query_params():
     def app(scope):
         async def asgi(receive, send):
@@ -185,10 +167,10 @@ def test_request_scope_interface():
     A Request can be instantiated with a scope, and presents a `Mapping`
     interface.
     """
-    request = Request({"method": "GET", "path": "/abc/"})
+    request = Request({"type": "http", "method": "GET", "path": "/abc/"})
     assert request["method"] == "GET"
-    assert dict(request) == {"method": "GET", "path": "/abc/"}
-    assert len(request) == 2
+    assert dict(request) == {"type": "http", "method": "GET", "path": "/abc/"}
+    assert len(request) == 3
 
 
 def test_request_without_setting_receive():
@@ -230,7 +212,7 @@ def test_request_disconnect():
     async def receiver():
         return {"type": "http.disconnect"}
 
-    scope = {"method": "POST", "path": "/"}
+    scope = {"type": "http", "method": "POST", "path": "/"}
     asgi_callable = app(scope)
     loop = asyncio.get_event_loop()
     with pytest.raises(ClientDisconnect):

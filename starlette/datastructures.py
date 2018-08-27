@@ -49,6 +49,10 @@ class URL(str):
     def port(self):
         return self.components.port
 
+    def replace(self, **kwargs):
+        components = self.components._replace(**kwargs)
+        return URL(components.geturl())
+
 
 # Type annotations for valid `__init__` values to QueryParams and Headers.
 StrPairs = typing.Sequence[typing.Tuple[str, str]]

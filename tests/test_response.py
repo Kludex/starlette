@@ -1,4 +1,10 @@
-from starlette import FileResponse, Response, StreamingResponse, TestClient
+from starlette.response import (
+    FileResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
+from starlette.testclient import TestClient
 import asyncio
 import os
 
@@ -27,6 +33,23 @@ def test_bytes_response():
     client = TestClient(app)
     response = client.get("/")
     assert response.content == b"xxxxx"
+
+
+def test_redirect_response():
+    def app(scope):
+        async def asgi(receive, send):
+            if scope["path"] == "/":
+                response = Response("hello, world", media_type="text/plain")
+            else:
+                response = RedirectResponse("/")
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/redirect")
+    assert response.text == "hello, world"
+    assert response.url == "http://testserver/"
 
 
 def test_streaming_response():

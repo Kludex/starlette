@@ -134,6 +134,26 @@ class App:
         await response(receive, send)
 ```
 
+### RedirectResponse
+
+Returns an HTTP redirect. Uses a 302 status code by default.
+
+```python
+from starlette import PlainTextResponse, RedirectResponse
+
+
+class App:
+    def __init__(self, scope):
+        self.scope = scope
+
+    async def __call__(self, receive, send):
+        if self.scope['path'] != '/':
+            response = RedirectResponse(url='/')
+        else:
+            response = PlainTextResponse('Hello, world!')
+        await response(receive, send)
+```
+
 ### StreamingResponse
 
 Takes an async generator and streams the response body.

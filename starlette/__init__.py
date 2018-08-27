@@ -3,6 +3,7 @@ from starlette.response import (
     FileResponse,
     HTMLResponse,
     JSONResponse,
+    RedirectResponse,
     Response,
     PlainTextResponse,
     StreamingResponse,
@@ -17,9 +18,10 @@ __all__ = (
     "HTMLResponse",
     "JSONResponse",
     "PlainTextResponse",
+    "RedirectResponse",
     "Response",
     "StreamingResponse",
     "Request",
     "TestClient",
 )
-__version__ = "0.1.16"
+__version__ = "0.1.17"

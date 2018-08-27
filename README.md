@@ -52,6 +52,22 @@ You can run the application with any ASGI server, including [uvicorn](http://www
 
 <p align="center">&mdash; ⭐️ &mdash;</p>
 
+* [Responses](#responses)
+    * [Response](#response)
+    * [HTMLResponse](#htmlresponse)
+    * [PlainTextResponse](#plaintextresponse)
+    * [JSONResponse](#jsonresponse)
+    * [StreamingResponse](#streamingresponse)
+    * [FileResponse](#fileresponse)
+* [Requests](#requests)
+    * [Request](#request)
+* [WebSockets](#websockets)
+    * [WebSocketSession](#websocketsession)
+* [Routing](#routing)
+* [Static Files](#static-files)
+* [Test Client](#test-client)
+* [Debugging](#debugging)
+* [Decorators](#decorators)
 ## Responses
 
 Starlette includes a few response classes that handle sending back the

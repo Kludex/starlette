@@ -20,8 +20,8 @@
 
 Starlette is a small library for working with [ASGI](https://asgi.readthedocs.io/en/latest/).
 
-It gives you `Request` and `Response` classes, request routing, static files support,
-a test client, and a decorator for writing super-minimal applications.
+It gives you `Request` and `Response` classes, request routing, websocket support,
+static files support, and a test client.
 
 **Requirements:**
 
@@ -52,11 +52,16 @@ You can run the application with any ASGI server, including [uvicorn](http://www
 
 <p align="center">&mdash; ⭐️ &mdash;</p>
 
+---
+
+## Contents
+
 * [Responses](#responses)
     * [Response](#response)
     * [HTMLResponse](#htmlresponse)
     * [PlainTextResponse](#plaintextresponse)
     * [JSONResponse](#jsonresponse)
+    * [RedirectResponse](#redirectresponse)
     * [StreamingResponse](#streamingresponse)
     * [FileResponse](#fileresponse)
 * [Requests](#requests)
@@ -67,7 +72,9 @@ You can run the application with any ASGI server, including [uvicorn](http://www
 * [Static Files](#static-files)
 * [Test Client](#test-client)
 * [Debugging](#debugging)
-* [Decorators](#decorators)
+
+---
+
 ## Responses
 
 Starlette includes a few response classes that handle sending back the

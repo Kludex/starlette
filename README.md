@@ -592,25 +592,4 @@ app = DebugMiddleware(App)
 
 ---
 
-## Decorators
-
-The `asgi_application` decorator takes a request/response function and turns
-it into an ASGI application.
-
-The function must take a single `request` argument, and return a response.
-
-The decorator can be applied to either `async` functions, or to standard
-functions.
-
-```python
-from starlette import asgi_application, HTMLResponse
-
-
-@asgi_application
-async def app(request):
-    return HTMLResponse('<html><body>Hello, world!</body></html>')
-```
-
----
-
 <p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & built in Brighton, England.</i><br/>&mdash; ⭐️ &mdash;</p>

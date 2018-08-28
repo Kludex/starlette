@@ -7,7 +7,7 @@ import asyncio
 
 def request_response(func):
     """
-    Taks a function or coroutine `func(request, **kwargs) -> response`,
+    Takes a function or coroutine `func(request, **kwargs) -> response`,
     and returns an ASGI application.
     """
     is_coroutine = asyncio.iscoroutinefunction(func)

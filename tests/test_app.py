@@ -52,7 +52,7 @@ def test_route_kwargs():
 
 
 def test_websocket_route():
-    with client.wsconnect("/ws") as session:
+    with client.websocket_connect("/ws") as session:
         text = session.receive_text()
         assert text == "Hello, world!"
 

@@ -232,7 +232,7 @@ class _TestClient(requests.Session):
         url = urljoin(self.base_url, url)
         return super().request(method, url, **kwargs)
 
-    def wsconnect(self, url: str, subprotocols=None, **kwargs) -> WebSocketTestSession:
+    def websocket_connect(self, url: str, subprotocols=None, **kwargs) -> WebSocketTestSession:
         url = urljoin("ws://testserver", url)
         headers = kwargs.get("headers", {})
         headers.setdefault("connection", "upgrade")

@@ -93,8 +93,8 @@ def test_protocol_switch():
     assert response.status_code == 200
     assert response.text == "Hello, world"
 
-    with client.wsconnect("/") as session:
+    with client.websocket_connect("/") as session:
         assert session.receive_json() == {"hello": "world"}
 
     with pytest.raises(WebSocketDisconnect):
-        client.wsconnect("/404")
+        client.websocket_connect("/404")

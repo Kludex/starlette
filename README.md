@@ -20,7 +20,7 @@
 
 Starlette is a small library for working with [ASGI](https://asgi.readthedocs.io/en/latest/).
 
-It gives you `Request` and `Response` classes, request routing, websocket support,
+It gives you `Request` and `Response` classes, websocket support, routing,
 static files support, and a test client.
 
 **Requirements:**
@@ -72,6 +72,7 @@ You can run the application with any ASGI server, including [uvicorn](http://www
 * [Static Files](#static-files)
 * [Test Client](#test-client)
 * [Debugging](#debugging)
+* [Applications](#applications)
 
 ---
 
@@ -612,6 +613,50 @@ class App:
 
 app = DebugMiddleware(App)
 ```
+
+---
+
+## Applications
+
+Starlette also includes an `App` class that nicely ties together all of
+its other functionality.
+
+```python
+from starlette import App
+from starlette.response import PlainTextResponse
+from starlette.staticfiles import StaticFiles
+
+
+app = App()
+app.mount("/static", StaticFiles(directory="static"))
+
+
+@app.route('/')
+def homepage(request):
+    return PlainTextResponse('Hello, world!')
+
+
+@app.route('/user/{username}')
+def user(request, username):
+    return PlainTextResponse('Hello, %s!' % username)
+
+
+@app.websocket_route('/ws')
+async def websocket_endpoint(session):
+    await session.accept()
+    await session.send_text('Hello, websocket!')
+    await session.close()
+```
+
+### Adding routes to the application
+
+You can use any of the following to add handled routes to the application:
+
+* `.add_route(path, func, methods=["GET"])` - Add an HTTP route. The function may be either a coroutine or a regular function, with a signature like `func(request **kwargs) -> response`.
+* `.add_websocket_route(path, func)` - Add a websocket session route. The function must be a coroutine, with a signature like `func(session, **kwargs)`.
+* `.mount(prefix, app)` - Include an ASGI app, mounted under the given path prefix
+* `.route(path)` - Add an HTTP route, decorator style.
+* `.websocket_route(path)` - Add a WebSocket route, decorator style.
 
 ---
 

@@ -140,11 +140,11 @@ class WebSocketTestSession:
         self._receive_queue = queue.Queue()
         self._send_queue = queue.Queue()
         self._thread = threading.Thread(target=self._run)
-        self._receive_queue.put({"type": "websocket.connect"})
+        self.send({"type": "websocket.connect"})
         self._thread.start()
-        message = self._send_queue.get()
-        self._raise_on_close_or_exception(message)
-        self.accepted_subprotocol = message["subprotocol"]
+        message = self.receive()
+        self._raise_on_close(message)
+        self.accepted_subprotocol = message.get("subprotocol", None)
 
     def __enter__(self):
         return self
@@ -174,38 +174,45 @@ class WebSocketTestSession:
     async def _asgi_send(self, message):
         self._send_queue.put(message)
 
-    def _raise_on_close_or_exception(self, message):
-        if isinstance(message, BaseException):
-            raise message
+    def _raise_on_close(self, message):
         if message["type"] == "websocket.close":
-            raise WebSocketDisconnect(message["code"])
+            raise WebSocketDisconnect(message.get("code", 1000))
+
+    def send(self, message):
+        self._receive_queue.put(message)
 
     def send_text(self, data):
-        self._receive_queue.put({"type": "websocket.receive", "text": data})
+        self.send({"type": "websocket.receive", "text": data})
 
     def send_bytes(self, data):
-        self._receive_queue.put({"type": "websocket.receive", "bytes": data})
+        self.send({"type": "websocket.receive", "bytes": data})
 
     def send_json(self, data):
         encoded = json.dumps(data).encode("utf-8")
-        self._receive_queue.put({"type": "websocket.receive", "bytes": encoded})
+        self.send({"type": "websocket.receive", "bytes": encoded})
 
     def close(self, code=1000):
-        self._receive_queue.put({"type": "websocket.disconnect", "code": code})
+        self.send({"type": "websocket.disconnect", "code": code})
+
+    def receive(self):
+        message = self._send_queue.get()
+        if isinstance(message, BaseException):
+            raise message
+        return message
 
     def receive_text(self):
-        message = self._send_queue.get()
-        self._raise_on_close_or_exception(message)
+        message = self.receive()
+        self._raise_on_close(message)
         return message["text"]
 
     def receive_bytes(self):
-        message = self._send_queue.get()
-        self._raise_on_close_or_exception(message)
+        message = self.receive()
+        self._raise_on_close(message)
         return message["bytes"]
 
     def receive_json(self):
-        message = self._send_queue.get()
-        self._raise_on_close_or_exception(message)
+        message = self.receive()
+        self._raise_on_close(message)
         encoded = message["bytes"]
         return json.loads(encoded.decode("utf-8"))
 

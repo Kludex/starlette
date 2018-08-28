@@ -1,3 +1,4 @@
+from starlette.app import App
 from starlette.response import (
     FileResponse,
     HTMLResponse,
@@ -12,6 +13,7 @@ from starlette.testclient import TestClient
 
 
 __all__ = (
+    "App",
     "FileResponse",
     "HTMLResponse",
     "JSONResponse",

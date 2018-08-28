@@ -8,7 +8,7 @@ repo_name: encode/starlette
 repo_url: https://github.com/encode/starlette
 edit_uri: ""
 
-pages:
+nav:
     - Introduction: 'index.md'
     - Responses: 'responses.md'
     - Requests: 'requests.md'

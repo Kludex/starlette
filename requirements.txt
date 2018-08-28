@@ -6,3 +6,8 @@ black
 codecov
 pytest
 pytest-cov
+
+
+# Documentation
+mkdocs
+mkdocs-material

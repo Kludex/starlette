@@ -1,6 +1,7 @@
 from starlette import Response, TestClient
 from starlette.routing import Path, PathPrefix, Router, ProtocolRouter
-from starlette.websockets import WebSocketSession
+from starlette.websockets import WebSocketSession, WebSocketDisconnect
+import pytest
 
 
 def homepage(scope):
@@ -78,7 +79,10 @@ def websocket_endpoint(scope):
 
 
 mixed_protocol_app = ProtocolRouter(
-    {"http": http_endpoint, "websocket": websocket_endpoint}
+    {
+        "http": Router([Path("/", app=http_endpoint)]),
+        "websocket": Router([Path("/", app=websocket_endpoint)]),
+    }
 )
 
 
@@ -89,5 +93,8 @@ def test_protocol_switch():
     assert response.status_code == 200
     assert response.text == "Hello, world"
 
-    with client.wsconnect("/") as session:
+    with client.websocket_connect("/") as session:
         assert session.receive_json() == {"hello": "world"}
+
+    with pytest.raises(WebSocketDisconnect):
+        client.websocket_connect("/404")

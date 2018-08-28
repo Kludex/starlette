@@ -36,7 +36,7 @@ pip3 install starlette
 **Example:**
 
 ```python
-from starlette import Response
+from starlette.response import Response
 
 
 class App:
@@ -112,7 +112,7 @@ class App:
 Takes some text or bytes and returns an HTML response.
 
 ```python
-from starlette import HTMLResponse
+from starlette.response import HTMLResponse
 
 
 class App:
@@ -129,7 +129,7 @@ class App:
 Takes some text or bytes and returns an plain text response.
 
 ```python
-from starlette import PlainTextResponse
+from starlette.response import PlainTextResponse
 
 
 class App:
@@ -146,7 +146,7 @@ class App:
 Takes some data and returns an `application/json` encoded response.
 
 ```python
-from starlette import JSONResponse
+from starlette.response import JSONResponse
 
 
 class App:
@@ -163,7 +163,7 @@ class App:
 Returns an HTTP redirect. Uses a 302 status code by default.
 
 ```python
-from starlette import PlainTextResponse, RedirectResponse
+from starlette.response import PlainTextResponse, RedirectResponse
 
 
 class App:
@@ -183,7 +183,8 @@ class App:
 Takes an async generator and streams the response body.
 
 ```python
-from starlette import Request, StreamingResponse
+from starlette.request import Request
+from starlette.response import StreamingResponse
 import asyncio
 
 
@@ -219,7 +220,7 @@ Takes a different set of arguments to instantiate than the other response types:
 File responses will include appropriate `Content-Length`, `Last-Modified` and `ETag` headers.
 
 ```python
-from starlette import FileResponse
+from starlette.response import FileResponse
 
 
 class App:
@@ -515,7 +516,8 @@ The test client allows you to make requests against your ASGI application,
 using the `requests` library.
 
 ```python
-from starlette import HTMLResponse, TestClient
+from starlette.response import HTMLResponse
+from starlette.testclient import TestClient
 
 
 class App:
@@ -563,7 +565,7 @@ class App:
 
 def test_app():
     client = TestClient(App)
-    with client.wsconnect('/') as session:
+    with client.websocket_connect('/') as session:
         data = session.receive_text()
         assert data == 'Hello, world!'
 ```
@@ -577,9 +579,15 @@ always raised by the test client.
 
 #### Establishing a test session
 
-* `.wsconnect(url, subprotocols=None, **options)` - Takes the same set of arguments as `requests.get()`.
+* `.websocket_connect(url, subprotocols=None, **options)` - Takes the same set of arguments as `requests.get()`.
 
 May raise `starlette.websockets.Disconnect` if the application does not accept the websocket connection.
+
+#### Sending data
+
+* `.send_text(data)` - Send the given text to the application.
+* `.send_bytes(data)` - Send the given bytes to the application.
+* `.send_json(data)` - Send the given data to the application.
 
 #### Receiving data
 
@@ -622,7 +630,7 @@ Starlette also includes an `App` class that nicely ties together all of
 its other functionality.
 
 ```python
-from starlette import App
+from starlette.app import App
 from starlette.response import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 

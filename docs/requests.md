@@ -86,7 +86,3 @@ class App:
 If you access `.stream()` then the byte chunks are provided without storing
 the entire body to memory. Any subsequent calls to `.body()` and `.json()` will
 raise an error.
-
-
-<p align="center">&mdash; ⭐️ &mdash;</p>
-<p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>

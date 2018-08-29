@@ -37,7 +37,3 @@ You can use any of the following to add handled routes to the application:
 * `.mount(prefix, app)` - Include an ASGI app, mounted under the given path prefix
 * `.route(path)` - Add an HTTP route, decorator style.
 * `.websocket_route(path)` - Add a WebSocket route, decorator style.
-
-
-<p align="center">&mdash; ⭐️ &mdash;</p>
-<p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>

@@ -87,7 +87,3 @@ May raise `starlette.websockets.Disconnect`.
 #### Closing the connection
 
 * `.close(code=1000)` - Perform a client-side close of the websocket connection.
-
-
-<p align="center">&mdash; ⭐️ &mdash;</p>
-<p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>

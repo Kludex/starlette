@@ -79,7 +79,3 @@ correctly updated.
 
 * `await session.send(message)`
 * `await session.receive()`
-
-
-<p align="center">&mdash; ⭐️ &mdash;</p>
-<p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>

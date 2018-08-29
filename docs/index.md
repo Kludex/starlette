@@ -33,13 +33,13 @@ Python 3.6+
 ## Installation
 
 ```shell
-pip3 install starlette
+$ pip3 install starlette
 ```
 
 ## Example
 
 ```python
-from starlette import Response
+from starlette.response import Response
 
 
 class App:
@@ -52,6 +52,22 @@ class App:
 ```
 
 You can run the application with any ASGI server, including [uvicorn](http://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://pgjones.gitlab.io/hypercorn/).
+
+Install the Uvicorn ASGI server:
+
+```shell
+$ pip3 install uvicorn
+[...]
+Successfully installed uvicorn
+```
+
+Run the `App` application in `example.py`:
+
+```shell
+$ uvicorn run example:App
+INFO: Started server process [11509]
+INFO: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+```
 
 <p align="center">&mdash; ⭐️ &mdash;</p>
 <p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>

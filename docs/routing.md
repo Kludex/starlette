@@ -51,7 +51,7 @@ You can also route based on the incoming protocol, using the `ProtocolRouter`
 class.
 
 ```python
-from starlette.responses import Response
+from starlette.response import Response
 from starlette.routing import ProtocolRouter
 from starlette.websockets import WebSocketSession
 

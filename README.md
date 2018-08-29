@@ -20,6 +20,8 @@
 
 **Documentation**: [https://www.starlette.io/](https://www.starlette.io/)
 
+---
+
 Starlette is a small library for working with [ASGI](https://asgi.readthedocs.io/en/latest/).
 
 It gives you `Request` and `Response` classes, request routing, websocket support,

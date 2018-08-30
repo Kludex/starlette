@@ -3,6 +3,7 @@ from starlette.routing import Path, PathPrefix, Router
 from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
 from starlette.websockets import WebSocketSession
 import asyncio
+import inspect
 
 
 def request_response(func):
@@ -52,24 +53,32 @@ class App:
         self.router.routes.append(prefix)
 
     def add_route(self, path: str, route, methods=None) -> None:
-        if methods is None:
-            methods = ["GET"]
-        instance = Path(path, request_response(route), protocol="http", methods=methods)
+        if not inspect.isclass(route):
+            route = request_response(route)
+            if methods is None:
+                methods = ["GET"]
+
+        instance = Path(path, route, protocol="http", methods=methods)
         self.router.routes.append(instance)
 
     def add_websocket_route(self, path: str, route) -> None:
-        instance = Path(path, websocket_session(route), protocol="websocket")
+        if not inspect.isclass(route):
+            route = websocket_session(route)
+
+        instance = Path(path, route, protocol="websocket")
         self.router.routes.append(instance)
 
     def route(self, path: str):
         def decorator(func):
             self.add_route(path, func)
+            return func
 
         return decorator
 
     def websocket_route(self, path: str):
         def decorator(func):
             self.add_websocket_route(path, func)
+            return func
 
         return decorator
 

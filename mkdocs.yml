@@ -18,6 +18,7 @@ nav:
     - Applications: 'applications.md'
     - Test Client: 'test_client.md'
     - Debugging: 'debugging.md'
+    - Views: 'views.md'
 
 markdown_extensions:
   - markdown.extensions.codehilite:

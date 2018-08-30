@@ -40,5 +40,5 @@ class User(View):
         return PlainTextResponse(f"Hello, {username}")
 ```
 
-Class-based views will respond with "406 Method not allowed" responses for any
+Class-based views will respond with "405 Method not allowed" responses for any
 request methods which do not map to a corresponding handler.

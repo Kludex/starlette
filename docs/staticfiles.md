@@ -19,5 +19,5 @@ app = Router(routes=[
 ])
 ```
 
-Static files will respond with "404 Not found" or "406 Method not allowed"
+Static files will respond with "404 Not found" or "405 Method not allowed"
 responses for requests which do not match.

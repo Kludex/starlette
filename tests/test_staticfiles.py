@@ -39,7 +39,7 @@ def test_staticfile_post(tmpdir):
     app = StaticFile(path=path)
     client = TestClient(app)
     response = client.post("/")
-    assert response.status_code == 406
+    assert response.status_code == 405
     assert response.text == "Method not allowed"
 
 
@@ -80,7 +80,7 @@ def test_staticfiles_post(tmpdir):
     app = StaticFiles(directory=tmpdir)
     client = TestClient(app)
     response = client.post("/example.txt")
-    assert response.status_code == 406
+    assert response.status_code == 405
     assert response.text == "Method not allowed"
 
 

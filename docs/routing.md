@@ -42,7 +42,7 @@ app = Router([
 ])
 ```
 
-The router will respond with "404 Not found" or "406 Method not allowed"
+The router will respond with "404 Not found" or "405 Method not allowed"
 responses for requests which do not match.
 
 ### Protocol Routing

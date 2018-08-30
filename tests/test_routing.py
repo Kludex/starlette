@@ -40,7 +40,7 @@ def test_router():
     assert response.text == "Hello, world"
 
     response = client.post("/")
-    assert response.status_code == 406
+    assert response.status_code == 405
     assert response.text == "Method not allowed"
 
     response = client.get("/foo")
@@ -60,7 +60,7 @@ def test_router():
     assert response.text == "xxxxx"
 
     response = client.post("/static/123")
-    assert response.status_code == 406
+    assert response.status_code == 405
     assert response.text == "Method not allowed"
 
 

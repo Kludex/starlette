@@ -19,4 +19,4 @@ class View:
         return await handler(request, **kwargs)
 
     async def method_not_allowed(self, request: Request, **kwargs) -> Response:
-        return PlainTextResponse("Method not allowed", 406)
+        return PlainTextResponse("Method not allowed", 405)

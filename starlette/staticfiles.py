@@ -10,7 +10,7 @@ class StaticFile:
 
     def __call__(self, scope):
         if scope["method"] not in ("GET", "HEAD"):
-            return PlainTextResponse("Method not allowed", status_code=405)
+            return PlainTextResponse("Method Not Allowed", status_code=405)
         return _StaticFileResponder(scope, path=self.path)
 
 
@@ -21,10 +21,10 @@ class StaticFiles:
 
     def __call__(self, scope):
         if scope["method"] not in ("GET", "HEAD"):
-            return PlainTextResponse("Method not allowed", status_code=405)
+            return PlainTextResponse("Method Not Allowed", status_code=405)
         path = os.path.normpath(os.path.join(*scope["path"].split("/")))
         if path.startswith(".."):
-            return PlainTextResponse("Not found", status_code=404)
+            return PlainTextResponse("Not Found", status_code=404)
         path = os.path.join(self.directory, path)
         if self.config_checked:
             check_directory = None
@@ -80,11 +80,11 @@ class _StaticFilesResponder:
         try:
             stat_result = await aio_stat(self.path)
         except FileNotFoundError:
-            response = PlainTextResponse("Not found", status_code=404)
+            response = PlainTextResponse("Not Found", status_code=404)
         else:
             mode = stat_result.st_mode
             if not stat.S_ISREG(mode):
-                response = PlainTextResponse("Not found", status_code=404)
+                response = PlainTextResponse("Not Found", status_code=404)
             else:
                 response = FileResponse(self.path, stat_result=stat_result)
 

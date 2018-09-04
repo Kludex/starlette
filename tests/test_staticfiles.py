@@ -40,7 +40,7 @@ def test_staticfile_post(tmpdir):
     client = TestClient(app)
     response = client.post("/")
     assert response.status_code == 405
-    assert response.text == "Method not allowed"
+    assert response.text == "Method Not Allowed"
 
 
 def test_staticfile_with_directory_raises_error(tmpdir):
@@ -81,7 +81,7 @@ def test_staticfiles_post(tmpdir):
     client = TestClient(app)
     response = client.post("/example.txt")
     assert response.status_code == 405
-    assert response.text == "Method not allowed"
+    assert response.text == "Method Not Allowed"
 
 
 def test_staticfiles_with_directory_returns_404(tmpdir):
@@ -93,7 +93,7 @@ def test_staticfiles_with_directory_returns_404(tmpdir):
     client = TestClient(app)
     response = client.get("/")
     assert response.status_code == 404
-    assert response.text == "Not found"
+    assert response.text == "Not Found"
 
 
 def test_staticfiles_with_missing_file_returns_404(tmpdir):
@@ -105,7 +105,7 @@ def test_staticfiles_with_missing_file_returns_404(tmpdir):
     client = TestClient(app)
     response = client.get("/404.txt")
     assert response.status_code == 404
-    assert response.text == "Not found"
+    assert response.text == "Not Found"
 
 
 def test_staticfiles_configured_with_missing_directory(tmpdir):
@@ -151,4 +151,4 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
     # We can't test this with 'requests', so we call the app directly here.
     response = app({"method": "GET", "path": "/../example.txt"})
     assert response.status_code == 404
-    assert response.body == b"Not found"
+    assert response.body == b"Not Found"

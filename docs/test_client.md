@@ -26,9 +26,17 @@ The test client exposes the same interface as any other `requests` session.
 In particular, note that the calls to make a request are just standard
 function calls, not awaitables.
 
-### Testing WebSocket applications
+You can use any of `requests` standard API, such as authentication, session
+cookies handling, or file uploads.
 
-You can also test websocket applications with the test client.
+By default the `TestClient` will raise any exceptions that occur in the
+application. Occasionally you might want to test the content of 500 error
+responses, rather than allowing client to raise the server exception. In this
+case you should use `client = TestClient(app, raise_server_exceptions=False)`.
+
+### Testing WebSocket sessions
+
+You can also test websocket sessions with the test client.
 
 The `requests` library will be used to build the initial handshake, meaning you
 can use the same authentication options and other headers between both http and

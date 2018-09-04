@@ -1,21 +1,18 @@
 import pytest
-from starlette import App
-from starlette.views import View
 from starlette.response import PlainTextResponse
+from starlette.routing import Router, Path
 from starlette.testclient import TestClient
+from starlette.views import View
 
 
-app = App()
-
-
-@app.route("/")
-@app.route("/{username}")
 class Homepage(View):
     async def get(self, request, username=None):
         if username is None:
             return PlainTextResponse("Hello, world!")
         return PlainTextResponse(f"Hello, {username}!")
 
+
+app = Router(routes=[Path("/", Homepage), Path("/{username}", Homepage)])
 
 client = TestClient(app)
 
@@ -35,4 +32,4 @@ def test_route_kwargs():
 def test_route_method():
     response = client.post("/")
     assert response.status_code == 405
-    assert response.text == "Method not allowed"
+    assert response.text == "Method Not Allowed"

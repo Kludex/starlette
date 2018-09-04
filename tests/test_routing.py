@@ -1,4 +1,5 @@
 from starlette import Response, TestClient
+from starlette.exceptions import ExceptionMiddleware
 from starlette.routing import Path, PathPrefix, Router, ProtocolRouter
 from starlette.websockets import WebSocketSession, WebSocketDisconnect
 import pytest
@@ -41,11 +42,11 @@ def test_router():
 
     response = client.post("/")
     assert response.status_code == 405
-    assert response.text == "Method not allowed"
+    assert response.text == "Method Not Allowed"
 
     response = client.get("/foo")
     assert response.status_code == 404
-    assert response.text == "Not found"
+    assert response.text == "Not Found"
 
     response = client.get("/users")
     assert response.status_code == 200
@@ -61,7 +62,7 @@ def test_router():
 
     response = client.post("/static/123")
     assert response.status_code == 405
-    assert response.text == "Method not allowed"
+    assert response.text == "Method Not Allowed"
 
 
 def http_endpoint(scope):

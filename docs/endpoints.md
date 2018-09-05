@@ -20,8 +20,8 @@ dispatch to an `HTTPEndpoint` class by using the `@app.route()` decorator, or th
 than to an instance of the class:
 
 ```python
-from starlette.app import Starlette
-from starlette.response import PlainTextResponse
+from starlette.applications import Starlette
+from starlette.responses import PlainTextResponse
 from starlette.endpoints import HTTPEndpoint
 
 

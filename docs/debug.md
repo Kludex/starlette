@@ -17,5 +17,5 @@ app = DebugMiddleware(App)
 ```
 
 For a mode complete handling of exception cases you may wish to use Starlette's
-[`ExceptionMiddleware`](../exceptions) class instead, which also includes
+[`ExceptionMiddleware`](../exceptions/) class instead, which also includes
 optional debug handling.

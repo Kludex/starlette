@@ -1,4 +1,4 @@
-Starlette also includes an app class `Starlette` that nicely ties together all of
+Starlette includes an application class `Starlette` that nicely ties together all of
 its other functionality.
 
 ```python

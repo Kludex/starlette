@@ -2,7 +2,7 @@ Starlette also includes an app class `Starlette` that nicely ties together all o
 its other functionality.
 
 ```python
-from starlette.app import Starlette
+from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 

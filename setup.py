@@ -43,10 +43,13 @@ setup(
     author='Tom Christie',
     author_email='tom@tomchristie.com',
     packages=get_packages('starlette'),
-    install_requires=[
-        'aiofiles',
-        'requests',
-    ],
+    extras_require = {
+        'full': [
+            'aiofiles',
+            'requests',
+            'ujson'
+        ]
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',

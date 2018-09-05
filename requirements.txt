@@ -1,12 +1,13 @@
+# Optionals
 aiofiles
 requests
+ujson
 
 # Testing
 black
 codecov
 pytest
 pytest-cov
-
 
 # Documentation
 mkdocs

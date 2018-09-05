@@ -10,15 +10,15 @@ edit_uri: ""
 
 nav:
     - Introduction: 'index.md'
-    - Responses: 'responses.md'
     - Requests: 'requests.md'
+    - Responses: 'responses.md'
     - WebSockets: 'websockets.md'
     - Routing: 'routing.md'
     - Exceptions: 'exceptions.md'
     - Static Files: 'staticfiles.md'
     - Applications: 'applications.md'
-    - Test Client: 'test_client.md'
-    - Debugging: 'debugging.md'
+    - Test Client: 'testclient.md'
+    - Debugging: 'debug.md'
     - Endpoints: 'endpoints.md'
 
 markdown_extensions:

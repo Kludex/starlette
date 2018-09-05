@@ -1,4 +1,4 @@
-from starlette import TestClient
+from starlette.testclient import TestClient
 from starlette.staticfiles import StaticFile, StaticFiles
 import os
 import pytest

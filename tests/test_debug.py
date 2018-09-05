@@ -1,4 +1,5 @@
-from starlette import Request, Response, TestClient
+from starlette.responses import Response
+from starlette.testclient import TestClient
 from starlette.debug import DebugMiddleware
 import pytest
 

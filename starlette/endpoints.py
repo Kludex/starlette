@@ -1,11 +1,11 @@
 from starlette.exceptions import HTTPException
-from starlette.request import Request
-from starlette.response import Response, PlainTextResponse
+from starlette.requests import Request
+from starlette.responses import Response, PlainTextResponse
 from starlette.types import Receive, Send, Scope
 import asyncio
 
 
-class View:
+class HTTPEndpoint:
     def __init__(self, scope: Scope):
         self.scope = scope
 

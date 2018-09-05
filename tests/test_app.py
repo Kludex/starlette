@@ -1,13 +1,13 @@
-from starlette import App
+from starlette.app import Starlette
 from starlette.exceptions import HTTPException
-from starlette.response import JSONResponse, PlainTextResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
-from starlette.views import View
+from starlette.endpoints import HTTPEndpoint
 import os
 
 
-app = App()
+app = Starlette()
 
 
 @app.exception_handler(Exception)
@@ -31,7 +31,7 @@ async def async_homepage(request):
 
 
 @app.route("/class")
-class Homepage(View):
+class Homepage(HTTPEndpoint):
     def get(self, request):
         return PlainTextResponse("Hello, world!")
 
@@ -114,8 +114,9 @@ def test_app_mount(tmpdir):
     with open(path, "w") as file:
         file.write("<file content>")
 
-    app = App()
+    app = Starlette()
     app.mount("/static", StaticFiles(directory=tmpdir), methods=["GET", "HEAD"])
+
     client = TestClient(app)
 
     response = client.get("/static/example.txt")
@@ -128,7 +129,7 @@ def test_app_mount(tmpdir):
 
 
 def test_app_debug():
-    app = App()
+    app = Starlette()
     app.debug = True
 
     @app.route("/")

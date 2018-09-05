@@ -1,5 +1,5 @@
-from starlette.request import Request
-from starlette.response import HTMLResponse, PlainTextResponse
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, PlainTextResponse
 import html
 import traceback
 

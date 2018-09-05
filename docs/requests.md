@@ -7,7 +7,7 @@ the incoming request, rather than accessing the ASGI scope and receive channel d
 Signature: `Request(scope, receive=None)`
 
 ```python
-from starlette.request import Request
+from starlette.requests import Request
 from starlette.response import Response
 
 
@@ -66,8 +66,8 @@ The request body, parsed as JSON: `await request.json()`
 You can also access the request body as a stream, using the `async for` syntax:
 
 ```python
-from starlette.request import Request
-from starlette.response import Response
+from starlette.requests import Request
+from starlette.responses import Response
 
 
 class App:

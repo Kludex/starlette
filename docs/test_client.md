@@ -3,7 +3,7 @@ The test client allows you to make requests against your ASGI application,
 using the `requests` library.
 
 ```python
-from starlette.response import HTMLResponse
+from starlette.responses import HTMLResponse
 from starlette.testclient import TestClient
 
 
@@ -44,7 +44,7 @@ websocket testing.
 
 ```python
 from starlette.testclient import TestClient
-from starlette.websockets import WebSocketSession
+from starlette.websockets import WebSocket
 
 
 class App:
@@ -52,16 +52,16 @@ class App:
         self.scope = scope
 
     async def __call__(self, receive, send):
-        session = WebSocketSession(self.scope, receive=receive, send=send)
-        await session.accept()
-        await session.send_text('Hello, world!')
-        await session.close()
+        websocket = WebSocket(self.scope, receive=receive, send=send)
+        await websocket.accept()
+        await websocket.send_text('Hello, world!')
+        await websocket.close()
 
 
 def test_app():
     client = TestClient(App)
-    with client.websocket_connect('/') as session:
-        data = session.receive_text()
+    with client.websocket_connect('/') as websocket:
+        data = websocket.receive_text()
         assert data == 'Hello, world!'
 ```
 

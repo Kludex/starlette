@@ -1,5 +1,5 @@
 from starlette.exceptions import HTTPException
-from starlette.response import PlainTextResponse
+from starlette.responses import PlainTextResponse
 from starlette.types import Scope, ASGIApp, ASGIInstance
 from starlette.websockets import WebSocketClose
 import re

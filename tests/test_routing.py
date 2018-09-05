@@ -1,7 +1,8 @@
-from starlette import Response, TestClient
+from starlette.responses import Response
+from starlette.testclient import TestClient
 from starlette.exceptions import ExceptionMiddleware
 from starlette.routing import Path, PathPrefix, Router, ProtocolRouter
-from starlette.websockets import WebSocketSession, WebSocketDisconnect
+from starlette.websockets import WebSocket, WebSocketDisconnect
 import pytest
 
 
@@ -71,7 +72,7 @@ def http_endpoint(scope):
 
 def websocket_endpoint(scope):
     async def asgi(receive, send):
-        session = WebSocketSession(scope, receive, send)
+        session = WebSocket(scope, receive, send)
         await session.accept()
         await session.send_json({"hello": "world"})
         await session.close()

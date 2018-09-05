@@ -1,12 +1,12 @@
 import pytest
 from starlette.testclient import TestClient
-from starlette.websockets import WebSocketSession, WebSocketDisconnect
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 
 def test_session_url():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             await session.send_json({"url": session.url})
             await session.close()
@@ -22,7 +22,7 @@ def test_session_url():
 def test_session_query_params():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             query_params = dict(session.query_params)
             await session.accept()
             await session.send_json({"params": query_params})
@@ -39,7 +39,7 @@ def test_session_query_params():
 def test_session_headers():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             headers = dict(session.headers)
             await session.accept()
             await session.send_json({"headers": headers})
@@ -65,7 +65,7 @@ def test_session_headers():
 def test_session_port():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             await session.send_json({"port": session.url.port})
             await session.close()
@@ -81,7 +81,7 @@ def test_session_port():
 def test_session_send_and_receive_text():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             data = await session.receive_text()
             await session.send_text("Message was: " + data)
@@ -99,7 +99,7 @@ def test_session_send_and_receive_text():
 def test_session_send_and_receive_bytes():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             data = await session.receive_bytes()
             await session.send_bytes(b"Message was: " + data)
@@ -117,7 +117,7 @@ def test_session_send_and_receive_bytes():
 def test_session_send_and_receive_json():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             data = await session.receive_json()
             await session.send_json({"message": data})
@@ -138,7 +138,7 @@ def test_client_close():
     def app(scope):
         async def asgi(receive, send):
             nonlocal close_code
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             try:
                 data = await session.receive_text()
@@ -156,7 +156,7 @@ def test_client_close():
 def test_application_close():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             await session.close(1001)
 
@@ -172,7 +172,7 @@ def test_application_close():
 def test_rejected_connection():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.close(1001)
 
         return asgi
@@ -186,7 +186,7 @@ def test_rejected_connection():
 def test_subprotocol():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             assert session["subprotocols"] == ["soap", "wamp"]
             await session.accept(subprotocol="wamp")
             await session.close()
@@ -213,7 +213,7 @@ def test_session_exception():
 def test_duplicate_close():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             await session.close()
             await session.close()
@@ -229,7 +229,7 @@ def test_duplicate_close():
 def test_duplicate_disconnect():
     def app(scope):
         async def asgi(receive, send):
-            session = WebSocketSession(scope, receive, send)
+            session = WebSocket(scope, receive, send)
             await session.accept()
             message = await session.receive()
             assert message["type"] == "websocket.disconnect"
@@ -245,10 +245,10 @@ def test_duplicate_disconnect():
 
 def test_session_scope_interface():
     """
-    A WebSocketSession can be instantiated with a scope, and presents a `Mapping`
+    A WebSocket can be instantiated with a scope, and presents a `Mapping`
     interface.
     """
-    session = WebSocketSession({"type": "websocket", "path": "/abc/", "headers": []})
+    session = WebSocket({"type": "websocket", "path": "/abc/", "headers": []})
     assert session["type"] == "websocket"
     assert dict(session) == {"type": "websocket", "path": "/abc/", "headers": []}
     assert len(session) == 3

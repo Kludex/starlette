@@ -1,4 +1,4 @@
-from starlette.response import (
+from starlette.responses import (
     FileResponse,
     RedirectResponse,
     Response,

@@ -26,7 +26,7 @@ instead:
 
 ```python
 from starlette.exceptions import ExceptionMiddleware, HTTPException
-from starlette.response import JSONResponse
+from starlette.responses import JSONResponse
 
 
 class App:

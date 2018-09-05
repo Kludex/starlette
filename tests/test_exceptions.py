@@ -1,5 +1,5 @@
 from starlette.exceptions import ExceptionMiddleware, HTTPException
-from starlette.response import PlainTextResponse
+from starlette.responses import PlainTextResponse
 from starlette.routing import Router, Path
 from starlette.testclient import TestClient
 import pytest

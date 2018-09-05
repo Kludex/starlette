@@ -1,13 +1,13 @@
-Starlette also includes an `App` class that nicely ties together all of
+Starlette also includes an app class `Starlette` that nicely ties together all of
 its other functionality.
 
 ```python
-from starlette.app import App
-from starlette.response import PlainTextResponse
+from starlette.app import Starlette
+from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 
 
-app = App()
+app = Starlette()
 app.debug = True
 app.mount("/static", StaticFiles(directory="static"))
 
@@ -23,15 +23,15 @@ def user(request, username):
 
 
 @app.websocket_route('/ws')
-async def websocket_endpoint(session):
-    await session.accept()
-    await session.send_text('Hello, websocket!')
-    await session.close()
+async def websocket_endpoint(websocket):
+    await websocket.accept()
+    await websocket.send_text('Hello, websocket!')
+    await websocket.close()
 ```
 
 ### Instantiating the application
 
-* `App(debug=False)` - Create a new Starlette application.
+* `Starlette(debug=False)` - Create a new Starlette application.
 
 ### Adding routes to the application
 

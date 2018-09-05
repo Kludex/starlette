@@ -1,6 +1,6 @@
 from starlette.debug import get_debug_response
-from starlette.request import Request
-from starlette.response import PlainTextResponse, Response
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse, Response
 import asyncio
 import http
 

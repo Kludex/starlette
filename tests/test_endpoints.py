@@ -1,11 +1,11 @@
 import pytest
-from starlette.response import PlainTextResponse
+from starlette.responses import PlainTextResponse
 from starlette.routing import Router, Path
 from starlette.testclient import TestClient
-from starlette.views import View
+from starlette.endpoints import HTTPEndpoint
 
 
-class Homepage(View):
+class Homepage(HTTPEndpoint):
     async def get(self, request, username=None):
         if username is None:
             return PlainTextResponse("Hello, world!")

@@ -1,4 +1,4 @@
-from starlette import PlainTextResponse, FileResponse
+from starlette.responses import PlainTextResponse, FileResponse
 from aiofiles.os import stat as aio_stat
 import os
 import stat

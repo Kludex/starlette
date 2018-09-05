@@ -40,7 +40,7 @@ $ pip3 install starlette
 ## Example
 
 ```python
-from starlette.response import Response
+from starlette.responses import Response
 
 
 class App:

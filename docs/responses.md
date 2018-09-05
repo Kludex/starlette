@@ -19,7 +19,7 @@ Once you've instantiated a response, you can send it by calling it as an
 ASGI application instance.
 
 ```python
-from starlette.response import Response
+from starlette.responses import Response
 
 
 class App:
@@ -36,7 +36,7 @@ class App:
 Takes some text or bytes and returns an HTML response.
 
 ```python
-from starlette.response import HTMLResponse
+from starlette.responses import HTMLResponse
 
 
 class App:
@@ -53,7 +53,7 @@ class App:
 Takes some text or bytes and returns an plain text response.
 
 ```python
-from starlette.response import PlainTextResponse
+from starlette.responses import PlainTextResponse
 
 
 class App:
@@ -70,7 +70,7 @@ class App:
 Takes some data and returns an `application/json` encoded response.
 
 ```python
-from starlette.response import JSONResponse
+from starlette.responses import JSONResponse
 
 
 class App:
@@ -87,7 +87,7 @@ class App:
 Returns an HTTP redirect. Uses a 302 status code by default.
 
 ```python
-from starlette.response import PlainTextResponse, RedirectResponse
+from starlette.responses import PlainTextResponse, RedirectResponse
 
 
 class App:
@@ -107,7 +107,7 @@ class App:
 Takes an async generator and streams the response body.
 
 ```python
-from starlette.response import StreamingResponse
+from starlette.responses import StreamingResponse
 import asyncio
 
 
@@ -143,7 +143,7 @@ Takes a different set of arguments to instantiate than the other response types:
 File responses will include appropriate `Content-Length`, `Last-Modified` and `ETag` headers.
 
 ```python
-from starlette.response import FileResponse
+from starlette.responses import FileResponse
 
 
 class App:

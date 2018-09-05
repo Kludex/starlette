@@ -1,14 +1,13 @@
 
-Starlette includes a `WebSocketSessions` class that fulfils a similar role
-to the HTTP request, but that allows sending and receiving data on a websocket
-session.
+Starlette includes a `WebSocket` class that fulfils a similar role
+to the HTTP request, but that allows sending and receiving data on a websocket.
 
-### WebSocketSession
+### WebSocket
 
-Signature: `WebSocketSession(scope, receive=None, send=None)`
+Signature: `WebSocket(scope, receive=None, send=None)`
 
 ```python
-from starlette.websockets import WebSocketSession
+from starlette.websockets import WebSocket
 
 
 class App:
@@ -16,66 +15,66 @@ class App:
         self.scope = scope
 
     async def __call__(self, receive, send):
-        session = WebSocketSession(self.scope, receive=receive, send=send)
-        await session.accept()
-        await session.send_text('Hello, world!')
-        await session.close()
+        websocket = WebSocket(self.scope, receive=receive, send=send)
+        await websocket.accept()
+        await websocket.send_text('Hello, world!')
+        await websocket.close()
 ```
 
-Sessions present a mapping interface, so you can use them in the same
+WebSockets present a mapping interface, so you can use them in the same
 way as a `scope`.
 
-For instance: `session['path']` will return the ASGI path.
+For instance: `websocket['path']` will return the ASGI path.
 
 #### URL
 
-The session URL is accessed as `session.url`.
+The websocket URL is accessed as `websocket.url`.
 
 The property is actually a subclass of `str`, and also exposes all the
 components that can be parsed out of the URL.
 
-For example: `session.url.path`, `session.url.port`, `session.url.scheme`.
+For example: `websocket.url.path`, `websocket.url.port`, `websocket.url.scheme`.
 
 #### Headers
 
 Headers are exposed as an immutable, case-insensitive, multi-dict.
 
-For example: `session.headers['sec-websocket-version']`
+For example: `websocket.headers['sec-websocket-version']`
 
 #### Query Parameters
 
 Headers are exposed as an immutable multi-dict.
 
-For example: `session.query_params['abc']`
+For example: `websocket.query_params['abc']`
 
 ### Accepting the connection
 
-* `await session.accept(subprotocol=None)`
+* `await websocket.accept(subprotocol=None)`
 
 ### Sending data
 
-* `await session.send_text(data)`
-* `await session.send_bytes(data)`
-* `await session.send_json(data)`
+* `await websocket.send_text(data)`
+* `await websocket.send_bytes(data)`
+* `await websocket.send_json(data)`
 
 ### Receiving data
 
-* `await session.receive_text()`
-* `await session.receive_bytes()`
-* `await session.receive_json()`
+* `await websocket.receive_text()`
+* `await websocket.receive_bytes()`
+* `await websocket.receive_json()`
 
 May raise `starlette.websockets.Disconnect()`.
 
 ### Closing the connection
 
-* `await session.close(code=1000)`
+* `await websocket.close(code=1000)`
 
 ### Sending and receiving messages
 
 If you need to send or receive raw ASGI messages then you should use
-`session.send()` and `session.receive()` rather than using the raw `send` and
-`receive` callables. This will ensure that the session's state is kept
+`websocket.send()` and `websocket.receive()` rather than using the raw `send` and
+`receive` callables. This will ensure that the websocket's state is kept
 correctly updated.
 
-* `await session.send(message)`
-* `await session.receive()`
+* `await websocket.send(message)`
+* `await websocket.receive()`

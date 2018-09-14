@@ -88,9 +88,9 @@ class Starlette:
 
         return decorator
 
-    def route(self, path: str):
+    def route(self, path: str, methods=None):
         def decorator(func):
-            self.add_route(path, func)
+            self.add_route(path, func, methods=methods)
             return func
 
         return decorator

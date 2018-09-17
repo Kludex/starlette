@@ -1,4 +1,5 @@
 import asyncio
+import http
 import io
 import json
 import threading
@@ -32,6 +33,13 @@ class _MockOriginalResponse(object):
 class _Upgrade(Exception):
     def __init__(self, session):
         self.session = session
+
+
+def _get_reason_phrase(status_code):
+    try:
+        return http.HTTPStatus(status_code).phrase
+    except ValueError:
+        return ""
 
 
 class _ASGIAdapter(requests.adapters.HTTPAdapter):
@@ -111,6 +119,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             if message["type"] == "http.response.start":
                 raw_kwargs["version"] = 11
                 raw_kwargs["status"] = message["status"]
+                raw_kwargs["reason"] = _get_reason_phrase(message["status"])
                 raw_kwargs["headers"] = [
                     (key.decode(), value.decode()) for key, value in message["headers"]
                 ]
@@ -141,6 +150,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                 raw_kwargs = {
                     "version": 11,
                     "status": 500,
+                    "reason": "Internal Server Error",
                     "headers": [],
                     "preload_content": False,
                     "original_response": _MockOriginalResponse([]),

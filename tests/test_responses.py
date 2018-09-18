@@ -91,17 +91,16 @@ def test_response_headers():
     assert response.headers["x-header-2"] == "789"
 
 
-
 def test_response_phrase():
     def app(scope):
-        return Response(b'', status_code=200)
+        return Response(b"", status_code=200)
 
     client = TestClient(app)
     response = client.get("/")
     assert response.reason == "OK"
 
     def app(scope):
-        return Response(b'', status_code=123)
+        return Response(b"", status_code=123)
 
     client = TestClient(app)
     response = client.get("/")

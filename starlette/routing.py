@@ -105,7 +105,7 @@ class Router:
 
 
 class ProtocolRouter:
-    def __init__(self, protocols: typing.Dict[str, ASGIApp]):
+    def __init__(self, protocols: typing.Dict[str, ASGIApp]) -> None:
         self.protocols = protocols
 
     def __call__(self, scope: Scope) -> ASGIInstance:

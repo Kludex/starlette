@@ -46,7 +46,7 @@ def test_debug_after_response_sent():
     app = DebugMiddleware(app)
     client = TestClient(app)
     with pytest.raises(RuntimeError):
-        response = client.get("/")
+        client.get("/")
 
 
 def test_debug_error_during_scope():

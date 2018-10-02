@@ -142,10 +142,10 @@ class WebSocket(Mapping):
         encoded = message["bytes"]
         return json.loads(encoded.decode("utf-8"))
 
-    async def send_text(self, data: typing.Any) -> None:
+    async def send_text(self, data: str) -> None:
         await self.send({"type": "websocket.send", "text": data})
 
-    async def send_bytes(self, data: typing.Any) -> None:
+    async def send_bytes(self, data: bytes) -> None:
         await self.send({"type": "websocket.send", "bytes": data})
 
     async def send_json(self, data: typing.Any) -> None:

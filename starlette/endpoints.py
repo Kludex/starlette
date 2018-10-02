@@ -42,10 +42,10 @@ class WebSocketEndpoint:
 
     encoding = None  # May be "text", "bytes", or "json".
 
-    def __init__(self, scope: Scope):
+    def __init__(self, scope: Scope) -> None:
         self.scope = scope
 
-    async def __call__(self, receive: Receive, send: Send):
+    async def __call__(self, receive: Receive, send: Send) -> None:
         websocket = WebSocket(self.scope, receive=receive, send=send)
         kwargs = self.scope.get("kwargs", {})
         await self.on_connect(websocket, **kwargs)

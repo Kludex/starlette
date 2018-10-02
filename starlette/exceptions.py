@@ -92,10 +92,10 @@ class ExceptionMiddleware:
 
         return app
 
-    def http_exception(self, request: Request, exc: type) -> Response:
+    def http_exception(self, request: Request, exc: HTTPException) -> Response:
         if exc.status_code in {204, 304}:
             return Response(b"", status_code=exc.status_code)
         return PlainTextResponse(exc.detail, status_code=exc.status_code)
 
-    def server_error(self, request: Request, exc: type) -> Response:
+    def server_error(self, request: Request, exc: HTTPException) -> Response:
         return PlainTextResponse("Internal Server Error", status_code=500)

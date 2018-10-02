@@ -1,7 +1,8 @@
-from starlette.testclient import TestClient
-from starlette.staticfiles import StaticFile, StaticFiles
 import os
 import pytest
+
+from starlette.testclient import TestClient
+from starlette.staticfiles import StaticFile, StaticFiles
 
 
 def test_staticfile(tmpdir):
@@ -47,7 +48,7 @@ def test_staticfile_with_directory_raises_error(tmpdir):
     app = StaticFile(path=tmpdir)
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
-        response = client.get("/")
+        client.get("/")
     assert "is not a file" in str(exc)
 
 
@@ -56,7 +57,7 @@ def test_staticfile_with_missing_file_raises_error(tmpdir):
     app = StaticFile(path=path)
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
-        response = client.get("/")
+        client.get("/")
     assert "does not exist" in str(exc)
 
 
@@ -113,7 +114,7 @@ def test_staticfiles_configured_with_missing_directory(tmpdir):
     app = StaticFiles(directory=path)
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
-        response = client.get("/example.txt")
+        client.get("/example.txt")
     assert "does not exist" in str(exc)
 
 
@@ -125,7 +126,7 @@ def test_staticfiles_configured_with_file_instead_of_directory(tmpdir):
     app = StaticFiles(directory=path)
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
-        response = client.get("/example.txt")
+        client.get("/example.txt")
     assert "is not a directory" in str(exc)
 
 
@@ -133,9 +134,9 @@ def test_staticfiles_config_check_occurs_only_once(tmpdir):
     app = StaticFiles(directory=tmpdir)
     client = TestClient(app)
     assert not app.config_checked
-    response = client.get("/")
+    client.get("/")
     assert app.config_checked
-    response = client.get("/")
+    client.get("/")
     assert app.config_checked
 
 

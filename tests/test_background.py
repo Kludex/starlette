@@ -5,12 +5,11 @@ import asyncio
 
 
 def test_async_task():
+    TASK_COMPLETE = False
+
     async def async_task():
-        count = 0
-        for num in range(3):
-            count += 1
-            await asyncio.sleep(1)
-        return count
+        nonlocal TASK_COMPLETE
+        TASK_COMPLETE = True
 
     task = BackgroundTask(async_task)
 
@@ -26,15 +25,15 @@ def test_async_task():
     client = TestClient(app)
     response = client.get("/")
     assert response.text == "task initiated"
+    assert TASK_COMPLETE
 
 
 def test_sync_task():
+    TASK_COMPLETE = False
+
     def sync_task():
-        num = 500
-        count = 0
-        while count != num:
-            count += 1
-        return count
+        nonlocal TASK_COMPLETE
+        TASK_COMPLETE = True
 
     task = BackgroundTask(sync_task)
 
@@ -50,3 +49,4 @@ def test_sync_task():
     client = TestClient(app)
     response = client.get("/")
     assert response.text == "task initiated"
+    assert TASK_COMPLETE

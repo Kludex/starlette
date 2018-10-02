@@ -48,17 +48,16 @@ request methods which do not map to a corresponding handler.
 ### WebSocketEndpoint
 
 The `WebSocketEndpoint` class is an ASGI application that presents a wrapper around
-the functionality of a `WebSocket` instance. 
+the functionality of a `WebSocket` instance.
 
 The ASGI connection scope is accessible on the endpoint instance via `.scope` and
-has an attribute `encoding` for validating the expected websocket data in the
-`on_receive` method.
+has an attribute `encoding` which may optionally be set, in order to validate the expected websocket data in the `on_receive` method.
 
 The encoding types are:
 
-* `json`
-* `bytes`
-* `text`
+* `'json'`
+* `'bytes'`
+* `'text'`
 
 There are three overridable methods for handling specific ASGI websocket message types:
 
@@ -71,29 +70,16 @@ from starlette.endpoints import WebSocketEndpoint
 
 
 class App(WebSocketEndpoint):
-
     encoding = 'bytes'
 
     async def on_connect(self, websocket, **kwargs):
-        """
-        Override the default `on_connect` behaviour and manually handle websocket acceptance.
-
-        For example, it is possible to retrieve the subprotocols available on the websocket instance
-        and negotiate its accept behaviour.
-
-            async def on_connect(self, websocket, **kwargs):
-                subprotocols = websocket['subprotocols']
-                ...
-                await self.websocket.accept(subprotocol=subprotocol)
-        """
         await websocket.accept()
 
     async def on_receive(self, websocket, data):
-        """Override `on_receive` to handle the message data."""
-        await self.websocket.send_bytes(b"Message: " + data)
+        await websocket.send_bytes(b"Message: " + data)
 
     async def on_disconnect(self, websocket, close_code):
-        """Override this method to perform any cleanup tasks after the websocket is closed."""
+        pass
 ```
 
 The `WebSocketEndpoint` can also be used with the `Starlette` application class:
@@ -142,13 +128,13 @@ html = """
 
 
 @app.route("/")
-class HTTPApp(HTTPEndpoint):
+class Homepage(HTTPEndpoint):
     async def get(self, request):
         return HTMLResponse(html)
 
 
 @app.websocket_route("/ws")
-class WebSocketEchoEndpoint(WebSocketEndpoint):
+class Echo(WebSocketEndpoint):
 
     encoding = "text"
 

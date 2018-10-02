@@ -17,6 +17,7 @@ nav:
     - Routing: 'routing.md'
     - Endpoints: 'endpoints.md'
     - Static Files: 'staticfiles.md'
+    - Background Tasks: 'background.md'
     - Exceptions: 'exceptions.md'
     - Debug: 'debug.md'
     - Test Client: 'testclient.md'

@@ -13,7 +13,7 @@ def test_url():
     assert u.query == "abc=123"
     assert u.params == ""
     assert u.fragment == "anchor"
-    new = u.replace(scheme="http")
+    new = u.replace_components(scheme="http")
     assert new == "http://example.org:123/path/to/somewhere?abc=123#anchor"
     assert new.scheme == "http"
 

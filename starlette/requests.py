@@ -1,8 +1,10 @@
-from starlette.datastructures import URL, Headers, QueryParams
+import typing
+import json
 from collections.abc import Mapping
 from urllib.parse import unquote
-import json
-import typing
+
+from starlette.datastructures import URL, Headers, QueryParams
+from starlette.types import Scope, Receive
 
 
 class ClientDisconnect(Exception):
@@ -10,19 +12,19 @@ class ClientDisconnect(Exception):
 
 
 class Request(Mapping):
-    def __init__(self, scope, receive=None):
+    def __init__(self, scope: Scope, receive: Receive = None) -> None:
         assert scope["type"] == "http"
         self._scope = scope
         self._receive = receive
         self._stream_consumed = False
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> str:
         return self._scope[key]
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
         return iter(self._scope)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._scope)
 
     @property
@@ -61,7 +63,7 @@ class Request(Mapping):
             self._query_params = QueryParams(query_string)
         return self._query_params
 
-    async def stream(self):
+    async def stream(self) -> typing.AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):
             yield self._body
             return
@@ -82,7 +84,7 @@ class Request(Mapping):
             elif message["type"] == "http.disconnect":
                 raise ClientDisconnect()
 
-    async def body(self):
+    async def body(self) -> bytes:
         if not hasattr(self, "_body"):
             body = b""
             async for chunk in self.stream():
@@ -90,7 +92,7 @@ class Request(Mapping):
             self._body = body
         return self._body
 
-    async def json(self):
+    async def json(self) -> typing.Any:
         if not hasattr(self, "_json"):
             body = await self.body()
             self._json = json.loads(body)

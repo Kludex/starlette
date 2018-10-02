@@ -141,7 +141,7 @@ def test_client_close():
             websocket = WebSocket(scope, receive, send)
             await websocket.accept()
             try:
-                data = await websocket.receive_text()
+                await websocket.receive_text()
             except WebSocketDisconnect as exc:
                 close_code = exc.code
 
@@ -222,7 +222,7 @@ def test_duplicate_close():
 
     client = TestClient(app)
     with pytest.raises(RuntimeError):
-        with client.websocket_connect("/") as websocket:
+        with client.websocket_connect("/"):
             pass
 
 
@@ -248,7 +248,12 @@ def test_websocket_scope_interface():
     A WebSocket can be instantiated with a scope, and presents a `Mapping`
     interface.
     """
-    websocket = WebSocket({"type": "websocket", "path": "/abc/", "headers": []})
+
+    websocket = WebSocket(
+        {"type": "websocket", "path": "/abc/", "headers": []},
+        send=lambda: True,
+        receive=lambda: True,
+    )
     assert websocket["type"] == "websocket"
     assert dict(websocket) == {"type": "websocket", "path": "/abc/", "headers": []}
     assert len(websocket) == 3

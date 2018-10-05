@@ -1,7 +1,7 @@
 from email.utils import formatdate
 from mimetypes import guess_type
 from starlette.background import BackgroundTask
-from starlette.datastructures import MutableHeaders
+from starlette.datastructures import MutableHeaders, URL
 from starlette.types import Receive, Send
 from urllib.parse import quote_plus
 import json
@@ -119,9 +119,11 @@ class JSONResponse(Response):
 
 
 class RedirectResponse(Response):
-    def __init__(self, url: str, status_code: int = 302, headers: dict = None) -> None:
+    def __init__(
+        self, url: typing.Union[str, URL], status_code: int = 302, headers: dict = None
+    ) -> None:
         super().__init__(content=b"", status_code=status_code, headers=headers)
-        self.headers["location"] = quote_plus(url, safe=":/#?&=@[]!$&'()*+,;")
+        self.headers["location"] = quote_plus(str(url), safe=":/#?&=@[]!$&'()*+,;")
 
 
 class StreamingResponse(Response):

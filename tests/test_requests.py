@@ -9,7 +9,7 @@ def test_request_url():
     def app(scope):
         async def asgi(receive, send):
             request = Request(scope, receive)
-            data = {"method": request.method, "url": request.url}
+            data = {"method": request.method, "url": str(request.url)}
             response = JSONResponse(data)
             await response(receive, send)
 

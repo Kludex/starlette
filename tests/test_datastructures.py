@@ -13,9 +13,18 @@ def test_url():
     assert u.query == "abc=123"
     assert u.params == ""
     assert u.fragment == "anchor"
-    new = u.replace_components(scheme="http")
+
+    new = u.replace(scheme="http")
     assert new == "http://example.org:123/path/to/somewhere?abc=123#anchor"
     assert new.scheme == "http"
+
+    new = u.replace(port=None)
+    assert new == "https://example.org/path/to/somewhere?abc=123#anchor"
+    assert new.port is None
+
+    new = u.replace(hostname="example.com")
+    assert new == "https://example.com:123/path/to/somewhere?abc=123#anchor"
+    assert new.hostname == "example.com"
 
 
 def test_headers():

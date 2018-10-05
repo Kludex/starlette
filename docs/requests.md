@@ -38,7 +38,7 @@ The request method is accessed as `request.method`.
 
 The request URL is accessed as `request.url`.
 
-The property is actually a subclass of `str`, and also exposes all the
+The property is a string-like object that exposes all the
 components that can be parsed out of the URL.
 
 For example: `request.url.path`, `request.url.port`, `request.url.scheme`.

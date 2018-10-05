@@ -1,4 +1,5 @@
 from starlette.applications import Starlette
+from starlette.datastructures import Headers
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
@@ -7,7 +8,22 @@ from starlette.endpoints import HTTPEndpoint
 import os
 
 
+class TrustedHostMiddleware:
+    def __init__(self, app, hostname):
+        self.app = app
+        self.hostname = hostname
+
+    def __call__(self, scope):
+        headers = Headers(scope["headers"])
+        if headers.get("host") != self.hostname:
+            return PlainTextResponse("Invalid host header", status_code=400)
+        return self.app(scope)
+
+
 app = Starlette()
+
+
+app.add_middleware(TrustedHostMiddleware, hostname="testserver")
 
 
 @app.exception_handler(Exception)
@@ -107,6 +123,13 @@ def test_500():
     response = client.get("/500")
     assert response.status_code == 500
     assert response.json() == {"detail": "Server Error"}
+
+
+def test_middleware():
+    client = TestClient(app, base_url="http://incorrecthost")
+    response = client.get("/func")
+    assert response.status_code == 400
+    assert response.text == "Invalid host header"
 
 
 def test_app_mount(tmpdir):

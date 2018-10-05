@@ -1,3 +1,4 @@
+
 Starlette includes an application class `Starlette` that nicely ties together all of
 its other functionality.
 
@@ -9,7 +10,7 @@ from starlette.staticfiles import StaticFiles
 
 app = Starlette()
 app.debug = True
-app.mount("/static", StaticFiles(directory="static"))
+app.mount('/static', StaticFiles(directory="static"))
 
 
 @app.route('/')

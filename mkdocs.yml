@@ -16,6 +16,7 @@ nav:
     - WebSockets: 'websockets.md'
     - Routing: 'routing.md'
     - Endpoints: 'endpoints.md'
+    - Middleware: 'middleware.md'
     - Static Files: 'staticfiles.md'
     - Background Tasks: 'background.md'
     - Exceptions: 'exceptions.md'

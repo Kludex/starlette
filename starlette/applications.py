@@ -5,6 +5,7 @@ from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
 from starlette.websockets import WebSocket
 import asyncio
 import inspect
+import typing
 
 
 def request_response(func):
@@ -48,6 +49,7 @@ def websocket_session(func):
 class Starlette:
     def __init__(self, debug=False) -> None:
         self.router = Router(routes=[])
+        self.app = self.router
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
 
     @property
@@ -61,6 +63,9 @@ class Starlette:
     def mount(self, path: str, app: ASGIApp, methods=None) -> None:
         prefix = PathPrefix(path, app=app, methods=methods)
         self.router.routes.append(prefix)
+
+    def add_middleware(self, middleware_class: type, **kwargs: typing.Any) -> None:
+        self.exception_middleware.app = middleware_class(self.app, **kwargs)
 
     def add_exception_handler(self, exc_class: type, handler) -> None:
         self.exception_middleware.add_exception_handler(exc_class, handler)

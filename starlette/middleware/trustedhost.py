@@ -1,14 +1,18 @@
 from starlette.datastructures import Headers
 from starlette.responses import PlainTextResponse
+from starlette.types import ASGIApp, ASGIInstance, Scope
+import typing
 
 
 class TrustedHostMiddleware:
-    def __init__(self, app, allowed_hosts=["*"]):
+    def __init__(
+        self, app: ASGIApp, allowed_hosts: typing.Sequence[str] = ["*"]
+    ) -> None:
         self.app = app
         self.allowed_hosts = allowed_hosts
         self.allow_any = "*" in allowed_hosts
 
-    def __call__(self, scope):
+    def __call__(self, scope: Scope) -> ASGIInstance:
         if scope["type"] in ("http", "websocket") and not self.allow_any:
             headers = Headers(scope["headers"])
             host = headers.get("host")

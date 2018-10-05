@@ -274,3 +274,7 @@ class MutableHeaders(Headers):
                 return item_value.decode("latin-1")
         self._list.append((set_key, set_value))
         return value
+
+    def update(self, other: dict):
+        for key, val in other.items():
+            self[key] = val

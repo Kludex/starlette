@@ -6,7 +6,7 @@ the response has been sent.
 
 ### Background Task
 
-Signature: `BackgroundTask(func, *args, **kwargs)
+Signature: `BackgroundTask(func, *args, **kwargs)`
 
 ```python
 from starlette.applications import Starlette

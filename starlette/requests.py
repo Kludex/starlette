@@ -1,8 +1,7 @@
 import typing
 import json
 from collections.abc import Mapping
-from urllib.parse import unquote
-
+import http.cookies
 from starlette.datastructures import URL, Headers, QueryParams
 from starlette.types import Scope, Receive
 
@@ -17,6 +16,7 @@ class Request(Mapping):
         self._scope = scope
         self._receive = receive
         self._stream_consumed = False
+        self._cookies = None
 
     def __getitem__(self, key: str) -> str:
         return self._scope[key]
@@ -49,6 +49,18 @@ class Request(Mapping):
             query_string = self._scope["query_string"].decode()
             self._query_params = QueryParams(query_string)
         return self._query_params
+
+    @property
+    def cookies(self) -> typing.Dict[str, str]:
+        if self._cookies is None:
+            self._cookies = {}
+            cookie_header = self.headers.get("cookie")
+            if cookie_header:
+                cookie = http.cookies.SimpleCookie()
+                cookie.load(cookie_header)
+                for key, morsel in cookie.items():
+                    self._cookies[key] = morsel.value
+        return self._cookies
 
     async def stream(self) -> typing.AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):

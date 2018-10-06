@@ -4,11 +4,10 @@ from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders, URL
 from starlette.types import Receive, Send
 from urllib.parse import quote_plus
-import json
 import hashlib
 import os
-import stat
 import typing
+import http.cookies
 
 try:
     import aiofiles
@@ -56,7 +55,7 @@ class Response:
             return content
         return content.encode(self.charset)
 
-    def init_headers(self, headers):
+    def init_headers(self, headers) -> None:
         if headers is None:
             raw_headers = []
             populate_content_length = True
@@ -84,10 +83,41 @@ class Response:
         self.raw_headers = raw_headers
 
     @property
-    def headers(self):
+    def headers(self) -> MutableHeaders:
         if not hasattr(self, "_headers"):
             self._headers = MutableHeaders(self.raw_headers)
         return self._headers
+
+    def set_cookie(
+        self,
+        key: str,
+        value: str = "",
+        max_age: int = None,
+        expires: int = None,
+        path: str = "/",
+        domain: str = None,
+        secure: bool = False,
+        httponly: bool = False,
+    ) -> None:
+        cookie = http.cookies.SimpleCookie()
+        cookie[key] = value
+        if max_age is not None:
+            cookie[key]["max-age"] = max_age
+        if expires is not None:
+            cookie[key]["expires"] = expires
+        if path is not None:
+            cookie[key]["path"] = path
+        if domain is not None:
+            cookie[key]["domain"] = domain
+        if secure:
+            cookie[key]["secure"] = True
+        if httponly:
+            cookie[key]["httponly"] = True
+        cookie_val = cookie.output(header="")
+        self.raw_headers.append((b"set-cookie", cookie_val.encode("latin-1")))
+
+    def delete_cookie(self, key: str, path: str = "/", domain: str = None) -> None:
+        self.set_cookie(key, expires=0, max_age=0, path=path, domain=domain)
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         await send(

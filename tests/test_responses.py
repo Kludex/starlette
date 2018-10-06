@@ -4,6 +4,7 @@ from starlette.responses import (
     Response,
     StreamingResponse,
 )
+from starlette.requests import Request
 from starlette.testclient import TestClient
 import asyncio
 import os
@@ -126,3 +127,47 @@ def test_file_response(tmpdir):
     assert "content-length" in response.headers
     assert "last-modified" in response.headers
     assert "etag" in response.headers
+
+
+def test_set_cookie():
+    def app(scope):
+        async def asgi(receive, send):
+            response = Response("Hello, world!", media_type="text/plain")
+            response.set_cookie(
+                "mycookie",
+                "myvalue",
+                max_age=10,
+                expires=10,
+                path="/",
+                domain="localhost",
+                secure=True,
+                httponly=True,
+            )
+
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+
+
+def test_delete_cookie():
+    def app(scope):
+        async def asgi(receive, send):
+            request = Request(scope, receive)
+            response = Response("Hello, world!", media_type="text/plain")
+            if request.cookies.get("mycookie"):
+                response.delete_cookie("mycookie")
+            else:
+                response.set_cookie("mycookie", "myvalue")
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.cookies["mycookie"]
+    response = client.get("/")
+    assert not response.cookies.get("mycookie")

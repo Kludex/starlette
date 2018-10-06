@@ -1,6 +1,7 @@
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 from starlette.requests import Request, ClientDisconnect
+from starlette.responses import Response
 import asyncio
 import pytest
 
@@ -218,3 +219,25 @@ def test_request_disconnect():
     loop = asyncio.get_event_loop()
     with pytest.raises(ClientDisconnect):
         loop.run_until_complete(asgi_callable(receiver, None))
+
+
+def test_request_cookies():
+    def app(scope):
+        async def asgi(receive, send):
+            request = Request(scope, receive)
+            mycookie = request.cookies.get("mycookie")
+            if mycookie:
+                response = Response(mycookie, media_type="text/plain")
+            else:
+                response = Response("Hello, world!", media_type="text/plain")
+                response.set_cookie("mycookie", "Hello, cookies!")
+
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+    response = client.get("/")
+    assert response.text == "Hello, cookies!"

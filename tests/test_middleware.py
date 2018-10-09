@@ -153,3 +153,42 @@ def test_cors_disallowed_preflight():
     response = client.options("/", headers=headers)
     assert response.status_code == 400
     assert response.text == "Disallowed CORS origin, method, headers"
+
+
+def test_cors_allow_origin_regex():
+    app = Starlette()
+
+    app.add_middleware(
+        CORSMiddleware, allow_headers=["X-Example"], allow_origin_regex="https://*"
+    )
+
+    @app.route("/")
+    def homepage(request):
+        return PlainTextResponse("Homepage", status_code=200)
+
+    client = TestClient(app)
+
+    # Test standard response
+    headers = {"Origin": "https://example.org"}
+    response = client.get("/", headers=headers)
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["access-control-allow-origin"] == "https://example.org"
+
+    # Test disallowed origin
+    headers = {"Origin": "http://example.org"}
+    response = client.get("/", headers=headers)
+    assert response.status_code == 400
+    assert response.text == "Disallowed CORS origin"
+
+    # Test pre-flight response
+    headers = {
+        "Origin": "https://another.com",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "X-Example",
+    }
+    response = client.options("/", headers=headers)
+    assert response.status_code == 200
+    assert response.text == "OK"
+    assert response.headers["access-control-allow-origin"] == "https://another.com"
+    assert response.headers["access-control-allow-headers"] == "X-Example"

@@ -3,6 +3,7 @@ from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, ASGIInstance, Scope
 import functools
 import typing
+import re
 
 
 ALL_METHODS = ("DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT")
@@ -16,12 +17,17 @@ class CORSMiddleware:
         allow_methods: typing.Sequence[str] = ("GET",),
         allow_headers: typing.Sequence[str] = (),
         allow_credentials: bool = False,
+        allow_origin_regex: str = None,
         expose_headers: typing.Sequence[str] = (),
         max_age: int = 600,
     ):
 
         if "*" in allow_methods:
             allow_methods = ALL_METHODS
+
+        if allow_origin_regex is not None:
+            regex = re.compile(allow_origin_regex)
+            allow_origin_regex = regex
 
         simple_headers = {}
         if "*" in allow_origins:
@@ -53,6 +59,7 @@ class CORSMiddleware:
         self.allow_headers = allow_headers
         self.allow_all_origins = "*" in allow_origins
         self.allow_all_headers = "*" in allow_headers
+        self.allow_origin_regex = allow_origin_regex
         self.simple_headers = simple_headers
         self.preflight_headers = preflight_headers
 
@@ -66,11 +73,21 @@ class CORSMiddleware:
                 if method == "OPTIONS" and "access-control-request-method" in headers:
                     return self.preflight_response(request_headers=headers)
                 else:
-                    return functools.partial(
-                        self.simple_response, scope=scope, origin=origin
-                    )
+                    if self.is_allowed_origin(origin=origin):
+                        return functools.partial(
+                            self.simple_response, scope=scope, origin=origin
+                        )
+                    return PlainTextResponse("Disallowed CORS origin", status_code=400)
 
         return self.app(scope)
+
+    def is_allowed_origin(self, origin):
+        if self.allow_origin_regex:
+            return self.allow_origin_regex.match(origin)
+        if self.allow_all_origins:
+            return True
+
+        return origin in self.allow_origins
 
     def preflight_response(self, request_headers):
         requested_origin = request_headers["origin"]
@@ -84,7 +101,7 @@ class CORSMiddleware:
         # If we only allow specific origins, then we have to mirror back
         # the Origin header in the response.
         if not self.allow_all_origins:
-            if requested_origin in self.allow_origins:
+            if self.is_allowed_origin(origin=requested_origin):
                 headers["Access-Control-Allow-Origin"] = requested_origin
             else:
                 failures.append("origin")
@@ -125,7 +142,7 @@ class CORSMiddleware:
 
         # If we only allow specific origins, then we have to mirror back
         # the Origin header in the response.
-        if not self.allow_all_origins and origin in self.allow_origins:
+        if not self.allow_all_origins and self.is_allowed_origin(origin=origin):
             headers["Access-Control-Allow-Origin"] = origin
         headers.update(self.simple_headers)
         await send(message)

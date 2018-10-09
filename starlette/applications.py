@@ -1,4 +1,5 @@
 from starlette.exceptions import ExceptionMiddleware
+from starlette.lifespan import LifespanHandler
 from starlette.requests import Request
 from starlette.routing import Path, PathPrefix, Router
 from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
@@ -49,6 +50,7 @@ def websocket_session(func):
 class Starlette:
     def __init__(self, debug=False) -> None:
         self.router = Router(routes=[])
+        self.lifespan_handler = LifespanHandler()
         self.app = self.router
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
 
@@ -59,6 +61,9 @@ class Starlette:
     @debug.setter
     def debug(self, value: bool) -> None:
         self.exception_middleware.debug = value
+
+    def on_event(self, event_type: str):
+        return self.lifespan_handler.on_event(event_type)
 
     def mount(self, path: str, app: ASGIApp, methods=None) -> None:
         prefix = PathPrefix(path, app=app, methods=methods)
@@ -108,5 +113,7 @@ class Starlette:
         return decorator
 
     def __call__(self, scope: Scope) -> ASGIInstance:
+        if scope["type"] == "lifespan":
+            return self.lifespan_handler(scope)
         scope["app"] = self
         return self.exception_middleware(scope)

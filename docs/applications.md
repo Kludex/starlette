@@ -28,6 +28,11 @@ async def websocket_endpoint(websocket):
     await websocket.accept()
     await websocket.send_text('Hello, websocket!')
     await websocket.close()
+
+
+@app.on_event('startup')
+def startup():
+    print('Ready to go')
 ```
 
 ### Instantiating the application

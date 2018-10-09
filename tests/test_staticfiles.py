@@ -150,6 +150,6 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
 
     app = StaticFiles(directory=directory)
     # We can't test this with 'requests', so we call the app directly here.
-    response = app({"method": "GET", "path": "/../example.txt"})
+    response = app({"type": "http", "method": "GET", "path": "/../example.txt"})
     assert response.status_code == 404
     assert response.body == b"Not Found"

@@ -12,6 +12,7 @@ class StaticFile:
         self.path = path
 
     def __call__(self, scope: Scope) -> ASGIInstance:
+        assert scope["type"] == "http"
         if scope["method"] not in ("GET", "HEAD"):
             return PlainTextResponse("Method Not Allowed", status_code=405)
         return _StaticFileResponder(scope, path=self.path)
@@ -23,6 +24,7 @@ class StaticFiles:
         self.config_checked = False
 
     def __call__(self, scope: Scope) -> ASGIInstance:
+        assert scope["type"] == "http"
         if scope["method"] not in ("GET", "HEAD"):
             return PlainTextResponse("Method Not Allowed", status_code=405)
         path = os.path.normpath(os.path.join(*scope["path"].split("/")))

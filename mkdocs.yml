@@ -18,6 +18,7 @@ nav:
     - Endpoints: 'endpoints.md'
     - Middleware: 'middleware.md'
     - Static Files: 'staticfiles.md'
+    - Events: 'events.md'
     - Background Tasks: 'background.md'
     - Exceptions: 'exceptions.md'
     - Debug: 'debug.md'

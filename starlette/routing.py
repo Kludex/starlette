@@ -86,6 +86,8 @@ class Router:
         self.default = self.not_found if default is None else default
 
     def __call__(self, scope: Scope) -> ASGIInstance:
+        assert scope["type"] in ("http", "websocket")
+
         for route in self.routes:
             matched, child_scope = route.matches(scope)
             if matched:

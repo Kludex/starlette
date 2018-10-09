@@ -10,6 +10,7 @@ from starlette.types import Receive, Send, Scope
 
 class HTTPEndpoint:
     def __init__(self, scope: Scope) -> None:
+        assert scope["type"] == "http"
         self.scope = scope
 
     async def __call__(self, receive: Receive, send: Send) -> None:
@@ -43,6 +44,7 @@ class WebSocketEndpoint:
     encoding = None  # May be "text", "bytes", or "json".
 
     def __init__(self, scope: Scope) -> None:
+        assert scope["type"] == "websocket"
         self.scope = scope
 
     async def __call__(self, receive: Receive, send: Send) -> None:

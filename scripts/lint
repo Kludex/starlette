@@ -7,4 +7,4 @@ fi
 
 set -x
 
-${PREFIX}black starlette tests --check
+${PREFIX}black starlette tests

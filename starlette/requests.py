@@ -16,7 +16,6 @@ class Request(Mapping):
         self._scope = scope
         self._receive = receive
         self._stream_consumed = False
-        self._cookies = None
 
     def __getitem__(self, key: str) -> str:
         return self._scope[key]
@@ -52,14 +51,15 @@ class Request(Mapping):
 
     @property
     def cookies(self) -> typing.Dict[str, str]:
-        if self._cookies is None:
-            self._cookies = {}
+        if not hasattr(self, "_cookies"):
+            cookies = {}
             cookie_header = self.headers.get("cookie")
             if cookie_header:
                 cookie = http.cookies.SimpleCookie()
                 cookie.load(cookie_header)
                 for key, morsel in cookie.items():
-                    self._cookies[key] = morsel.value
+                    cookies[key] = morsel.value
+            self._cookies = cookies
         return self._cookies
 
     async def stream(self) -> typing.AsyncGenerator[bytes, None]:

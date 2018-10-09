@@ -4,7 +4,7 @@ from urllib.parse import parse_qsl, unquote, urlparse, ParseResult
 
 
 class URL:
-    def __init__(self, url: str = "", scope: Scope = None):
+    def __init__(self, url: str = "", scope: Scope = None) -> None:
         if scope is not None:
             assert not url, 'Cannot set both "url" and "scope".'
             scheme = scope["scheme"]

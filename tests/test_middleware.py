@@ -175,11 +175,14 @@ def test_cors_allow_origin_regex():
     assert response.text == "Homepage"
     assert response.headers["access-control-allow-origin"] == "https://example.org"
 
-    # Test disallowed origin
+    # Test diallowed standard response
+    # Note that enforcement is a browser concern. The disallowed-ness is reflected
+    # in the lack of an "access-control-allow-origin" header in the response.
     headers = {"Origin": "http://example.org"}
     response = client.get("/", headers=headers)
-    assert response.status_code == 400
-    assert response.text == "Disallowed CORS origin"
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert "access-control-allow-origin" not in response.headers
 
     # Test pre-flight response
     headers = {
@@ -192,3 +195,14 @@ def test_cors_allow_origin_regex():
     assert response.text == "OK"
     assert response.headers["access-control-allow-origin"] == "https://another.com"
     assert response.headers["access-control-allow-headers"] == "X-Example"
+
+    # Test disallowed pre-flight response
+    headers = {
+        "Origin": "http://another.com",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "X-Example",
+    }
+    response = client.options("/", headers=headers)
+    assert response.status_code == 400
+    assert response.text == "Disallowed CORS origin"
+    assert "access-control-allow-origin" not in response.headers

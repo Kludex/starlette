@@ -25,9 +25,9 @@ class CORSMiddleware:
         if "*" in allow_methods:
             allow_methods = ALL_METHODS
 
+        compiled_allow_origin_regex = None
         if allow_origin_regex is not None:
-            regex = re.compile(allow_origin_regex)
-            allow_origin_regex = regex
+            compiled_allow_origin_regex = re.compile(allow_origin_regex)
 
         simple_headers = {}
         if "*" in allow_origins:
@@ -59,7 +59,7 @@ class CORSMiddleware:
         self.allow_headers = allow_headers
         self.allow_all_origins = "*" in allow_origins
         self.allow_all_headers = "*" in allow_headers
-        self.allow_origin_regex = allow_origin_regex
+        self.allow_origin_regex = compiled_allow_origin_regex
         self.simple_headers = simple_headers
         self.preflight_headers = preflight_headers
 
@@ -73,18 +73,19 @@ class CORSMiddleware:
                 if method == "OPTIONS" and "access-control-request-method" in headers:
                     return self.preflight_response(request_headers=headers)
                 else:
-                    if self.is_allowed_origin(origin=origin):
-                        return functools.partial(
-                            self.simple_response, scope=scope, origin=origin
-                        )
-                    return PlainTextResponse("Disallowed CORS origin", status_code=400)
+                    return functools.partial(
+                        self.simple_response, scope=scope, origin=origin
+                    )
 
         return self.app(scope)
 
     def is_allowed_origin(self, origin):
-        if self.allow_origin_regex:
-            return self.allow_origin_regex.match(origin)
         if self.allow_all_origins:
+            return True
+
+        if self.allow_origin_regex is not None and self.allow_origin_regex.match(
+            origin
+        ):
             return True
 
         return origin in self.allow_origins
@@ -98,13 +99,15 @@ class CORSMiddleware:
         headers = dict(self.preflight_headers)
         failures = []
 
-        # If we only allow specific origins, then we have to mirror back
-        # the Origin header in the response.
-        if not self.allow_all_origins:
-            if self.is_allowed_origin(origin=requested_origin):
+        if self.is_allowed_origin(origin=requested_origin):
+            if not self.allow_all_origins:
+                # If self.allow_all_origins is True, then the "Access-Control-Allow-Origin"
+                # header is already set to "*".
+                # If we only allow specific origins, then we have to mirror back
+                # the Origin header in the response.
                 headers["Access-Control-Allow-Origin"] = requested_origin
-            else:
-                failures.append("origin")
+        else:
+            failures.append("origin")
 
         if requested_method not in self.allow_methods:
             failures.append("method")

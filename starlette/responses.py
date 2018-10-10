@@ -5,6 +5,7 @@ from starlette.datastructures import MutableHeaders, URL
 from starlette.types import Receive, Send
 from urllib.parse import quote_plus
 import hashlib
+import json
 import os
 import typing
 import http.cookies
@@ -13,22 +14,13 @@ try:
     import aiofiles
     from aiofiles.os import stat as aio_stat
 except ImportError:  # pragma: nocover
-    aiofiles = None
-    aio_stat = None
+    aiofiles = None  # type: ignore
+    aio_stat = None  # type: ignore
 
 try:
-    import ujson as json
-
-    JSON_DUMPS_OPTIONS = {"ensure_ascii": False}
+    import ujson
 except ImportError:  # pragma: nocover
-    import json
-
-    JSON_DUMPS_OPTIONS = {
-        "ensure_ascii": False,
-        "allow_nan": False,
-        "indent": None,
-        "separators": (",", ":"),
-    }
+    ujson = None  # type: ignore
 
 
 class Response:
@@ -57,7 +49,7 @@ class Response:
 
     def init_headers(self, headers) -> None:
         if headers is None:
-            raw_headers = []
+            raw_headers = []  # type: typing.List[typing.Tuple[bytes, bytes]]
             populate_content_length = True
             populate_content_type = True
         else:
@@ -145,7 +137,20 @@ class JSONResponse(Response):
     media_type = "application/json"
 
     def render(self, content: typing.Any) -> bytes:
-        return json.dumps(content, **JSON_DUMPS_OPTIONS).encode("utf-8")
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+
+class UJSONResponse(JSONResponse):
+    media_type = "application/json"
+
+    def render(self, content: typing.Any) -> bytes:
+        return ujson.dumps(content, ensure_ascii=False).encode("utf-8")
 
 
 class RedirectResponse(Response):

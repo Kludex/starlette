@@ -94,17 +94,17 @@ class Response:
         cookie = http.cookies.SimpleCookie()
         cookie[key] = value
         if max_age is not None:
-            cookie[key]["max-age"] = max_age
+            cookie[key]["max-age"] = max_age  # type: ignore
         if expires is not None:
-            cookie[key]["expires"] = expires
+            cookie[key]["expires"] = expires  # type: ignore
         if path is not None:
             cookie[key]["path"] = path
         if domain is not None:
             cookie[key]["domain"] = domain
         if secure:
-            cookie[key]["secure"] = True
+            cookie[key]["secure"] = True  # type: ignore
         if httponly:
-            cookie[key]["httponly"] = True
+            cookie[key]["httponly"] = True  # type: ignore
         cookie_val = cookie.output(header="")
         self.raw_headers.append((b"set-cookie", cookie_val.encode("latin-1")))
 

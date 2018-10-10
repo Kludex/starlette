@@ -6,6 +6,7 @@ ujson
 # Testing
 black
 codecov
+mypy
 pytest
 pytest-cov
 

@@ -20,7 +20,7 @@ class CORSMiddleware:
         allow_origin_regex: str = None,
         expose_headers: typing.Sequence[str] = (),
         max_age: int = 600,
-    ):
+    ) -> None:
 
         if "*" in allow_methods:
             allow_methods = ALL_METHODS

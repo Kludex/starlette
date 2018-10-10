@@ -273,9 +273,44 @@ class _TestClient(requests.Session):
         self.headers.update({"user-agent": "testclient"})
         self.base_url = base_url
 
-    def request(self, method: str, url: str, **kwargs) -> requests.Response:
+    def request(
+        self,
+        method: str,
+        url: str,
+        params=None,
+        data=None,
+        headers=None,
+        cookies=None,
+        files=None,
+        auth=None,
+        timeout=None,
+        allow_redirects=True,
+        proxies=None,
+        hooks=None,
+        stream=None,
+        verify=None,
+        cert=None,
+        json=None,
+    ) -> requests.Response:
         url = urljoin(self.base_url, url)
-        return super().request(method, url, **kwargs)
+        return super().request(
+            method,
+            url,
+            params=params,
+            data=data,
+            headers=headers,
+            cookies=cookies,
+            files=files,
+            auth=auth,
+            timeout=timeout,
+            allow_redirects=allow_redirects,
+            proxies=proxies,
+            hooks=hooks,
+            stream=stream,
+            verify=verify,
+            cert=cert,
+            json=json,
+        )
 
     def websocket_connect(
         self, url: str, subprotocols=None, **kwargs
@@ -291,7 +326,11 @@ class _TestClient(requests.Session):
         try:
             super().request("GET", url, **kwargs)
         except _Upgrade as exc:
-            return exc.session
+            session = exc.session
+        else:
+            raise RuntimeError("Expected WebSocket upgrade")  # pragma: no cover
+
+        return session
 
 
 def TestClient(

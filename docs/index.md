@@ -65,9 +65,10 @@ Starlette does not have any hard dependencies, but the following are optional:
 
 * `requests` - Required if you want to use the `TestClient`.
 * `aiofiles` - Required if you want to use `FileResponse` or `StaticFiles`.
+* `python-multipart` - Required if you want to support form parsing, with `request.form()`.
 * `ujson` - Required if you want to use `UJSONResponse`.
 
-You can install all three of these with `pip3 install starlette[full]`.
+You can install all of these with `pip3 install starlette[full]`.
 
 ## Framework or Toolkit
 

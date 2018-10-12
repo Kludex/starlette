@@ -61,6 +61,8 @@ There are a few different interfaces for returning the body of the request:
 
 The request body as bytes: `await request.body()`
 
+The request body, parsed as form data or multipart: `await request.form()`
+
 The request body, parsed as JSON: `await request.json()`
 
 You can also access the request body as a stream, using the `async for` syntax:
@@ -84,5 +86,5 @@ class App:
 ```
 
 If you access `.stream()` then the byte chunks are provided without storing
-the entire body to memory. Any subsequent calls to `.body()` and `.json()` will
-raise an error.
+the entire body to memory. Any subsequent calls to `.body()`, `.form(), or `.json()`
+will raise an error.

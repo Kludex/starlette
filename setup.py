@@ -46,6 +46,7 @@ setup(
     extras_require = {
         'full': [
             'aiofiles',
+            'python-multipart',
             'requests',
             'ujson'
         ]

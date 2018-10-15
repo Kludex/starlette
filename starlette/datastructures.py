@@ -7,16 +7,20 @@ class URL:
     def __init__(self, url: str = "", scope: Scope = None) -> None:
         if scope is not None:
             assert not url, 'Cannot set both "url" and "scope".'
-            scheme = scope["scheme"]
-            host, port = scope["server"]
+            scheme = scope.get("scheme", "http")
+            server = scope.get("server", None)
             path = scope.get("root_path", "") + scope["path"]
             query_string = scope["query_string"]
 
-            default_port = {"http": 80, "https": 443, "ws": 80, "wss": 443}[scheme]
-            if port == default_port:
-                url = "%s://%s%s" % (scheme, host, path)
+            if server is None:
+                url = path
             else:
-                url = "%s://%s:%s%s" % (scheme, host, port, path)
+                host, port = server
+                default_port = {"http": 80, "https": 443, "ws": 80, "wss": 443}[scheme]
+                if port == default_port:
+                    url = "%s://%s%s" % (scheme, host, path)
+                else:
+                    url = "%s://%s:%s%s" % (scheme, host, port, path)
 
             if query_string:
                 url += "?" + unquote(query_string.decode())
@@ -84,6 +88,9 @@ class URL:
 
     def __str__(self):
         return self._url
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, repr(self._url))
 
 
 # Type annotations for valid `__init__` values to QueryParams and Headers.

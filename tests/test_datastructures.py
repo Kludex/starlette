@@ -27,6 +27,23 @@ def test_url():
     assert new.hostname == "example.com"
 
 
+def test_url_from_scope():
+    u = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123"})
+    assert u == "/path/to/somewhere?abc=123"
+    assert repr(u) == "URL('/path/to/somewhere?abc=123')"
+
+    u = URL(
+        scope={
+            "scheme": "https",
+            "server": ("example.org", 123),
+            "path": "/path/to/somewhere",
+            "query_string": b"abc=123",
+        }
+    )
+    assert u == "https://example.org:123/path/to/somewhere?abc=123"
+    assert repr(u) == "URL('https://example.org:123/path/to/somewhere?abc=123')"
+
+
 def test_headers():
     h = Headers([(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h

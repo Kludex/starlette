@@ -115,10 +115,10 @@ class Request(Mapping):
             content_type_header = self.headers.get("Content-Type")
             content_type, options = parse_options_header(content_type_header)
             if content_type == b"multipart/form-data":
-                parser = MultiPartParser(self.headers, self.stream)
+                parser = MultiPartParser(self.headers, self.stream())
                 self._form = await parser.parse()
             elif content_type == b"application/x-www-form-urlencoded":
-                parser = FormParser(self.headers, self.stream)
+                parser = FormParser(self.headers, self.stream())
                 self._form = await parser.parse()
             else:
                 self._form = {}

@@ -1,6 +1,7 @@
 from enum import Enum
 from starlette.datastructures import Headers
 import asyncio
+import io
 import tempfile
 import typing
 
@@ -34,13 +35,14 @@ class MultiPartMessage(Enum):
 class UploadFile:
     def __init__(self, filename: str) -> None:
         self.filename = filename
-        self._file = None
+        self._file = io.BytesIO()  # type: typing.IO[typing.Any]
         self._loop = asyncio.get_event_loop()
 
+    def create_tempfile(self) -> None:
+        self._file = tempfile.SpooledTemporaryFile()
+
     async def setup(self) -> None:
-        self._file = await self._loop.run_in_executor(
-            None, tempfile.SpooledTemporaryFile
-        )
+        await self._loop.run_in_executor(None, self.create_tempfile)
 
     async def write(self, data: bytes) -> None:
         await self._loop.run_in_executor(None, self._file.write, data)
@@ -64,7 +66,7 @@ class FormParser:
         ), "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
-        self.messages = []  # type: typing.List[typing.Tuple[MultiPartMessage, bytes]]
+        self.messages = []  # type: typing.List[typing.Tuple[FormMessage, bytes]]
 
     def on_field_start(self) -> None:
         print("on_field_start")
@@ -109,7 +111,7 @@ class FormParser:
         result = {}  # type: typing.Dict[str, typing.Union[str, UploadFile]]
 
         # Feed the parser with data from the request.
-        async for chunk in self.stream():
+        async for chunk in self.stream:
             if chunk:
                 parser.write(chunk)
             else:
@@ -199,12 +201,12 @@ class MultiPartParser:
         raw_headers = []  # type: typing.List[typing.Tuple[bytes, bytes]]
         field_name = ""
         data = b""
-        file = None  # type: UploadFile
+        file = None  # type: typing.Optional[UploadFile]
 
         result = {}  # type: typing.Dict[str, typing.Union[str, UploadFile]]
 
         # Feed the parser with data from the request.
-        async for chunk in self.stream():
+        async for chunk in self.stream:
             parser.write(chunk)
             messages = list(self.messages)
             self.messages.clear()

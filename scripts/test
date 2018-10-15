@@ -11,7 +11,7 @@ export PYTHON_VERSION=`python -c "$VERSION_SCRIPT"`
 set -x
 
 PYTHONPATH=. ${PREFIX}pytest --ignore venv --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
-#${PREFIX}mypy starlette --ignore-missing-imports
+${PREFIX}mypy starlette --ignore-missing-imports
 if [ "${PYTHON_VERSION}" = '3.7' ]; then
     echo "Skipping 'black' on 3.7. See issue https://github.com/ambv/black/issues/494"
 else

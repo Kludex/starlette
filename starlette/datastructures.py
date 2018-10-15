@@ -285,3 +285,9 @@ class MutableHeaders(Headers):
     def update(self, other: dict):
         for key, val in other.items():
             self[key] = val
+
+    def add_vary_header(self, vary):
+        existing = self.get("vary")
+        if existing is not None:
+            vary = ", ".join([existing, vary])
+        self["vary"] = vary

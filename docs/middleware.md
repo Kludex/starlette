@@ -97,6 +97,25 @@ The following arguments are supported:
 
 If an incoming request does not validate correctly then a 400 response will be sent.
 
+## GZipMiddleware
+
+Handles GZip responses for any request that includes `"gzip"` in the `Accept-Encoding` header.
+
+The middleware will handle both standard and streaming responses.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+
+app = Starlette()
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+```
+
+The following arguments are supported:
+
+* `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
+
 ## Using ASGI middleware without Starlette
 
 To wrap ASGI middleware around other ASGI applications, you should use the

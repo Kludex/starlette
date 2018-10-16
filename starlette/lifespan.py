@@ -1,7 +1,4 @@
 import asyncio
-import logging
-import traceback
-
 
 STATE_TRANSITION_ERROR = "Got invalid state transition on lifespan protocol."
 

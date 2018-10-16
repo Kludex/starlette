@@ -19,7 +19,7 @@ class Path(Route):
         self,
         path: str,
         app: ASGIApp,
-        methods: typing.Sequence[str] = (),
+        methods: typing.Sequence[str] = None,
         protocol: str = None,
     ) -> None:
         self.path = path
@@ -51,7 +51,7 @@ class Path(Route):
 
 class PathPrefix(Route):
     def __init__(
-        self, path: str, app: ASGIApp, methods: typing.Sequence[str] = ()
+        self, path: str, app: ASGIApp, methods: typing.Sequence[str] = None
     ) -> None:
         self.path = path
         self.app = app

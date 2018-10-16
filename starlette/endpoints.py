@@ -5,7 +5,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.websockets import WebSocket
 from starlette.responses import Response, PlainTextResponse
-from starlette.types import Receive, Send, Scope
+from starlette.types import Message, Receive, Send, Scope
 
 
 class HTTPEndpoint:
@@ -52,7 +52,7 @@ class WebSocketEndpoint:
         kwargs = self.scope.get("kwargs", {})
         await self.on_connect(websocket, **kwargs)
 
-        close_code = None
+        close_code = 1000
 
         try:
             while True:
@@ -61,12 +61,15 @@ class WebSocketEndpoint:
                     data = await self.decode(websocket, message)
                     await self.on_receive(websocket, data)
                 elif message["type"] == "websocket.disconnect":
-                    close_code = message.get("code", 1000)
-                    return
+                    close_code = int(message.get("code", 1000))
+                    break
+        except Exception as exc:
+            close_code = 1011
+            raise exc from None
         finally:
             await self.on_disconnect(websocket, close_code)
 
-    async def decode(self, websocket, message):
+    async def decode(self, websocket: WebSocket, message: Message) -> typing.Any:
 
         if self.encoding == "text":
             if "text" not in message:
@@ -93,12 +96,12 @@ class WebSocketEndpoint:
         ), f"Unsupported 'encoding' attribute {self.encoding}"
         return message["text"] if "text" in message else message["bytes"]
 
-    async def on_connect(self, websocket, **kwargs):
+    async def on_connect(self, websocket: WebSocket, **kwargs: typing.Any) -> None:
         """Override to handle an incoming websocket connection"""
         await websocket.accept()
 
-    async def on_receive(self, websocket, data):
+    async def on_receive(self, websocket: WebSocket, data: typing.Any) -> None:
         """Override to handle an incoming websocket message"""
 
-    async def on_disconnect(self, websocket, close_code):
+    async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
         """Override to handle a disconnecting websocket"""

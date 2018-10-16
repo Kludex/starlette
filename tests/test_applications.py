@@ -58,7 +58,7 @@ def user_page(request, username):
 
 
 @app.route("/500")
-def func_homepage(request):
+def runtime_error(request):
     raise RuntimeError()
 
 

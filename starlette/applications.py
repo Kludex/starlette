@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import typing
+from concurrent.futures import ThreadPoolExecutor
 
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
@@ -54,6 +55,7 @@ class Starlette:
         self.lifespan_handler = LifespanHandler()
         self.app = self.router
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
+        self.executor = ThreadPoolExecutor()
 
     @property
     def debug(self) -> bool:
@@ -118,7 +120,8 @@ class Starlette:
         return decorator
 
     def __call__(self, scope: Scope) -> ASGIInstance:
+        scope["app"] = self
+        scope["executor"] = self.executor
         if scope["type"] == "lifespan":
             return self.lifespan_handler(scope)
-        scope["app"] = self
         return self.exception_middleware(scope)

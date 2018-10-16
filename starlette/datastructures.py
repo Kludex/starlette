@@ -83,10 +83,10 @@ class URL:
         components = self.components._replace(**kwargs)
         return URL(components.geturl())
 
-    def __eq__(self, other):
+    def __eq__(self, other: typing.Any) -> bool:
         return str(self) == str(other)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._url
 
     def __repr__(self):
@@ -282,7 +282,7 @@ class MutableHeaders(Headers):
         self._list.append((set_key, set_value))
         return value
 
-    def update(self, other: dict):
+    def update(self, other: dict) -> None:
         for key, val in other.items():
             self[key] = val
 

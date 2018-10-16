@@ -1,8 +1,10 @@
 from starlette.debug import get_debug_response
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
+from starlette.types import ASGIApp, ASGIInstance, Receive, Message, Send, Scope
 import asyncio
 import http
+import typing
 
 
 class HTTPException(Exception):
@@ -14,7 +16,7 @@ class HTTPException(Exception):
 
 
 class ExceptionMiddleware:
-    def __init__(self, app, debug=False):
+    def __init__(self, app: ASGIApp, debug: bool = False) -> None:
         self.app = app
         self.debug = debug
         self._exception_handlers = {
@@ -22,24 +24,30 @@ class ExceptionMiddleware:
             HTTPException: self.http_exception,
         }
 
-    def add_exception_handler(self, exc_class, handler):
-        assert issubclass(exc_class, Exception)
+    def add_exception_handler(
+        self, exc_class: typing.Type[Exception], handler: typing.Callable
+    ) -> None:
+        assert issubclass(exc_class, BaseException)
         self._exception_handlers[exc_class] = handler
 
-    def _lookup_exception_handler(self, exc):
+    def _lookup_exception_handler(
+        self, exc: Exception
+    ) -> typing.Optional[typing.Callable]:
         for cls in type(exc).__mro__:
-            handler = self._exception_handlers.get(cls)
-            if handler is not None:
-                return handler, cls
+            if cls is Exception:
+                break
+            if cls in self._exception_handlers:
+                return self._exception_handlers[cls]
+        return None
 
-    def __call__(self, scope):
+    def __call__(self, scope: Scope) -> ASGIInstance:
         if scope["type"] != "http":
             return self.app(scope)
 
-        async def app(receive, send):
+        async def app(receive: Receive, send: Send) -> None:
             response_started = False
 
-            async def sender(message):
+            async def sender(message: Message) -> None:
                 nonlocal response_started
 
                 if message["type"] == "http.response.start":
@@ -50,13 +58,13 @@ class ExceptionMiddleware:
                 try:
                     instance = self.app(scope)
                     await instance(receive, sender)
-                except BaseException as exc:
+                except Exception as exc:
                     # Exception handling is applied to any registed exception
                     # class or subclass that occurs within the application.
-                    handler, cls = self._lookup_exception_handler(exc)
+                    handler = self._lookup_exception_handler(exc)
 
                     # Note that we always handle `Exception` in the outermost block.
-                    if cls is Exception:
+                    if handler is None:
                         raise exc from None
 
                     if response_started:
@@ -79,9 +87,9 @@ class ExceptionMiddleware:
                 else:
                     handler = self._exception_handlers[Exception]
                 if asyncio.iscoroutinefunction(handler):
-                    response = await handler(request, exc)
+                    response = await handler(request, exc)  # type: ignore
                 else:
-                    response = handler(request, exc)
+                    response = handler(request, exc)  # type: ignore
                 if not response_started:
                     await response(receive, send)
 

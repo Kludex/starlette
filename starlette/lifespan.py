@@ -1,17 +1,23 @@
 import asyncio
+import logging
+import traceback
+import typing
+from types import TracebackType
+from starlette.types import ASGIApp, ASGIInstance, Receive, Message, Send
+
 
 STATE_TRANSITION_ERROR = "Got invalid state transition on lifespan protocol."
 
 
 class LifespanHandler:
-    def __init__(self):
-        self.startup_handlers = []
-        self.cleanup_handlers = []
+    def __init__(self) -> None:
+        self.startup_handlers = []  # type: typing.List[typing.Callable]
+        self.cleanup_handlers = []  # type: typing.List[typing.Callable]
 
-    def on_event(self, event_type: str):
+    def on_event(self, event_type: str) -> typing.Callable:
         assert event_type in ("startup", "cleanup")
 
-        def decorator(func):
+        def decorator(func: typing.Callable) -> typing.Callable:
             if event_type == "startup":
                 self.startup_handlers.append(func)
             else:
@@ -34,11 +40,11 @@ class LifespanHandler:
             else:
                 handler()
 
-    def __call__(self, scope):
+    def __call__(self, scope: Message) -> ASGIInstance:
         assert scope["type"] == "lifespan"
         return self.run_lifespan
 
-    async def run_lifespan(self, receive, send):
+    async def run_lifespan(self, receive: Receive, send: Send) -> None:
         message = await receive()
         assert message["type"] == "lifespan.startup"
         await self.run_startup()
@@ -50,31 +56,38 @@ class LifespanHandler:
 
 
 class LifespanContext:
-    def __init__(self, app, startup_timeout=10, cleanup_timeout=10):
+    def __init__(
+        self, app: ASGIApp, startup_timeout: int = 10, cleanup_timeout: int = 10
+    ) -> None:
         self.startup_timeout = startup_timeout
         self.cleanup_timeout = cleanup_timeout
         self.startup_event = asyncio.Event()
         self.cleanup_event = asyncio.Event()
-        self.receive_queue = asyncio.Queue()
-        self.asgi = app({"type": "lifespan"})
+        self.receive_queue = asyncio.Queue()  # type: asyncio.Queue
+        self.asgi = app({"type": "lifespan"})  # type: ASGIInstance
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         loop = asyncio.get_event_loop()
         loop.create_task(self.run_lifespan())
         loop.run_until_complete(self.wait_startup())
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(
+        self,
+        exc_type: typing.Type[BaseException],
+        exc: BaseException,
+        tb: TracebackType,
+    ) -> None:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.wait_cleanup())
 
-    async def run_lifespan(self):
+    async def run_lifespan(self) -> None:
         try:
             await self.asgi(self.receive, self.send)
         finally:
             self.startup_event.set()
             self.cleanup_event.set()
 
-    async def send(self, message):
+    async def send(self, message: Message) -> None:
         if message["type"] == "lifespan.startup.complete":
             assert not self.startup_event.is_set(), STATE_TRANSITION_ERROR
             assert not self.cleanup_event.is_set(), STATE_TRANSITION_ERROR
@@ -85,13 +98,13 @@ class LifespanContext:
             assert not self.cleanup_event.is_set(), STATE_TRANSITION_ERROR
             self.cleanup_event.set()
 
-    async def receive(self):
+    async def receive(self) -> Message:
         return await self.receive_queue.get()
 
-    async def wait_startup(self):
+    async def wait_startup(self) -> None:
         await self.receive_queue.put({"type": "lifespan.startup"})
         await asyncio.wait_for(self.startup_event.wait(), timeout=self.startup_timeout)
 
-    async def wait_cleanup(self):
+    async def wait_cleanup(self) -> None:
         await self.receive_queue.put({"type": "lifespan.cleanup"})
         await asyncio.wait_for(self.cleanup_event.wait(), timeout=self.cleanup_timeout)

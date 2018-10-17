@@ -23,7 +23,7 @@ class URL:
                     url = "%s://%s:%s%s" % (scheme, host, port, path)
 
             if query_string:
-                url += "?" + unquote(query_string.decode())
+                url += "?" + query_string.decode()
         self._url = url
 
     @property
@@ -101,22 +101,28 @@ class QueryParams(typing.Mapping[str, str]):
     def __init__(
         self,
         params: typing.Mapping[str, str] = None,
+        items: typing.List[typing.Tuple[str, str]] = None,
         query_string: str = None,
         scope: Scope = None,
     ) -> None:
-        items = []  # type: typing.List[typing.Tuple[str, str]]
+        _items = []  # type: typing.List[typing.Tuple[str, str]]
         if params is not None:
+            assert items is None, "Cannot set both 'params' and 'items'"
             assert query_string is None, "Cannot set both 'params' and 'query_string'"
             assert scope is None, "Cannot set both 'params' and 'scope'"
-            items = list(params.items())
+            _items = list(params.items())
+        elif items is not None:
+            assert query_string is None, "Cannot set both 'items' and 'query_string'"
+            assert scope is None, "Cannot set both 'items' and 'scope'"
+            _items = list(items)
         elif query_string is not None:
             assert scope is None, "Cannot set both 'query_string' and 'scope'"
-            items = parse_qsl(query_string)
+            _items = parse_qsl(query_string)
         elif scope is not None:
-            items = parse_qsl(scope["query_string"].decode("latin-1"))
+            _items = parse_qsl(scope["query_string"].decode("latin-1"))
 
-        self._dict = {k: v for k, v in reversed(items)}
-        self._list = items
+        self._dict = {k: v for k, v in reversed(_items)}
+        self._list = _items
 
     def getlist(self, key: typing.Any) -> typing.List[str]:
         return [item_value for item_key, item_value in self._list if item_key == key]

@@ -111,10 +111,13 @@ def test_queryparams():
     assert str(q) == "a=123&a=456&b=789"
     assert repr(q) == "QueryParams(query_string='a=123&a=456&b=789')"
     assert QueryParams({"a": "123", "b": "456"}) == QueryParams(
+        items=[("a", "123"), ("b", "456")]
+    )
+    assert QueryParams({"a": "123", "b": "456"}) == QueryParams(
         query_string="a=123&b=456"
     )
-    assert QueryParams({"a": "123", "b": "456"}) != {"b": "456", "a": "123"}
     assert QueryParams({"a": "123", "b": "456"}) == QueryParams(
         {"b": "456", "a": "123"}
     )
     assert QueryParams() == QueryParams({})
+    assert QueryParams({"a": "123", "b": "456"}) != "invalid"

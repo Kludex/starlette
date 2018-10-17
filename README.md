@@ -63,7 +63,7 @@ import uvicorn
 app = Starlette()
 
 @app.route('/')
-asnyc def homepage(request):
+async def homepage(request):
     return JSONResponse({'hello': 'world'})
 
 if __name__ == '__main__':

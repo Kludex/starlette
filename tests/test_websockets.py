@@ -1,6 +1,7 @@
 import pytest
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
+from starlette import status
 
 
 def test_websocket_url():
@@ -149,8 +150,8 @@ def test_client_close():
 
     client = TestClient(app)
     with client.websocket_connect("/") as websocket:
-        websocket.close(code=1001)
-    assert close_code == 1001
+        websocket.close(code=status.WS_1001_LEAVING)
+    assert close_code == status.WS_1001_LEAVING
 
 
 def test_application_close():
@@ -158,7 +159,7 @@ def test_application_close():
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
             await websocket.accept()
-            await websocket.close(1001)
+            await websocket.close(status.WS_1001_LEAVING)
 
         return asgi
 
@@ -166,21 +167,21 @@ def test_application_close():
     with client.websocket_connect("/") as websocket:
         with pytest.raises(WebSocketDisconnect) as exc:
             websocket.receive_text()
-        assert exc.value.code == 1001
+        assert exc.value.code == status.WS_1001_LEAVING
 
 
 def test_rejected_connection():
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
-            await websocket.close(1001)
+            await websocket.close(status.WS_1001_LEAVING)
 
         return asgi
 
     client = TestClient(app)
     with pytest.raises(WebSocketDisconnect) as exc:
         client.websocket_connect("/")
-    assert exc.value.code == 1001
+    assert exc.value.code == status.WS_1001_LEAVING
 
 
 def test_subprotocol():

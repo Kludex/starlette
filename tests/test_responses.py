@@ -7,6 +7,7 @@ from starlette.responses import (
 )
 from starlette.requests import Request
 from starlette.testclient import TestClient
+from starlette import status
 import asyncio
 import os
 
@@ -134,7 +135,7 @@ def test_file_response(tmpdir):
     client = TestClient(app)
     response = client.get("/")
     expected_disposition = 'attachment; filename="example.png"'
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_200_OK
     assert response.content == content
     assert response.headers["content-type"] == "image/png"
     assert response.headers["content-disposition"] == expected_disposition

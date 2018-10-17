@@ -55,6 +55,16 @@ Headers are exposed as an immutable multi-dict.
 
 For example: `request.query_params['abc']`
 
+#### Cookies
+
+Cookies are exposed as an immutable dict.
+
+**Note**: Exception `KeyError` will be raised if nonexistant key is  accessed as `request.cookies['key']`.
+Instead cookies should be accessed with the `.get` method.
+
+For example: `request.cookies.get('mycookie')`
+
+
 #### Body
 
 There are a few different interfaces for returning the body of the request:

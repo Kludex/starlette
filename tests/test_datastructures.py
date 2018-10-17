@@ -60,7 +60,7 @@ def test_headers():
     assert h.items() == [("a", "123"), ("a", "456"), ("b", "789")]
     assert list(h) == [("a", "123"), ("a", "456"), ("b", "789")]
     assert dict(h) == {"a": "123", "b": "789"}
-    assert repr(h) == "Headers([('a', '123'), ('a', '456'), ('b', '789')])"
+    assert repr(h) == "Headers(raw=[(b'a', b'123'), (b'a', b'456'), (b'b', b'789')])"
     assert h == Headers(raw=[(b"a", b"123"), (b"b", b"789"), (b"a", b"456")])
     assert h != [(b"a", b"123"), (b"A", b"456"), (b"b", b"789")]
 
@@ -68,6 +68,7 @@ def test_headers():
     assert h["A"] == "123"
     assert h["B"] == "789"
     assert h.raw == [(b"a", b"123"), (b"b", b"789")]
+    assert repr(h) == "Headers({'a': '123', 'b': '789'})"
 
 
 def test_mutable_headers():

@@ -34,6 +34,7 @@ It is production-ready, and gives you the following:
 * CORS, GZip, Static Files, Streaming responses.
 * 100% test coverage.
 * 100% type annotated codebase.
+* Zero hard dependencies.
 
 ## Requirements
 

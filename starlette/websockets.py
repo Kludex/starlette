@@ -47,14 +47,13 @@ class WebSocket(Mapping):
     @property
     def headers(self) -> Headers:
         if not hasattr(self, "_headers"):
-            self._headers = Headers(self._scope["headers"])
+            self._headers = Headers(scope=self._scope)
         return self._headers
 
     @property
     def query_params(self) -> QueryParams:
         if not hasattr(self, "_query_params"):
-            query_string = self._scope["query_string"].decode()
-            self._query_params = QueryParams(query_string)
+            self._query_params = QueryParams(scope=self._scope)
         return self._query_params
 
     async def receive(self) -> Message:

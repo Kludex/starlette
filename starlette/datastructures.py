@@ -1,6 +1,6 @@
 import typing
 from starlette.types import Scope
-from urllib.parse import parse_qsl, unquote, urlparse, ParseResult
+from urllib.parse import parse_qsl, unquote, urlencode, urlparse, ParseResult
 
 
 class URL:
@@ -93,29 +93,28 @@ class URL:
         return "%s(%s)" % (self.__class__.__name__, repr(self._url))
 
 
-# Type annotations for valid `__init__` values to QueryParams and Headers.
-StrPairs = typing.Sequence[typing.Tuple[str, str]]
-BytesPairs = typing.List[typing.Tuple[bytes, bytes]]
-StrDict = typing.Mapping[str, str]
-
-
-class QueryParams(StrDict):
+class QueryParams(typing.Mapping[str, str]):
     """
     An immutable multidict.
     """
 
     def __init__(
-        self, value: typing.Union[str, typing.Union[StrDict, StrPairs]] = None
+        self,
+        params: typing.Mapping[str, str] = None,
+        query_string: str = None,
+        scope: Scope = None,
     ) -> None:
-        if value is None:
-            value = []
-        elif isinstance(value, str):
-            value = parse_qsl(value)
+        items = []  # type: typing.List[typing.Tuple[str, str]]
+        if params is not None:
+            assert query_string is None, "Cannot set both 'params' and 'query_string'"
+            assert scope is None, "Cannot set both 'params' and 'scope'"
+            items = list(params.items())
+        elif query_string is not None:
+            assert scope is None, "Cannot set both 'query_string' and 'scope'"
+            items = parse_qsl(query_string)
+        elif scope is not None:
+            items = parse_qsl(scope["query_string"].decode("latin-1"))
 
-        if hasattr(value, "items"):
-            items = list(typing.cast(StrDict, value).items())
-        else:
-            items = list(typing.cast(StrPairs, value))
         self._dict = {k: v for k, v in reversed(items)}
         self._list = items
 
@@ -128,7 +127,7 @@ class QueryParams(StrDict):
     def values(self) -> typing.List[str]:  # type: ignore
         return [value for key, value in self._list]
 
-    def items(self) -> StrPairs:  # type: ignore
+    def items(self) -> typing.List[typing.Tuple[str, str]]:  # type: ignore
         return list(self._list)
 
     def get(self, key: typing.Any, default: typing.Any = None) -> typing.Any:
@@ -151,11 +150,14 @@ class QueryParams(StrDict):
 
     def __eq__(self, other: typing.Any) -> bool:
         if not isinstance(other, QueryParams):
-            other = QueryParams(other)
+            return False
         return sorted(self._list) == sorted(other._list)
 
+    def __str__(self) -> str:
+        return urlencode(self._list)
+
     def __repr__(self) -> str:
-        return "QueryParams(%s)" % repr(self._list)
+        return "%s(query_string=%s)" % (self.__class__.__name__, repr(str(self)))
 
 
 class Headers(typing.Mapping[str, str]):
@@ -163,15 +165,29 @@ class Headers(typing.Mapping[str, str]):
     An immutable, case-insensitive multidict.
     """
 
-    def __init__(self, raw_headers: BytesPairs = None) -> None:
-        if raw_headers is None:
-            self._list = []  # type: BytesPairs
-        else:
-            for header_key, header_value in raw_headers:
-                assert isinstance(header_key, bytes)
-                assert isinstance(header_value, bytes)
-                assert header_key == header_key.lower()
-            self._list = raw_headers
+    def __init__(
+        self,
+        headers: typing.Mapping[str, str] = None,
+        raw: typing.List[typing.Tuple[bytes, bytes]] = None,
+        scope: Scope = None,
+    ) -> None:
+        self._list = []  # type: typing.List[typing.Tuple[bytes, bytes]]
+        if headers is not None:
+            assert raw is None, 'Cannot set both "headers" and "raw".'
+            assert scope is None, 'Cannot set both "headers" and "scope".'
+            self._list = [
+                (key.lower().encode("latin-1"), value.encode("latin-1"))
+                for key, value in headers.items()
+            ]
+        elif raw is not None:
+            assert scope is None, 'Cannot set both "raw" and "scope".'
+            self._list = raw
+        elif scope is not None:
+            self._list = scope["headers"]
+
+    @property
+    def raw(self) -> typing.List[typing.Tuple[bytes, bytes]]:
+        return list(self._list)
 
     def keys(self) -> typing.List[str]:  # type: ignore
         return [key.decode("latin-1") for key, value in self._list]
@@ -179,7 +195,7 @@ class Headers(typing.Mapping[str, str]):
     def values(self) -> typing.List[str]:  # type: ignore
         return [value.decode("latin-1") for key, value in self._list]
 
-    def items(self) -> StrPairs:  # type: ignore
+    def items(self) -> typing.List[typing.Tuple[str, str]]:  # type: ignore
         return [
             (key.decode("latin-1"), value.decode("latin-1"))
             for key, value in self._list
@@ -200,7 +216,7 @@ class Headers(typing.Mapping[str, str]):
         ]
 
     def mutablecopy(self) -> "MutableHeaders":
-        return MutableHeaders(self._list[:])
+        return MutableHeaders(raw=self._list[:])
 
     def __getitem__(self, key: str) -> str:
         get_header_key = key.lower().encode("latin-1")
@@ -267,6 +283,10 @@ class MutableHeaders(Headers):
 
         for idx in reversed(pop_indexes):
             del (self._list[idx])
+
+    @property
+    def raw(self) -> typing.List[typing.Tuple[bytes, bytes]]:
+        return self._list
 
     def setdefault(self, key: str, value: str) -> str:
         """

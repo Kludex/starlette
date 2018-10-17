@@ -66,7 +66,7 @@ class CORSMiddleware:
     def __call__(self, scope: Scope) -> ASGIInstance:
         if scope["type"] == "http":
             method = scope["method"]
-            headers = Headers(scope["headers"])
+            headers = Headers(scope=scope)
             origin = headers.get("origin")
 
             if origin is not None:
@@ -145,7 +145,7 @@ class CORSMiddleware:
             return
 
         message.setdefault("headers", [])
-        headers = MutableHeaders(message["headers"])
+        headers = MutableHeaders(scope=message)
         origin = request_headers["Origin"]
         has_cookie = "cookie" in request_headers
 

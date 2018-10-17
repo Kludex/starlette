@@ -223,7 +223,7 @@ class MultiPartParser:
                     header_field = b""
                     header_value = b""
                 elif message_type == MultiPartMessage.HEADERS_FINISHED:
-                    headers = Headers(raw_headers)
+                    headers = Headers(raw=raw_headers)
                     content_disposition = headers.get("Content-Disposition")
                     disposition, options = parse_options_header(content_disposition)
                     field_name = options[b"name"].decode("latin-1")

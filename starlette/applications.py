@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
+from starlette.graphql import GraphQLApp
 from starlette.requests import Request
 from starlette.routing import Path, PathPrefix, Router
 from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
@@ -93,6 +94,12 @@ class Starlette:
 
         instance = Path(path, route, protocol="http", methods=methods)
         self.router.routes.append(instance)
+
+    def add_graphql_route(
+        self, path: str, schema: typing.Any, executor: typing.Any = None
+    ) -> None:
+        route = GraphQLApp(schema=schema, executor=executor)
+        self.add_route(path, route, methods=["GET", "POST"])
 
     def add_websocket_route(self, path: str, route: typing.Callable) -> None:
         if not inspect.isclass(route):

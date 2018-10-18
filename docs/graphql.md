@@ -5,7 +5,6 @@ Here's an example of integrating the support into your application.
 
 ```python
 from starlette.applications import Starlette
-from starlette.graphql import GraphQLApp
 import graphene
 
 
@@ -16,12 +15,14 @@ class Query(graphene.ObjectType):
         return "Hello " + name
 
 
-schema = graphene.Schema(query=Query)
-
-
 app = Starlette()
-app.add_route('/', GraphQLApp(schema=schema), methods=['GET', 'POST'])
+app.add_graphql_route('/', schema=graphene.Schema(query=Query))
 ```
+
+If you load up the page in a browser, you'll be served the GraphiQL tool,
+which you can use to interact with your GraphQL API.
+
+![GraphiQL](img/graphiql.png)
 
 ## Sync or Async executors
 
@@ -30,12 +31,11 @@ your "resolve" methods, and Starlette will manage running the GraphQL query with
 seperate thread.
 
 If you want to use an asyncronous ORM, then use "async resolve" methods, and
-make sure to setup Graphene's AsyncioExecutor.
+make sure to setup Graphene's AsyncioExecutor using the `executor` argument.
 
 ```python
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from starlette.applications import Starlette
-from starlette.graphql import GraphQLApp
 import graphene
 
 
@@ -47,9 +47,8 @@ class Query(graphene.ObjectType):
         return "Hello " + name
 
 
-schema = graphene.Schema(query=Query)
-
-
 app = Starlette()
-app.add_route('/', GraphQLApp(schema=schema, executor=AsyncioExecutor()), methods=['GET', 'POST'])
+
+# We're using `executor=AsyncioExecutor()` here.
+app.add_graphql_route('/', schema=graphene.Schema(query=Query), executor=AsyncioExecutor())
 ```

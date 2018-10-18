@@ -1,4 +1,5 @@
 from graphql.execution.executors.asyncio import AsyncioExecutor
+from starlette.applications import Starlette
 from starlette.graphql import GraphQLApp
 from starlette.testclient import TestClient
 import graphene
@@ -78,6 +79,15 @@ def test_graphiql_get():
     response = client.get("/", headers={"accept": "text/html"})
     assert response.status_code == 200
     assert "<!DOCTYPE html>" in response.text
+
+
+def test_add_graphql_route():
+    app = Starlette()
+    app.add_graphql_route("/", schema)
+    client = TestClient(app)
+    response = client.get("/?query={ hello }")
+    assert response.status_code == 200
+    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
 
 
 class ASyncQuery(graphene.ObjectType):

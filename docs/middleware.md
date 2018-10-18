@@ -105,7 +105,7 @@ The middleware will handle both standard and streaming responses.
 
 ```python
 from starlette.applications import Starlette
-from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 
 app = Starlette()

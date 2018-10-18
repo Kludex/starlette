@@ -80,6 +80,9 @@ class Starlette:
     def add_exception_handler(self, exc_class: type, handler: typing.Callable) -> None:
         self.exception_middleware.add_exception_handler(exc_class, handler)
 
+    def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
+        self.lifespan_handler.add_event_handler(event_type, func)
+
     def add_route(
         self, path: str, route: typing.Callable, methods: typing.Sequence[str] = None
     ) -> None:

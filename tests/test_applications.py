@@ -5,6 +5,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.endpoints import HTTPEndpoint
+from starlette.lifespan import LifespanContext
 import os
 
 
@@ -164,3 +165,28 @@ def test_app_debug():
     assert response.status_code == 500
     assert "RuntimeError" in response.text
     assert app.debug
+
+
+def test_app_add_event_handler():
+    startup_complete = False
+    cleanup_complete = False
+    app = Starlette()
+
+    def run_startup():
+        nonlocal startup_complete
+        startup_complete = True
+
+    def run_cleanup():
+        nonlocal cleanup_complete
+        cleanup_complete = True
+
+    app.add_event_handler("startup", run_startup)
+    app.add_event_handler("cleanup", run_cleanup)
+
+    assert not startup_complete
+    assert not cleanup_complete
+    with LifespanContext(app):
+        assert startup_complete
+        assert not cleanup_complete
+    assert startup_complete
+    assert cleanup_complete

@@ -15,16 +15,19 @@ class LifespanHandler:
         self.cleanup_handlers = []  # type: typing.List[typing.Callable]
 
     def on_event(self, event_type: str) -> typing.Callable:
-        assert event_type in ("startup", "cleanup")
-
         def decorator(func: typing.Callable) -> typing.Callable:
-            if event_type == "startup":
-                self.startup_handlers.append(func)
-            else:
-                self.cleanup_handlers.append(func)
+            self.add_event_handler(event_type, func)
             return func
 
         return decorator
+
+    def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
+        assert event_type in ("startup", "cleanup")
+
+        if event_type == "startup":
+            self.startup_handlers.append(func)
+        else:
+            self.cleanup_handlers.append(func)
 
     async def run_startup(self) -> None:
         for handler in self.startup_handlers:

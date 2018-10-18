@@ -20,7 +20,7 @@ schema = graphene.Schema(query=Query)
 
 
 app = Starlette()
-app.add_route('/', GraphQLApp(schema=schema))
+app.add_route('/', GraphQLApp(schema=schema), methods=['GET', 'POST'])
 ```
 
 ## Sync or Async executors
@@ -51,5 +51,5 @@ schema = graphene.Schema(query=Query)
 
 
 app = Starlette()
-app.add_route('/', GraphQLApp(schema=schema, executor=AsyncioExecutor()))
+app.add_route('/', GraphQLApp(schema=schema, executor=AsyncioExecutor()), methods=['GET', 'POST'])
 ```

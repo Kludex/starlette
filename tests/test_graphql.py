@@ -74,6 +74,12 @@ def test_graphql_invalid_field():
     }
 
 
+def test_graphiql_get():
+    response = client.get("/", headers={"accept": "text/html"})
+    assert response.status_code == 200
+    assert "<!DOCTYPE html>" in response.text
+
+
 class ASyncQuery(graphene.ObjectType):
     hello = graphene.String(name=graphene.String(default_value="stranger"))
 

@@ -1,5 +1,6 @@
 # Optionals
 aiofiles
+graphene
 python-multipart
 requests
 ujson

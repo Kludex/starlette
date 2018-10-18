@@ -150,8 +150,8 @@ def test_client_close():
 
     client = TestClient(app)
     with client.websocket_connect("/") as websocket:
-        websocket.close(code=status.WS_1001_LEAVING)
-    assert close_code == status.WS_1001_LEAVING
+        websocket.close(code=status.WS_1001_GOING_AWAY)
+    assert close_code == status.WS_1001_GOING_AWAY
 
 
 def test_application_close():
@@ -159,7 +159,7 @@ def test_application_close():
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
             await websocket.accept()
-            await websocket.close(status.WS_1001_LEAVING)
+            await websocket.close(status.WS_1001_GOING_AWAY)
 
         return asgi
 
@@ -167,21 +167,21 @@ def test_application_close():
     with client.websocket_connect("/") as websocket:
         with pytest.raises(WebSocketDisconnect) as exc:
             websocket.receive_text()
-        assert exc.value.code == status.WS_1001_LEAVING
+        assert exc.value.code == status.WS_1001_GOING_AWAY
 
 
 def test_rejected_connection():
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
-            await websocket.close(status.WS_1001_LEAVING)
+            await websocket.close(status.WS_1001_GOING_AWAY)
 
         return asgi
 
     client = TestClient(app)
     with pytest.raises(WebSocketDisconnect) as exc:
         client.websocket_connect("/")
-    assert exc.value.code == status.WS_1001_LEAVING
+    assert exc.value.code == status.WS_1001_GOING_AWAY
 
 
 def test_subprotocol():

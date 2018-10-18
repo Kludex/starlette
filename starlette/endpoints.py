@@ -1,6 +1,7 @@
 import asyncio
 import typing
 import json
+from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.websockets import WebSocket
@@ -52,7 +53,7 @@ class WebSocketEndpoint:
         kwargs = self.scope.get("kwargs", {})
         await self.on_connect(websocket, **kwargs)
 
-        close_code = 1000
+        close_code = status.WS_1000_NORMAL_CLOSURE
 
         try:
             while True:
@@ -61,10 +62,10 @@ class WebSocketEndpoint:
                     data = await self.decode(websocket, message)
                     await self.on_receive(websocket, data)
                 elif message["type"] == "websocket.disconnect":
-                    close_code = int(message.get("code", 1000))
+                    close_code = int(message.get("code", status.WS_1000_NORMAL_CLOSURE))
                     break
         except Exception as exc:
-            close_code = 1011
+            close_code = status.WS_1011_INTERNAL_ERROR
             raise exc from None
         finally:
             await self.on_disconnect(websocket, close_code)
@@ -73,19 +74,19 @@ class WebSocketEndpoint:
 
         if self.encoding == "text":
             if "text" not in message:
-                await websocket.close(code=1003)
+                await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 raise RuntimeError("Expected text websocket messages, but got bytes")
             return message["text"]
 
         elif self.encoding == "bytes":
             if "bytes" not in message:
-                await websocket.close(code=1003)
+                await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 raise RuntimeError("Expected bytes websocket messages, but got text")
             return message["bytes"]
 
         elif self.encoding == "json":
             if "bytes" not in message:
-                await websocket.close(code=1003)
+                await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 raise RuntimeError(
                     "Expected JSON to be transferred as bytes websocket messages, but got text"
                 )

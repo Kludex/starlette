@@ -1,6 +1,6 @@
 
 Starlette applications can register multiple event handlers for dealing with
-code than needs to run before the application starts up, or when the application
+code that needs to run before the application starts up, or when the application
 is shutting down.
 
 ## Registering events

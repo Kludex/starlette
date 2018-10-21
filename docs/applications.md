@@ -45,9 +45,18 @@ You can use any of the following to add handled routes to the application:
 
 * `app.add_route(path, func, methods=["GET"])` - Add an HTTP route. The function may be either a coroutine or a regular function, with a signature like `func(request, **kwargs) -> response`.
 * `app.add_websocket_route(path, func)` - Add a websocket session route. The function must be a coroutine, with a signature like `func(session, **kwargs)`.
-* `app.add_graphql_route(path, schema, executor=None) - Add a GraphQL route.
+* `app.add_graphql_route(path, schema, executor=None)` - Add a GraphQL route.
 * `@app.route(path)` - Add an HTTP route, decorator style.
 * `@app.websocket_route(path)` - Add a WebSocket route, decorator style.
+
+### Adding event handlers to the application
+
+There are two ways to add event handlers:
+
+* `@app.on_event(event_type)` - Add an event, decorator style
+* `app.add_event_handler(event_type, func)` - Add an event through a function call.
+
+`event_type` must be specified as either `'startup'` or `'cleanup'`.
 
 ### Submounting other applications
 

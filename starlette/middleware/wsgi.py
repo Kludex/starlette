@@ -57,6 +57,7 @@ class WSGIMiddleware:
         self.executor = ThreadPoolExecutor(max_workers=workers)
 
     def __call__(self, scope: Scope) -> ASGIInstance:
+        assert scope["type"] == "http"
         return WSGIResponder(self.app, self.executor, scope)
 
 

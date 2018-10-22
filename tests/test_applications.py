@@ -181,7 +181,7 @@ def test_app_add_event_handler():
         cleanup_complete = True
 
     app.add_event_handler("startup", run_startup)
-    app.add_event_handler("cleanup", run_cleanup)
+    app.add_event_handler("shutdown", run_cleanup)
 
     assert not startup_complete
     assert not cleanup_complete

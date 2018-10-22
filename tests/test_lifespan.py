@@ -12,7 +12,7 @@ def test_lifespan_handler():
         nonlocal startup_complete
         startup_complete = True
 
-    @handler.on_event("cleanup")
+    @handler.on_event("shutdown")
     def run_cleanup():
         nonlocal cleanup_complete
         cleanup_complete = True
@@ -36,7 +36,7 @@ def test_async_lifespan_handler():
         nonlocal startup_complete
         startup_complete = True
 
-    @handler.on_event("cleanup")
+    @handler.on_event("shutdown")
     async def run_cleanup():
         nonlocal cleanup_complete
         cleanup_complete = True
@@ -60,7 +60,7 @@ def test_app_lifespan():
         nonlocal startup_complete
         startup_complete = True
 
-    @app.on_event("cleanup")
+    @app.on_event("shutdown")
     def run_cleanup():
         nonlocal cleanup_complete
         cleanup_complete = True

@@ -167,6 +167,35 @@ def test_app_debug():
     assert app.debug
 
 
+def test_app_add_route():
+    app = Starlette()
+
+    async def homepage(request):
+        return PlainTextResponse("Hello, World!")
+
+    app.add_route("/", homepage)
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.text == "Hello, World!"
+
+
+def test_app_add_websocket_route():
+    app = Starlette()
+
+    async def websocket_endpoint(session):
+        await session.accept()
+        await session.send_text("Hello, world!")
+        await session.close()
+
+    app.add_websocket_route("/ws", websocket_endpoint)
+    client = TestClient(app)
+
+    with client.websocket_connect("/ws") as session:
+        text = session.receive_text()
+        assert text == "Hello, world!"
+
+
 def test_app_add_event_handler():
     startup_complete = False
     cleanup_complete = False

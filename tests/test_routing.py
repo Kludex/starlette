@@ -34,9 +34,22 @@ app = Router(
 )
 
 
-def test_router():
-    client = TestClient(app)
+@app.route("/func")
+def func_homepage(request):
+    return Response("Hello, world!", media_type="text/plain")
 
+
+@app.websocket_route("/ws")
+async def websocket_endpoint(session):
+    await session.accept()
+    await session.send_text("Hello, world!")
+    await session.close()
+
+
+client = TestClient(app)
+
+
+def test_router():
     response = client.get("/")
     assert response.status_code == 200
     assert response.text == "Hello, world"
@@ -64,6 +77,18 @@ def test_router():
     response = client.post("/static/123")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
+
+
+def test_router_add_route():
+    response = client.get("/func")
+    assert response.status_code == 200
+    assert response.text == "Hello, world!"
+
+
+def test_router_add_websocket_route():
+    with client.websocket_connect("/ws") as session:
+        text = session.receive_text()
+        assert text == "Hello, world!"
 
 
 def http_endpoint(scope):

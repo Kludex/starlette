@@ -2,63 +2,7 @@ import os
 import pytest
 
 from starlette.testclient import TestClient
-from starlette.staticfiles import StaticFile, StaticFiles
-
-
-def test_staticfile(tmpdir):
-    path = os.path.join(tmpdir, "example.txt")
-    with open(path, "w") as file:
-        file.write("<file content>")
-
-    app = StaticFile(path=path)
-    client = TestClient(app)
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.text == "<file content>"
-
-
-def test_large_staticfile(tmpdir):
-    path = os.path.join(tmpdir, "example.txt")
-    content = "this is a lot of content" * 200
-    print("content len = ", len(content))
-    with open(path, "w") as file:
-        file.write(content)
-
-    app = StaticFile(path=path)
-    client = TestClient(app)
-    response = client.get("/")
-    assert response.status_code == 200
-    assert len(content) == len(response.text)
-    assert content == response.text
-
-
-def test_staticfile_post(tmpdir):
-    path = os.path.join(tmpdir, "example.txt")
-    with open(path, "w") as file:
-        file.write("<file content>")
-
-    app = StaticFile(path=path)
-    client = TestClient(app)
-    response = client.post("/")
-    assert response.status_code == 405
-    assert response.text == "Method Not Allowed"
-
-
-def test_staticfile_with_directory_raises_error(tmpdir):
-    app = StaticFile(path=tmpdir)
-    client = TestClient(app)
-    with pytest.raises(RuntimeError) as exc:
-        client.get("/")
-    assert "is not a file" in str(exc)
-
-
-def test_staticfile_with_missing_file_raises_error(tmpdir):
-    path = os.path.join(tmpdir, "404.txt")
-    app = StaticFile(path=path)
-    client = TestClient(app)
-    with pytest.raises(RuntimeError) as exc:
-        client.get("/")
-    assert "does not exist" in str(exc)
+from starlette.staticfiles import StaticFiles
 
 
 def test_staticfiles(tmpdir):

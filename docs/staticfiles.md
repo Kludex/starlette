@@ -1,20 +1,17 @@
 
-As well as the `FileResponse` class, Starlette also includes ASGI applications
-for serving a specific file or directory:
+Starlette also includes an `StaticFiles` class for serving a specific directory:
 
-* `StaticFile(path)` - Serve a single file, given by `path`.
 * `StaticFiles(directory)` - Serve any files in the given `directory`.
 
-You can combine these ASGI applications with Starlette's routing to provide
+You can combine this ASGI application with Starlette's routing to provide
 comprehensive static file serving.
 
 ```python
 from starlette.routing import Router, Path, PathPrefix
-from starlette.staticfiles import StaticFile, StaticFiles
+from starlette.staticfiles import StaticFiles
 
 
 app = Router(routes=[
-    Path('/', app=StaticFile(path='index.html')),
     PathPrefix('/static', app=StaticFiles(directory='static')),
 ])
 ```

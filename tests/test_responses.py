@@ -9,6 +9,7 @@ from starlette.requests import Request
 from starlette.testclient import TestClient
 from starlette import status
 import asyncio
+import pytest
 import os
 
 
@@ -142,6 +143,28 @@ def test_file_response(tmpdir):
     assert "content-length" in response.headers
     assert "last-modified" in response.headers
     assert "etag" in response.headers
+
+
+def test_file_response_with_directory_raises_error(tmpdir):
+    def app(scope):
+        return FileResponse(path=tmpdir, filename="example.png")
+
+    client = TestClient(app)
+    with pytest.raises(RuntimeError) as exc:
+        client.get("/")
+    assert "is not a file" in str(exc)
+
+
+def test_file_response_with_missing_file_raises_error(tmpdir):
+    path = os.path.join(tmpdir, "404.txt")
+
+    def app(scope):
+        return FileResponse(path=path, filename="404.txt")
+
+    client = TestClient(app)
+    with pytest.raises(RuntimeError) as exc:
+        client.get("/")
+    assert "does not exist" in str(exc)
 
 
 def test_set_cookie():

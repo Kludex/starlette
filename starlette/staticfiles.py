@@ -7,17 +7,6 @@ from starlette.responses import PlainTextResponse, FileResponse, Response
 from starlette.types import Send, Receive, Scope, ASGIInstance
 
 
-class StaticFile:
-    def __init__(self, *, path: str) -> None:
-        self.path = path
-
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        assert scope["type"] == "http"
-        if scope["method"] not in ("GET", "HEAD"):
-            return PlainTextResponse("Method Not Allowed", status_code=405)
-        return _StaticFileResponder(scope, path=self.path)
-
-
 class StaticFiles:
     def __init__(self, *, directory: str) -> None:
         self.directory = directory
@@ -37,25 +26,6 @@ class StaticFiles:
             check_directory = self.directory
             self.config_checked = True
         return _StaticFilesResponder(scope, path=path, check_directory=check_directory)
-
-
-class _StaticFileResponder:
-    def __init__(self, scope: Scope, path: str) -> None:
-        self.scope = scope
-        self.path = path
-
-    async def __call__(self, receive: Receive, send: Send) -> None:
-        try:
-            stat_result = await aio_stat(self.path)
-        except FileNotFoundError:
-            raise RuntimeError("StaticFile at path '%s' does not exist." % self.path)
-        else:
-            mode = stat_result.st_mode
-            if not stat.S_ISREG(mode):
-                raise RuntimeError("StaticFile at path '%s' is not a file." % self.path)
-
-        response = FileResponse(self.path, stat_result=stat_result)
-        await response(receive, send)
 
 
 class _StaticFilesResponder:

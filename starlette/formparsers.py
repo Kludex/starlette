@@ -1,9 +1,11 @@
-from enum import Enum
-from starlette.datastructures import Headers
-import asyncio
 import io
-import tempfile
 import typing
+import asyncio
+import tempfile
+from enum import Enum
+from urllib.parse import unquote
+
+from starlette.datastructures import Headers
 
 try:
     from multipart.multipart import parse_options_header
@@ -69,27 +71,22 @@ class FormParser:
         self.messages = []  # type: typing.List[typing.Tuple[FormMessage, bytes]]
 
     def on_field_start(self) -> None:
-        print("on_field_start")
         message = (FormMessage.FIELD_START, b"")
         self.messages.append(message)
 
     def on_field_name(self, data: bytes, start: int, end: int) -> None:
-        print("on_field_name")
         message = (FormMessage.FIELD_NAME, data[start:end])
         self.messages.append(message)
 
     def on_field_data(self, data: bytes, start: int, end: int) -> None:
-        print("on_field_data")
         message = (FormMessage.FIELD_DATA, data[start:end])
         self.messages.append(message)
 
     def on_field_end(self) -> None:
-        print("on_field_end")
         message = (FormMessage.FIELD_END, b"")
         self.messages.append(message)
 
     def on_end(self) -> None:
-        print("on_end")
         message = (FormMessage.END, b"")
         self.messages.append(message)
 
@@ -127,7 +124,9 @@ class FormParser:
                 elif message_type == FormMessage.FIELD_DATA:
                     field_value += message_bytes
                 elif message_type == FormMessage.FIELD_END:
-                    result[field_name.decode("latin-1")] = field_value.decode("latin-1")
+                    result[field_name.decode("latin-1")] = unquote(
+                        field_value.decode("latin-1")
+                    )
                 elif message_type == FormMessage.END:
                     pass
 

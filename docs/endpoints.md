@@ -38,7 +38,8 @@ class Homepage(HTTPEndpoint):
 
 @app.route("/{username}")
 class User(HTTPEndpoint):
-    async def get(self, request, username):
+    async def get(self, request):
+        username = request.path_params['username']
         return PlainTextResponse(f"Hello, {username}")
 ```
 
@@ -72,7 +73,7 @@ from starlette.endpoints import WebSocketEndpoint
 class App(WebSocketEndpoint):
     encoding = 'bytes'
 
-    async def on_connect(self, websocket, **kwargs):
+    async def on_connect(self, websocket):
         await websocket.accept()
 
     async def on_receive(self, websocket, data):

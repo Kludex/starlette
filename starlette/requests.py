@@ -56,6 +56,10 @@ class Request(Mapping):
         return self._query_params
 
     @property
+    def path_params(self) -> dict:
+        return self._scope.get("path_params", {})
+
+    @property
     def cookies(self) -> typing.Dict[str, str]:
         if not hasattr(self, "_cookies"):
             cookies = {}

@@ -19,7 +19,8 @@ def homepage(request):
 
 
 @app.route('/user/{username}')
-def user(request, username):
+def user(request):
+    username = request.path_params['username']
     return PlainTextResponse('Hello, %s!' % username)
 
 

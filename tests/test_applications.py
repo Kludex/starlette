@@ -2,6 +2,7 @@ from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.routing import Router, Route, Mount, WebSocketRoute
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.endpoints import HTTPEndpoint
@@ -53,9 +54,21 @@ class Homepage(HTTPEndpoint):
         return PlainTextResponse("Hello, world!")
 
 
-@app.route("/user/{username}")
-def user_page(request, username):
+users = Router()
+
+
+@users.route("/")
+def all_users_page(request):
+    return PlainTextResponse("Hello, everyone!")
+
+
+@users.route("/{username}")
+def user_page(request):
+    username = request.path_params["username"]
     return PlainTextResponse("Hello, %s!" % username)
+
+
+app.mount("/users", users)
 
 
 @app.route("/500")
@@ -71,6 +84,10 @@ async def websocket_endpoint(session):
 
 
 client = TestClient(app)
+
+
+def test_url_for():
+    assert app.url_for("func_homepage") == "/func"
 
 
 def test_func_route():
@@ -91,8 +108,14 @@ def test_class_route():
     assert response.text == "Hello, world!"
 
 
-def test_route_kwargs():
-    response = client.get("/user/tomchristie")
+def test_mounted_route():
+    response = client.get("/users/")
+    assert response.status_code == 200
+    assert response.text == "Hello, everyone!"
+
+
+def test_mounted_route_path_params():
+    response = client.get("/users/tomchristie")
     assert response.status_code == 200
     assert response.text == "Hello, tomchristie!"
 
@@ -133,13 +156,32 @@ def test_middleware():
     assert response.text == "Invalid host header"
 
 
+def test_routes():
+    assert app.routes == [
+        Route("/func", endpoint=func_homepage, methods=["GET"]),
+        Route("/async", endpoint=async_homepage, methods=["GET"]),
+        Route("/class", endpoint=Homepage),
+        Mount(
+            "/users",
+            app=Router(
+                routes=[
+                    Route("/", endpoint=all_users_page),
+                    Route("/{username}", endpoint=user_page),
+                ]
+            ),
+        ),
+        Route("/500", endpoint=runtime_error, methods=["GET"]),
+        WebSocketRoute("/ws", endpoint=websocket_endpoint),
+    ]
+
+
 def test_app_mount(tmpdir):
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
 
     app = Starlette()
-    app.mount("/static", StaticFiles(directory=tmpdir), methods=["GET", "HEAD"])
+    app.mount("/static", StaticFiles(directory=tmpdir))
 
     client = TestClient(app)
 

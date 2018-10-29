@@ -16,22 +16,19 @@ class HTTPEndpoint:
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         request = Request(self.scope, receive=receive)
-        kwargs = self.scope.get("kwargs", {})
-        response = await self.dispatch(request, **kwargs)
+        response = await self.dispatch(request)
         await response(receive, send)
 
-    async def dispatch(self, request: Request, **kwargs: typing.Any) -> Response:
+    async def dispatch(self, request: Request) -> Response:
         handler_name = "get" if request.method == "HEAD" else request.method.lower()
         handler = getattr(self, handler_name, self.method_not_allowed)
         if asyncio.iscoroutinefunction(handler):
-            response = await handler(request, **kwargs)
+            response = await handler(request)
         else:
-            response = handler(request, **kwargs)
+            response = handler(request)
         return response
 
-    async def method_not_allowed(
-        self, request: Request, **kwargs: typing.Any
-    ) -> Response:
+    async def method_not_allowed(self, request: Request) -> Response:
         # If we're running inside a starlette application then raise an
         # exception, so that the configurable exception handler can deal with
         # returning the response. For plain ASGI apps, just return the response.
@@ -50,8 +47,7 @@ class WebSocketEndpoint:
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         websocket = WebSocket(self.scope, receive=receive, send=send)
-        kwargs = self.scope.get("kwargs", {})
-        await self.on_connect(websocket, **kwargs)
+        await self.on_connect(websocket)
 
         close_code = status.WS_1000_NORMAL_CLOSURE
 
@@ -97,7 +93,7 @@ class WebSocketEndpoint:
         ), f"Unsupported 'encoding' attribute {self.encoding}"
         return message["text"] if "text" in message else message["bytes"]
 
-    async def on_connect(self, websocket: WebSocket, **kwargs: typing.Any) -> None:
+    async def on_connect(self, websocket: WebSocket) -> None:
         """Override to handle an incoming websocket connection"""
         await websocket.accept()
 

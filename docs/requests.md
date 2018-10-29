@@ -53,7 +53,13 @@ For example: `request.headers['content-type']`
 
 Headers are exposed as an immutable multi-dict.
 
-For example: `request.query_params['abc']`
+For example: `request.query_params['search']`
+
+#### Path Parameters
+
+Router path parameters are exposed as a dictionary interface.
+
+For example: `request.path_params['username']`
 
 #### Cookies
 

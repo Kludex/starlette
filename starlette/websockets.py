@@ -56,6 +56,10 @@ class WebSocket(Mapping):
             self._query_params = QueryParams(scope=self._scope)
         return self._query_params
 
+    @property
+    def path_params(self) -> dict:
+        return self._scope.get("path_params", {})
+
     async def receive(self) -> Message:
         """
         Receive ASGI websocket messages, ensuring valid state transitions.

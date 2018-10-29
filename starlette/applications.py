@@ -2,7 +2,7 @@ import typing
 
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
-from starlette.routing import Router
+from starlette.routing import BaseRoute, Router
 from starlette.types import ASGIApp, ASGIInstance, Scope
 
 
@@ -12,6 +12,10 @@ class Starlette:
         self.lifespan_handler = LifespanHandler()
         self.app = self.router
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
+
+    @property
+    def routes(self) -> typing.List[BaseRoute]:
+        return self.router.routes
 
     @property
     def debug(self) -> bool:
@@ -24,10 +28,8 @@ class Starlette:
     def on_event(self, event_type: str) -> typing.Callable:
         return self.lifespan_handler.on_event(event_type)
 
-    def mount(
-        self, path: str, app: ASGIApp, methods: typing.Sequence[str] = None
-    ) -> None:
-        self.router.mount(path, app=app, methods=methods)
+    def mount(self, path: str, app: ASGIApp) -> None:
+        self.router.mount(path, app=app)
 
     def add_middleware(self, middleware_class: type, **kwargs: typing.Any) -> None:
         self.exception_middleware.app = middleware_class(self.app, **kwargs)
@@ -39,7 +41,7 @@ class Starlette:
         self.lifespan_handler.add_event_handler(event_type, func)
 
     def add_route(
-        self, path: str, route: typing.Callable, methods: typing.Sequence[str] = None
+        self, path: str, route: typing.Callable, methods: typing.List[str] = None
     ) -> None:
         self.router.add_route(path, route, methods=methods)
 
@@ -56,7 +58,7 @@ class Starlette:
 
         return decorator
 
-    def route(self, path: str, methods: typing.Sequence[str] = None) -> typing.Callable:
+    def route(self, path: str, methods: typing.List[str] = None) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
             self.router.add_route(path, func, methods=methods)
             return func
@@ -69,6 +71,9 @@ class Starlette:
             return func
 
         return decorator
+
+    def url_for(self, name: str, **path_params: str) -> str:
+        return self.router.url_for(name, **path_params)
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         scope["app"] = self

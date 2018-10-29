@@ -45,7 +45,13 @@ For example: `websocket.headers['sec-websocket-version']`
 
 Headers are exposed as an immutable multi-dict.
 
-For example: `websocket.query_params['abc']`
+For example: `websocket.query_params['search']`
+
+#### Path Parameters
+
+Router path parameters are exposed as a dictionary interface.
+
+For example: `request.path_params['username']`
 
 ### Accepting the connection
 

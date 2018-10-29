@@ -1,46 +1,39 @@
 from starlette.exceptions import ExceptionMiddleware, HTTPException
 from starlette.responses import PlainTextResponse
-from starlette.routing import Router, Path
+from starlette.routing import Router, Route, WebSocketRoute
 from starlette.testclient import TestClient
 import pytest
 
 
-def raise_runtime_error(scope):
-    async def asgi(receive, send):
-        raise RuntimeError("Yikes")
-
-    return asgi
+def raise_runtime_error(request):
+    raise RuntimeError("Yikes")
 
 
-def not_acceptable(scope):
-    async def asgi(receive, send):
-        raise HTTPException(status_code=406)
-
-    return asgi
+def not_acceptable(request):
+    raise HTTPException(status_code=406)
 
 
-def not_modified(scope):
-    async def asgi(receive, send):
-        raise HTTPException(status_code=304)
-
-    return asgi
+def not_modified(request):
+    raise HTTPException(status_code=304)
 
 
-def handled_exc_after_response(scope):
-    async def asgi(receive, send):
+class HandledExcAfterResponse:
+    def __init__(self, scope):
+        pass
+
+    async def __call__(self, receive, send):
         response = PlainTextResponse("OK", status_code=200)
         await response(receive, send)
         raise HTTPException(status_code=406)
 
-    return asgi
-
 
 router = Router(
     routes=[
-        Path("/runtime_error", app=raise_runtime_error),
-        Path("/not_acceptable", app=not_acceptable),
-        Path("/not_modified", app=not_modified),
-        Path("/handled_exc_after_response", app=handled_exc_after_response),
+        Route("/runtime_error", endpoint=raise_runtime_error),
+        Route("/not_acceptable", endpoint=not_acceptable),
+        Route("/not_modified", endpoint=not_modified),
+        Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse),
+        WebSocketRoute("/runtime_error", endpoint=raise_runtime_error),
     ]
 )
 

@@ -78,6 +78,10 @@ class Request(Mapping):
         return self._cookies
 
     @property
+    def session(self) -> dict:
+        return self._scope["session"]
+
+    @property
     def receive(self) -> Receive:
         return self._receive
 

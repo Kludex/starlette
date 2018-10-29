@@ -1,6 +1,7 @@
 # Optionals
 aiofiles
 graphene
+itsdangerous
 python-multipart
 requests
 ujson

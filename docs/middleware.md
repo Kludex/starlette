@@ -131,3 +131,48 @@ You can do this with a Starlette application instance too, but it is preferable
 to use `.add_middleware`, as it'll ensure that you don't lose the reference
 to the application object, and that the exception handling always wraps around
 any other behaviour.
+
+## BaseHTTPMiddleware
+
+An abstract class that allows you to write ASGI middleware against a request/response
+interface, rather than dealing with ASGI messages directly.
+
+To implement a middleware class using `BaseHTTPMiddleware`, you must override the
+`async def dispatch(request, call_next)` method.
+
+```python
+class CustomHeaderMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers['Custom'] = 'Example'
+        return response
+
+
+app = Starlette()
+app.add_middleware(CustomHeaderMiddleware)
+```
+
+If you want to provide configuration options to the middleware class you should
+override the `__init__` method, ensuring that the first argument is `app`, and
+any remaining arguments are optional keyword arguments. Make sure to set the `app`
+attribute on the class if you do this.
+
+```python
+class CustomHeaderMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, header_value='Example'):
+        self.app = app
+        self.header_value
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers['Custom'] = self.header_value
+        return response
+
+
+app = Starlette()
+app.add_middleware(CustomHeaderMiddleware, header_value='Customized')
+```
+
+Middleware classes should not modify their state outside of the `__init__` method.
+Instead you should keep any state local to the `dispatch` method, or pass it
+around explicitly, rather than mutating the middleware instance.

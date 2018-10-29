@@ -1,5 +1,7 @@
 ## 0.6.1
 
+### BaseHTTPMiddleware
+
 Added support for `BaseHTTPMiddleware`, which provides a standard
 request/response interface over a regular ASGI middleware.
 
@@ -7,6 +9,7 @@ This means you can write ASGI middleware while still working at
 a request/response level, rather than handling ASGI messages directly.
 
 ```python
+from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -15,6 +18,10 @@ class CustomMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers['Custom-Header'] = 'Example'
         return response
+
+
+app = Starlette()
+app.add_middleware(CustomMiddleware)
 ```
 
 ## 0.6.0

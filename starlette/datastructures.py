@@ -1,6 +1,7 @@
 import typing
+from urllib.parse import ParseResult, parse_qsl, unquote, urlencode, urlparse
+
 from starlette.types import Scope
-from urllib.parse import parse_qsl, unquote, urlencode, urlparse, ParseResult
 
 
 class URL:

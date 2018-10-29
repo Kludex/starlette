@@ -3,8 +3,8 @@ import stat
 
 from aiofiles.os import stat as aio_stat
 
-from starlette.responses import PlainTextResponse, FileResponse, Response
-from starlette.types import Send, Receive, Scope, ASGIInstance
+from starlette.responses import FileResponse, PlainTextResponse, Response
+from starlette.types import ASGIInstance, Receive, Scope, Send
 
 
 class StaticFiles:

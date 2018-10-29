@@ -1,8 +1,9 @@
 import pytest
-from starlette.responses import PlainTextResponse
-from starlette.routing import Router, Route
-from starlette.testclient import TestClient
+
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route, Router
+from starlette.testclient import TestClient
 
 
 class Homepage(HTTPEndpoint):

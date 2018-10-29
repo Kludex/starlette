@@ -1,7 +1,8 @@
 import pytest
+
+from starlette import status
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
-from starlette import status
 
 
 def test_websocket_url():

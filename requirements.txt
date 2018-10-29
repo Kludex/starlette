@@ -8,6 +8,7 @@ ujson
 # Testing
 black
 codecov
+isort
 mypy
 pytest
 pytest-cov

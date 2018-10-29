@@ -1,9 +1,10 @@
 import asyncio
 import functools
 import typing
+
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
-from starlette.types import ASGIApp, ASGIInstance, Scope, Receive, Send
+from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
 
 
 class BaseHTTPMiddleware:

@@ -1,4 +1,4 @@
-from starlette.datastructures import Headers, MutableHeaders, QueryParams, URL
+from starlette.datastructures import URL, Headers, MutableHeaders, QueryParams
 
 
 def test_url():

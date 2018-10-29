@@ -1,8 +1,9 @@
 import os
+
 import pytest
 
-from starlette.testclient import TestClient
 from starlette.staticfiles import StaticFiles
+from starlette.testclient import TestClient
 
 
 def test_staticfiles(tmpdir):

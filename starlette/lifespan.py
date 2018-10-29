@@ -3,8 +3,8 @@ import logging
 import traceback
 import typing
 from types import TracebackType
-from starlette.types import ASGIApp, ASGIInstance, Receive, Message, Send
 
+from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Send
 
 STATE_TRANSITION_ERROR = "Got invalid state transition on lifespan protocol."
 

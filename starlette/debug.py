@@ -4,7 +4,7 @@ import typing
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
-from starlette.types import Scope, Receive, Send, Message, ASGIApp, ASGIInstance
+from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 
 
 def get_debug_response(request: Request, exc: Exception) -> Response:

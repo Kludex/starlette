@@ -1,8 +1,9 @@
+import graphene
 from graphql.execution.executors.asyncio import AsyncioExecutor
+
 from starlette.applications import Starlette
 from starlette.graphql import GraphQLApp
 from starlette.testclient import TestClient
-import graphene
 
 
 class Query(graphene.ObjectType):

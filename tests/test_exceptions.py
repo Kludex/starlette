@@ -1,8 +1,9 @@
+import pytest
+
 from starlette.exceptions import ExceptionMiddleware, HTTPException
 from starlette.responses import PlainTextResponse
-from starlette.routing import Router, Route, WebSocketRoute
+from starlette.routing import Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
-import pytest
 
 
 def raise_runtime_error(request):

@@ -2,15 +2,15 @@ import asyncio
 import http
 import io
 import json
+import queue
 import threading
 import typing
+from urllib.parse import unquote, urljoin, urlparse
+
 import requests
-import queue
-from urllib.parse import unquote, urlparse, urljoin
 
+from starlette.types import ASGIApp, Message, Scope
 from starlette.websockets import WebSocketDisconnect
-from starlette.types import Message, Scope, ASGIApp
-
 
 # Annotations for `Session.request()`
 Cookies = typing.Union[

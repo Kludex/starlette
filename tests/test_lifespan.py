@@ -1,5 +1,5 @@
 from starlette.applications import Starlette
-from starlette.lifespan import LifespanHandler, LifespanContext
+from starlette.lifespan import LifespanContext, LifespanHandler
 
 
 def test_lifespan_handler():

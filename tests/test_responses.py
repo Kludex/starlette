@@ -1,3 +1,10 @@
+import asyncio
+import os
+
+import pytest
+
+from starlette import status
+from starlette.requests import Request
 from starlette.responses import (
     FileResponse,
     RedirectResponse,
@@ -5,12 +12,7 @@ from starlette.responses import (
     StreamingResponse,
     UJSONResponse,
 )
-from starlette.requests import Request
 from starlette.testclient import TestClient
-from starlette import status
-import asyncio
-import pytest
-import os
 
 
 def test_text_response():

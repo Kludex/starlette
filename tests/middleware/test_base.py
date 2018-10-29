@@ -1,8 +1,9 @@
+import pytest
+
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
-import pytest
 
 
 class CustomMiddleware(BaseHTTPMiddleware):

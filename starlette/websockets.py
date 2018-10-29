@@ -60,6 +60,11 @@ class WebSocket(Mapping):
     def path_params(self) -> dict:
         return self._scope.get("path_params", {})
 
+    def url_for(self, name: str, **path_params: typing.Any) -> URL:
+        router = self._scope["router"]
+        url = router.url_path_for(name, **path_params)
+        return url.replace(secure=self.url.is_secure, netloc=self.url.netloc)
+
     async def receive(self) -> Message:
         """
         Receive ASGI websocket messages, ensuring valid state transitions.

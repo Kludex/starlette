@@ -19,9 +19,17 @@ The path parameters are available on the request as `request.path_params`.
 This is different to most Python webframeworks, but I think it actually ends up
 being much more nicely consistent all the way through.
 
-### app.url_for(name, **path_params)
+### request.url_for(name, **path_params)
 
-Applications now support URL reversing with `app.url_for(name, **path_params)`.
+Request and WebSocketSession now support URL reversing with `request.url_for(name, **path_params)`.
+This method returns a fully qualified `URL` instance.
+The URL instance is a string-like object.
+
+### app.url_path_for(name, **path_params)
+
+Applications now support URL path reversing with `app.url_path_for(name, **path_params)`.
+This method returns a `URL` instance with the path and scheme set.
+The URL instance is a string-like object, and will return only the path if coerced to a string.
 
 ### app.routes
 

@@ -86,8 +86,8 @@ async def websocket_endpoint(session):
 client = TestClient(app)
 
 
-def test_url_for():
-    assert app.url_for("func_homepage") == "/func"
+def test_url_path_for():
+    assert app.url_path_for("func_homepage") == "/func"
 
 
 def test_func_route():

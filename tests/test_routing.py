@@ -85,12 +85,12 @@ def test_router():
     assert response.text == "xxxxx"
 
 
-def test_url_for():
-    assert app.url_for("homepage") == "/"
-    assert app.url_for("user", username="tomchristie") == "/users/tomchristie"
-    assert app.url_for("websocket_endpoint") == "/ws"
+def test_url_path_for():
+    assert app.url_path_for("homepage") == "/"
+    assert app.url_path_for("user", username="tomchristie") == "/users/tomchristie"
+    assert app.url_path_for("websocket_endpoint") == "/ws"
     with pytest.raises(NoMatchFound):
-        assert app.url_for("broken")
+        assert app.url_path_for("broken")
 
 
 def test_router_add_route():
@@ -110,7 +110,8 @@ def test_router_add_websocket_route():
 
 
 def http_endpoint(request):
-    return Response("Hello, world", media_type="text/plain")
+    url = request.url_for("http_endpoint")
+    return Response("URL: %s" % url, media_type="text/plain")
 
 
 class WebsocketEndpoint:
@@ -120,7 +121,7 @@ class WebsocketEndpoint:
     async def __call__(self, receive, send):
         session = WebSocket(scope=self.scope, receive=receive, send=send)
         await session.accept()
-        await session.send_json({"hello": "world"})
+        await session.send_json({"URL": str(session.url_for("WebsocketEndpoint"))})
         await session.close()
 
 
@@ -137,10 +138,10 @@ def test_protocol_switch():
 
     response = client.get("/")
     assert response.status_code == 200
-    assert response.text == "Hello, world"
+    assert response.text == "URL: http://testserver/"
 
     with client.websocket_connect("/") as session:
-        assert session.receive_json() == {"hello": "world"}
+        assert session.receive_json() == {"URL": "ws://testserver/"}
 
     with pytest.raises(WebSocketDisconnect):
         client.websocket_connect("/404")

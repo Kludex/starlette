@@ -4,9 +4,12 @@ from urllib.parse import parse_qsl, unquote, urlencode, urlparse, ParseResult
 
 
 class URL:
-    def __init__(self, url: str = "", scope: Scope = None) -> None:
+    def __init__(
+        self, url: str = "", scope: Scope = None, **components: typing.Any
+    ) -> None:
         if scope is not None:
             assert not url, 'Cannot set both "url" and "scope".'
+            assert not components, 'Cannot set both "scope" and "**components".'
             scheme = scope.get("scheme", "http")
             server = scope.get("server", None)
             path = scope.get("root_path", "") + scope["path"]
@@ -24,6 +27,10 @@ class URL:
 
             if query_string:
                 url += "?" + query_string.decode()
+        elif components:
+            assert not url, 'Cannot set both "scope" and "**components".'
+            url = URL("").replace(**components).components.geturl()
+
         self._url = url
 
     @property
@@ -72,6 +79,10 @@ class URL:
     def port(self) -> typing.Optional[int]:
         return self.components.port
 
+    @property
+    def is_secure(self) -> bool:
+        return self.scheme in ("https", "wss")
+
     def replace(self, **kwargs: typing.Any) -> "URL":
         if "hostname" in kwargs or "port" in kwargs:
             hostname = kwargs.pop("hostname", self.hostname)
@@ -80,6 +91,12 @@ class URL:
                 kwargs["netloc"] = hostname
             else:
                 kwargs["netloc"] = "%s:%d" % (hostname, port)
+        if "secure" in kwargs:
+            secure = kwargs.pop("secure")
+            if self.scheme in ("http", "https"):
+                kwargs["scheme"] = "https" if secure else "http"
+            elif self.scheme in ("ws", "wss"):
+                kwargs["scheme"] = "wss" if secure else "ws"
         components = self.components._replace(**kwargs)
         return URL(components.geturl())
 
@@ -87,6 +104,8 @@ class URL:
         return str(self) == str(other)
 
     def __str__(self) -> str:
+        if self.scheme and not self.netloc:
+            return str(self.replace(scheme=""))
         return self._url
 
     def __repr__(self) -> str:

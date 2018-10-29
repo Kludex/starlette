@@ -30,15 +30,26 @@ class SessionMiddleware:
         return self.app(scope)  # pragma: no cover
 
     async def asgi(self, receive: Receive, send: Send, scope: Scope) -> None:
+        was_empty_session = not scope["session"]
         inner = self.app(scope)
 
         async def sender(message: Message) -> None:
-            if message["type"] == "http.response.start" and scope["session"]:
-                data = b64encode(json.dumps(scope["session"]).encode("utf-8"))
-                data = self.signer.sign(data)
-                headers = MutableHeaders(scope=message)
-                header_value = "%s=%s" % (self.session_cookie, data.decode("utf-8"))
-                headers.append("Set-Cookie", header_value)
+            if message["type"] == "http.response.start":
+                if scope["session"]:
+                    # We have session data to persist.
+                    data = b64encode(json.dumps(scope["session"]).encode("utf-8"))
+                    data = self.signer.sign(data)
+                    headers = MutableHeaders(scope=message)
+                    header_value = "%s=%s" % (self.session_cookie, data.decode("utf-8"))
+                    headers.append("Set-Cookie", header_value)
+                elif not was_empty_session:
+                    # The session has been cleared.
+                    headers = MutableHeaders(scope=message)
+                    header_value = "%s=%s" % (
+                        self.session_cookie,
+                        "null; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT",
+                    )
+                    headers.append("Set-Cookie", header_value)
             await send(message)
 
         await inner(receive, sender)

@@ -1,3 +1,9 @@
+## 0.6.2
+
+### SessionMiddleware
+
+Added support for `request.session`, with `SessionMiddleware`.
+
 ## 0.6.1
 
 ### BaseHTTPMiddleware

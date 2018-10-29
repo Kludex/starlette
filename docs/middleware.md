@@ -61,6 +61,17 @@ appropriate CORS headers, and either a 200 or 400 response for informational pur
 Any request with an `Origin` header. In this case the middleware will pass the
 request through as normal, but will include appropriate CORS headers on the response.
 
+## SessionMiddleware
+
+Adds signed cookie-based HTTP sessions. Session information is readable but not modifiable.
+
+Access or modify the session data using the `request.session` dictionary interface.
+
+The following arguments are supported:
+
+* `secret_key` - Should be a random string.
+* `session_cookie` - Defaults to "session".
+
 ## HTTPSRedirectMiddleware
 
 Enforces that all incoming requests must either be `https` or `wss`. Any incoming

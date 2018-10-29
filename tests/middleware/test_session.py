@@ -19,10 +19,15 @@ async def update_session(request):
     return JSONResponse({"session": request.session})
 
 
-client = TestClient(app)
+@app.route("/clear_session", methods=["POST"])
+async def clear_session(request):
+    request.session.clear()
+    return JSONResponse({"session": request.session})
 
 
 def test_session():
+    client = TestClient(app)
+
     response = client.get("/view_session")
     assert response.json() == {"session": {}}
 
@@ -31,3 +36,9 @@ def test_session():
 
     response = client.get("/view_session")
     assert response.json() == {"session": {"some": "data"}}
+
+    response = client.post("/clear_session")
+    assert response.json() == {"session": {}}
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {}}

@@ -13,9 +13,9 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 app = Starlette()
 
-# Ensure that all requests include an 'example.com' host header,
+# Ensure that all requests include an 'example.com' or '*.example.com' host header,
 # and strictly enforce https-only access.
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=['example.com'])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=['example.com', '*.example.com'])
 app.add_middleware(HTTPSRedirectMiddleware)
 ```
 
@@ -88,12 +88,14 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 
 app = Starlette()
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=['example.com'])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=['example.com', '*.example.com'])
 ```
 
 The following arguments are supported:
 
-* `allowed_hosts` - A list of domain names that should be allowed as hostnames.
+* `allowed_hosts` - A list of domain names that should be allowed as hostnames. Wildcard
+domains such as `*.example.com` are supported for matching subdomains. To allow any
+hostname either use `allowed_hosts=["*"]` or omit the middleware.
 
 If an incoming request does not validate correctly then a 400 response will be sent.
 

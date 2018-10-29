@@ -47,7 +47,9 @@ setup(
         'full': [
             'aiofiles',
             'python-multipart',
+            'itsdangerous',
             'requests',
+            'graphene',
             'ujson'
         ]
     },

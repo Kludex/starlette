@@ -34,6 +34,7 @@ It is production-ready, and gives you the following:
 * Startup and shutdown events.
 * Test client built on `requests`.
 * CORS, GZip, Static Files, Streaming responses.
+* Session and Cookie support.
 * 100% test coverage.
 * 100% type annotated codebase.
 * Zero hard dependencies.

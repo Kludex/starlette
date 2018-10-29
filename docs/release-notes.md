@@ -1,8 +1,27 @@
+## 0.6.1
+
+Added support for `BaseHTTPMiddleware`, which provides a standard
+request/response interface over a regular ASGI middleware.
+
+This means you can write ASGI middleware while still working at
+a request/response level, rather than handling ASGI messages directly.
+
+```python
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class CustomMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers['Custom-Header'] = 'Example'
+        return response
+```
+
 ## 0.6.0
 
 ### request.path_params
 
-The biggest change here is that endpoint signatures are no longer:
+The biggest change in 0.6 is that endpoint signatures are no longer:
 
 ```python
 async def func(request: Request, **kwargs) -> Response
@@ -19,13 +38,13 @@ The path parameters are available on the request as `request.path_params`.
 This is different to most Python webframeworks, but I think it actually ends up
 being much more nicely consistent all the way through.
 
-### request.url_for(name, **path_params)
+### request.url_for()
 
 Request and WebSocketSession now support URL reversing with `request.url_for(name, **path_params)`.
 This method returns a fully qualified `URL` instance.
 The URL instance is a string-like object.
 
-### app.url_path_for(name, **path_params)
+### app.url_path_for()
 
 Applications now support URL path reversing with `app.url_path_for(name, **path_params)`.
 This method returns a `URL` instance with the path and scheme set.

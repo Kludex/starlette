@@ -1,5 +1,5 @@
 
-Starlette also includes an `StaticFiles` class for serving a specific directory:
+Starlette also includes a `StaticFiles` class for serving a specific directory:
 
 * `StaticFiles(directory)` - Serve any files in the given `directory`.
 
@@ -7,12 +7,12 @@ You can combine this ASGI application with Starlette's routing to provide
 comprehensive static file serving.
 
 ```python
-from starlette.routing import Router, Path, PathPrefix
+from starlette.routing import Router, Mount
 from starlette.staticfiles import StaticFiles
 
 
 app = Router(routes=[
-    PathPrefix('/static', app=StaticFiles(directory='static')),
+    Mount('/static', app=StaticFiles(directory='static')),
 ])
 ```
 

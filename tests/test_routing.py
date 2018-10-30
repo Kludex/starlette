@@ -43,6 +43,11 @@ def func_homepage(request):
     return Response("Hello, world!", media_type="text/plain")
 
 
+@app.route("/func", methods=["POST"])
+def contact(request):
+    return Response("Hello, POST!", media_type="text/plain")
+
+
 @app.websocket_route("/ws")
 async def websocket_endpoint(session):
     await session.accept()
@@ -98,6 +103,12 @@ def test_router_add_route():
     response = client.get("/func")
     assert response.status_code == 200
     assert response.text == "Hello, world!"
+
+
+def test_router_duplicate_path():
+    response = client.post("/func")
+    assert response.status_code == 200
+    assert response.text == "Hello, POST!"
 
 
 def test_router_add_websocket_route():

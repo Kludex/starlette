@@ -26,7 +26,8 @@ class HTTPEndpoint:
         if asyncio.iscoroutinefunction(handler):
             response = await handler(request)
         else:
-            response = handler(request)
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(None, handler, request)
         return response
 
     async def method_not_allowed(self, request: Request) -> Response:

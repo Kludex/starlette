@@ -2,7 +2,6 @@ import asyncio
 import io
 import sys
 import typing
-from concurrent.futures import ThreadPoolExecutor
 
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 
@@ -55,19 +54,15 @@ def build_environ(scope: Scope, body: bytes) -> dict:
 class WSGIMiddleware:
     def __init__(self, app: typing.Callable, workers: int = 10) -> None:
         self.app = app
-        self.executor = ThreadPoolExecutor(max_workers=workers)
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         assert scope["type"] == "http"
-        return WSGIResponder(self.app, self.executor, scope)
+        return WSGIResponder(self.app, scope)
 
 
 class WSGIResponder:
-    def __init__(
-        self, app: typing.Callable, executor: ThreadPoolExecutor, scope: Scope
-    ) -> None:
+    def __init__(self, app: typing.Callable, scope: Scope) -> None:
         self.app = app
-        self.executor = executor
         self.scope = scope
         self.status = None
         self.response_headers = None
@@ -85,9 +80,7 @@ class WSGIResponder:
             body += message.get("body", b"")
             more_body = message.get("more_body", False)
         environ = build_environ(self.scope, body)
-        wsgi = self.loop.run_in_executor(
-            self.executor, self.wsgi, environ, self.start_response
-        )
+        wsgi = self.loop.run_in_executor(None, self.wsgi, environ, self.start_response)
         sender = self.loop.create_task(self.sender(send))
         await asyncio.wait_for(wsgi, None)
         self.send_queue.append(None)

@@ -1,3 +1,11 @@
+## 0.6.3
+
+* Support routing to methods.
+* Ensure url_path_for works with Mount('/{some_path_params}').
+* Fix Router(default=) argument.
+* Support repeated paths, like: @app.route("/", methods=["GET"]), @app.route("/", methods=["POST"])
+* Use the default ThreadPoolExecutor for all sync endpoints.
+
 ## 0.6.2
 
 ### SessionMiddleware

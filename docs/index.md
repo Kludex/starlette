@@ -75,12 +75,12 @@ if __name__ == '__main__':
 
 Starlette does not have any hard dependencies, but the following are optional:
 
-* `[requests][requests]` - Required if you want to use the `TestClient`.
-* `[aiofiles][aiofiles]` - Required if you want to use `FileResponse` or `StaticFiles`.
-* `[python-multipart][python-multipart]` - Required if you want to support form parsing, with `request.form()`.
-* `[graphene][graphene]` - Required for GraphQL support.
-* `[itsdangerous][itsdangerous]` - Required for SessionMiddleware support.
-* `[ujson][ujson]` - Required if you want to use `UJSONResponse`.
+* [`requests`][requests] - Required if you want to use the `TestClient`.
+* [`aiofiles`][aiofiles] - Required if you want to use `FileResponse` or `StaticFiles`.
+* [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
+* [`graphene`][graphene] - Required for GraphQL support.
+* [`itsdangerous`][itsdangerous] - Required for SessionMiddleware support.
+* [`ujson`][ujson] - Required if you want to use `UJSONResponse`.
 
 You can install all of these with `pip3 install starlette[full]`.
 

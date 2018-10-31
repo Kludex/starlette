@@ -76,12 +76,12 @@ if __name__ == '__main__':
 
 Starlette does not have any hard dependencies, but the following are optional:
 
-* `requests` - Required if you want to use the `TestClient`.
-* `aiofiles` - Required if you want to use `FileResponse` or `StaticFiles`.
-* `python-multipart` - Required if you want to support form parsing, with `request.form()`.
-* `graphene` - Required for GraphQL support.
-* `itsdangerous` - Required for SessionMiddleware support.
-* `ujson` - Required if you want to use `UJSONResponse`.
+* `[requests][requests]` - Required if you want to use the `TestClient`.
+* `[aiofiles][aiofiles]` - Required if you want to use `FileResponse` or `StaticFiles`.
+* `[python-multipart][python-multipart]` - Required if you want to support form parsing, with `request.form()`.
+* `[graphene][graphene]` - Required for GraphQL support.
+* `[itsdangerous][itsdangerous]` - Required for SessionMiddleware support.
+* `[ujson][ujson]` - Required if you want to use `UJSONResponse`.
 
 You can install all of these with `pip3 install starlette[full]`.
 
@@ -140,3 +140,10 @@ Eg. `uvicorn.run(..., http='h11', loop='asyncio')`
 
 <p align="center">&mdash; ⭐️ &mdash;</p>
 <p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>
+
+[requests]: http://docs.python-requests.org/en/master/
+[aiofiles]: https://github.com/Tinche/aiofiles
+[python-multipart]: https://andrew-d.github.io/python-multipart/
+[graphene]: https://graphene-python.org/
+[itsdangerous]: https://pythonhosted.org/itsdangerous/
+[ujson]: https://github.com/esnme/ultrajson

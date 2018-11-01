@@ -1,9 +1,23 @@
+## 0.7.0
+
+### API Schema support
+
+* Add `app.schema_generator = SchemaGenerator(...)`.
+* Add `app.schema` property.
+* Add `OpenAPIResponse(...)`.
+
+### GraphQL routing
+
+* Drop `app.add_graphql_route("/", ...)` in favor of more consistent `app.add_route("/", GraphQLApp(...))`.
+
 ## 0.6.3
 
+### Routing API
+
 * Support routing to methods.
-* Ensure url_path_for works with Mount('/{some_path_params}').
+* Ensure `url_path_for` works with Mount('/{some_path_params}').
 * Fix Router(default=) argument.
-* Support repeated paths, like: @app.route("/", methods=["GET"]), @app.route("/", methods=["POST"])
+* Support repeated paths, like: `@app.route("/", methods=["GET"])`, `@app.route("/", methods=["POST"])`
 * Use the default ThreadPoolExecutor for all sync endpoints.
 
 ## 0.6.2

@@ -1,12 +1,24 @@
 import inspect
 import typing
 
+from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 try:
     import yaml
 except ImportError:  # pragma: nocover
     yaml = None  # type: ignore
+
+
+class OpenAPIResponse(Response):
+    media_type = "application/vnd.oai.openapi"
+
+    def render(self, content: typing.Any) -> bytes:
+        assert yaml is not None, "`pyyaml` must be installed to use OpenAPIResponse."
+        assert isinstance(
+            content, dict
+        ), "The schema passed to OpenAPIResponse should be a dictionary."
+        return yaml.dump(content, default_flow_style=False).encode("utf-8")
 
 
 class BaseSchemaGenerator:
@@ -23,7 +35,7 @@ class SchemaGenerator(BaseSchemaGenerator):
         paths = {}  # type: dict
 
         for route in routes:
-            if not isinstance(route, Route):
+            if not isinstance(route, Route) or not route.include_in_schema:
                 continue
 
             if inspect.isfunction(route.endpoint) or inspect.ismethod(route.endpoint):

@@ -49,7 +49,11 @@ class Starlette:
         self.lifespan_handler.add_event_handler(event_type, func)
 
     def add_route(
-        self, path: str, route: typing.Callable, methods: typing.List[str] = None
+        self,
+        path: str,
+        route: typing.Callable,
+        methods: typing.List[str] = None,
+        include_in_schema: bool = True,
     ) -> None:
         self.router.add_route(path, route, methods=methods)
 
@@ -66,9 +70,16 @@ class Starlette:
 
         return decorator
 
-    def route(self, path: str, methods: typing.List[str] = None) -> typing.Callable:
+    def route(
+        self,
+        path: str,
+        methods: typing.List[str] = None,
+        include_in_schema: bool = True,
+    ) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
-            self.router.add_route(path, func, methods=methods)
+            self.router.add_route(
+                path, func, methods=methods, include_in_schema=include_in_schema
+            )
             return func
 
         return decorator

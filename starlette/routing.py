@@ -94,11 +94,17 @@ class BaseRoute:
 
 class Route(BaseRoute):
     def __init__(
-        self, path: str, *, endpoint: typing.Callable, methods: typing.List[str] = None
+        self,
+        path: str,
+        *,
+        endpoint: typing.Callable,
+        methods: typing.List[str] = None,
+        include_in_schema: bool = True
     ) -> None:
         self.path = path
         self.endpoint = endpoint
         self.name = get_name(endpoint)
+        self.include_in_schema = include_in_schema
 
         if inspect.isfunction(endpoint) or inspect.ismethod(endpoint):
             # Endpoint is function or method. Treat it as `func(request) -> response`.
@@ -256,9 +262,18 @@ class Router:
         self.routes.append(route)
 
     def add_route(
-        self, path: str, endpoint: typing.Callable, methods: typing.List[str] = None
+        self,
+        path: str,
+        endpoint: typing.Callable,
+        methods: typing.List[str] = None,
+        include_in_schema: bool = True,
     ) -> None:
-        route = Route(path, endpoint=endpoint, methods=methods)
+        route = Route(
+            path,
+            endpoint=endpoint,
+            methods=methods,
+            include_in_schema=include_in_schema,
+        )
         self.routes.append(route)
 
     def add_graphql_route(
@@ -271,9 +286,16 @@ class Router:
         route = WebSocketRoute(path, endpoint=endpoint)
         self.routes.append(route)
 
-    def route(self, path: str, methods: typing.List[str] = None) -> typing.Callable:
+    def route(
+        self,
+        path: str,
+        methods: typing.List[str] = None,
+        include_in_schema: bool = True,
+    ) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
-            self.add_route(path, func, methods=methods)
+            self.add_route(
+                path, func, methods=methods, include_in_schema=include_in_schema
+            )
             return func
 
         return decorator

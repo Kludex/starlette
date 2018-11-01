@@ -1,6 +1,7 @@
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
-from starlette.schemas import SchemaGenerator
+from starlette.schemas import OpenAPIResponse, SchemaGenerator
+from starlette.testclient import TestClient
 
 app = Starlette()
 app.schema_generator = SchemaGenerator(
@@ -61,6 +62,11 @@ class OrganisationsEndpoint(HTTPEndpoint):
         pass  # pragma: no cover
 
 
+@app.route("/schema", methods=["GET"], include_in_schema=False)
+def schema(request):
+    return OpenAPIResponse(app.schema)
+
+
 def test_schema_generation():
     assert app.schema == {
         "openapi": "3.0.0",
@@ -101,3 +107,47 @@ def test_schema_generation():
             },
         },
     }
+
+
+EXPECTED_SCHEMA = """
+info:
+  title: Example API
+  version: '1.0'
+openapi: 3.0.0
+paths:
+  /orgs:
+    get:
+      responses:
+        200:
+          description: A list of organisations.
+          examples:
+          - name: Foo Corp.
+          - name: Acme Ltd.
+    post:
+      responses:
+        200:
+          description: An organisation.
+          examples:
+            name: Foo Corp.
+  /users:
+    get:
+      responses:
+        200:
+          description: A list of users.
+          examples:
+          - username: tom
+          - username: lucy
+    post:
+      responses:
+        200:
+          description: A user.
+          examples:
+            username: tom
+"""
+
+
+def test_schema_endpoint():
+    client = TestClient(app)
+    response = client.get("/schema")
+    assert response.headers["Content-Type"] == "application/vnd.oai.openapi"
+    assert response.text.strip() == EXPECTED_SCHEMA.strip()

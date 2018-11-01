@@ -46,11 +46,12 @@ setup(
     extras_require = {
         'full': [
             'aiofiles',
-            'python-multipart',
-            'itsdangerous',
-            'requests',
             'graphene',
-            'ujson'
+            'itsdangerous',
+            'python-multipart',
+            'pyyaml',
+            'requests',
+            'ujson',
         ]
     },
     classifiers=[

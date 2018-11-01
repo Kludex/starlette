@@ -57,9 +57,6 @@ class Starlette:
     ) -> None:
         self.router.add_route(path, route, methods=methods)
 
-    def add_graphql_route(self, path: str, schema: typing.Any) -> None:
-        self.router.add_graphql_route(path, schema)
-
     def add_websocket_route(self, path: str, route: typing.Callable) -> None:
         self.router.add_websocket_route(path, route)
 

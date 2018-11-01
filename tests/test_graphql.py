@@ -84,7 +84,7 @@ def test_graphiql_get():
 
 def test_add_graphql_route():
     app = Starlette()
-    app.add_graphql_route("/", schema)
+    app.add_route("/", GraphQLApp(schema=schema))
     client = TestClient(app)
     response = client.get("/?query={ hello }")
     assert response.status_code == 200

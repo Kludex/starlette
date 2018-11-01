@@ -7,7 +7,6 @@ from enum import Enum
 
 from starlette.datastructures import URL, URLPath
 from starlette.exceptions import HTTPException
-from starlette.graphql import GraphQLApp
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
@@ -275,12 +274,6 @@ class Router:
             include_in_schema=include_in_schema,
         )
         self.routes.append(route)
-
-    def add_graphql_route(
-        self, path: str, schema: typing.Any, executor: typing.Any = None
-    ) -> None:
-        app = GraphQLApp(schema=schema, executor=executor)
-        self.add_route(path, endpoint=app)
 
     def add_websocket_route(self, path: str, endpoint: typing.Callable) -> None:
         route = WebSocketRoute(path, endpoint=endpoint)

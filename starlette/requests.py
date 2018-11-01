@@ -79,6 +79,9 @@ class Request(Mapping):
 
     @property
     def session(self) -> dict:
+        assert (
+            "session" in self._scope
+        ), "SessionMiddleware must be installed to access request.session"
         return self._scope["session"]
 
     @property

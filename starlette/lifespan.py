@@ -12,7 +12,7 @@ STATE_TRANSITION_ERROR = "Got invalid state transition on lifespan protocol."
 class LifespanHandler:
     def __init__(self) -> None:
         self.startup_handlers = []  # type: typing.List[typing.Callable]
-        self.cleanup_handlers = []  # type: typing.List[typing.Callable]
+        self.shutdown_handlers = []  # type: typing.List[typing.Callable]
 
     def on_event(self, event_type: str) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
@@ -22,12 +22,12 @@ class LifespanHandler:
         return decorator
 
     def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
-        assert event_type in ("startup", "shutdown", "cleanup")
+        assert event_type in ("startup", "shutdown")
 
         if event_type == "startup":
             self.startup_handlers.append(func)
         else:
-            self.cleanup_handlers.append(func)
+            self.shutdown_handlers.append(func)
 
     async def run_startup(self) -> None:
         for handler in self.startup_handlers:
@@ -36,8 +36,8 @@ class LifespanHandler:
             else:
                 handler()
 
-    async def run_cleanup(self) -> None:
-        for handler in self.cleanup_handlers:
+    async def run_shutdown(self) -> None:
+        for handler in self.shutdown_handlers:
             if asyncio.iscoroutinefunction(handler):
                 await handler()
             else:
@@ -53,16 +53,9 @@ class LifespanHandler:
         await self.run_startup()
         await send({"type": "lifespan.startup.complete"})
         message = await receive()
-        assert (
-            message["type"] == "lifespan.shutdown"
-            or message["type"] == "lifespan.cleanup"
-        )
-        await self.run_cleanup()
-        if message["type"] == "lifespan.shutdown":
-            await send({"type": "lifespan.shutdown.complete"})
-
-        if message["type"] == "lifespan.cleanup":
-            await send({"type": "lifespan.cleanup.complete"})  # pragma: no cover
+        assert message["type"] == "lifespan.shutdown"
+        await self.run_shutdown()
+        await send({"type": "lifespan.shutdown.complete"})
 
 
 class LifespanContext:

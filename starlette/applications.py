@@ -1,9 +1,10 @@
 import typing
 
-from starlette.datastructures import URL
+from starlette.datastructures import URL, URLPath
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
 from starlette.routing import BaseRoute, Router
+from starlette.schemas import BaseSchemaGenerator
 from starlette.types import ASGIApp, ASGIInstance, Scope
 
 
@@ -13,6 +14,7 @@ class Starlette:
         self.lifespan_handler = LifespanHandler()
         self.app = self.router
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
+        self.schema_generator = None  # type: typing.Optional[BaseSchemaGenerator]
 
     @property
     def routes(self) -> typing.List[BaseRoute]:
@@ -25,6 +27,11 @@ class Starlette:
     @debug.setter
     def debug(self, value: bool) -> None:
         self.exception_middleware.debug = value
+
+    @property
+    def schema(self) -> dict:
+        assert self.schema_generator is not None
+        return self.schema_generator.get_schema(self.routes)
 
     def on_event(self, event_type: str) -> typing.Callable:
         return self.lifespan_handler.on_event(event_type)
@@ -73,7 +80,7 @@ class Starlette:
 
         return decorator
 
-    def url_path_for(self, name: str, **path_params: str) -> URL:
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
         return self.router.url_path_for(name, **path_params)
 
     def __call__(self, scope: Scope) -> ASGIInstance:

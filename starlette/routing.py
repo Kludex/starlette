@@ -5,7 +5,7 @@ import typing
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
-from starlette.datastructures import URL
+from starlette.datastructures import URL, URLPath
 from starlette.exceptions import HTTPException
 from starlette.graphql import GraphQLApp
 from starlette.requests import Request
@@ -85,7 +85,7 @@ class BaseRoute:
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         raise NotImplementedError()  # pragma: no cover
 
-    def url_path_for(self, name: str, **path_params: str) -> URL:
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
         raise NotImplementedError()  # pragma: no cover
 
     def __call__(self, scope: Scope) -> ASGIInstance:
@@ -101,10 +101,12 @@ class Route(BaseRoute):
         self.name = get_name(endpoint)
 
         if inspect.isfunction(endpoint) or inspect.ismethod(endpoint):
+            # Endpoint is function or method. Treat it as `func(request) -> response`.
             self.app = request_response(endpoint)
             if methods is None:
                 methods = ["GET"]
         else:
+            # Endpoint is a class. Treat it as ASGI.
             self.app = endpoint
 
         self.methods = methods
@@ -127,12 +129,12 @@ class Route(BaseRoute):
                     return Match.FULL, child_scope
         return Match.NONE, {}
 
-    def url_path_for(self, name: str, **path_params: str) -> URL:
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
         if name != self.name or self.param_names != set(path_params.keys()):
             raise NoMatchFound()
         path, remaining_params = replace_params(self.path, **path_params)
         assert not remaining_params
-        return URL(scheme="http", path=path)
+        return URLPath(path=path, protocol="http")
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         if self.methods and scope["method"] not in self.methods:
@@ -157,8 +159,10 @@ class WebSocketRoute(BaseRoute):
         self.name = get_name(endpoint)
 
         if inspect.isfunction(endpoint) or inspect.ismethod(endpoint):
+            # Endpoint is function or method. Treat it as `func(websocket)`.
             self.app = websocket_session(endpoint)
         else:
+            # Endpoint is a class. Treat it as ASGI.
             self.app = endpoint
 
         regex = "^" + path + "$"
@@ -177,12 +181,12 @@ class WebSocketRoute(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    def url_path_for(self, name: str, **path_params: str) -> URL:
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
         if name != self.name or self.param_names != set(path_params.keys()):
             raise NoMatchFound()
         path, remaining_params = replace_params(self.path, **path_params)
         assert not remaining_params
-        return URL(scheme="ws", path=path)
+        return URLPath(path=path, protocol="websocket")
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         return self.app(scope)
@@ -219,12 +223,12 @@ class Mount(BaseRoute):
             return Match.FULL, child_scope
         return Match.NONE, {}
 
-    def url_path_for(self, name: str, **path_params: str) -> URL:
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
         path, remaining_params = replace_params(self.path, **path_params)
         for route in self.routes or []:
             try:
                 url = route.url_path_for(name, **remaining_params)
-                return URL(scheme=url.scheme, path=path + url.path)
+                return URLPath(path=path + str(url), protocol=url.protocol)
             except NoMatchFound as exc:
                 pass
         raise NoMatchFound()
@@ -292,7 +296,7 @@ class Router:
             raise HTTPException(status_code=404)
         return PlainTextResponse("Not Found", status_code=404)
 
-    def url_path_for(self, name: str, **path_params: str) -> URL:
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
         for route in self.routes:
             try:
                 return route.url_path_for(name, **path_params)

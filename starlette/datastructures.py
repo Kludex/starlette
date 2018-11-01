@@ -92,12 +92,6 @@ class URL:
                 kwargs["netloc"] = hostname
             else:
                 kwargs["netloc"] = "%s:%d" % (hostname, port)
-        if "secure" in kwargs:
-            secure = kwargs.pop("secure")
-            if self.scheme in ("http", "https"):
-                kwargs["scheme"] = "https" if secure else "http"
-            elif self.scheme in ("ws", "wss"):
-                kwargs["scheme"] = "wss" if secure else "ws"
         components = self.components._replace(**kwargs)
         return URL(components.geturl())
 
@@ -105,12 +99,34 @@ class URL:
         return str(self) == str(other)
 
     def __str__(self) -> str:
-        if self.scheme and not self.netloc:
-            return str(self.replace(scheme=""))
         return self._url
 
     def __repr__(self) -> str:
         return "%s(%s)" % (self.__class__.__name__, repr(self._url))
+
+
+class URLPath(str):
+    """
+    A URL path string that also holds an associated protocol.
+    Used by the routing to return `url_path_for` matches.
+    """
+
+    def __new__(cls, path: str, protocol: str) -> str:
+        assert protocol in ("http", "websocket")
+        return str.__new__(cls, path)  # type: ignore
+
+    def __init__(self, path: str, protocol: str) -> None:
+        self.protocol = protocol
+
+    def make_absolute_url(self, base_url: typing.Union[str, URL]) -> str:
+        if isinstance(base_url, str):
+            base_url = URL(base_url)
+        scheme = {
+            "http": {True: "https", False: "http"},
+            "websocket": {True: "wss", False: "ws"},
+        }[self.protocol][base_url.is_secure]
+        netloc = base_url.netloc
+        return str(URL(scheme=scheme, netloc=base_url.netloc, path=str(self)))
 
 
 class QueryParams(typing.Mapping[str, str]):

@@ -85,10 +85,10 @@ class Request(Mapping):
     def receive(self) -> Receive:
         return self._receive
 
-    def url_for(self, name: str, **path_params: typing.Any) -> URL:
+    def url_for(self, name: str, **path_params: typing.Any) -> str:
         router = self._scope["router"]
-        url = router.url_path_for(name, **path_params)
-        return url.replace(secure=self.url.is_secure, netloc=self.url.netloc)
+        url_path = router.url_path_for(name, **path_params)
+        return url_path.make_absolute_url(base_url=self.url)
 
     async def stream(self) -> typing.AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):

@@ -129,13 +129,31 @@ as [one of the fastest Python frameworks available](https://www.techempower.com/
 For high throughput loads you should:
 
 * Make sure to install `ujson` and use `UJSONResponse`.
-* Run using `uvicorn`, with access logging disabled.
+* Run using gunicorn using the `uvicorn` worker class.
+* Use one or two workers per-CPU core. (You might need to experiment with this.)
+* Disable access logging.
+
+Eg.
+
+```shell
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker --log-level warning example:app
+```
 
 Several of the ASGI servers also have pure Python implementations available,
 so you can also run under `PyPy` if your application code has parts that are
 CPU constrained.
 
-Eg. `uvicorn.run(..., http='h11', loop='asyncio')`
+Either programatically:
+
+```python
+uvicorn.run(..., http='h11', loop='asyncio')
+```
+
+Or using Gunicorn:
+
+```shell
+gunicorn -k uvicorn.workers.UvicornH11Worker ...
+```
 
 *(\*) TechEmpower [continuous benchmarking results](https://tfb-status.techempower.com/), from 13th Sept 2018. Filtered to JavaScript, Python, and Ruby frameworks backed by Postgres, for comparision against similar candidates. To be updated to Round 17 once available.*
 

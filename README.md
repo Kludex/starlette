@@ -124,7 +124,7 @@ in isolation.
 ## Performance
 
 Independent TechEmpower benchmarks show Starlette applications running under Uvicorn
-as [one of the fastest Python frameworks available](https://www.techempower.com/benchmarks/#section=test&runid=14a815b6-93c1-4207-96bb-3960c29719e2&hw=ph&test=fortune&l=zijw1r-1&d=e3). *(\*)*
+as [one of the fastest Python frameworks available](https://www.techempower.com/benchmarks/#section=data-r17&hw=ph&test=fortune&l=zijw1r-1&d=e3). *(\*)*
 
 For high throughput loads you should:
 
@@ -155,7 +155,7 @@ Or using Gunicorn:
 gunicorn -k uvicorn.workers.UvicornH11Worker ...
 ```
 
-*(\*) TechEmpower [continuous benchmarking results](https://tfb-status.techempower.com/), from 13th Sept 2018. Filtered to JavaScript, Python, and Ruby frameworks backed by Postgres, for comparision against similar candidates. To be updated to Round 17 once available.*
+*(\*) TechEmpower [continuous benchmarking results](https://tfb-status.techempower.com/), from 30th Oct 2018. Filtered to JavaScript, Python, and Ruby frameworks backed by Postgres, for comparision against similar candidates.*
 
 <p align="center">&mdash; ⭐️ &mdash;</p>
 <p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>

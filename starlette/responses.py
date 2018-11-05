@@ -170,10 +170,12 @@ class StreamingResponse(Response):
         status_code: int = 200,
         headers: dict = None,
         media_type: str = None,
+        background: BackgroundTask = None,
     ) -> None:
         self.body_iterator = content
         self.status_code = status_code
         self.media_type = self.media_type if media_type is None else media_type
+        self.background = background
         self.init_headers(headers)
 
     async def __call__(self, receive: Receive, send: Send) -> None:
@@ -190,6 +192,9 @@ class StreamingResponse(Response):
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
+        if self.background is not None:
+            await self.background()
+
 
 class FileResponse(Response):
     chunk_size = 4096
@@ -199,6 +204,7 @@ class FileResponse(Response):
         path: str,
         headers: dict = None,
         media_type: str = None,
+        background: BackgroundTask = None,
         filename: str = None,
         stat_result: os.stat_result = None,
     ) -> None:
@@ -209,6 +215,7 @@ class FileResponse(Response):
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "text/plain"
         self.media_type = media_type
+        self.background = background
         self.init_headers(headers)
         if self.filename is not None:
             content_disposition = 'attachment; filename="{}"'.format(self.filename)
@@ -256,3 +263,5 @@ class FileResponse(Response):
                         "more_body": more_body,
                     }
                 )
+        if self.background is not None:
+            await self.background()

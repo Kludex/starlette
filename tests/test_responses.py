@@ -4,6 +4,7 @@ import os
 import pytest
 
 from starlette import status
+from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import (
     FileResponse,
@@ -72,6 +73,8 @@ def test_redirect_response():
 
 
 def test_streaming_response():
+    filled_by_bg_task = ""
+
     def app(scope):
         async def numbers(minimum, maximum):
             for i in range(minimum, maximum + 1):
@@ -80,16 +83,27 @@ def test_streaming_response():
                     yield ", "
                 await asyncio.sleep(0)
 
+        async def numbers_for_cleanup(start=1, stop=5):
+            nonlocal filled_by_bg_task
+            async for thing in numbers(start, stop):
+                filled_by_bg_task = filled_by_bg_task + thing
+
+        cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
+
         async def asgi(receive, send):
             generator = numbers(1, 5)
-            response = StreamingResponse(generator, media_type="text/plain")
+            response = StreamingResponse(
+                generator, media_type="text/plain", background=cleanup_task
+            )
             await response(receive, send)
 
         return asgi
 
+    assert filled_by_bg_task == ""
     client = TestClient(app)
     response = client.get("/")
     assert response.text == "1, 2, 3, 4, 5"
+    assert filled_by_bg_task == "6, 7, 8, 9"
 
 
 def test_response_headers():
@@ -132,9 +146,26 @@ def test_file_response(tmpdir):
     with open(path, "wb") as file:
         file.write(content)
 
-    def app(scope):
-        return FileResponse(path=path, filename="example.png")
+    filled_by_bg_task = ""
 
+    async def numbers(minimum, maximum):
+        for i in range(minimum, maximum + 1):
+            yield str(i)
+            if i != maximum:
+                yield ", "
+            await asyncio.sleep(0)
+
+    async def numbers_for_cleanup(start=1, stop=5):
+        nonlocal filled_by_bg_task
+        async for thing in numbers(start, stop):
+            filled_by_bg_task = filled_by_bg_task + thing
+
+    cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
+
+    def app(scope):
+        return FileResponse(path=path, filename="example.png", background=cleanup_task)
+
+    assert filled_by_bg_task == ""
     client = TestClient(app)
     response = client.get("/")
     expected_disposition = 'attachment; filename="example.png"'
@@ -145,6 +176,7 @@ def test_file_response(tmpdir):
     assert "content-length" in response.headers
     assert "last-modified" in response.headers
     assert "etag" in response.headers
+    assert filled_by_bg_task == "6, 7, 8, 9"
 
 
 def test_file_response_with_directory_raises_error(tmpdir):

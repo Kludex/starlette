@@ -130,8 +130,7 @@ class Route(BaseRoute):
             if match:
                 path_params = dict(scope.get("path_params", {}))
                 path_params.update(match.groupdict())
-                child_scope = dict(scope)
-                child_scope["path_params"] = path_params
+                child_scope = {"path_params": path_params}
                 if self.methods and scope["method"] not in self.methods:
                     return Match.PARTIAL, child_scope
                 else:
@@ -188,8 +187,7 @@ class WebSocketRoute(BaseRoute):
             if match:
                 path_params = dict(scope.get("path_params", {}))
                 path_params.update(match.groupdict())
-                child_scope = dict(scope)
-                child_scope["path_params"] = path_params
+                child_scope = {"path_params": path_params}
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
@@ -226,18 +224,19 @@ class Mount(BaseRoute):
         return getattr(self.app, "routes", None)
 
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
-        match = self.path_regex.match(scope["path"])
+        path = scope["path"]
+        match = self.path_regex.match(path)
         if match:
             matched_params = match.groupdict()
-            matched_path = matched_params.pop("path")
+            remaining_path = matched_params.pop("path")
+            matched_path = path[: -len(remaining_path)]
             path_params = dict(scope.get("path_params", {}))
             path_params.update(matched_params)
-            child_scope = dict(scope)
-            child_scope["path_params"] = path_params
-            child_scope["root_path"] = (
-                scope.get("root_path", "") + scope["path"][: -len(matched_path)]
-            )
-            child_scope["path"] = matched_path
+            child_scope = {
+                "path_params": path_params,
+                "root_path": scope.get("root_path", "") + matched_path,
+                "path": remaining_path,
+            }
             return Match.FULL, child_scope
         return Match.NONE, {}
 
@@ -360,13 +359,15 @@ class Router:
         for route in self.routes:
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
-                return route(child_scope)
+                scope.update(child_scope)
+                return route(scope)
             elif match == Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
 
         if partial is not None:
-            return partial(partial_scope)
+            scope.update(partial_scope)
+            return partial(scope)
 
         if self.redirect_slashes and not scope["path"].endswith("/"):
             redirect_scope = dict(scope)

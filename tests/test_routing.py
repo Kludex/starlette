@@ -1,7 +1,7 @@
 import pytest
 
 from starlette.exceptions import ExceptionMiddleware
-from starlette.responses import Response
+from starlette.responses import PlainTextResponse, Response
 from starlette.routing import Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -30,7 +30,7 @@ app = Router(
         Mount(
             "/users",
             app=Router(
-                [Route("", endpoint=users), Route("/{username}", endpoint=user)]
+                [Route("/", endpoint=users), Route("/{username}", endpoint=user)]
             ),
         ),
         Mount("/static", app=staticfiles),
@@ -176,3 +176,32 @@ def test_protocol_switch():
 
     with pytest.raises(WebSocketDisconnect):
         client.websocket_connect("/404")
+
+
+def ok(request):
+    return PlainTextResponse("OK")
+
+
+def test_mount_urls():
+    mounted = Router([Mount("/users", ok, name="users")])
+    client = TestClient(mounted)
+    assert client.get("/users").status_code == 200
+    assert client.get("/users").url == "http://testserver/users/"
+    assert client.get("/users/").status_code == 200
+    assert client.get("/users/a").status_code == 200
+    assert client.get("/usersa").status_code == 404
+
+
+def test_reverse_mount_urls():
+    mounted = Router([Mount("/users", ok, name="users")])
+    assert mounted.url_path_for("users", path="/a") == "/users/a"
+
+    users = Router([Route("/{username}", ok, name="user")])
+    mounted = Router([Mount("/{subpath}/users", users, name="users")])
+    assert (
+        mounted.url_path_for("users:user", subpath="test", username="tom")
+        == "/test/users/tom"
+    )
+    assert (
+        mounted.url_path_for("users", subpath="test", path="/tom") == "/test/users/tom"
+    )

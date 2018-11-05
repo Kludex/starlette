@@ -1,3 +1,20 @@
+## 0.7.1
+
+### Debug tracebacks
+
+* Improve debug traceback information & styling.
+
+### URL routing
+
+* Support mounted URL lookups with "path=", eg. `url_for('static', path=...)`.
+* Support nested URL lookups, eg. `url_for('admin:user', username=...)`.
+* Add redirect slashes support.
+* Add www redirect support.
+
+### Background tasks
+
+* Add background task support to `FileResponse` and `StreamingResponse`.
+
 ## 0.7.0
 
 ### API Schema support

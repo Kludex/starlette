@@ -1,3 +1,9 @@
+## 0.7.3
+
+### Routing
+
+* Add `name=` support to `app.mount()`. This allows eg: `app.mount('/static', StaticFiles(directory='static'), name='static')`.
+
 ## 0.7.2
 
 ### Middleware

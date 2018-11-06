@@ -1,3 +1,13 @@
+## 0.7.2
+
+### Middleware
+
+* Add support for `@app.middleware("http")` decorator.
+
+### Routing
+
+* Add "endpoint" to ASGI scope.
+
 ## 0.7.1
 
 ### Debug tracebacks

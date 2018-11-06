@@ -41,6 +41,12 @@ The important parts to note from the above example are:
 inside our templates. We always need to pass the incoming `request` instance
 in our context in order to be able to use the `url_for` function.
 
+We can now link to static files from within our HTML templates. For example:
+
+```html
+<link href="{{ url_for('static', path='/css/bootstrap.min.css') }}" rel="stylesheet">
+```
+
 ## Asynchronous template rendering
 
 Jinja2 supports async template rendering, however as a general rule

@@ -57,3 +57,27 @@ def test_custom_middleware():
     with client.websocket_connect("/ws") as session:
         text = session.receive_text()
         assert text == "Hello, world!"
+
+
+def test_middleware_decorator():
+    app = Starlette()
+
+    @app.route("/homepage")
+    def homepage(request):
+        return PlainTextResponse("Homepage")
+
+    @app.middleware("http")
+    async def plaintext(request, call_next):
+        if request.url.path == "/":
+            return PlainTextResponse("OK")
+        response = await call_next(request)
+        response.headers["Custom"] = "Example"
+        return response
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "OK"
+
+    response = client.get("/homepage")
+    assert response.text == "Homepage"
+    assert response.headers["Custom"] == "Example"

@@ -19,6 +19,16 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=['example.com', '*.examp
 app.add_middleware(HTTPSRedirectMiddleware)
 ```
 
+Starlette also allows you to add middleware functions, using a decorator syntax:
+
+```python
+@app.middleware("http")
+async def add_custom_header(request, call_next):
+    response = await call_next(request)
+    response.headers['Custom'] = 'Example'
+    return response
+```
+
 The following middleware implementations are available in the Starlette package:
 
 ## CORSMiddleware

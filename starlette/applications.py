@@ -3,6 +3,7 @@ import typing
 from starlette.datastructures import URL, URLPath
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import BaseRoute, Router
 from starlette.schemas import BaseSchemaGenerator
 from starlette.types import ASGIApp, ASGIInstance, Scope
@@ -84,6 +85,17 @@ class Starlette:
     def websocket_route(self, path: str) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
             self.router.add_websocket_route(path, func)
+            return func
+
+        return decorator
+
+    def middleware(self, middleware_type: str) -> typing.Callable:
+        assert (
+            middleware_type == "http"
+        ), 'Currently only middleware("http") is supported.'
+
+        def decorator(func: typing.Callable) -> typing.Callable:
+            self.add_middleware(BaseHTTPMiddleware, dispatch=func)
             return func
 
         return decorator

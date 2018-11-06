@@ -6,10 +6,16 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
 
+RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[ASGIInstance]]
+DispatchFunction = typing.Callable[
+    [Request, RequestResponseEndpoint], typing.Awaitable[ASGIInstance]
+]
+
 
 class BaseHTTPMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction = None) -> None:
         self.app = app
+        self.dispatch_func = self.dispatch if dispatch is None else dispatch
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         if scope["type"] != "http":
@@ -18,7 +24,7 @@ class BaseHTTPMiddleware:
 
     async def asgi(self, receive: Receive, send: Send, scope: Scope) -> None:
         request = Request(scope, receive=receive)
-        response = await self.dispatch(request, self.call_next)
+        response = await self.dispatch_func(request, self.call_next)
         await response(receive, send)
 
     async def call_next(self, request: Request) -> ASGIInstance:
@@ -55,6 +61,6 @@ class BaseHTTPMiddleware:
         return response
 
     async def dispatch(
-        self, request: Request, call_next: typing.Callable
+        self, request: Request, call_next: RequestResponseEndpoint
     ) -> ASGIInstance:
         raise NotImplementedError()  # pragma: no cover

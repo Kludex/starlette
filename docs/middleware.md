@@ -139,20 +139,6 @@ The following arguments are supported:
 
 * `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
 
-## Using ASGI middleware without Starlette
-
-To wrap ASGI middleware around other ASGI applications, you should use the
-more general pattern of wrapping the application instance:
-
-```python
-app = TrustedHostMiddleware(app, allowed_hosts=['example.com'])
-```
-
-You can do this with a Starlette application instance too, but it is preferable
-to use `.add_middleware`, as it'll ensure that you don't lose the reference
-to the application object, and that the exception handling always wraps around
-any other behaviour.
-
 ## BaseHTTPMiddleware
 
 An abstract class that allows you to write ASGI middleware against a request/response
@@ -197,3 +183,28 @@ app.add_middleware(CustomHeaderMiddleware, header_value='Customized')
 Middleware classes should not modify their state outside of the `__init__` method.
 Instead you should keep any state local to the `dispatch` method, or pass it
 around explicitly, rather than mutating the middleware instance.
+
+## Using middleware in other frameworks
+
+To wrap ASGI middleware around other ASGI applications, you should use the
+more general pattern of wrapping the application instance:
+
+```python
+app = TrustedHostMiddleware(app, allowed_hosts=['example.com'])
+```
+
+You can do this with a Starlette application instance too, but it is preferable
+to use `.add_middleware`, as it'll ensure that you don't lose the reference
+to the application object, and that the exception handling always wraps around
+any other behaviour.
+
+## Third party middleware
+
+#### [SentryMiddleware](https://github.com/encode/sentry-asgi)
+
+A middleware class for logging exceptions to [Sentry](https://sentry.io/).
+
+#### [ProxyHeadersMiddleware](https://github.com/encode/uvicorn/blob/master/uvicorn/middleware/proxy_headers.py)
+
+Uvicorn includes a middleware class for determining the client IP address,
+when proxy servers are being used, based on the `X-Forwarded-Proto` and `X-Forwarded-For` headers. For more complex proxy configurations, you might want to adapt this middleware.

@@ -37,8 +37,8 @@ class Starlette:
     def on_event(self, event_type: str) -> typing.Callable:
         return self.lifespan_handler.on_event(event_type)
 
-    def mount(self, path: str, app: ASGIApp) -> None:
-        self.router.mount(path, app=app)
+    def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
+        self.router.mount(path, app=app, name=name)
 
     def add_middleware(self, middleware_class: type, **kwargs: typing.Any) -> None:
         self.exception_middleware.app = middleware_class(self.app, **kwargs)

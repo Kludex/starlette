@@ -18,6 +18,7 @@ nav:
     - Endpoints: 'endpoints.md'
     - Middleware: 'middleware.md'
     - Static Files: 'staticfiles.md'
+    - Templates: 'templates.md'
     - GraphQL: 'graphql.md'
     - API Schemas: 'schemas.md'
     - Events: 'events.md'

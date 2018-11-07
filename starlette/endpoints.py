@@ -3,6 +3,7 @@ import json
 import typing
 
 from starlette import status
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
@@ -23,11 +24,11 @@ class HTTPEndpoint:
     async def dispatch(self, request: Request) -> Response:
         handler_name = "get" if request.method == "HEAD" else request.method.lower()
         handler = getattr(self, handler_name, self.method_not_allowed)
-        if asyncio.iscoroutinefunction(handler):
+        is_async = asyncio.iscoroutinefunction(handler)
+        if is_async:
             response = await handler(request)
         else:
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(None, handler, request)
+            response = await run_in_threadpool(handler, request)
         return response
 
     async def method_not_allowed(self, request: Request) -> Response:

@@ -5,6 +5,7 @@ import typing
 from enum import Enum
 from urllib.parse import unquote
 
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers
 
 try:
@@ -44,19 +45,19 @@ class UploadFile:
         self._file = tempfile.SpooledTemporaryFile()
 
     async def setup(self) -> None:
-        await self._loop.run_in_executor(None, self.create_tempfile)
+        await run_in_threadpool(self.create_tempfile)
 
     async def write(self, data: bytes) -> None:
-        await self._loop.run_in_executor(None, self._file.write, data)
+        await run_in_threadpool(self._file.write, data)
 
     async def read(self, size: int = None) -> bytes:
-        return await self._loop.run_in_executor(None, self._file.read, size)
+        return await run_in_threadpool(self._file.read, size)
 
     async def seek(self, offset: int) -> None:
-        await self._loop.run_in_executor(None, self._file.seek, offset)
+        await run_in_threadpool(self._file.seek, offset)
 
     async def close(self) -> None:
-        await self._loop.run_in_executor(None, self._file.close)
+        await run_in_threadpool(self._file.close)
 
 
 class FormParser:

@@ -3,6 +3,7 @@ import io
 import sys
 import typing
 
+from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 
 
@@ -80,7 +81,7 @@ class WSGIResponder:
             body += message.get("body", b"")
             more_body = message.get("more_body", False)
         environ = build_environ(self.scope, body)
-        wsgi = self.loop.run_in_executor(None, self.wsgi, environ, self.start_response)
+        wsgi = run_in_threadpool(self.wsgi, environ, self.start_response)
         sender = self.loop.create_task(self.sender(send))
         await asyncio.wait_for(wsgi, None)
         self.send_queue.append(None)

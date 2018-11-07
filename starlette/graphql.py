@@ -1,9 +1,9 @@
-import asyncio
 import functools
 import json
 import typing
 
 from starlette import status
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.types import ASGIInstance, Receive, Scope, Send
@@ -95,11 +95,12 @@ class GraphQLApp:
                 return_promise=True,
             )
         else:
-            func = functools.partial(
-                self.schema.execute, variables=variables, operation_name=operation_name
+            return await run_in_threadpool(
+                self.schema.execute,
+                query,
+                variables=variables,
+                operation_name=operation_name,
             )
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, func, query)
 
     async def handle_graphiql(self, request: Request) -> Response:
         text = GRAPHIQL.replace("{{REQUEST_PATH}}", json.dumps(request.url.path))

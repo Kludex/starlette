@@ -1,6 +1,7 @@
 import asyncio
-import functools
 import typing
+
+from starlette.concurrency import run_in_threadpool
 
 
 class BackgroundTask:
@@ -10,11 +11,10 @@ class BackgroundTask:
         self.func = func
         self.args = args
         self.kwargs = kwargs
+        self.is_async = asyncio.iscoroutinefunction(func)
 
     async def __call__(self) -> None:
-        if asyncio.iscoroutinefunction(self.func):
-            await asyncio.ensure_future(self.func(*self.args, **self.kwargs))
+        if self.is_async:
+            await self.func(*self.args, **self.kwargs)
         else:
-            fn = functools.partial(self.func, *self.args, **self.kwargs)
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, fn)
+            await run_in_threadpool(self.func, *self.args, **self.kwargs)

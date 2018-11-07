@@ -5,6 +5,7 @@ import typing
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import URL, URLPath
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -41,8 +42,7 @@ def request_response(func: typing.Callable) -> ASGIApp:
             if is_coroutine:
                 response = await func(request)
             else:
-                loop = asyncio.get_event_loop()
-                response = await loop.run_in_executor(None, func, request)
+                response = await run_in_threadpool(func, request)
             await response(receive, send)
 
         return awaitable

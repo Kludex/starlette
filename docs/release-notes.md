@@ -1,3 +1,22 @@
+## 0.8.1
+
+## Templating
+
+* Add a default templating configuration with Jinja2.
+
+Allows the following:
+
+```python
+app = Starlette(template_directory="templates")
+
+@app.route('/')
+async def homepage(request):
+    # `url_for` is available inside the template.
+    template = app.get_template('index.html')
+    content = template.render(request=request)
+    return HTMLResponse(content)
+```
+
 ## 0.8.0
 
 ### Exceptions

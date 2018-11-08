@@ -1,8 +1,34 @@
-Starlette is not coupled to any particular templating engine, but Jinja2
-provides an excellent choice.
+Starlette is not *strictly* coupled to any particular templating engine, but
+Jinja2 provides an excellent choice.
 
-Here we're going to take a look at a complete example of how you can configure
-a Jinja2 environment together with Starlette.
+The `Starlette` application class provides a simple way to get `jinja2`
+configured. This is probably what you want to use by default.
+
+```python
+app = Starlette(debug=True, template_directory='templates')
+app.mount('/static', StaticFiles(directory='statics'), name='static')
+
+
+@app.route('/')
+async def homepage(request):
+    template = app.get_template('index.html')
+    content = template.render(request=request)
+    return HTMLResponse(content)
+```
+
+If you include `request` in the template context, then the `url_for` function
+will also be available within your template code.
+
+The Jinja2 `Environment` instance is available as `app.template_env`.
+
+## Handling templates explicitly
+
+If you don't want to use `jinja2`, or you don't want to rely on
+Starlette's default configuration you can configure a template renderer
+explicitly instead.
+
+Here we're going to take a look at an example of how you can explicitly
+configure a Jinja2 environment together with Starlette.
 
 ```python
 from starlette.applications import Starlette
@@ -33,6 +59,9 @@ async def homepage(request):
     content = template.render(request=request)
     return HTMLResponse(content)
 ```
+
+This gives you the equivalent of the default `app.get_template()`, but we've
+got all the configuration explicitly out in the open now.
 
 The important parts to note from the above example are:
 

@@ -11,7 +11,7 @@ from starlette.types import ASGIApp, ASGIInstance, Scope
 
 
 class Starlette:
-    def __init__(self, debug: bool = False) -> None:
+    def __init__(self, debug: bool = False, template_directory: str = None) -> None:
         self._debug = debug
         self.router = Router()
         self.lifespan_handler = LifespanHandler()
@@ -20,6 +20,7 @@ class Starlette:
             self.exception_middleware, debug=debug
         )
         self.schema_generator = None  # type: typing.Optional[BaseSchemaGenerator]
+        self.template_env = self.load_template_env(template_directory)
 
     @property
     def routes(self) -> typing.List[BaseRoute]:
@@ -34,6 +35,26 @@ class Starlette:
         self._debug = value
         self.exception_middleware.debug = value
         self.error_middleware.debug = value
+
+    def load_template_env(self, template_directory: str = None) -> typing.Any:
+        if template_directory is None:
+            return None
+
+        # Import jinja2 lazily.
+        import jinja2
+
+        @jinja2.contextfunction
+        def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
+            request = context["request"]
+            return request.url_for(name, **path_params)
+
+        loader = jinja2.FileSystemLoader(str(template_directory))
+        env = jinja2.Environment(loader=loader, autoescape=True)
+        env.globals["url_for"] = url_for
+        return env
+
+    def get_template(self, name: str) -> typing.Any:
+        return self.template_env.get_template(name)
 
     @property
     def schema(self) -> dict:

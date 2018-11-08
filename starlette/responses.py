@@ -207,11 +207,13 @@ class FileResponse(Response):
         background: BackgroundTask = None,
         filename: str = None,
         stat_result: os.stat_result = None,
+        method: str = None,
     ) -> None:
         assert aiofiles is not None, "'aiofiles' must be installed to use FileResponse"
         self.path = path
         self.status_code = 200
         self.filename = filename
+        self.send_header_only = method is not None and method.upper() == "HEAD"
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "text/plain"
         self.media_type = media_type
@@ -251,17 +253,20 @@ class FileResponse(Response):
                 "headers": self.raw_headers,
             }
         )
-        async with aiofiles.open(self.path, mode="rb") as file:
-            more_body = True
-            while more_body:
-                chunk = await file.read(self.chunk_size)
-                more_body = len(chunk) == self.chunk_size
-                await send(
-                    {
-                        "type": "http.response.body",
-                        "body": chunk,
-                        "more_body": more_body,
-                    }
-                )
+        if self.send_header_only:
+            await send({"type": "http.response.body"})
+        else:
+            async with aiofiles.open(self.path, mode="rb") as file:
+                more_body = True
+                while more_body:
+                    chunk = await file.read(self.chunk_size)
+                    more_body = len(chunk) == self.chunk_size
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": chunk,
+                            "more_body": more_body,
+                        }
+                    )
         if self.background is not None:
             await self.background()

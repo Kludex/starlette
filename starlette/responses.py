@@ -107,7 +107,7 @@ class Response:
             cookie[key]["secure"] = True  # type: ignore
         if httponly:
             cookie[key]["httponly"] = True  # type: ignore
-        cookie_val = cookie.output(header="")
+        cookie_val = cookie.output(header="").strip()
         self.raw_headers.append((b"set-cookie", cookie_val.encode("latin-1")))
 
     def delete_cookie(self, key: str, path: str = "/", domain: str = None) -> None:

@@ -163,6 +163,7 @@ gunicorn -k uvicorn.workers.UvicornH11Worker ...
 
 [requests]: http://docs.python-requests.org/en/master/
 [aiofiles]: https://github.com/Tinche/aiofiles
+[jinja2]: http://jinja.pocoo.org/
 [python-multipart]: https://andrew-d.github.io/python-multipart/
 [graphene]: https://graphene-python.org/
 [itsdangerous]: https://pythonhosted.org/itsdangerous/

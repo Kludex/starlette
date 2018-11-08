@@ -1,93 +1,76 @@
 
-Starlette includes an exception handling middleware that you can use in order
-to dispatch different classes of exceptions to different handlers.
-
-To see how this works, we'll start by with this small ASGI application:
+Starlette allows you to install custom exception handlers to deal with
+how you return responses when errors or handled exceptions occur.
 
 ```python
-from starlette.exceptions import ExceptionMiddleware, HTTPException
+from starlette.applications import Starlette
+from starlette.responses import HTMLResponse
 
 
-class App:
-    def __init__(self, scope):
-        raise HTTPException(status_code=403)
+HTML_404_PAGE = ...
+HTML_500_PAGE = ...
 
 
-app = ExceptionMiddleware(App)
+app = Starlette()
+
+
+@app.exception_handler(404)
+async def not_found(request, exc):
+    return HTMLResponse(content=HTML_404_PAGE)
+
+@app.exception_handler(500)
+async def server_error(request, exc):
+    return HTMLResponse(content=HTML_500_PAGE)
 ```
 
-If you run the app and make an HTTP request to it, you'll get a plain text
-response with a "403 Permission Denied" response. This is the behaviour that the
-default handler responds with when an `HTTPException` class or subclass is raised.
-
-Let's change the exception handling, so that we get JSON error responses
-instead:
-
+If `debug` is enabled and an error occurs, then instead of using the installed
+500 handler, Starlette will respond with a traceback response.
 
 ```python
-from starlette.exceptions import ExceptionMiddleware, HTTPException
-from starlette.responses import JSONResponse
+app = Starlette(debug=True)
+```
 
+As well as registering handlers for specific status codes, you can also
+register handlers for classes of exceptions.
 
-class App:
-    def __init__(self, scope):
-        raise HTTPException(status_code=403)
+In particular you might want to override how the built-in `HTTPException` class
+is handled. For example, to use JSON style responses:
 
-
-def handler(request, exc):
+```python
+@app.exception_handler(HTTPException)
+async def http_exception(request, exc):
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-
-
-app = ExceptionMiddleware(App)
-app.add_exception_handler(HTTPException, handler)
 ```
 
-Now if we make a request to the application, we'll get back a JSON encoded
-HTTP response.
+## Errors and handled exceptions
 
-By default two types of exceptions are caught and dealt with:
+It is important to differentiate between handled exceptions and errors.
 
-* `HTTPException` - Used to raise standard HTTP error codes.
-* `Exception` - Used as a catch-all handler to deal with any `500 Internal
-Server Error` responses. The `Exception` case also wraps any other exception
-handling.
+Handled exceptions do not represent error cases. They are coerced into appropriate
+HTTP responses, which are then sent through the standard middleware stack. By default
+the `HTTPException` class is used to manage any handled exceptions.
 
-The catch-all `Exception` case is used to return simple `500 Internal Server Error`
-responses. During development you might want to switch the behaviour so that
-it displays an error traceback in the browser:
+Errors are any other exception that occurs within the application. These cases
+should bubble through the entire middleware stack as exceptions. Any error
+logging middleware should ensure that it re-raises the exception all the
+way up to the server.
 
-```
-app = ExceptionMiddleware(App, debug=True)
-```
+In order to deal with this behaviour correctly, the middleware stack of a
+`Starlette` application is configured like this:
 
-This uses the same error tracebacks as the more minimal [`DebugMiddleware`](../debugging).
-
-The exception handler currently only catches and deals with exceptions within
-HTTP requests. Any websocket exceptions will simply be raised to the server
-and result in an error log.
-
-## ExceptionMiddleware
-
-The exception middleware catches and handles the exceptions, returning
-appropriate HTTP responses.
-
-* `ExceptionMiddleware(app, debug=False)` - Instantiate the exception handler,
-wrapping up it around an inner ASGI application.
-
-Adding handlers:
-
-* `.add_exception_handler(exc_class, handler)` - Set a handler function to run
-for the given exception class.
-
-Enabling debug mode:
-
-* `.debug` - If set to `True`, then the catch-all handler for `Exception` will
-not be used, and error tracebacks will be sent as responses instead.
+* `ServerErrorMiddleware` - Returns 500 responses when server errors occur.
+* Installed middleware
+* `ExceptionMiddleware` - Deals with handled exceptions, and returns responses.
+* Router
+* Endpoints
 
 ## HTTPException
 
 The `HTTPException` class provides a base class that you can use for any
-standard HTTP error conditions. The `ExceptionMiddleware` implementation
-defaults to returning plain-text HTTP responses for any `HTTPException`.
+handled exceptions. The `ExceptionMiddleware` implementation defaults to
+returning plain-text HTTP responses for any `HTTPException`.
 
 * `HTTPException(status_code, detail=None)`
+
+You should only raise `HTTPException` inside routing or endpoints. Middleware
+classes should instead just return appropriate responses directly.

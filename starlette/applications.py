@@ -4,6 +4,7 @@ from starlette.datastructures import URL, URLPath
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import BaseRoute, Router
 from starlette.schemas import BaseSchemaGenerator
 from starlette.types import ASGIApp, ASGIInstance, Scope
@@ -11,10 +12,13 @@ from starlette.types import ASGIApp, ASGIInstance, Scope
 
 class Starlette:
     def __init__(self, debug: bool = False) -> None:
+        self._debug = debug
         self.router = Router()
         self.lifespan_handler = LifespanHandler()
-        self.app = self.router
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
+        self.error_middleware = ServerErrorMiddleware(
+            self.exception_middleware, debug=debug
+        )
         self.schema_generator = None  # type: typing.Optional[BaseSchemaGenerator]
 
     @property
@@ -23,11 +27,13 @@ class Starlette:
 
     @property
     def debug(self) -> bool:
-        return self.exception_middleware.debug
+        return self._debug
 
     @debug.setter
     def debug(self, value: bool) -> None:
+        self._debug = value
         self.exception_middleware.debug = value
+        self.error_middleware.debug = value
 
     @property
     def schema(self) -> dict:
@@ -41,10 +47,21 @@ class Starlette:
         self.router.mount(path, app=app, name=name)
 
     def add_middleware(self, middleware_class: type, **kwargs: typing.Any) -> None:
-        self.exception_middleware.app = middleware_class(self.app, **kwargs)
+        self.error_middleware.app = middleware_class(
+            self.error_middleware.app, **kwargs
+        )
 
-    def add_exception_handler(self, exc_class: type, handler: typing.Callable) -> None:
-        self.exception_middleware.add_exception_handler(exc_class, handler)
+    def add_exception_handler(
+        self,
+        exc_class_or_status_code: typing.Union[int, typing.Type[Exception]],
+        handler: typing.Callable,
+    ) -> None:
+        if exc_class_or_status_code in (500, Exception):
+            self.error_middleware.handler = handler
+        else:
+            self.exception_middleware.add_exception_handler(
+                exc_class_or_status_code, handler
+            )
 
     def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
         self.lifespan_handler.add_event_handler(event_type, func)
@@ -61,9 +78,11 @@ class Starlette:
     def add_websocket_route(self, path: str, route: typing.Callable) -> None:
         self.router.add_websocket_route(path, route)
 
-    def exception_handler(self, exc_class: type) -> typing.Callable:
+    def exception_handler(
+        self, exc_class_or_status_code: typing.Union[int, typing.Type[Exception]]
+    ) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
-            self.add_exception_handler(exc_class, func)
+            self.add_exception_handler(exc_class_or_status_code, func)
             return func
 
         return decorator
@@ -107,4 +126,4 @@ class Starlette:
         scope["app"] = self
         if scope["type"] == "lifespan":
             return self.lifespan_handler(scope)
-        return self.exception_middleware(scope)
+        return self.error_middleware(scope)

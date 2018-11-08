@@ -29,13 +29,18 @@ app = Starlette()
 app.add_middleware(TrustedHostMiddleware, hostname="testserver")
 
 
-@app.exception_handler(Exception)
+@app.exception_handler(500)
 async def error_500(request, exc):
     return JSONResponse({"detail": "Server Error"}, status_code=500)
 
 
+@app.exception_handler(405)
+async def method_not_allowed(request, exc):
+    return JSONResponse({"detail": "Custom message"}, status_code=405)
+
+
 @app.exception_handler(HTTPException)
-async def handler(request, exc):
+async def http_exception(request, exc):
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 
@@ -136,11 +141,11 @@ def test_400():
 def test_405():
     response = client.post("/func")
     assert response.status_code == 405
-    assert response.json() == {"detail": "Method Not Allowed"}
+    assert response.json() == {"detail": "Custom message"}
 
     response = client.post("/class")
     assert response.status_code == 405
-    assert response.json() == {"detail": "Method Not Allowed"}
+    assert response.json() == {"detail": "Custom message"}
 
 
 def test_500():

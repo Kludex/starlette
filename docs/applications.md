@@ -69,6 +69,6 @@ Submounting applications is a powerful way to include reusable ASGI applications
 You can use either of the following to catch and handle particular types of
 exceptions that occur within the application:
 
-* `app.add_exception_handler(exc_class, handler)` - Add an error handler. The handler function may be either a coroutine or a regular function, with a signature like `func(request, exc) -> response`.
-* `@app.exception_handler(exc_class)` - Add an error handler, decorator style.
+* `app.add_exception_handler(exc_class_or_status_code, handler)` - Add an error handler. The handler function may be either a coroutine or a regular function, with a signature like `func(request, exc) -> response`.
+* `@app.exception_handler(exc_class_or_status_code)` - Add an error handler, decorator style.
 * `app.debug` - Enable or disable error tracebacks in the browser.

@@ -1,8 +1,25 @@
 import pytest
 
-from starlette.debug import DebugMiddleware
-from starlette.responses import Response
+from starlette.middleware.errors import ServerErrorMiddleware
+from starlette.responses import JSONResponse, Response
 from starlette.testclient import TestClient
+
+
+def test_handler():
+    def app(scope):
+        async def asgi(receive, send):
+            raise RuntimeError("Something went wrong")
+
+        return asgi
+
+    def error_500(request, exc):
+        return JSONResponse({"detail": "Server Error"}, status_code=500)
+
+    app = ServerErrorMiddleware(app, handler=error_500)
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.get("/")
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Server Error"}
 
 
 def test_debug_text():
@@ -12,7 +29,7 @@ def test_debug_text():
 
         return asgi
 
-    app = DebugMiddleware(app)
+    app = ServerErrorMiddleware(app, debug=True)
     client = TestClient(app, raise_server_exceptions=False)
     response = client.get("/")
     assert response.status_code == 500
@@ -27,7 +44,7 @@ def test_debug_html():
 
         return asgi
 
-    app = DebugMiddleware(app)
+    app = ServerErrorMiddleware(app, debug=True)
     client = TestClient(app, raise_server_exceptions=False)
     response = client.get("/", headers={"Accept": "text/html, */*"})
     assert response.status_code == 500
@@ -44,7 +61,7 @@ def test_debug_after_response_sent():
 
         return asgi
 
-    app = DebugMiddleware(app)
+    app = ServerErrorMiddleware(app, debug=True)
     client = TestClient(app)
     with pytest.raises(RuntimeError):
         client.get("/")
@@ -54,7 +71,7 @@ def test_debug_error_during_scope():
     def app(scope):
         raise RuntimeError("Something went wrong")
 
-    app = DebugMiddleware(app)
+    app = ServerErrorMiddleware(app, debug=True)
     client = TestClient(app, raise_server_exceptions=False)
     response = client.get("/", headers={"Accept": "text/html, */*"})
     assert response.status_code == 500
@@ -70,7 +87,7 @@ def test_debug_not_http():
     def app(scope):
         raise RuntimeError("Something went wrong")
 
-    app = DebugMiddleware(app)
+    app = ServerErrorMiddleware(app)
 
     with pytest.raises(RuntimeError):
         app({"type": "websocket"})

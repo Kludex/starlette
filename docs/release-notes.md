@@ -1,3 +1,28 @@
+## 0.8.0
+
+### Exceptions
+
+* Add support for `@app.exception_handler(404)`.
+* Ensure handled exceptions are not seen as errors by the middleware stack.
+
+### SessionMiddleware
+
+* Add `max_age`, and use timestamp-signed cookies. Defaults to two weeks.
+
+### Cookies
+
+* Ensure cookies are strictly HTTP correct.
+
+### StaticFiles
+
+* Check directory exists on instantiation.
+
+## 0.7.4
+
+### Concurrency
+
+* Add `starlette.concurrency.run_in_threadpool`. Now handles `contextvar` support.
+
 ## 0.7.3
 
 ### Routing

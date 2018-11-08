@@ -81,6 +81,7 @@ The following arguments are supported:
 
 * `secret_key` - Should be a random string.
 * `session_cookie` - Defaults to "session".
+* `max_age` - Session expiry time in seconds. Defaults to 2 weeks.
 
 ## HTTPSRedirectMiddleware
 

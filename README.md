@@ -72,6 +72,8 @@ if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)
 ```
 
+For a more complete example, [see here](https://github.com/encode/starlette-example).
+
 ## Dependencies
 
 Starlette does not have any hard dependencies, but the following are optional:

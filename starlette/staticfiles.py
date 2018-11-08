@@ -8,7 +8,9 @@ from starlette.types import ASGIInstance, Receive, Scope, Send
 
 
 class StaticFiles:
-    def __init__(self, *, directory: str) -> None:
+    def __init__(self, *, directory: str, check_dir: bool = True) -> None:
+        if check_dir and not os.path.isdir(directory):
+            raise RuntimeError("Directory '%s' does not exist" % directory)
         self.directory = directory
         self.config_checked = False
 

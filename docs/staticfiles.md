@@ -1,7 +1,12 @@
 
-Starlette also includes a `StaticFiles` class for serving a specific directory:
+Starlette also includes a `StaticFiles` class for serving files in a given directory:
 
-* `StaticFiles(directory)` - Serve any files in the given `directory`.
+### StaticFiles
+
+Signature: `StaticFiles(directory, check_dir=True)`
+
+* `directory` - A string denoting the directory path
+* `check_dir` - Ensure that the directory exists upon instantiation. Defaults to `True`
 
 You can combine this ASGI application with Starlette's routing to provide
 comprehensive static file serving.

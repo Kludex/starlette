@@ -54,9 +54,16 @@ def test_staticfiles_with_missing_file_returns_404(tmpdir):
     assert response.text == "Not Found"
 
 
+def test_staticfiles_instantiated_with_missing_directory(tmpdir):
+    with pytest.raises(RuntimeError) as exc:
+        path = os.path.join(tmpdir, "no_such_directory")
+        app = StaticFiles(directory=path)
+    assert "does not exist" in str(exc)
+
+
 def test_staticfiles_configured_with_missing_directory(tmpdir):
     path = os.path.join(tmpdir, "no_such_directory")
-    app = StaticFiles(directory=path)
+    app = StaticFiles(directory=path, check_dir=False)
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         client.get("/example.txt")
@@ -68,7 +75,7 @@ def test_staticfiles_configured_with_file_instead_of_directory(tmpdir):
     with open(path, "w") as file:
         file.write("<file content>")
 
-    app = StaticFiles(directory=path)
+    app = StaticFiles(directory=path, check_dir=False)
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         client.get("/example.txt")

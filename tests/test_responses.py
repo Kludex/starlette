@@ -126,11 +126,11 @@ def test_response_headers():
 
 def test_response_phrase():
     def app(scope):
-        return Response(b"", status_code=200)
+        return Response(status_code=204)
 
     client = TestClient(app)
     response = client.get("/")
-    assert response.reason == "OK"
+    assert response.reason == "No Content"
 
     def app(scope):
         return Response(b"", status_code=123)

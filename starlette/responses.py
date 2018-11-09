@@ -31,13 +31,16 @@ class Response:
 
     def __init__(
         self,
-        content: typing.Any,
+        content: typing.Any = None,
         status_code: int = 200,
         headers: dict = None,
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> None:
-        self.body = self.render(content)
+        if content is None:
+            self.body = b""
+        else:
+            self.body = self.render(content)
         self.status_code = status_code
         if media_type is not None:
             self.media_type = media_type
@@ -63,8 +66,8 @@ class Response:
             populate_content_length = b"content-length" in keys
             populate_content_type = b"content-type" in keys
 
-        body = getattr(self, "body", None)
-        if body is not None and populate_content_length:
+        body = getattr(self, "body", b"")
+        if body and populate_content_length:
             content_length = str(len(body))
             raw_headers.append((b"content-length", content_length.encode("latin-1")))
 

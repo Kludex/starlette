@@ -92,12 +92,15 @@ class Starlette:
         path: str,
         route: typing.Callable,
         methods: typing.List[str] = None,
+        name: str = None,
         include_in_schema: bool = True,
     ) -> None:
-        self.router.add_route(path, route, methods=methods)
+        self.router.add_route(path, route, methods=methods, name=name)
 
-    def add_websocket_route(self, path: str, route: typing.Callable) -> None:
-        self.router.add_websocket_route(path, route)
+    def add_websocket_route(
+        self, path: str, route: typing.Callable, name: str = None
+    ) -> None:
+        self.router.add_websocket_route(path, route, name=name)
 
     def exception_handler(
         self, exc_class_or_status_code: typing.Union[int, typing.Type[Exception]]
@@ -112,19 +115,24 @@ class Starlette:
         self,
         path: str,
         methods: typing.List[str] = None,
+        name: str = None,
         include_in_schema: bool = True,
     ) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
             self.router.add_route(
-                path, func, methods=methods, include_in_schema=include_in_schema
+                path,
+                func,
+                methods=methods,
+                name=name,
+                include_in_schema=include_in_schema,
             )
             return func
 
         return decorator
 
-    def websocket_route(self, path: str) -> typing.Callable:
+    def websocket_route(self, path: str, name: str = None) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
-            self.router.add_websocket_route(path, func)
+            self.router.add_websocket_route(path, func, name=name)
             return func
 
         return decorator

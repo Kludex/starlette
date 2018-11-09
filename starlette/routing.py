@@ -295,37 +295,46 @@ class Router:
         path: str,
         endpoint: typing.Callable,
         methods: typing.List[str] = None,
+        name: str = None,
         include_in_schema: bool = True,
     ) -> None:
         route = Route(
             path,
             endpoint=endpoint,
             methods=methods,
+            name=name,
             include_in_schema=include_in_schema,
         )
         self.routes.append(route)
 
-    def add_websocket_route(self, path: str, endpoint: typing.Callable) -> None:
-        route = WebSocketRoute(path, endpoint=endpoint)
+    def add_websocket_route(
+        self, path: str, endpoint: typing.Callable, name: str = None
+    ) -> None:
+        route = WebSocketRoute(path, endpoint=endpoint, name=name)
         self.routes.append(route)
 
     def route(
         self,
         path: str,
         methods: typing.List[str] = None,
+        name: str = None,
         include_in_schema: bool = True,
     ) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
             self.add_route(
-                path, func, methods=methods, include_in_schema=include_in_schema
+                path,
+                func,
+                methods=methods,
+                name=name,
+                include_in_schema=include_in_schema,
             )
             return func
 
         return decorator
 
-    def websocket_route(self, path: str) -> typing.Callable:
+    def websocket_route(self, path: str, name: str = None) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
-            self.add_websocket_route(path, func)
+            self.add_websocket_route(path, func, name=name)
             return func
 
         return decorator

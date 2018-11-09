@@ -1,3 +1,9 @@
+## 0.8.2
+
+## StaticFiles
+
+* StaticFiles no longer reads the file for responses to `HEAD` requests.
+
 ## 0.8.1
 
 ## Templating

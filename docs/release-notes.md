@@ -1,3 +1,8 @@
+## 0.8.3
+
+* Add 'name' argument to `@app.route()`.
+* Use 'Host' header for URL reconstruction.
+
 ## 0.8.2
 
 ## StaticFiles

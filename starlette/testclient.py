@@ -70,17 +70,19 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             request.url
         )
 
+        default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
+
         if ":" in netloc:
             host, port_string = netloc.split(":", 1)
             port = int(port_string)
         else:
             host = netloc
-            port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
+            port = default_port
 
         # Include the 'host' header.
         if "host" in request.headers:
             headers = []  # type: typing.List[typing.Tuple[bytes, bytes]]
-        elif port == 80:
+        elif port == default_port:
             headers = [(b"host", host.encode())]
         else:
             headers = [(b"host", ("%s:%d" % (host, port)).encode())]

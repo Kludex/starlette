@@ -48,6 +48,7 @@ setup(
             'aiofiles',
             'graphene',
             'itsdangerous',
+            'jinja2',
             'python-multipart',
             'pyyaml',
             'requests',

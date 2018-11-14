@@ -1,4 +1,5 @@
 import os
+import time
 
 import pytest
 
@@ -118,3 +119,43 @@ def test_staticfiles_never_read_file_for_head_method(tmpdir):
     assert response.status_code == 200
     assert response.content == b""
     assert response.headers["content-length"] == "14"
+
+
+def test_staticfiles_304_with_etag_match(tmpdir):
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    app = StaticFiles(directory=tmpdir)
+    client = TestClient(app)
+    first_resp = client.get("/example.txt")
+    assert first_resp.status_code == 200
+    last_etag = first_resp.headers["etag"]
+    second_resp = client.get("/example.txt", headers={"if-none-match": last_etag})
+    assert second_resp.status_code == 304
+    assert second_resp.content == b""
+
+
+def test_staticfiles_304_with_last_modified_compare_last_req(tmpdir):
+    path = os.path.join(tmpdir, "example.txt")
+    file_last_modified_time = time.mktime(
+        time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S")
+    )
+    with open(path, "w") as file:
+        file.write("<file content>")
+    os.utime(path, (file_last_modified_time, file_last_modified_time))
+
+    app = StaticFiles(directory=tmpdir)
+    client = TestClient(app)
+    # last modified less than last request, 304
+    response = client.get(
+        "/example.txt", headers={"If-Modified-Since": "Thu, 11 Oct 2013 15:30:19 GMT"}
+    )
+    assert response.status_code == 304
+    assert response.content == b""
+    # last modified greater than last request, 200 with content
+    response = client.get(
+        "/example.txt", headers={"If-Modified-Since": "Thu, 20 Feb 2012 15:30:19 GMT"}
+    )
+    assert response.status_code == 200
+    assert response.content == b"<file content>"

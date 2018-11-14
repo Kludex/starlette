@@ -98,5 +98,5 @@ class App:
 ```
 
 If you access `.stream()` then the byte chunks are provided without storing
-the entire body to memory. Any subsequent calls to `.body()`, `.form(), or `.json()`
+the entire body to memory. Any subsequent calls to `.body()`, `.form()`, or `.json()`
 will raise an error.

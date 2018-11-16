@@ -113,7 +113,6 @@ def test_request_form_urlencoded():
     def app(scope):
         async def asgi(receive, send):
             request = Request(scope, receive)
-            body = b""
             form = await request.form()
             response = JSONResponse({"form": form})
             await response(receive, send)
@@ -121,9 +120,6 @@ def test_request_form_urlencoded():
         return asgi
 
     client = TestClient(app)
-
-    response = client.post("/")
-    assert response.json() == {"form": {}}
 
     response = client.post("/", data={"abc": "123 @"})
     assert response.json() == {"form": {"abc": "123 @"}}

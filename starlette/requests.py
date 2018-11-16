@@ -139,8 +139,8 @@ class Request(Mapping):
                 multipart_parser = MultiPartParser(self.headers, self.stream())
                 self._form = await multipart_parser.parse()
             elif content_type == b"application/x-www-form-urlencoded":
-                from_parser = FormParser(self.headers, self.stream())
-                self._form = await from_parser.parse()
+                form_parser = FormParser(self.headers, self.stream())
+                self._form = await form_parser.parse()
             else:
                 self._form = {}
         return self._form

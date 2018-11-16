@@ -3,7 +3,7 @@ import io
 import tempfile
 import typing
 from enum import Enum
-from urllib.parse import unquote
+from urllib.parse import unquote_plus
 
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers
@@ -125,7 +125,7 @@ class FormParser:
                 elif message_type == FormMessage.FIELD_DATA:
                     field_value += message_bytes
                 elif message_type == FormMessage.FIELD_END:
-                    result[field_name.decode("latin-1")] = unquote(
+                    result[field_name.decode("latin-1")] = unquote_plus(
                         field_value.decode("latin-1")
                     )
                 elif message_type == FormMessage.END:

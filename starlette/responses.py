@@ -229,14 +229,22 @@ class FileResponse(Response):
         if stat_result is not None:
             self.set_stat_headers(stat_result)
 
-    def set_stat_headers(self, stat_result: os.stat_result) -> None:
+    @classmethod
+    def get_stat_headers(cls, stat_result: os.stat_result) -> typing.Dict[str, str]:
         content_length = str(stat_result.st_size)
         last_modified = formatdate(stat_result.st_mtime, usegmt=True)
         etag_base = str(stat_result.st_mtime) + "-" + str(stat_result.st_size)
         etag = hashlib.md5(etag_base.encode()).hexdigest()
-        self.headers.setdefault("content-length", content_length)
-        self.headers.setdefault("last-modified", last_modified)
-        self.headers.setdefault("etag", etag)
+        return {
+            "content-length": content_length,
+            "last-modified": last_modified,
+            "etag": etag,
+        }
+
+    def set_stat_headers(self, stat_result: os.stat_result) -> None:
+        stat_headers = self.get_stat_headers(stat_result)
+        for name, value in stat_headers.items():
+            self.headers.setdefault(name, value)
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         if self.stat_result is None:

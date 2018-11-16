@@ -1,10 +1,22 @@
 import os
 import stat
+import typing
+from email.utils import parsedate
 
 from aiofiles.os import stat as aio_stat
 
+from starlette.datastructures import Headers
 from starlette.responses import FileResponse, PlainTextResponse, Response
 from starlette.types import ASGIInstance, Receive, Scope, Send
+
+NOT_MODIFIED_HEADERS = (
+    "cache-control",
+    "content-location",
+    "date",
+    "etag",
+    "expires",
+    "vary",
+)
 
 
 class StaticFiles:
@@ -50,6 +62,25 @@ class _StaticFilesResponder:
         if not (stat.S_ISDIR(stat_result.st_mode) or stat.S_ISLNK(stat_result.st_mode)):
             raise RuntimeError("StaticFiles path '%s' is not a directory." % directory)
 
+    def is_not_modified(self, stat_headers: typing.Dict[str, str]) -> bool:
+        etag = stat_headers["etag"]
+        last_modified = stat_headers["last-modified"]
+        req_headers = Headers(scope=self.scope)
+        if etag == req_headers.get("if-none-match"):
+            return True
+        if "if-modified-since" not in req_headers:
+            return False
+        last_req_time = req_headers["if-modified-since"]
+        return parsedate(last_req_time) >= parsedate(last_modified)  # type: ignore
+
+    def not_modified_response(self, stat_headers: dict) -> Response:
+        headers = {
+            name: value
+            for name, value in stat_headers.items()
+            if name in NOT_MODIFIED_HEADERS
+        }
+        return Response(status_code=304, headers=headers)
+
     async def __call__(self, receive: Receive, send: Send) -> None:
         if self.check_directory is not None:
             await self.check_directory_configured_correctly()
@@ -63,8 +94,12 @@ class _StaticFilesResponder:
             if not stat.S_ISREG(mode):
                 response = PlainTextResponse("Not Found", status_code=404)
             else:
-                response = FileResponse(
-                    self.path, stat_result=stat_result, method=self.scope["method"]
-                )
+                stat_headers = FileResponse.get_stat_headers(stat_result)
+                if self.is_not_modified(stat_headers):
+                    response = self.not_modified_response(stat_headers)
+                else:
+                    response = FileResponse(
+                        self.path, stat_result=stat_result, method=self.scope["method"]
+                    )
 
         await response(receive, send)

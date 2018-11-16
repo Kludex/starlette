@@ -19,6 +19,12 @@ Paths can use URI templating style to capture path components.
 Route('/users/{username}', endpoint=User, methods=['GET'])
 ```
 
+Convertors for `int`, `float`, and `path` are also available:
+
+```python
+Route('/users/{user_id:int}', endpoint=User, methods=['GET'])
+```
+
 Path parameters are made available in the request, as the `request.path_params`
 dictionary.
 

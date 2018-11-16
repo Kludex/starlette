@@ -1,3 +1,13 @@
+## 0.8.5
+
+* Support URL convertors.
+* Support HTTP 304 cache responses from `StaticFiles`.
+* Resolve character escaping issue with form data.
+
+## 0.8.4
+
+* Default to empty body on responses.
+
 ## 0.8.3
 
 * Add 'name' argument to `@app.route()`.

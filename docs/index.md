@@ -158,7 +158,7 @@ gunicorn -k uvicorn.workers.UvicornH11Worker ...
 ```
 
 <p align="center">&mdash; ⭐️ &mdash;</p>
-<p align="center"><i>Starlette is <a href="https://github.com/tomchristie/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>
+<p align="center"><i>Starlette is <a href="https://github.com/encode/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>
 
 [requests]: http://docs.python-requests.org/en/master/
 [aiofiles]: https://github.com/Tinche/aiofiles

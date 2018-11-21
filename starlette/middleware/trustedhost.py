@@ -39,7 +39,6 @@ class TrustedHostMiddleware:
                 if found_www_redirect and self.www_redirect:
                     url = URL(scope=scope)
                     redirect_url = url.replace(netloc="www." + url.netloc)
-                    print(redirect_url)
                     return RedirectResponse(url=str(redirect_url))
                 return PlainTextResponse("Invalid host header", status_code=400)
 

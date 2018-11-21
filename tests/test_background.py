@@ -1,5 +1,3 @@
-import asyncio
-
 from starlette.background import BackgroundTask
 from starlette.responses import Response
 from starlette.testclient import TestClient

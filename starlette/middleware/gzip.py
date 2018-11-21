@@ -1,6 +1,5 @@
 import gzip
 import io
-import typing
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send

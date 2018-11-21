@@ -2,7 +2,7 @@ import functools
 import re
 import typing
 
-from starlette.datastructures import URL, Headers, MutableHeaders
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 

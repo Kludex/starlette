@@ -2,7 +2,6 @@ import enum
 import json
 import typing
 from collections.abc import Mapping
-from urllib.parse import unquote
 
 from starlette.datastructures import URL, Headers, QueryParams
 from starlette.types import Message, Receive, Scope, Send

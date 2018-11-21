@@ -1,6 +1,6 @@
 import typing
 
-from starlette.datastructures import URL, URLPath
+from starlette.datastructures import URLPath
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
 from starlette.middleware.base import BaseHTTPMiddleware

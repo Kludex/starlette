@@ -2,7 +2,6 @@ import asyncio
 import inspect
 import re
 import typing
-from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
 from starlette.concurrency import run_in_threadpool

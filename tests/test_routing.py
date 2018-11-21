@@ -1,6 +1,5 @@
 import pytest
 
-from starlette.exceptions import ExceptionMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient

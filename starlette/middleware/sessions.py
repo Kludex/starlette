@@ -49,7 +49,10 @@ class SessionMiddleware:
                     data = b64encode(json.dumps(scope["session"]).encode("utf-8"))
                     data = self.signer.sign(data)
                     headers = MutableHeaders(scope=message)
-                    header_value = "%s=%s" % (self.session_cookie, data.decode("utf-8"))
+                    header_value = "%s=%s; path=/" % (
+                        self.session_cookie,
+                        data.decode("utf-8"),
+                    )
                     headers.append("Set-Cookie", header_value)
                 elif not was_empty_session:
                     # The session has been cleared.

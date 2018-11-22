@@ -1,3 +1,7 @@
+## 0.8.6
+
+* Session cookies are now set on the root path.
+
 ## 0.8.5
 
 * Support URL convertors.

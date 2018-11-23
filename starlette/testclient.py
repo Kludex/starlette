@@ -4,6 +4,7 @@ import io
 import json
 import queue
 import threading
+import types
 import typing
 from urllib.parse import unquote, urljoin, urlparse
 
@@ -132,6 +133,14 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                 body_bytes = body.encode("utf-8")  # type: bytes
             elif body is None:
                 body_bytes = b""
+            elif isinstance(body, types.GeneratorType):
+                try:
+                    chunk = body.send(None)
+                    if isinstance(chunk, str):
+                        chunk = chunk.encode("utf-8")
+                    return {"type": "http.request", "body": chunk, "more_body": True}
+                except StopIteration:
+                    return {"type": "http.request", "body": b""}
             else:
                 body_bytes = body
             return {"type": "http.request", "body": body_bytes}

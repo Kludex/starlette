@@ -181,7 +181,11 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
         response_complete = False
         raw_kwargs = {"body": io.BytesIO()}  # type: typing.Dict[str, typing.Any]
 
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
         try:
             connection = self.app(scope)

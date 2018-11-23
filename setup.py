@@ -3,7 +3,6 @@
 
 import os
 import re
-import sys
 
 from setuptools import setup
 
@@ -43,7 +42,7 @@ setup(
     author='Tom Christie',
     author_email='tom@tomchristie.com',
     packages=get_packages('starlette'),
-    extras_require = {
+    extras_require={
         'full': [
             'aiofiles',
             'graphene',

@@ -1,3 +1,7 @@
+## 0.8.8
+
+* Better support for third-party API schema generators.
+
 ## 0.8.7
 
 * Support chunked requests with TestClient.

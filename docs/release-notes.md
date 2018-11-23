@@ -1,3 +1,9 @@
+## 0.8.7
+
+* Support chunked requests with TestClient.
+* Cleanup asyncio tasks properly with WSGIMiddleware.
+* Support using TestClient within endpoints, for service mocking.
+
 ## 0.8.6
 
 * Session cookies are now set on the root path.

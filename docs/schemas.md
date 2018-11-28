@@ -89,4 +89,11 @@ if __name__ == '__main__':
         print(yaml.dumps(app.schema, default_flow_style=False))
 ```
 
+### Third party packages
+
+#### [starlette-apispec](starlette-apispec)
+
+Easy APISpec integration for Starlette, which supports some object serialization libraries.
+
 [openapi]: https://github.com/OAI/OpenAPI-Specification
+[starlette-apispec]: https://github.com/Woile/starlette-apispec

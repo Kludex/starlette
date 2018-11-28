@@ -1,3 +1,7 @@
+## 0.9.1
+
+* Handle startup/shutdown errors properly.
+
 ## 0.9.0
 
 * `TestClient` can now be used as a context manager, instead of `LifespanContext`.

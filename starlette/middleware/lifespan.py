@@ -67,7 +67,7 @@ class LifespanHandler:
             assert message["type"] == "lifespan.startup"
             await self.startup()
 
-            # Pass the message on to the next in the chain, and wait for the response.
+            # Wait for the rest of the chain before sending our response.
             await self.receive_buffer.put(message)
             message = await self.send_buffer.get()
             if message is None:
@@ -80,14 +80,17 @@ class LifespanHandler:
             assert message["type"] == "lifespan.shutdown"
             await self.shutdown()
 
-            # Pass the message on to the next in the chain, and wait for the response.
+            # Wait for the rest of the chain before sending our response.
             await self.receive_buffer.put(message)
             message = await self.send_buffer.get()
             if message is None:
                 inner_task.result()
             assert message["type"] == "lifespan.shutdown.complete"
             await send({"type": "lifespan.shutdown.complete"})
-        finally:
+        except Exception as exc:
+            inner_task.cancel()
+            raise exc from None
+        else:
             await inner_task
 
     async def run_inner(self) -> None:

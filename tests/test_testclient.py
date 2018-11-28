@@ -1,3 +1,5 @@
+import pytest
+
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
@@ -20,6 +22,14 @@ def homepage(request):
     return JSONResponse(response.json())
 
 
+startup_error_app = Starlette()
+
+
+@startup_error_app.on_event("startup")
+def startup():
+    raise RuntimeError()
+
+
 def test_use_testclient_in_endpoint():
     """
     We should be able to use the test client within applications.
@@ -30,3 +40,14 @@ def test_use_testclient_in_endpoint():
     client = TestClient(app)
     response = client.get("/")
     assert response.json() == {"mock": "example"}
+
+
+def testclient_as_contextmanager():
+    with TestClient(app):
+        pass
+
+
+def test_error_on_startup():
+    with pytest.raises(RuntimeError):
+        with TestClient(startup_error_app):
+            pass  # pragma: no cover

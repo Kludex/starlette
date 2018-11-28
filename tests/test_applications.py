@@ -4,7 +4,6 @@ from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
-from starlette.lifespan import LifespanContext
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
@@ -262,7 +261,7 @@ def test_app_add_event_handler():
 
     assert not startup_complete
     assert not cleanup_complete
-    with LifespanContext(app):
+    with TestClient(app):
         assert startup_complete
         assert not cleanup_complete
     assert startup_complete

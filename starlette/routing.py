@@ -432,7 +432,10 @@ class Router:
         raise NoMatchFound()
 
     def __call__(self, scope: Scope) -> ASGIInstance:
-        assert scope["type"] in ("http", "websocket")
+        assert scope["type"] in ("http", "websocket", "lifespan")
+
+        if scope["type"] == "lifespan":
+            return LifespanHandler(scope)
 
         if "router" not in scope:
             scope["router"] = self
@@ -466,3 +469,17 @@ class Router:
 
     def __eq__(self, other: typing.Any) -> bool:
         return isinstance(other, Router) and self.routes == other.routes
+
+
+class LifespanHandler:
+    def __init__(self, scope: Scope) -> None:
+        pass
+
+    async def __call__(self, receive: Receive, send: Send) -> None:
+        message = await receive()
+        assert message["type"] == "lifespan.startup"
+        await send({"type": "lifespan.startup.complete"})
+
+        message = await receive()
+        assert message["type"] == "lifespan.shutdown"
+        await send({"type": "lifespan.shutdown.complete"})

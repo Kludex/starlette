@@ -2,9 +2,9 @@ import typing
 
 from starlette.datastructures import URLPath
 from starlette.exceptions import ExceptionMiddleware
-from starlette.lifespan import LifespanHandler
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
+from starlette.middleware.lifespan import LifespanMiddleware
 from starlette.routing import BaseRoute, Router
 from starlette.schemas import BaseSchemaGenerator
 from starlette.types import ASGIApp, ASGIInstance, Scope
@@ -14,11 +14,11 @@ class Starlette:
     def __init__(self, debug: bool = False, template_directory: str = None) -> None:
         self._debug = debug
         self.router = Router()
-        self.lifespan_handler = LifespanHandler()
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
         self.error_middleware = ServerErrorMiddleware(
             self.exception_middleware, debug=debug
         )
+        self.lifespan_middleware = LifespanMiddleware(self.error_middleware)
         self.schema_generator = None  # type: typing.Optional[BaseSchemaGenerator]
         self.template_env = self.load_template_env(template_directory)
 
@@ -62,7 +62,7 @@ class Starlette:
         return self.schema_generator.get_schema(self.routes)
 
     def on_event(self, event_type: str) -> typing.Callable:
-        return self.lifespan_handler.on_event(event_type)
+        return self.lifespan_middleware.on_event(event_type)
 
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
         self.router.mount(path, app=app, name=name)
@@ -85,7 +85,7 @@ class Starlette:
             )
 
     def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
-        self.lifespan_handler.add_event_handler(event_type, func)
+        self.lifespan_middleware.add_event_handler(event_type, func)
 
     def add_route(
         self,
@@ -153,6 +153,4 @@ class Starlette:
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         scope["app"] = self
-        if scope["type"] == "lifespan":
-            return self.lifespan_handler(scope)
-        return self.error_middleware(scope)
+        return self.lifespan_middleware(scope)

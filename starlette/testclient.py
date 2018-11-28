@@ -6,6 +6,7 @@ import queue
 import threading
 import types
 import typing
+from types import TracebackType
 from urllib.parse import unquote, urljoin, urlparse
 
 import requests
@@ -307,6 +308,7 @@ class _TestClient(requests.Session):
         self.mount("ws://", adapter)
         self.mount("wss://", adapter)
         self.headers.update({"user-agent": "testclient"})
+        self.app = app
         self.base_url = base_url
 
     def request(
@@ -367,6 +369,40 @@ class _TestClient(requests.Session):
             raise RuntimeError("Expected WebSocket upgrade")  # pragma: no cover
 
         return session
+
+    def __enter__(self) -> requests.Session:
+        loop = asyncio.get_event_loop()
+        self.send_queue = asyncio.Queue()  # type: asyncio.Queue
+        self.receive_queue = asyncio.Queue()  # type: asyncio.Queue
+        self.task = loop.create_task(self.lifespan())
+        loop.run_until_complete(self.wait_startup())
+        return self
+
+    def __exit__(self, *args: typing.Any) -> None:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.wait_shutdown())
+
+    async def lifespan(self) -> None:
+        try:
+            inner = self.app({"type": "lifespan"})
+            await inner(self.receive_queue.get, self.send_queue.put)
+        finally:
+            await self.send_queue.put(None)
+
+    async def wait_startup(self) -> None:
+        await self.receive_queue.put({"type": "lifespan.startup"})
+        message = await self.send_queue.get()
+        if message is None:
+            self.task.result()
+        assert message["type"] == "lifespan.startup.complete"
+
+    async def wait_shutdown(self) -> None:
+        await self.receive_queue.put({"type": "lifespan.shutdown"})
+        message = await self.send_queue.get()
+        if message is None:
+            self.task.result()
+        assert message["type"] == "lifespan.shutdown.complete"
+        await self.task
 
 
 def TestClient(

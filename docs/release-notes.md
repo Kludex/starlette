@@ -1,3 +1,9 @@
+## 0.9.0
+
+* `TestClient` can now be used as a context manager, instead of `LifespanContext`.
+* Lifespan is now handled as middleware. Startup and Shutdown events are
+visible throughout the middleware stack.
+
 ## 0.8.8
 
 * Better support for third-party API schema generators.

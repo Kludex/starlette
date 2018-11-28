@@ -58,8 +58,8 @@ latest `uvicorn` release if you need startup/cleanup support.
 You might want to explicitly call into your event handlers in any test setup
 or test teardown code.
 
-Alternatively, Starlette provides a context manager that ensures the
-lifespan events are called.
+Alternatively, you can use `TestClient` as a context manager, to ensure that
+startup and shutdown events are called.
 
 ```python
 from example import app
@@ -68,9 +68,8 @@ from starlette.testclient import TestClient
 
 
 def test_homepage():
-    with LifespanContext(app):
+    with TestClient(app) as client:
         # Application 'startup' handlers are called on entering the block.
-        client = TestClient(app)
         response = client.get("/")
         assert response.status_code == 200
 

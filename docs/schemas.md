@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
 ### Third party packages
 
-#### [starlette-apispec](starlette-apispec)
+#### [starlette-apispec][starlette-apispec]
 
 Easy APISpec integration for Starlette, which supports some object serialization libraries.
 

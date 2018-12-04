@@ -93,13 +93,28 @@ class URL:
         return self.scheme in ("https", "wss")
 
     def replace(self, **kwargs: typing.Any) -> "URL":
-        if "hostname" in kwargs or "port" in kwargs:
+        if (
+            "username" in kwargs
+            or "password" in kwargs
+            or "hostname" in kwargs
+            or "port" in kwargs
+        ):
             hostname = kwargs.pop("hostname", self.hostname)
             port = kwargs.pop("port", self.port)
-            if port is None:
-                kwargs["netloc"] = hostname
-            else:
-                kwargs["netloc"] = "%s:%d" % (hostname, port)
+            username = kwargs.pop("username", self.username)
+            password = kwargs.pop("password", self.password)
+
+            netloc = hostname
+            if port is not None:
+                netloc += ":%d" % port
+            if username is not None:
+                userpass = username
+                if password is not None:
+                    userpass += ":%s" % password
+                netloc = "%s@%s" % (userpass, netloc)
+
+            kwargs["netloc"] = netloc
+
         components = self.components._replace(**kwargs)
         return URL(components.geturl())
 
@@ -110,7 +125,10 @@ class URL:
         return self._url
 
     def __repr__(self) -> str:
-        return "%s(%s)" % (self.__class__.__name__, repr(self._url))
+        url = str(self)
+        if self.password:
+            url = str(self.replace(password="********"))
+        return "%s(%s)" % (self.__class__.__name__, repr(url))
 
 
 class URLPath(str):

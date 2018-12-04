@@ -27,6 +27,17 @@ def test_url():
     assert new.hostname == "example.com"
 
 
+def test_hidden_password():
+    u = URL("https://example.org/path/to/somewhere")
+    assert repr(u) == "URL('https://example.org/path/to/somewhere')"
+
+    u = URL("https://username@example.org/path/to/somewhere")
+    assert repr(u) == "URL('https://username@example.org/path/to/somewhere')"
+
+    u = URL("https://username:password@example.org/path/to/somewhere")
+    assert repr(u) == "URL('https://username:********@example.org/path/to/somewhere')"
+
+
 def test_url_from_scope():
     u = URL(
         scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []}

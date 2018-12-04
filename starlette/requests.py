@@ -84,6 +84,13 @@ class Request(Mapping):
         return self._scope["session"]
 
     @property
+    def database(self) -> typing.Any:
+        assert (
+            "database" in self._scope
+        ), "DatabaseMiddleware must be installed to access request.database"
+        return self._scope["database"]
+
+    @property
     def receive(self) -> Receive:
         return self._receive
 

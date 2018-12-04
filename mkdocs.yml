@@ -19,6 +19,7 @@ nav:
     - Middleware: 'middleware.md'
     - Static Files: 'staticfiles.md'
     - Templates: 'templates.md'
+    - Databases: 'databases.md'
     - GraphQL: 'graphql.md'
     - API Schemas: 'schemas.md'
     - Events: 'events.md'

@@ -8,9 +8,17 @@ fi
 export VERSION_SCRIPT="import sys; print('%s.%s' % sys.version_info[0:2])"
 export PYTHON_VERSION=`python -c "$VERSION_SCRIPT"`
 
+if [ -z "$STARLETTE_TEST_DATABASE" ] ; then
+    echo "Variable STARLETTE_TEST_DATABASE is unset. Excluding database tests."
+    export IGNORE_MODULES="--ignore tests/test_database.py"
+else
+    echo "Variable STARLETTE_TEST_DATABASE is set"
+    export IGNORE_MODULES=""
+fi
+
 set -x
 
-PYTHONPATH=. ${PREFIX}pytest --ignore venv -W ignore::DeprecationWarning --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
+PYTHONPATH=. ${PREFIX}pytest --ignore venv ${IGNORE_MODULES} -W ignore::DeprecationWarning --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
 ${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
 if [ "${PYTHON_VERSION}" = '3.7' ]; then
     echo "Skipping 'black' on 3.7. See issue https://github.com/ambv/black/issues/494"

@@ -6,8 +6,17 @@ python:
     - "3.6"
     - "3.7-dev"
 
+env:
+    - STARLETTE_TEST_DATABASE=postgres://localhost/starlette
+
+services:
+    - postgresql
+
 install:
     - pip install -r requirements.txt
+
+before_script:
+    - psql -c 'create database starlette;' -U postgres
 
 script:
     - scripts/test

@@ -8,6 +8,9 @@ pyyaml
 requests
 ujson
 
+# Database backends
+asyncpg
+
 # Testing
 black
 codecov
@@ -15,6 +18,8 @@ isort
 mypy
 pytest
 pytest-cov
+sqlalchemy
+psycopg2-binary
 
 # Documentation
 mkdocs

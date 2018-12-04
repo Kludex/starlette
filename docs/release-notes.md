@@ -1,3 +1,9 @@
+## 0.9.2
+
+* Add optional database support.
+* Add `request` to GraphQL context.
+* Hide any password component in `URL.__repr__`.
+
 ## 0.9.1
 
 * Handle startup/shutdown errors properly.

@@ -1,6 +1,15 @@
 Starlette includes optional database support. There is currently only a driver
 for Postgres databases, but MySQL and SQLite support is planned.
 
+Enabling the built-in database support requires `sqlalchemy`, and an appropriate database driver. Currently this means `asyncpg` is a requirement.
+
+The database support is completely optional - you can either include the middleware or not, or you can build alternative kinds of backends instead. It does not
+include support for an ORM, but it does support using queries built using
+[SQLAlchemy Core][sqlalchemy-core].
+
+Here's a complete example, that includes table definitions, installing the
+`DatabaseMiddleware`, and a couple of endpoints that interact with the database.
+
 ```python
 import os
 import sqlalchemy

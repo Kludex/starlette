@@ -25,6 +25,22 @@ which you can use to interact with your GraphQL API.
 
 ![GraphiQL](img/graphiql.png)
 
+## Accessing request information
+
+The current request is available in the context.
+
+```python
+class Query(graphene.ObjectType):
+    user_agent = graphene.String()
+
+    def resolve_user_agent(self, info):
+        """
+        Return the User-Agent of the incoming request.
+        """
+        request = info.context["request"]
+        return request.headers.get("User-Agent", "<unknown>")
+```
+
 ## Sync or Async executors
 
 If you're working with a standard ORM, then just use regular function calls for

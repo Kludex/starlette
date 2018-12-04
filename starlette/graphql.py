@@ -73,7 +73,7 @@ class GraphQLApp:
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        result = await self.execute(query, variables)
+        result = await self.execute(request, query, variables)
         error_data = (
             [format_graphql_error(err) for err in result.errors]
             if result.errors
@@ -85,7 +85,11 @@ class GraphQLApp:
         )
         return JSONResponse(response_data, status_code=status_code)
 
-    async def execute(self, query, variables=None, operation_name=None):  # type: ignore
+    async def execute(  # type: ignore
+        self, request, query, variables=None, operation_name=None
+    ):
+        context = dict(request=request)
+
         if self.is_async:
             return await self.schema.execute(
                 query,
@@ -93,6 +97,7 @@ class GraphQLApp:
                 operation_name=operation_name,
                 executor=self.executor,
                 return_promise=True,
+                context=context,
             )
         else:
             return await run_in_threadpool(
@@ -100,6 +105,7 @@ class GraphQLApp:
                 query,
                 variables=variables,
                 operation_name=operation_name,
+                context=context,
             )
 
     async def handle_graphiql(self, request: Request) -> Response:

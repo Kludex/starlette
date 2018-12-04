@@ -2,15 +2,34 @@ import graphene
 from graphql.execution.executors.asyncio import AsyncioExecutor
 
 from starlette.applications import Starlette
+from starlette.datastructures import Headers
 from starlette.graphql import GraphQLApp
 from starlette.testclient import TestClient
 
 
+class FakeAuthMiddleware:
+    def __init__(self, app) -> None:
+        self.app = app
+
+    def __call__(self, scope):
+        headers = Headers(scope=scope)
+        scope["user"] = "Jane" if headers.get("Authorization") == "Bearer 123" else None
+        return self.app(scope)
+
+
 class Query(graphene.ObjectType):
     hello = graphene.String(name=graphene.String(default_value="stranger"))
+    whoami = graphene.String()
 
     def resolve_hello(self, info, name):
         return "Hello " + name
+
+    def resolve_whoami(self, info):
+        return (
+            "a mystery"
+            if info.context["request"]["user"] is None
+            else info.context["request"]["user"]
+        )
 
 
 schema = graphene.Schema(query=Query)
@@ -89,6 +108,18 @@ def test_add_graphql_route():
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
     assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+
+
+def test_graphql_context():
+    app = Starlette()
+    app.add_middleware(FakeAuthMiddleware)
+    app.add_route("/", GraphQLApp(schema=schema))
+    client = TestClient(app)
+    response = client.post(
+        "/", json={"query": "{ whoami }"}, headers={"Authorization": "Bearer 123"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"data": {"whoami": "Jane"}, "errors": None}
 
 
 class ASyncQuery(graphene.ObjectType):

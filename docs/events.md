@@ -53,7 +53,7 @@ any in-process background tasks have completed.
 and is only currently supported by the `uvicorn` server. Make sure to use the
 latest `uvicorn` release if you need startup/cleanup support.
 
-## Running event handers in tests
+## Running event handlers in tests
 
 You might want to explicitly call into your event handlers in any test setup
 or test teardown code.

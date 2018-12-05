@@ -52,7 +52,7 @@ class Config:
     ) -> None:
         self.environ = environ
         self.file_values = {}  # type: typing.Dict[str, str]
-        if env_file is not None:
+        if env_file is not None and os.path.isfile(env_file):
             self.file_values = self._read_file(env_file)
 
     def get(

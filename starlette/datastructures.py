@@ -166,6 +166,22 @@ class URLPath(str):
         return str(URL(scheme=scheme, netloc=base_url.netloc, path=str(self)))
 
 
+class Secret:
+    """
+    Holds a string value that should not be revealed in tracebacks etc.
+    You should cast the value to `str` at the point it is required.
+    """
+
+    def __init__(self, value: str):
+        self._value = value
+
+    def __repr__(self) -> str:
+        return "%s('**********')" % self.__class__.__name__
+
+    def __str__(self) -> str:
+        return self._value
+
+
 class QueryParams(typing.Mapping[str, str]):
     """
     An immutable multidict.

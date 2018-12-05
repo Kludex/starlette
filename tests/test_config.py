@@ -3,7 +3,7 @@ import os
 import pytest
 
 from starlette.config import Config, Environ, EnvironError
-from starlette.datastructures import DatabaseURL
+from starlette.datastructures import DatabaseURL, Secret
 
 
 def test_config(tmpdir):
@@ -14,6 +14,7 @@ def test_config(tmpdir):
             "DATABASE_URL=postgres://username:password@localhost/database_name\n"
         )
         file.write("REQUEST_HOSTNAME=example.com\n")
+        file.write("SECRET_KEY=12345\n")
         file.write("\n")
         file.write("\n")
 
@@ -23,11 +24,14 @@ def test_config(tmpdir):
     DATABASE_URL = config.get("DATABASE_URL", cast=DatabaseURL)
     REQUEST_TIMEOUT = config.get("REQUEST_TIMEOUT", cast=int, default=10)
     REQUEST_HOSTNAME = config.get("REQUEST_HOSTNAME")
+    SECRET_KEY = config.get("SECRET_KEY", cast=Secret)
 
     assert DEBUG is True
     assert DATABASE_URL.name == "database_name"
     assert REQUEST_TIMEOUT == 10
     assert REQUEST_HOSTNAME == "example.com"
+    assert repr(SECRET_KEY) == "Secret('**********')"
+    assert str(SECRET_KEY) == "12345"
 
     with pytest.raises(KeyError):
         config.get("MISSING")

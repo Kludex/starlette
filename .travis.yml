@@ -7,7 +7,7 @@ python:
     - "3.7-dev"
 
 env:
-    - STARLETTE_TEST_DATABASE=postgres://localhost/starlette
+    - STARLETTE_TEST_DATABASE=postgresql://localhost/starlette
 
 services:
     - postgresql

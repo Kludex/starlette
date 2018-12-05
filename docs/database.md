@@ -82,47 +82,38 @@ Using a decorator on an endpoint:
 from starlette.databases import transaction
 
 @transaction
-async def populate_notes(request):
-    # These database inserts occur within a transaction.
-    # If an error occurs they will be rolled back as a group.
-    query = notes.insert().values(text="buy the groceries", completed=True)
+async def populate_note(request):
+    # This database insert occurs within a transaction.
+    # It will be rolled back by the `RuntimeError`.
+    query = notes.insert().values(text="you won't see me", completed=True)
     await request.database.execute(query)
-    query = notes.insert().values(text="take the dog for a walk", completed=False)
-    await request.database.execute(query)
-    query = notes.insert().values(text="interview preparation", completed=True)
-    await request.database.execute(query)
+    raise RuntimeError()
 ```
 
 Using a context manager:
 
 ```python
-async def populate_notes(request):
+async def populate_note(request):
     async with request.database.transaction():
-        # These database inserts occur within a transaction.
-        # If an error occurs they will be rolled back as a group.
-        query = notes.insert().values(text="buy the groceries", completed=True)
+        # This database insert occurs within a transaction.
+        # It will be rolled back by the `RuntimeError`.
+        query = notes.insert().values(text="you won't see me", completed=True)
         await request.database.execute(query)
-        query = notes.insert().values(text="take the dog for a walk", completed=False)
-        await request.database.execute(query)
-        query = notes.insert().values(text="interview preparation", completed=True)
-        await request.database.execute(query)
+        raise RuntimeError()
 ```
 
 Using the low-level API:
 
 ```python
-async def populate_notes(request):
+async def populate_note(request):
     transaction = request.database.transaction()
     transaction.start()
     try:
-        # These database inserts occur within a transaction.
-        # If an error occurs they will be rolled back as a group.
-        query = notes.insert().values(text="buy the groceries", completed=True)
+        # This database insert occurs within a transaction.
+        # It will be rolled back by the `RuntimeError`.
+        query = notes.insert().values(text="you won't see me", completed=True)
         await request.database.execute(query)
-        query = notes.insert().values(text="take the dog for a walk", completed=False)
-        await request.database.execute(query)
-        query = notes.insert().values(text="interview preparation", completed=True)
-        await request.database.execute(query)
+        raise RuntimeError()
     except:
         transaction.rollback()
         raise

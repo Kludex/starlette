@@ -7,7 +7,7 @@ from starlette.database.core import (
     DatabaseSession,
     DatabaseTransaction,
 )
-from starlette.datastructures import URL
+from starlette.datastructures import DatabaseURL
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 
 
@@ -15,7 +15,7 @@ class DatabaseMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        database_url: typing.Union[str, URL],
+        database_url: typing.Union[str, DatabaseURL],
         rollback_on_shutdown: bool,
     ) -> None:
         self.app = app
@@ -24,9 +24,11 @@ class DatabaseMiddleware:
         self.session = None  # type: typing.Optional[DatabaseSession]
         self.transaction = None  # type: typing.Optional[DatabaseTransaction]
 
-    def get_backend(self, database_url: typing.Union[str, URL]) -> DatabaseBackend:
+    def get_backend(
+        self, database_url: typing.Union[str, DatabaseURL]
+    ) -> DatabaseBackend:
         if isinstance(database_url, str):
-            database_url = URL(database_url)
+            database_url = DatabaseURL(database_url)
         assert database_url.scheme == "postgresql"
         from starlette.database.postgres import PostgresBackend
 

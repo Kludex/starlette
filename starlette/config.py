@@ -1,9 +1,49 @@
 import os
 import typing
+from collections.abc import MutableMapping
 
 
 class undefined:
     pass
+
+
+class EnvironError(Exception):
+    pass
+
+
+class Environ(MutableMapping):
+    def __init__(self, environ: typing.MutableMapping = os.environ):
+        self._environ = environ
+        self._has_been_read = set()  # type: typing.Set[typing.Any]
+
+    def __getitem__(self, key: typing.Any) -> typing.Any:
+        self._has_been_read.add(key)
+        return self._environ.__getitem__(key)
+
+    def __setitem__(self, key: typing.Any, value: typing.Any) -> None:
+        if key in self._has_been_read:
+            raise EnvironError(
+                "Attempting to set environ['%s'], but the value has already be read."
+                % key
+            )
+        self._environ.__setitem__(key, value)
+
+    def __delitem__(self, key: typing.Any) -> None:
+        if key in self._has_been_read:
+            raise EnvironError(
+                "Attempting to delete environ['%s'], but the value has already be read."
+                % key
+            )
+        self._environ.__delitem__(key)
+
+    def __iter__(self) -> typing.Iterator:
+        return iter(self._environ)
+
+    def __len__(self) -> int:
+        return len(self._environ)
+
+
+environ = Environ()
 
 
 class Config:

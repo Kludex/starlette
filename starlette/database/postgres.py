@@ -12,12 +12,12 @@ from starlette.database.core import (
     DatabaseTransaction,
     compile,
 )
-from starlette.datastructures import URL
+from starlette.datastructures import DatabaseURL
 
 
 class PostgresBackend(DatabaseBackend):
-    def __init__(self, database_url: typing.Union[str, URL]) -> None:
-        self.database_url = str(database_url)
+    def __init__(self, database_url: typing.Union[str, DatabaseURL]) -> None:
+        self.database_url = database_url
         self.dialect = self.get_dialect()
         self.pool = None
 
@@ -34,7 +34,7 @@ class PostgresBackend(DatabaseBackend):
         return dialect
 
     async def startup(self) -> None:
-        self.pool = await asyncpg.create_pool(self.database_url)
+        self.pool = await asyncpg.create_pool(str(self.database_url))
 
     async def shutdown(self) -> None:
         assert self.pool is not None, "DatabaseBackend is not running"

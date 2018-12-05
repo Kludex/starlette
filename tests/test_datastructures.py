@@ -1,4 +1,10 @@
-from starlette.datastructures import URL, Headers, MutableHeaders, QueryParams
+from starlette.datastructures import (
+    URL,
+    DatabaseURL,
+    Headers,
+    MutableHeaders,
+    QueryParams,
+)
 
 
 def test_url():
@@ -36,6 +42,13 @@ def test_hidden_password():
 
     u = URL("https://username:password@example.org/path/to/somewhere")
     assert repr(u) == "URL('https://username:********@example.org/path/to/somewhere')"
+
+
+def test_database_url():
+    u = DatabaseURL("postgresql://username:password@localhost/mydatabase")
+    u = u.replace(name="test_" + u.name)
+    assert u.name == "test_mydatabase"
+    assert str(u) == "postgresql://username:password@localhost/test_mydatabase"
 
 
 def test_url_from_scope():

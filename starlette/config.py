@@ -48,7 +48,7 @@ environ = Environ()
 
 class Config:
     def __init__(
-        self, env_file: str = None, environ: typing.Mapping[str, str] = os.environ
+        self, env_file: str = None, environ: typing.Mapping[str, str] = environ
     ) -> None:
         self.environ = environ
         self.file_values = {}  # type: typing.Dict[str, str]

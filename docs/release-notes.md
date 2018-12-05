@@ -1,3 +1,13 @@
+## 0.9.4
+
+* Add `config.environ`.
+* Add `datastructures.Secret`.
+* Add `datastructures.DatabaseURL`.
+
+## 0.9.3
+
+* Add `config.Config(".env")`
+
 ## 0.9.2
 
 * Add optional database support.

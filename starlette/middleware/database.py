@@ -29,7 +29,9 @@ class DatabaseMiddleware:
     ) -> DatabaseBackend:
         if isinstance(database_url, str):
             database_url = DatabaseURL(database_url)
-        assert database_url.scheme == "postgresql"
+        assert (
+            database_url.dialect == "postgresql"
+        ), "Currently only postgresql is supported."
         from starlette.database.postgres import PostgresBackend
 
         return PostgresBackend(database_url)

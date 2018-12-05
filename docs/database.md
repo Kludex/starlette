@@ -14,10 +14,17 @@ Here's a complete example, that includes table definitions, installing the
 import os
 import sqlalchemy
 from starlette.applications import Starlette
+from starlette.config import Config
 from starlette.middleware.database import DatabaseMiddleware
 from starlette.responses import JSONResponse
 
 
+# Configuration from environment variables or '.env' file.
+config = Config('.env')
+DATABASE_URL = config('DATABASE_URL')
+
+
+# Database table definitions.
 metadata = sqlalchemy.MetaData()
 
 notes = sqlalchemy.Table(
@@ -28,10 +35,13 @@ notes = sqlalchemy.Table(
     sqlalchemy.Column("completed", sqlalchemy.Boolean),
 )
 
+
+# Application setup.
 app = Starlette()
-app.add_middleware(DatabaseMiddleware, database_url=os.environ['DATABASE_URL'])
+app.add_middleware(DatabaseMiddleware, database_url=DATABASE_URL)
 
 
+# Endpoints.
 @app.route("/notes", methods=["GET"])
 async def list_notes(request):
     query = notes.select()

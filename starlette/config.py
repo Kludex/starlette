@@ -55,6 +55,11 @@ class Config:
         if env_file is not None and os.path.isfile(env_file):
             self.file_values = self._read_file(env_file)
 
+    def __call__(
+        self, key: str, cast: type = None, default: typing.Any = undefined
+    ) -> typing.Any:
+        return self.get(key, cast, default)
+
     def get(
         self, key: str, cast: type = None, default: typing.Any = undefined
     ) -> typing.Any:
@@ -65,7 +70,7 @@ class Config:
             value = self.file_values[key]
             return self._perform_cast(key, value, cast)
         if default is not undefined:
-            return default
+            return self._perform_cast(key, default, cast)
         raise KeyError("Config '%s' is missing, and has no default." % key)
 
     def _read_file(self, file_name: str) -> typing.Dict[str, str]:
@@ -80,7 +85,9 @@ class Config:
                     file_values[key] = value
         return file_values
 
-    def _perform_cast(self, key: str, value: str, cast: type = None) -> typing.Any:
+    def _perform_cast(
+        self, key: str, value: typing.Any, cast: type = None
+    ) -> typing.Any:
         if cast is None or value is None:
             return value
         elif cast is bool and isinstance(value, str):

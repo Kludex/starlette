@@ -46,9 +46,17 @@ def test_hidden_password():
 
 def test_database_url():
     u = DatabaseURL("postgresql://username:password@localhost/mydatabase")
-    u = u.replace(name="test_" + u.name)
-    assert u.name == "test_mydatabase"
+    u = u.replace(database="test_" + u.database)
+    assert u.database == "test_mydatabase"
     assert str(u) == "postgresql://username:password@localhost/test_mydatabase"
+
+    u = DatabaseURL("postgresql://localhost/mydatabase")
+    assert u.dialect == "postgresql"
+    assert u.driver == ""
+
+    u = DatabaseURL("postgresql+asyncpg://localhost/mydatabase")
+    assert u.dialect == "postgresql"
+    assert u.driver == "asyncpg"
 
 
 def test_url_from_scope():

@@ -133,12 +133,22 @@ class URL:
 
 class DatabaseURL(URL):
     @property
-    def name(self) -> str:
+    def database(self) -> str:
         return self.path.lstrip("/")
 
+    @property
+    def dialect(self) -> str:
+        return self.scheme.split("+")[0]
+
+    @property
+    def driver(self) -> str:
+        if "+" not in self.scheme:
+            return ""
+        return self.scheme.split("+", 1)[1]
+
     def replace(self, **kwargs: typing.Any) -> "URL":
-        if "name" in kwargs:
-            kwargs["path"] = "/" + kwargs.pop("name")
+        if "database" in kwargs:
+            kwargs["path"] = "/" + kwargs.pop("database")
         return super().replace(**kwargs)
 
 

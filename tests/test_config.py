@@ -20,14 +20,14 @@ def test_config(tmpdir):
 
     config = Config(path, environ={"DEBUG": "true"})
 
-    DEBUG = config.get("DEBUG", cast=bool)
-    DATABASE_URL = config.get("DATABASE_URL", cast=DatabaseURL)
-    REQUEST_TIMEOUT = config.get("REQUEST_TIMEOUT", cast=int, default=10)
-    REQUEST_HOSTNAME = config.get("REQUEST_HOSTNAME")
-    SECRET_KEY = config.get("SECRET_KEY", cast=Secret)
+    DEBUG = config("DEBUG", cast=bool)
+    DATABASE_URL = config("DATABASE_URL", cast=DatabaseURL)
+    REQUEST_TIMEOUT = config("REQUEST_TIMEOUT", cast=int, default=10)
+    REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
+    SECRET_KEY = config("SECRET_KEY", cast=Secret)
 
     assert DEBUG is True
-    assert DATABASE_URL.name == "database_name"
+    assert DATABASE_URL.database == "database_name"
     assert REQUEST_TIMEOUT == 10
     assert REQUEST_HOSTNAME == "example.com"
     assert repr(SECRET_KEY) == "Secret('**********')"

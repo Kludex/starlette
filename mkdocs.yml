@@ -25,6 +25,7 @@ nav:
     - Events: 'events.md'
     - Background Tasks: 'background.md'
     - Exceptions: 'exceptions.md'
+    - Configuration: 'config.md'
     - Test Client: 'testclient.md'
     - Release Notes: 'release-notes.md'
 

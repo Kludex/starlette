@@ -27,7 +27,7 @@ class DatabaseMiddleware:
     def get_backend(self, database_url: typing.Union[str, URL]) -> DatabaseBackend:
         if isinstance(database_url, str):
             database_url = URL(database_url)
-        assert database_url.scheme == "postgres"
+        assert database_url.scheme == "postgresql"
         from starlette.database.postgres import PostgresBackend
 
         return PostgresBackend(database_url)

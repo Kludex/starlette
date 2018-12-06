@@ -1,11 +1,12 @@
 import functools
 import json
+import typing
 from base64 import b64decode, b64encode
 
 import itsdangerous
 from itsdangerous.exc import BadTimeSignature, SignatureExpired
 
-from starlette.datastructures import MutableHeaders
+from starlette.datastructures import MutableHeaders, Secret
 from starlette.requests import Request
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 
@@ -14,12 +15,12 @@ class SessionMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        secret_key: str,
+        secret_key: typing.Union[str, Secret],
         session_cookie: str = "session",
         max_age: int = 14 * 24 * 60 * 60,  # 14 days, in seconds
     ) -> None:
         self.app = app
-        self.signer = itsdangerous.TimestampSigner(secret_key)
+        self.signer = itsdangerous.TimestampSigner(str(secret_key))
         self.session_cookie = session_cookie
         self.max_age = max_age
 

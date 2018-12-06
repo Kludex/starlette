@@ -1,3 +1,7 @@
+## 0.9.5
+
+* Support either `str` or `Secret` for `SessionMiddleware(secret_key=...)`.
+
 ## 0.9.4
 
 * Add `config.environ`.

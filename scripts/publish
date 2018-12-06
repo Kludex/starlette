@@ -6,6 +6,8 @@ if [ -d 'venv' ] ; then
     export PREFIX="venv/bin/"
 fi
 
+scripts/clean
+
 if ! command -v "${PREFIX}twine" &>/dev/null ; then
     echo "Unable to find the 'twine' command."
     echo "Install from PyPI, using '${PREFIX}pip install twine'."
@@ -23,4 +25,4 @@ echo "You probably want to also tag the version now:"
 echo "git tag -a ${VERSION} -m 'version ${VERSION}'"
 echo "git push --tags"
 
-rm -r dist
+scripts/clean

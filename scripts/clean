@@ -1,0 +1,11 @@
+#!/bin/sh -e
+
+if [ -d 'dist' ] ; then
+    rm -r dist
+fi
+if [ -d 'site' ] ; then
+    rm -r site
+fi
+if [ -d 'starlette.egg-info' ] ; then
+    rm -r starlette.egg-info
+fi

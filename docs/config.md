@@ -11,6 +11,7 @@ from starlette.applications import Starlette
 from starlette.config import Config
 from starlette.datastructures import DatabaseURL, Secret
 
+# Config will be read from environment variables and/or ".env" files.
 config = Config(".env")
 
 DEBUG = config('DEBUG', cast=bool, default=False)
@@ -66,7 +67,7 @@ in their representations.
 >>> print(settings.DATABASE_URL)
 DatabaseURL('postgresql://admin:**********@192.168.0.8/my-application')
 >>> str(settings.SECRET_KEY)
-'98n349$%8b8-7yjn0n8y93T$23r'
+'postgresql://admin:Fkjh348htGee4t3@192.168.0.8/my-application'
 ```
 
 ## Reading or modifying the environment
@@ -186,12 +187,13 @@ def setup_test_database():
     """
     Create a clean test database every time the tests are run.
     """
-    engine = create_engine(settings.DATABASE_URL)
-    assert not database_exists(engine.url), 'Test database already exists. Aborting tests.'
-    create_database(settings.DATABASE_URL)  # Create the test database.
-    metadata.create_all(engine)             # Create the tables.
-    yield                                   # Run the tests.
-    drop_database(settings.DATABASE_URL)    # Drop the test database.
+    url = str(settings.DATABASE_URL)
+    engine = create_engine(url)
+    assert not database_exists(url), 'Test database already exists. Aborting tests.'
+    create_database(url)             # Create the test database.
+    metadata.create_all(engine)      # Create the tables.
+    yield                            # Run the tests.
+    drop_database(url)               # Drop the test database.
 
 
 @pytest.fixture()
@@ -204,7 +206,7 @@ def client():
     #
     # Because we've configured the DatabaseMiddleware with `rollback_on_shutdown`
     # we'll get a complete rollback to the initial state after each test case runs.
-    async with TestClient(app) as test_client:
+    with TestClient(app) as test_client:
         yield test_client
 ```
 

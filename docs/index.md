@@ -167,5 +167,6 @@ gunicorn -k uvicorn.workers.UvicornH11Worker ...
 [python-multipart]: https://andrew-d.github.io/python-multipart/
 [graphene]: https://graphene-python.org/
 [itsdangerous]: https://pythonhosted.org/itsdangerous/
+[sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation
 [ujson]: https://github.com/esnme/ultrajson

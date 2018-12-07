@@ -1,3 +1,7 @@
+## 0.9.6
+
+* Add `AuthenticationMiddleware`, and `@requires()` decorator.
+
 ## 0.9.5
 
 * Support either `str` or `Secret` for `SessionMiddleware(secret_key=...)`.

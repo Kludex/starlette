@@ -82,6 +82,7 @@ Starlette does not have any hard dependencies, but the following are optional:
 * [`jinja2`][jinja2] - Required if you want to use the default template configuration.
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
+* [`sqlalchemy`][sqlalchemy] - Required for `DatabaseMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
 * [`graphene`][graphene] - Required for `GraphQLApp` support.
 * [`ujson`][ujson] - Required if you want to use `UJSONResponse`.

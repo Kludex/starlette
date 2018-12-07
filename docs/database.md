@@ -11,7 +11,6 @@ Here's a complete example, that includes table definitions, installing the
 `DatabaseMiddleware`, and a couple of endpoints that interact with the database.
 
 ```python
-import os
 import sqlalchemy
 from starlette.applications import Starlette
 from starlette.config import Config
@@ -131,37 +130,153 @@ async def populate_note(request):
         transaction.commit()
 ```
 
-## Test isolation:
+## Test isolation
 
-Use rollback_on_shutdown when instantiating DatabaseMiddleware to support test-isolated sessions.
+There are a few things that we want to ensure when running tests against
+a service that uses a database. Our requirements should be:
+
+* Use a separate database for testing.
+* Create a new test database every time we run the tests.
+* Ensure that the database state is isolated between each test case.
+
+Here's how we need to structure our application and tests in order to
+meet those requirements:
 
 ```python
+from starlette.applications import Starlette
+from starlette.config import Config
+
+config = Config(".env")
+
+TESTING = config('TESTING', cast=bool, default=False)
+DATABASE_URL = config('DATABASE_URL', cast=DatabaseURL)
+if TESTING:
+  # Use a database name like "test_myapplication" for tests.
+  DATABASE_URL = DATABASE_URL.replace(database='test_' + DATABASE_URL.database)
+
+
+# Use 'rollback_on_shutdown' during testing, to ensure we have
+app = Starlette()
 app.add_middleware(
     DatabaseMiddleware,
-    database_url=os.environ['DATABASE_URL'],
-    rollback_on_shutdown=os.environ['TESTING']
+    database_url=DATABASE_URL,
+    rollback_on_shutdown=TESTING
 )
 ```
 
-You'll need to use TestClient as a context manager, in order to perform application startup/shutdown.
+We still need to set `TESTING` during a test run, and setup the test database.
+Assuming we're using `py.test`, here's how our `conftest.py` might look:
 
 ```python
-with TestClient(app) as client:
-    # Entering the block performs application startup.
-    ...
-    # Exiting the block performs application shutdown.
-```
+import pytest
+from starlette.config import environ
+from starlette.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy_utils import database_exists, create_database
 
-If you're using `py.test` you can create a fixture for the test client, like so:
+# This sets `os.environ`, but provides some additional protection.
+# If we placed it below the application import, it would raise an error
+# informing us that 'TESTING' had already been read from the environment.
+environ['TESTING'] = 'True'
 
-**conftest.py**:
+import app
 
-```python
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_database():
+  """
+  Create a clean database on every test case.
+  For safety, we should abort if a database already exists.
+
+  We use the `sqlalchemy_utils` package here for a few helpers in consistently
+  creating and dropping the database.
+  """
+  url = str(app.DATABASE_URL)
+  engine = create_engine(url)
+  assert not database_exists(url), 'Test database already exists. Aborting tests.'
+  create_database(url)             # Create the test database.
+  metadata.create_all(engine)      # Create the tables.
+  yield                            # Run the tests.
+  drop_database(url)               # Drop the test database.
+
+
 @pytest.fixture()
 def client():
+    """
+    When using the 'client' fixture in test cases, we'll get full database
+    rollbacks between test cases:
+
+    def test_homepage(client):
+        url = app.url_path_for('homepage')
+        response = client.get(url)
+        assert response.status_code == 200
+    """
     with TestClient(app) as client:
         yield client
 ```
 
+## Migrations
+
+You'll almost certainly need to be using database migrations in order to manage
+incremental changes to the database. For this we'd strongly recommend
+[Alembic][alembic], which is written by the author of SQLAlchemy.
+
+```shell
+$ pip install alembic
+$ pip install psycopg2-binary  # Install an appropriate database driver.
+$ alembic init migrations
+```
+
+Now, you'll want to set things up so that Alembic references the configured
+DATABASE_URL, and uses your table metadata.
+
+In `alembic.ini` remove the following line:
+
+```shell
+sqlalchemy.url = driver://user:pass@localhost/dbname
+```
+
+In `migrations/env.py`, you need to set the ``'sqlalchemy.url'`` configuration key,
+and the `target_metadata` variable. You'll want something like this:
+
+```python
+# The Alembic Config object.
+config = context.config
+
+# Configure Alembic to use our DATABASE_URL and our table definitions...
+import app
+config.set_main_option('sqlalchemy.url', str(app.DATABASE_URL))
+target_metadata = app.metadata
+
+...
+```
+
+**Running migrations during testing**
+
+It is good practice to ensure that your test suite runs the database migrations
+every time it creates the test database. This will help catch any issues in your
+migration scripts, and will help ensure that the tests are running against
+a database that's in a consistent state with your live database.
+
+We can adjust the `create_test_database` fixture slightly:
+
+```python
+from alembic import command
+from alembic.config import Config
+
+...
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_database():
+    url = str(app.DATABASE_URL)
+    engine = create_engine(url)
+    assert not database_exists(url), 'Test database already exists. Aborting tests.'
+    create_database(url)             # Create the test database.
+    config = Config("alembic.ini")   # Run the migrations.
+    command.upgrade(config, "head")
+    yield                            # Run the tests.
+    drop_database(url)               # Drop the test database.
+```
 
 [sqlalchemy-core]: https://docs.sqlalchemy.org/en/latest/core/
+[alembic]: https://alembic.sqlalchemy.org/en/latest/

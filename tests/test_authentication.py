@@ -89,52 +89,52 @@ def admin(request):
     )
 
 
-client = TestClient(app)
-
-
 def test_user_interface():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"authenticated": False, "user": ""}
+    with TestClient(app) as client:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": False, "user": ""}
 
-    response = client.get("/", auth=("tomchristie", "example"))
-    assert response.status_code == 200
-    assert response.json() == {"authenticated": True, "user": "tomchristie"}
+        response = client.get("/", auth=("tomchristie", "example"))
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": True, "user": "tomchristie"}
 
 
 def test_authentication_required():
-    response = client.get("/dashboard")
-    assert response.status_code == 403
+    with TestClient(app) as client:
+        response = client.get("/dashboard")
+        assert response.status_code == 403
 
-    response = client.get("/dashboard", auth=("tomchristie", "example"))
-    assert response.status_code == 200
-    assert response.json() == {"authenticated": True, "user": "tomchristie"}
+        response = client.get("/dashboard", auth=("tomchristie", "example"))
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": True, "user": "tomchristie"}
 
-    response = client.get("/dashboard/sync")
-    assert response.status_code == 403
+        response = client.get("/dashboard/sync")
+        assert response.status_code == 403
 
-    response = client.get("/dashboard/sync", auth=("tomchristie", "example"))
-    assert response.status_code == 200
-    assert response.json() == {"authenticated": True, "user": "tomchristie"}
+        response = client.get("/dashboard/sync", auth=("tomchristie", "example"))
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": True, "user": "tomchristie"}
 
-    response = client.get("/dashboard", headers={"Authorization": "basic foobar"})
-    assert response.status_code == 400
-    assert response.text == "Invalid basic auth credentials"
+        response = client.get("/dashboard", headers={"Authorization": "basic foobar"})
+        assert response.status_code == 400
+        assert response.text == "Invalid basic auth credentials"
 
 
 def test_authentication_redirect():
-    response = client.get("/admin")
-    assert response.status_code == 200
-    assert response.url == "http://testserver/"
+    with TestClient(app) as client:
+        response = client.get("/admin")
+        assert response.status_code == 200
+        assert response.url == "http://testserver/"
 
-    response = client.get("/admin", auth=("tomchristie", "example"))
-    assert response.status_code == 200
-    assert response.json() == {"authenticated": True, "user": "tomchristie"}
+        response = client.get("/admin", auth=("tomchristie", "example"))
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": True, "user": "tomchristie"}
 
-    response = client.get("/admin/sync")
-    assert response.status_code == 200
-    assert response.url == "http://testserver/"
+        response = client.get("/admin/sync")
+        assert response.status_code == 200
+        assert response.url == "http://testserver/"
 
-    response = client.get("/admin/sync", auth=("tomchristie", "example"))
-    assert response.status_code == 200
-    assert response.json() == {"authenticated": True, "user": "tomchristie"}
+        response = client.get("/admin/sync", auth=("tomchristie", "example"))
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": True, "user": "tomchristie"}

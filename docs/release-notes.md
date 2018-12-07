@@ -1,3 +1,7 @@
+## 0.9.7
+
+* Ensure that `AuthenticationMiddleware` handles lifespan messages correctly.
+
 ## 0.9.6
 
 * Add `AuthenticationMiddleware`, and `@requires()` decorator.

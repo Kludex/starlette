@@ -42,6 +42,9 @@ setup(
     author='Tom Christie',
     author_email='tom@tomchristie.com',
     packages=get_packages('starlette'),
+    package_data = {
+        'starlette': ['py.typed'],
+    },
     extras_require={
         'full': [
             'aiofiles',

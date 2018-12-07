@@ -195,6 +195,6 @@ class App:
         self.scope = scope
 
     async def __call__(self, receive, send):
-        response = FileResponse('/statics/favicon.ico')
+        response = FileResponse('statics/favicon.ico')
         await response(receive, send)
 ```

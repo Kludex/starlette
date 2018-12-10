@@ -56,6 +56,14 @@ async def add_note(request):
     return JSONResponse({"text": data["text"], "completed": data["completed"]})
 
 
+@app.route("/notes/bulk_create", methods=["POST"])
+async def bulk_create_notes(request):
+    data = await request.json()
+    query = notes.insert()
+    await request.database.executemany(query, data)
+    return JSONResponse({"notes": data})
+
+
 @app.route("/notes/{note_id:int}", methods=["GET"])
 async def read_note(request):
     note_id = request.path_params["note_id"]
@@ -106,6 +114,23 @@ def test_database():
         response = client.get("/notes/1/text")
         assert response.status_code == 200
         assert response.json() == "buy the milk"
+
+
+def test_database_executemany():
+    with TestClient(app) as client:
+        data = [
+            {"text": "buy the milk", "completed": True},
+            {"text": "walk the dog", "completed": False},
+        ]
+        response = client.post("/notes/bulk_create", json=data)
+        assert response.status_code == 200
+
+        response = client.get("/notes")
+        assert response.status_code == 200
+        assert response.json() == [
+            {"text": "buy the milk", "completed": True},
+            {"text": "walk the dog", "completed": False},
+        ]
 
 
 def test_database_isolated_during_test_cases():

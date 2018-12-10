@@ -71,12 +71,25 @@ class PostgresSession(DatabaseSession):
         finally:
             await self.release_connection()
 
-    async def execute(self, query: ClauseElement) -> typing.Any:
+    async def execute(self, query: ClauseElement) -> None:
         query, args = compile(query, dialect=self.dialect)
 
         conn = await self.acquire_connection()
         try:
-            return await conn.execute(query, *args)
+            await conn.execute(query, *args)
+        finally:
+            await self.release_connection()
+
+    async def executemany(self, query: ClauseElement, values: list) -> None:
+        conn = await self.acquire_connection()
+        try:
+            # asyncpg uses prepared statements under the hood, so we just
+            # loop through multiple executes here, which should all end up
+            # using the same prepared statement.
+            for item in values:
+                single_query = query.values(item)
+                single_query, args = compile(single_query, dialect=self.dialect)
+                await conn.execute(single_query, *args)
         finally:
             await self.release_connection()
 

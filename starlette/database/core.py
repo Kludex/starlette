@@ -61,7 +61,10 @@ class DatabaseSession:
         row = await self.fetchone(query)
         return row[index]
 
-    async def execute(self, query: ClauseElement) -> typing.Any:
+    async def execute(self, query: ClauseElement) -> None:
+        raise NotImplementedError()  # pragma: no cover
+
+    async def executemany(self, query: ClauseElement, values: list) -> None:
         raise NotImplementedError()  # pragma: no cover
 
     def transaction(self) -> "DatabaseTransaction":

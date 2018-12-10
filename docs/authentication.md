@@ -6,9 +6,10 @@ interfaces will be available in your endpoints.
 
 ```python
 from starlette.authentication import (
-    AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser
+    AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser,
+    AuthCredentials
 )
-from starlette.middleware import AuthenticationMiddleware
+from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 import base64
 import binascii
@@ -25,7 +26,7 @@ class BasicAuthBackend(AuthenticationBackend):
             if scheme.lower() != 'basic':
                 return
             decoded = base64.b64decode(credentials).decode("ascii")
-        except ValueError, UnicodeDecodeError, binascii.Error as exc:
+        except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
             raise AuthenticationError('Invalid basic auth credentials')
 
         username, _, password = decoded.partition(":")
@@ -36,7 +37,7 @@ class BasicAuthBackend(AuthenticationBackend):
 
 
 app = Starlette()
-app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend)
+app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend())
 
 
 @app.route('/')

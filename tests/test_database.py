@@ -9,7 +9,10 @@ from starlette.middleware.database import DatabaseMiddleware
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
-DATABASE_URL = os.environ["STARLETTE_TEST_DATABASE"]
+try:
+    DATABASE_URL = os.environ["STARLETTE_TEST_DATABASE"]
+except KeyError:  # pragma: no cover
+    pytest.skip("DATABASE_URL is not set", allow_module_level=True)
 
 metadata = sqlalchemy.MetaData()
 

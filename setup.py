@@ -48,6 +48,7 @@ setup(
     extras_require={
         'full': [
             'aiofiles',
+            'asyncpg',
             'graphene',
             'itsdangerous',
             'jinja2',

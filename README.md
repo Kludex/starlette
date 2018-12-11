@@ -22,6 +22,8 @@
 
 ---
 
+# Starlette
+
 Starlette is a lightweight [ASGI](https://asgi.readthedocs.io/en/latest/) framework/toolkit,
 which is ideal for building high performance asyncio services.
 
@@ -64,6 +66,7 @@ import uvicorn
 
 app = Starlette()
 
+
 @app.route('/')
 async def homepage(request):
     return JSONResponse({'hello': 'world'})
@@ -72,7 +75,7 @@ if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)
 ```
 
-For a more complete example, [see here](https://github.com/encode/starlette-example).
+For a more complete example, see [encode/starlette-example](https://github.com/encode/starlette-example).
 
 ## Dependencies
 

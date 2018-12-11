@@ -149,7 +149,7 @@ class Route(BaseRoute):
         name: str = None,
         include_in_schema: bool = True
     ) -> None:
-        assert path.startswith("/"), "Routed paths must always start '/'"
+        assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
         self.endpoint = endpoint
         self.name = get_name(endpoint) if name is None else name
@@ -218,7 +218,7 @@ class WebSocketRoute(BaseRoute):
     def __init__(
         self, path: str, endpoint: typing.Callable, *, name: str = None
     ) -> None:
-        assert path.startswith("/"), "Routed paths must always start '/'"
+        assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
         self.endpoint = endpoint
         self.name = get_name(endpoint) if name is None else name
@@ -275,7 +275,7 @@ class WebSocketRoute(BaseRoute):
 
 class Mount(BaseRoute):
     def __init__(self, path: str, app: ASGIApp, name: str = None) -> None:
-        assert path == "" or path.startswith("/"), "Routed paths must always start '/'"
+        assert path == "" or path.startswith("/"), "Routed paths must start with '/'"
         self.path = path.rstrip("/")
         self.app = app
         self.name = name

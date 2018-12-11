@@ -297,11 +297,16 @@ class WebSocketTestSession:
         return json.loads(encoded.decode("utf-8"))
 
 
-class _TestClient(requests.Session):
+class TestClient(requests.Session):
+    __test__ = False  # For pytest to not discover this up.
+
     def __init__(
-        self, app: ASGIApp, base_url: str, raise_server_exceptions: bool = True
+        self,
+        app: ASGIApp,
+        base_url: str = "http://testserver",
+        raise_server_exceptions: bool = True,
     ) -> None:
-        super(_TestClient, self).__init__()
+        super(TestClient, self).__init__()
         adapter = _ASGIAdapter(app, raise_server_exceptions=raise_server_exceptions)
         self.mount("http://", adapter)
         self.mount("https://", adapter)
@@ -403,15 +408,3 @@ class _TestClient(requests.Session):
             self.task.result()
         assert message["type"] == "lifespan.shutdown.complete"
         await self.task
-
-
-def TestClient(
-    app: ASGIApp,
-    base_url: str = "http://testserver",
-    raise_server_exceptions: bool = True,
-) -> _TestClient:
-    """
-    We have to work around py.test discovery attempting to pick up
-    the `TestClient` class, by declaring this as a function.
-    """
-    return _TestClient(app, base_url, raise_server_exceptions=raise_server_exceptions)

@@ -11,6 +11,7 @@ from starlette.responses import (
     RedirectResponse,
     Response,
     StreamingResponse,
+    TemplateResponse,
     UJSONResponse,
 )
 from starlette.testclient import TestClient
@@ -243,3 +244,34 @@ def test_delete_cookie():
     assert response.cookies["mycookie"]
     response = client.get("/")
     assert not response.cookies.get("mycookie")
+
+
+def test_template_response():
+    def app(scope):
+        request = Request(scope)
+
+        class Template:
+            def __init__(self, name):
+                self.name = name
+
+            def render(self, context):
+                return "username: %s" % context["username"]
+
+        async def asgi(receive, send):
+            template = Template("index.html")
+            context = {"username": "tomchristie", "request": request}
+            response = TemplateResponse(template, context)
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "username: tomchristie"
+    assert response.template.name == "index.html"
+    assert response.context["username"] == "tomchristie"
+
+
+def test_template_response_requires_request():
+    with pytest.raises(ValueError):
+        TemplateResponse(None, {})

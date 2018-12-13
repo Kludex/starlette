@@ -126,6 +126,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             "headers": headers,
             "client": ["testclient", 50000],
             "server": [host, port],
+            "extensions": {"http.response.template": {}},
         }
 
         async def receive() -> Message:
@@ -147,7 +148,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, response_complete
+            nonlocal raw_kwargs, response_started, response_complete, template, context
 
             if message["type"] == "http.response.start":
                 assert (
@@ -177,10 +178,15 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                 if not more_body:
                     raw_kwargs["body"].seek(0)
                     response_complete = True
+            elif message["type"] == "http.response.template":
+                template = message["template"]
+                context = message["context"]
 
         response_started = False
         response_complete = False
         raw_kwargs = {"body": io.BytesIO()}  # type: typing.Dict[str, typing.Any]
+        template = None
+        context = None
 
         try:
             loop = asyncio.get_event_loop()
@@ -209,7 +215,11 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             }
 
         raw = requests.packages.urllib3.HTTPResponse(**raw_kwargs)
-        return self.build_response(request, raw)
+        response = self.build_response(request, raw)
+        if template is not None:
+            response.template = template
+            response.context = context
+        return response
 
 
 class WebSocketTestSession:

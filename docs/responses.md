@@ -86,6 +86,51 @@ class App:
         await response(receive, send)
 ```
 
+### TemplateResponse
+
+The `TemplateResponse` class return plain text responses generated
+from a template instance, and a dictionary of context to render into the
+template.
+
+A `request` argument must always be included in the context. Responses default
+to `text/html` unless an alternative `media_type` is specified.
+
+```python
+from starlette.responses import TemplateResponse
+from starlette.requests import Request
+
+from jinja2 import Environment, FileSystemLoader
+
+
+env = Environment(loader=FileSystemLoader('templates'))
+
+
+class App:
+    def __init__(self, scope):
+        self.scope = scope
+
+    async def __call__(self, receive, send):
+        template = env.get_template('index.html')
+        context = {
+            'request': Request(self.scope),
+        }
+        response = TemplateResponse(template, context)
+        await response(receive, send)
+```
+
+The advantage with using `TemplateResponse` over `HTMLResponse` is that
+it will make `template` and `context` properties available on response instances
+returned by the test client.
+
+```python
+def test_app():
+    client = TestClient(App)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.template.name == "index.html"
+    assert "request" in response.context
+```
+
 ### JSONResponse
 
 Takes some data and returns an `application/json` encoded response.

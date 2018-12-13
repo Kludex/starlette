@@ -17,16 +17,15 @@ class ClientDisconnect(Exception):
     pass
 
 
-async def empty_receive() -> Message:
-    raise RuntimeError("Receive channel has not been made available")
+class HTTPConnection(Mapping):
+    """
+    A base class for incoming HTTP connections, that is used to provide
+    any functionality that is common to both `Request` and `WebSocket`.
+    """
 
-
-class Request(Mapping):
     def __init__(self, scope: Scope, receive: Receive = None) -> None:
-        assert scope["type"] == "http"
+        assert scope["type"] in ("http", "websocket")
         self._scope = scope
-        self._receive = empty_receive if receive is None else receive
-        self._stream_consumed = False
 
     def __getitem__(self, key: str) -> str:
         return self._scope[key]
@@ -36,10 +35,6 @@ class Request(Mapping):
 
     def __len__(self) -> int:
         return len(self._scope)
-
-    @property
-    def method(self) -> str:
-        return self._scope["method"]
 
     @property
     def url(self) -> URL:
@@ -104,14 +99,30 @@ class Request(Mapping):
         ), "AuthenticationMiddleware must be installed to access request.user"
         return self._scope["user"]
 
-    @property
-    def receive(self) -> Receive:
-        return self._receive
-
     def url_for(self, name: str, **path_params: typing.Any) -> str:
         router = self._scope["router"]
         url_path = router.url_path_for(name, **path_params)
         return url_path.make_absolute_url(base_url=self.url)
+
+
+async def empty_receive() -> Message:
+    raise RuntimeError("Receive channel has not been made available")
+
+
+class Request(HTTPConnection):
+    def __init__(self, scope: Scope, receive: Receive = empty_receive):
+        super().__init__(scope)
+        assert scope["type"] == "http"
+        self._receive = receive
+        self._stream_consumed = False
+
+    @property
+    def method(self) -> str:
+        return self._scope["method"]
+
+    @property
+    def receive(self) -> Receive:
+        return self._receive
 
     async def stream(self) -> typing.AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):

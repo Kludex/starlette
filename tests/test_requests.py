@@ -63,6 +63,22 @@ def test_request_headers():
     }
 
 
+def test_request_client():
+    def app(scope):
+        async def asgi(receive, send):
+            request = Request(scope, receive)
+            response = JSONResponse(
+                {"host": request.client.host, "port": request.client.port}
+            )
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.json() == {"host": "testclient", "port": 50000}
+
+
 def test_request_body():
     def app(scope):
         async def asgi(receive, send):

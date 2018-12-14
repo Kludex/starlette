@@ -3,7 +3,7 @@ import json
 import typing
 from collections.abc import Mapping
 
-from starlette.datastructures import URL, Headers, QueryParams
+from starlette.datastructures import URL, Address, Headers, QueryParams
 from starlette.formparsers import FormParser, MultiPartParser
 from starlette.types import Message, Receive, Scope
 
@@ -70,6 +70,11 @@ class HTTPConnection(Mapping):
                     cookies[key] = morsel.value
             self._cookies = cookies
         return self._cookies
+
+    @property
+    def client(self) -> Address:
+        host, port = self._scope.get("client") or (None, None)
+        return Address(host=host, port=port)
 
     @property
     def session(self) -> dict:

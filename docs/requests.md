@@ -61,6 +61,15 @@ Router path parameters are exposed as a dictionary interface.
 
 For example: `request.path_params['username']`
 
+#### Client Address
+
+The client's remote address is exposed as a named two-tuple `request.client`.
+Either item in the tuple may be `None`.
+
+The hostname or IP address: `request.client.host`
+
+The port number from which the client is connecting: `request.client.port`
+
 #### Cookies
 
 Cookies are exposed as a regular dictionary interface.

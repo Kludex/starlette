@@ -1,7 +1,10 @@
 import typing
+from collections import namedtuple
 from urllib.parse import ParseResult, parse_qsl, urlencode, urlparse
 
 from starlette.types import Scope
+
+Address = namedtuple("Address", ["host", "port"])
 
 
 class URL:

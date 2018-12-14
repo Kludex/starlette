@@ -55,49 +55,17 @@ class LifespanHandler:
         self.inner = app(scope)
         self.startup_handlers = startup_handlers
         self.shutdown_handlers = shutdown_handlers
-        self.send_buffer = asyncio.Queue()  # type: asyncio.Queue
-        self.receive_buffer = asyncio.Queue()  # type: asyncio.Queue
 
     async def __call__(self, receive: Receive, send: Send) -> None:
-        loop = asyncio.get_event_loop()
-        inner_task = loop.create_task(self.run_inner())
-        try:
-            # Handle our own startup.
+        async def receiver() -> Message:
             message = await receive()
-            assert message["type"] == "lifespan.startup"
-            await self.startup()
+            if message["type"] == "lifespan.startup":
+                await self.startup()
+            elif message["type"] == "lifespan.shutdown":
+                await self.shutdown()
+            return message
 
-            # Wait for the rest of the chain before sending our response.
-            await self.receive_buffer.put(message)
-            message = await self.send_buffer.get()
-            if message is None:
-                inner_task.result()
-            assert message["type"] == "lifespan.startup.complete"
-            await send({"type": "lifespan.startup.complete"})
-
-            # Handle our own shutdown.
-            message = await receive()
-            assert message["type"] == "lifespan.shutdown"
-            await self.shutdown()
-
-            # Wait for the rest of the chain before sending our response.
-            await self.receive_buffer.put(message)
-            message = await self.send_buffer.get()
-            if message is None:
-                inner_task.result()
-            assert message["type"] == "lifespan.shutdown.complete"
-            await send({"type": "lifespan.shutdown.complete"})
-        except Exception as exc:
-            inner_task.cancel()
-            raise exc from None
-        else:
-            await inner_task
-
-    async def run_inner(self) -> None:
-        try:
-            await self.inner(self.receive_buffer.get, self.send_buffer.put)
-        finally:
-            await self.send_buffer.put(None)
+        await self.inner(receiver, send)
 
     async def startup(self) -> None:
         for handler in self.startup_handlers:

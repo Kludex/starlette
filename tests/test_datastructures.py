@@ -1,5 +1,6 @@
 from starlette.datastructures import (
     URL,
+    CommaSeparatedStrings,
     DatabaseURL,
     Headers,
     MutableHeaders,
@@ -57,6 +58,30 @@ def test_database_url():
     u = DatabaseURL("postgresql+asyncpg://localhost/mydatabase")
     assert u.dialect == "postgresql"
     assert u.driver == "asyncpg"
+
+
+def test_csv():
+    csv = CommaSeparatedStrings('"localhost", "127.0.0.1", 0.0.0.0')
+    assert list(csv) == ["localhost", "127.0.0.1", "0.0.0.0"]
+    assert repr(csv) == "CommaSeparatedStrings(['localhost', '127.0.0.1', '0.0.0.0'])"
+    assert str(csv) == "'localhost', '127.0.0.1', '0.0.0.0'"
+    assert csv[0] == "localhost"
+    assert len(csv) == 3
+
+    csv = CommaSeparatedStrings("'localhost', '127.0.0.1', 0.0.0.0")
+    assert list(csv) == ["localhost", "127.0.0.1", "0.0.0.0"]
+    assert repr(csv) == "CommaSeparatedStrings(['localhost', '127.0.0.1', '0.0.0.0'])"
+    assert str(csv) == "'localhost', '127.0.0.1', '0.0.0.0'"
+
+    csv = CommaSeparatedStrings("localhost, 127.0.0.1, 0.0.0.0")
+    assert list(csv) == ["localhost", "127.0.0.1", "0.0.0.0"]
+    assert repr(csv) == "CommaSeparatedStrings(['localhost', '127.0.0.1', '0.0.0.0'])"
+    assert str(csv) == "'localhost', '127.0.0.1', '0.0.0.0'"
+
+    csv = CommaSeparatedStrings(["localhost", "127.0.0.1", "0.0.0.0"])
+    assert list(csv) == ["localhost", "127.0.0.1", "0.0.0.0"]
+    assert repr(csv) == "CommaSeparatedStrings(['localhost', '127.0.0.1', '0.0.0.0'])"
+    assert str(csv) == "'localhost', '127.0.0.1', '0.0.0.0'"
 
 
 def test_url_from_scope():

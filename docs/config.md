@@ -9,7 +9,7 @@ that is not committed to source control.
 ```python
 from starlette.applications import Starlette
 from starlette.config import Config
-from starlette.datastructures import DatabaseURL, Secret
+from starlette.datastructures import CommaSeparatedStrings, DatabaseURL, Secret
 
 # Config will be read from environment variables and/or ".env" files.
 config = Config(".env")
@@ -17,6 +17,7 @@ config = Config(".env")
 DEBUG = config('DEBUG', cast=bool, default=False)
 DATABASE_URL = config('DATABASE_URL', cast=DatabaseURL)
 SECRET_KEY = config('SECRET_KEY', cast=Secret)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=CommaSeparatedStrings)
 
 app = Starlette()
 app.debug = DEBUG
@@ -31,6 +32,7 @@ app.debug = DEBUG
 DEBUG=True
 DATABASE_URL=postgresql://localhost/myproject
 SECRET_KEY=43n080musdfjt54t-09sdgr
+ALLOWED_HOSTS="127.0.0.1", "localhost"
 ```
 
 ## Configuration precedence
@@ -45,8 +47,8 @@ If none of those match, then `config(...)` will raise an error.
 
 ## Secrets
 
-For sensitive keys, the `Secret` class is useful, since it prevents the value from
-leaking out into tracebacks or logging.
+For sensitive keys, the `Secret` class is useful, since it helps minimize
+occasions where the value it holds could leak out into tracebacks or logging.
 
 To get the value of a `Secret` instance, you must explicitly cast it to a string.
 You should only do this at the point at which the value is used.

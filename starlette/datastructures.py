@@ -1,5 +1,7 @@
 import typing
 from collections import namedtuple
+from collections.abc import Sequence
+from shlex import shlex
 from urllib.parse import ParseResult, parse_qsl, urlencode, urlparse
 
 from starlette.types import Scope
@@ -193,6 +195,33 @@ class Secret:
 
     def __str__(self) -> str:
         return self._value
+
+
+class CommaSeparatedStrings(Sequence):
+    def __init__(self, value: typing.Union[str, typing.Sequence[str]]):
+        if isinstance(value, str):
+            splitter = shlex(value, posix=True)
+            splitter.whitespace = ","
+            splitter.whitespace_split = True
+            self._items = [item.strip() for item in splitter]
+        else:
+            self._items = list(value)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __getitem__(self, index: typing.Union[int, slice]) -> typing.Any:
+        return self._items[index]
+
+    def __iter__(self) -> typing.Iterator[str]:
+        return iter(self._items)
+
+    def __repr__(self) -> str:
+        list_repr = repr([item for item in self])
+        return "%s(%s)" % (self.__class__.__name__, list_repr)
+
+    def __str__(self) -> str:
+        return ", ".join([repr(item) for item in self])
 
 
 class QueryParams(typing.Mapping[str, str]):

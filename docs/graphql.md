@@ -41,6 +41,27 @@ class Query(graphene.ObjectType):
         return request.headers.get("User-Agent", "<unknown>")
 ```
 
+## Adding background tasks
+
+You can add background tasks to run once the response has been sent.
+
+```python
+class Query(graphene.ObjectType):
+    user_agent = graphene.String()
+
+    def resolve_user_agent(self, info):
+        """
+        Return the User-Agent of the incoming request.
+        """
+        user_agent = request.headers.get("User-Agent", "<unknown>")
+        background = info.context["background"]
+        background.add_task(log_user_agent, user_agent=user_agent)
+        return user_agent
+
+async def log_user_agent(user_agent):
+    ...
+```
+
 ## Sync or Async executors
 
 If you're working with a standard ORM, then just use regular function calls for

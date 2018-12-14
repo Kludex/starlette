@@ -3,6 +3,7 @@ import json
 import typing
 
 from starlette import status
+from starlette.background import BackgroundTasks
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
@@ -73,7 +74,10 @@ class GraphQLApp:
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        result = await self.execute(request, query, variables)
+        background = BackgroundTasks()
+        context = {"request": request, "background": background}
+
+        result = await self.execute(query, variables=variables, context=context)
         error_data = (
             [format_graphql_error(err) for err in result.errors]
             if result.errors
@@ -83,13 +87,14 @@ class GraphQLApp:
         status_code = (
             status.HTTP_400_BAD_REQUEST if result.errors else status.HTTP_200_OK
         )
-        return JSONResponse(response_data, status_code=status_code)
+
+        return JSONResponse(
+            response_data, status_code=status_code, background=background
+        )
 
     async def execute(  # type: ignore
-        self, request, query, variables=None, operation_name=None
+        self, query, variables=None, context=None, operation_name=None
     ):
-        context = dict(request=request)
-
         if self.is_async:
             return await self.schema.execute(
                 query,

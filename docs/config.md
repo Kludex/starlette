@@ -72,6 +72,21 @@ DatabaseURL('postgresql://admin:**********@192.168.0.8/my-application')
 'postgresql://admin:Fkjh348htGee4t3@192.168.0.8/my-application'
 ```
 
+## CommaSeparatedStrings
+
+For holding multiple inside a single config key, the `CommaSeparatedStrings`
+type is useful.
+
+>>> from myproject import settings
+>>> print(settings.ALLOWED_HOSTS)
+CommaSeparatedStrings(['127.0.0.1', 'localhost'])
+>>> print(list(settings.ALLOWED_HOSTS))
+['127.0.0.1', 'localhost']
+>>> print(len(settings.ALLOWED_HOSTS[0]))
+2
+>>> print(settings.ALLOWED_HOSTS[0])
+'127.0.0.1'
+
 ## Reading or modifying the environment
 
 In some cases you might want to read or modify the environment variables programmatically.

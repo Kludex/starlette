@@ -58,3 +58,34 @@ def test_session_expires():
 
     response = client.get("/view_session")
     assert response.json() == {"session": {}}
+
+
+def test_secure_session():
+    app = create_app()
+    app.add_middleware(SessionMiddleware, secret_key="example", https_only=True)
+    secure_client = TestClient(app, base_url="https://testserver")
+    unsecure_client = TestClient(app, base_url="http://testserver")
+
+    response = unsecure_client.get("/view_session")
+    assert response.json() == {"session": {}}
+
+    response = unsecure_client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+
+    response = unsecure_client.get("/view_session")
+    assert response.json() == {"session": {}}
+
+    response = secure_client.get("/view_session")
+    assert response.json() == {"session": {}}
+
+    response = secure_client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+
+    response = secure_client.get("/view_session")
+    assert response.json() == {"session": {"some": "data"}}
+
+    response = secure_client.post("/clear_session")
+    assert response.json() == {"session": {}}
+
+    response = secure_client.get("/view_session")
+    assert response.json() == {"session": {}}

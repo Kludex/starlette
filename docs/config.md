@@ -77,6 +77,7 @@ DatabaseURL('postgresql://admin:**********@192.168.0.8/my-application')
 For holding multiple inside a single config key, the `CommaSeparatedStrings`
 type is useful.
 
+```python
 >>> from myproject import settings
 >>> print(settings.ALLOWED_HOSTS)
 CommaSeparatedStrings(['127.0.0.1', 'localhost'])
@@ -86,6 +87,7 @@ CommaSeparatedStrings(['127.0.0.1', 'localhost'])
 2
 >>> print(settings.ALLOWED_HOSTS[0])
 '127.0.0.1'
+```
 
 ## Reading or modifying the environment
 

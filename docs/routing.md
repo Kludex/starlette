@@ -43,3 +43,23 @@ app = Router([
 
 The router will respond with "404 Not found" or "405 Method not allowed"
 responses for requests which do not match.
+
+Incoming paths are matched against each `Route` in order.
+
+If you need to have a `Route` with a fixed path that would also match a
+`Route` with parameters you should add the `Route` with the fixed path first.
+
+For example, with an additional `Route` like:
+
+```python
+Route('/users/me', endpoint=UserMe, methods=['GET'])
+```
+
+You should add that route for `/users/me` before the one for `/users/{username}`:
+
+```python
+app = Router([
+    Route('/users/me', endpoint=UserMe, methods=['GET']),
+    Route('/{username}', endpoint=User, methods=['GET']),
+])
+```

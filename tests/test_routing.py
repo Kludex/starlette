@@ -19,6 +19,16 @@ def user(request):
     return Response(content, media_type="text/plain")
 
 
+def user_me(request):
+    content = "User fixed me"
+    return Response(content, media_type="text/plain")
+
+
+def user_no_match(request):  # pragma: no cover
+    content = "User fixed no match"
+    return Response(content, media_type="text/plain")
+
+
 def staticfiles(request):
     return Response("xxxxx", media_type="image/png")
 
@@ -29,7 +39,12 @@ app = Router(
         Mount(
             "/users",
             app=Router(
-                [Route("/", endpoint=users), Route("/{username}", endpoint=user)]
+                [
+                    Route("/", endpoint=users),
+                    Route("/me", endpoint=user_me),
+                    Route("/{username}", endpoint=user),
+                    Route("/nomatch", endpoint=user_no_match),
+                ]
             ),
         ),
         Mount("/static", app=staticfiles),
@@ -102,6 +117,14 @@ def test_router():
     response = client.get("/users/tomchristie")
     assert response.status_code == 200
     assert response.text == "User tomchristie"
+
+    response = client.get("/users/me")
+    assert response.status_code == 200
+    assert response.text == "User fixed me"
+
+    response = client.get("/users/nomatch")
+    assert response.status_code == 200
+    assert response.text == "User nomatch"
 
     response = client.get("/static/123")
     assert response.status_code == 200

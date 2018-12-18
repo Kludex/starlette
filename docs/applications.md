@@ -17,6 +17,10 @@ app.mount('/static', StaticFiles(directory="static"))
 def homepage(request):
     return PlainTextResponse('Hello, world!')
 
+@app.route('/user/me')
+def user_me(request):
+    username = "John Doe"
+    return PlainTextResponse('Hello, %s!' % username)
 
 @app.route('/user/{username}')
 def user(request):

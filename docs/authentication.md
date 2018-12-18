@@ -130,3 +130,15 @@ async def homepage(request):
 async def dashboard(request):
     ...
 ```
+
+## Custom authentication error responses
+
+You can customise the error response sent when a `AuthenticationError` is 
+raised by an auth backend:
+
+```python
+def on_auth_error(request: Request, exc: Exception):
+    return JSONResponse({"error": str(exc)}, status_code=401)
+
+app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend(), on_error=on_auth_error)
+```

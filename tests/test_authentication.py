@@ -7,10 +7,10 @@ from starlette.authentication import (
     AuthenticationBackend,
     AuthenticationError,
     SimpleUser,
-    UnauthenticatedUser,
     requires,
 )
 from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
@@ -138,3 +138,37 @@ def test_authentication_redirect():
         response = client.get("/admin/sync", auth=("tomchristie", "example"))
         assert response.status_code == 200
         assert response.json() == {"authenticated": True, "user": "tomchristie"}
+
+
+def on_auth_error(request: Request, exc: Exception):
+    return JSONResponse({"error": str(exc)}, status_code=401)
+
+
+other_app = Starlette()
+other_app.add_middleware(
+    AuthenticationMiddleware, backend=BasicAuth(), on_error=on_auth_error
+)
+
+
+@other_app.route("/control-panel")
+@requires("authenticated")
+def control_panel(request):
+    return JSONResponse(
+        {
+            "authenticated": request.user.is_authenticated,
+            "user": request.user.display_name,
+        }
+    )
+
+
+def test_custom_on_error():
+    with TestClient(other_app) as client:
+        response = client.get("/control-panel", auth=("tomchristie", "example"))
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": True, "user": "tomchristie"}
+
+        response = client.get(
+            "/control-panel", headers={"Authorization": "basic foobar"}
+        )
+        assert response.status_code == 401
+        assert response.json() == {"error": "Invalid basic auth credentials"}

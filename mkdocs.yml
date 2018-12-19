@@ -28,7 +28,7 @@ nav:
     - Exceptions: 'exceptions.md'
     - Configuration: 'config.md'
     - Test Client: 'testclient.md'
-    - Third Parties: 'thirdparties.md'
+    - Third Party Packages: 'third-party-packages.md'
     - Release Notes: 'release-notes.md'
 
 markdown_extensions:

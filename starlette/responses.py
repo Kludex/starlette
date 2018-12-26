@@ -63,8 +63,8 @@ class Response:
                 for k, v in headers.items()
             ]
             keys = [h[0] for h in raw_headers]
-            populate_content_length = b"content-length" in keys
-            populate_content_type = b"content-type" in keys
+            populate_content_length = b"content-length" not in keys
+            populate_content_type = b"content-type" not in keys
 
         body = getattr(self, "body", b"")
         if body and populate_content_length:

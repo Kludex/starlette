@@ -275,3 +275,15 @@ def test_template_response():
 def test_template_response_requires_request():
     with pytest.raises(ValueError):
         TemplateResponse(None, {})
+
+
+def test_populate_headers():
+    def app(scope):
+        headers = {}
+        return Response(content="hi", headers=headers, media_type="text/html")
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "hi"
+    assert response.headers["content-length"] == "2"
+    assert response.headers["content-type"] == "text/html; charset=utf-8"

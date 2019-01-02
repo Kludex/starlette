@@ -45,6 +45,7 @@ setup(
     package_data = {
         'starlette': ['py.typed'],
     },
+    data_files = [('', ['LICENSE.md'])],
     extras_require={
         'full': [
             'aiofiles',

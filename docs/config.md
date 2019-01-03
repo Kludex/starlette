@@ -48,14 +48,15 @@ If none of those match, then `config(...)` will raise an error.
 ## Secrets
 
 For sensitive keys, the `Secret` class is useful, since it helps minimize
-occasions where the value it holds could leak out into tracebacks or logging.
+occasions where the value it holds could leak out into tracebacks or
+other code introspection.
 
 To get the value of a `Secret` instance, you must explicitly cast it to a string.
 You should only do this at the point at which the value is used.
 
 ```python
 >>> from myproject import settings
->>> print(settings.SECRET_KEY)
+>>> settings.SECRET_KEY
 Secret('**********')
 >>> str(settings.SECRET_KEY)
 '98n349$%8b8-7yjn0n8y93T$23r'
@@ -66,9 +67,9 @@ in their representations.
 
 ```python
 >>> from myproject import settings
->>> print(settings.DATABASE_URL)
+>>> settings.DATABASE_URL
 DatabaseURL('postgresql://admin:**********@192.168.0.8/my-application')
->>> str(settings.SECRET_KEY)
+>>> str(settings.DATABASE_URL)
 'postgresql://admin:Fkjh348htGee4t3@192.168.0.8/my-application'
 ```
 

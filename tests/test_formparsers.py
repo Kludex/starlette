@@ -33,6 +33,22 @@ def app(scope):
     return asgi
 
 
+def app_read_body(scope):
+    async def asgi(receive, send):
+        request = Request(scope, receive)
+        # Read bytes, to force request.stream() to return the already parsed body
+        body_bytes = await request.body()
+        data = await request.form()
+        output = {}
+        for key, value in data.items():
+            output[key] = value
+        await request.close()
+        response = JSONResponse(output)
+        await response(receive, send)
+
+    return asgi
+
+
 def test_multipart_request_data(tmpdir):
     client = TestClient(app)
     response = client.post("/", data={"some": "data"}, files=FORCE_MULTIPART)
@@ -111,3 +127,17 @@ def test_no_request_data(tmpdir):
     client = TestClient(app)
     response = client.post("/")
     assert response.json() == {}
+
+
+def test_urlencoded_multi_field_app_reads_body(tmpdir):
+    client = TestClient(app_read_body)
+    response = client.post("/", data={"some": "data", "second": "key pair"})
+    assert response.json() == {"some": "data", "second": "key pair"}
+
+
+def test_multipart_multi_field_app_reads_body(tmpdir):
+    client = TestClient(app_read_body)
+    response = client.post(
+        "/", data={"some": "data", "second": "key pair"}, files=FORCE_MULTIPART
+    )
+    assert response.json() == {"some": "data", "second": "key pair"}

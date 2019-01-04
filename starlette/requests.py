@@ -132,6 +132,7 @@ class Request(HTTPConnection):
     async def stream(self) -> typing.AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):
             yield self._body
+            yield b""
             return
 
         if self._stream_consumed:

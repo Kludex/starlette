@@ -13,7 +13,7 @@ services:
     - postgresql
 
 install:
-    - pip install -r requirements.txt
+    - pip install -U -r requirements.txt
 
 before_script:
     - psql -c 'create database starlette;' -U postgres

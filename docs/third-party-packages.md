@@ -25,6 +25,42 @@ That library aims to bring a layer on top of Starlette framework to provide usef
 * **Starlette ASGI** objects like `Request`, `Response`, `Session` and so on are defined as components and ready to be injected in your endpoints.
 
 
+### webargs-starlette
+
+
+Link: <a href="https://github.com/sloria/webargs-starlette" target="_blank">https://github.com/sloria/webargs-starlette</a>
+
+Declarative request parsing and validation for Starlette, built on top
+of [webargs](https://github.com/marshmallow-code/webargs).
+
+Allows you to parse querystring, JSON, form, headers, and cookies using
+type annotations.
+
+```python
+import uvicorn
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from webargs_starlette import use_annotations
+
+app = Starlette()
+
+
+@app.route("/")
+@use_annotations(locations=("query",))
+async def index(request, name: str = "World"):
+    return JSONResponse({"Hello": name})
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, port=5000)
+
+# curl 'http://localhost:5000/'
+# {"Hello": "World"}
+# curl 'http://localhost:5000/?name=Ada'
+# {"Hello": "Ada"}
+```
+
+
 ## Frameworks
 
 ### Responder

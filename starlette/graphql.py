@@ -77,7 +77,9 @@ class GraphQLApp:
         background = BackgroundTasks()
         context = {"request": request, "background": background}
 
-        result = await self.execute(query, variables=variables, context=context)
+        result = await self.execute(
+            query, variables=variables, context=context, operation_name=operation_name
+        )
         error_data = (
             [format_graphql_error(err) for err in result.errors]
             if result.errors

@@ -61,10 +61,11 @@ def test_multipart_request_files(tmpdir):
         file.write(b"<file content>")
 
     client = TestClient(app)
-    response = client.post("/", files={"test": open(path, "rb")})
-    assert response.json() == {
-        "test": {"filename": "test.txt", "content": "<file content>"}
-    }
+    with open(path, "rb") as f:
+        response = client.post("/", files={"test": f})
+        assert response.json() == {
+            "test": {"filename": "test.txt", "content": "<file content>"}
+        }
 
 
 def test_multipart_request_multiple_files(tmpdir):
@@ -77,13 +78,12 @@ def test_multipart_request_multiple_files(tmpdir):
         file.write(b"<file2 content>")
 
     client = TestClient(app)
-    response = client.post(
-        "/", files={"test1": open(path1, "rb"), "test2": open(path2, "rb")}
-    )
-    assert response.json() == {
-        "test1": {"filename": "test1.txt", "content": "<file1 content>"},
-        "test2": {"filename": "test2.txt", "content": "<file2 content>"},
-    }
+    with open(path1, "rb") as f1, open(path2, "rb") as f2:
+        response = client.post("/", files={"test1": f1, "test2": f2})
+        assert response.json() == {
+            "test1": {"filename": "test1.txt", "content": "<file1 content>"},
+            "test2": {"filename": "test2.txt", "content": "<file2 content>"},
+        }
 
 
 def test_multipart_request_mixed_files_and_data(tmpdir):

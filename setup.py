@@ -11,15 +11,16 @@ def get_version(package):
     """
     Return package version as listed in `__version__` in `init.py`.
     """
-    init_py = open(os.path.join(package, '__init__.py')).read()
-    return re.search("__version__ = ['\"]([^'\"]+)['\"]", init_py).group(1)
+    with open(os.path.join(package, '__init__.py')) as f:
+        return re.search("__version__ = ['\"]([^'\"]+)['\"]", f.read()).group(1)
 
 
 def get_long_description():
     """
     Return the README.
     """
-    return open('README.md', 'r', encoding="utf8").read()
+    with open('README.md', encoding="utf8") as f:
+        return f.read()
 
 
 def get_packages(package):

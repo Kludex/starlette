@@ -20,8 +20,6 @@ class NoMatchFound(Exception):
     if no matching route exists.
     """
 
-    pass
-
 
 class Match(Enum):
     NONE = 0

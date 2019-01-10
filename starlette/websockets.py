@@ -1,7 +1,6 @@
 import enum
 import json
 import typing
-from collections.abc import Mapping
 
 from starlette.datastructures import URL, Headers, QueryParams
 from starlette.requests import HTTPConnection

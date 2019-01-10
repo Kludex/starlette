@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import inspect
 import typing
 
 from starlette.exceptions import HTTPException

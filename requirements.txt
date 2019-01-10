@@ -12,6 +12,7 @@ ujson
 asyncpg
 
 # Testing
+autoflake
 black
 codecov
 isort

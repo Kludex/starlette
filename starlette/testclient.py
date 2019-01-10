@@ -6,7 +6,6 @@ import queue
 import threading
 import types
 import typing
-from types import TracebackType
 from urllib.parse import unquote, urljoin, urlparse
 
 import requests

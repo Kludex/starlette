@@ -1,8 +1,5 @@
 import asyncio
-import logging
-import traceback
 import typing
-from types import TracebackType
 
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 

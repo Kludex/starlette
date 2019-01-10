@@ -9,6 +9,7 @@ from starlette.authentication import (
     SimpleUser,
     requires,
 )
+from starlette.endpoints import HTTPEndpoint
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -69,13 +70,25 @@ async def admin(request):
 
 @app.route("/dashboard/sync")
 @requires("authenticated")
-def dashboard(request):
+def dashboard_sync(request):
     return JSONResponse(
         {
             "authenticated": request.user.is_authenticated,
             "user": request.user.display_name,
         }
     )
+
+
+@app.route("/dashboard/class")
+class Dashboard(HTTPEndpoint):
+    @requires("authenticated")
+    def get(self, request):
+        return JSONResponse(
+            {
+                "authenticated": request.user.is_authenticated,
+                "user": request.user.display_name,
+            }
+        )
 
 
 @app.route("/admin/sync")
@@ -113,6 +126,13 @@ def test_authentication_required():
         assert response.status_code == 403
 
         response = client.get("/dashboard/sync", auth=("tomchristie", "example"))
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": True, "user": "tomchristie"}
+
+        response = client.get("/dashboard/class")
+        assert response.status_code == 403
+
+        response = client.get("/dashboard/class", auth=("tomchristie", "example"))
         assert response.status_code == 200
         assert response.json() == {"authenticated": True, "user": "tomchristie"}
 

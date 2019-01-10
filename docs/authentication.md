@@ -131,9 +131,20 @@ async def dashboard(request):
     ...
 ```
 
+For class-based endpoints, you should wrap the decorator
+around a method on the class.
+
+```python
+@app.route("/dashboard")
+class Dashboard(HTTPEndpoint):
+    @requires("authenticated")
+    async def get(self, request):
+        ...
+```
+
 ## Custom authentication error responses
 
-You can customise the error response sent when a `AuthenticationError` is 
+You can customise the error response sent when a `AuthenticationError` is
 raised by an auth backend:
 
 ```python

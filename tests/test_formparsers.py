@@ -129,6 +129,18 @@ def test_no_request_data(tmpdir):
     assert response.json() == {}
 
 
+def test_urlencoded_percent_encoding(tmpdir):
+    client = TestClient(app)
+    response = client.post("/", data={"some": "da ta"})
+    assert response.json() == {"some": "da ta"}
+
+
+def test_urlencoded_percent_encoding_keys(tmpdir):
+    client = TestClient(app)
+    response = client.post("/", data={"so me": "data"})
+    assert response.json() == {"so me": "data"}
+
+
 def test_urlencoded_multi_field_app_reads_body(tmpdir):
     client = TestClient(app_read_body)
     response = client.post("/", data={"some": "data", "second": "key pair"})

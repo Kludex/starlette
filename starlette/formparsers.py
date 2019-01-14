@@ -125,9 +125,9 @@ class FormParser:
                 elif message_type == FormMessage.FIELD_DATA:
                     field_value += message_bytes
                 elif message_type == FormMessage.FIELD_END:
-                    result[field_name.decode("latin-1")] = unquote_plus(
-                        field_value.decode("latin-1")
-                    )
+                    name = unquote_plus(field_name.decode("latin-1"))
+                    value = unquote_plus(field_value.decode("latin-1"))
+                    result[name] = value
                 elif message_type == FormMessage.END:
                     pass
 

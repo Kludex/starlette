@@ -2,23 +2,19 @@
 
 The Starlette team happily welcomes contributions. This document will help you get ready to contribute to Starlette!
 
-This guide references utility shell scripts that were written to automate common tasks. You can find them in the [scripts](./scripts) directory.
+To submit new code to the project you'll need to:
 
-These scripts are currently suited to **Linux** and **macOS**, but we would happily take PRs to help us make them more cross-compatible or update the instructions.
-
-> **NOTE**: before writing any code, please first consider [opening an issue][issues] to discuss your ideas with the maintainers.
-
-## Setting up the repository
-
-1. Fork the repo.
-2. Clone your fork on your local computer: `git clone https://github.com/<username>/starlette.git`.
-3. Install Starlette locally and run the tests (see next sections).
-4. Create a branch for your work, e.g. `git checkout -b fix-some-bug`.
-5. Remember to include tests and documentation updates if applicable.
-6. Once ready, push to your remote: `git push origin fix-some-bug`.
- 7. [Open a PR][pr] on the main repo.
+* Fork the repo.
+* Clone your fork on your local computer: `git clone https://github.com/<username>/starlette.git`.
+* Install Starlette locally and run the tests: `./scripts/install`, `./scripts/test`.
+* Create a branch for your work, e.g. `git checkout -b fix-some-bug`.
+* Remember to include tests and documentation updates if applicable.
+* Once ready, push to your remote: `git push origin fix-some-bug`.
+* [Open a Pull Request][pull-request].
 
 ## Install
+
+**Note**: These scripts are currently suited to **Linux** and **macOS**, but we would happily take pull requests to help us make them more cross-compatible.
 
 Use the `install` script to install project dependencies in a virtual environment.
 
@@ -26,10 +22,10 @@ Use the `install` script to install project dependencies in a virtual environmen
 ./scripts/install
 ```
 
-Your Python version will be verified and the virtual environment created using the `python3` executable. To use another executable, use the `-p` option, e.g.:
+To use a specific Python executable, use the `-p` option, e.g.:
 
 ```bash
-./scripts/install -p py
+./scripts/install -p python3.7
 ```
 
 ## Running the tests
@@ -52,7 +48,7 @@ export STARLETTE_TEST_DATABASE="postgresql://localhost/starlette"
 
 ## Linting
 
-We use [Black] as a code formatter. To run it along with a few other linting tools, we provide a stand-alone linting script:
+We use [Black][black] as a code formatter. To run it along with a few other linting tools, we provide a stand-alone linting script:
 
 ```bash
 ./scripts/lint
@@ -73,8 +69,8 @@ For your information, the docs site configuration is located in the `mkdocs.yml`
 Please refer to the [MkDocs docs][MkDocs] for more usage information, including how to add new pages.
 
 [issues]: https://github.com/encode/starlette/issues/new
-[pr]: https://github.com/encode/starlette/compare
+[pull-request]: https://github.com/encode/starlette/compare
 [pytest]: https://docs.pytest.org
 [pytest-cov]: https://github.com/pytest-dev/pytest-cov
-[Black]: https://www.google.com/search?client=safari&rls=en&q=github+black&ie=UTF-8&oe=UTF-8
+[black]: https://www.google.com/search?client=safari&rls=en&q=github+black&ie=UTF-8&oe=UTF-8
 [MkDocs]: https://www.mkdocs.org

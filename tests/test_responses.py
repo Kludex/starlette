@@ -287,3 +287,16 @@ def test_populate_headers():
     assert response.text == "hi"
     assert response.headers["content-length"] == "2"
     assert response.headers["content-type"] == "text/html; charset=utf-8"
+
+
+def test_head_method():
+    def app(scope):
+        async def asgi(receive, send):
+            response = Response("hello, world", media_type="text/plain")
+            await response(receive, send)
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.head("/")
+    assert response.text == ""

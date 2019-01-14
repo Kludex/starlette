@@ -173,7 +173,8 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                 ), 'Received "http.response.body" after response completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
-                raw_kwargs["body"].write(body)
+                if request.method != "HEAD":
+                    raw_kwargs["body"].write(body)
                 if not more_body:
                     raw_kwargs["body"].seek(0)
                     response_complete = True

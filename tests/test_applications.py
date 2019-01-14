@@ -100,6 +100,10 @@ def test_func_route():
     assert response.status_code == 200
     assert response.text == "Hello, world!"
 
+    response = client.head("/func")
+    assert response.status_code == 200
+    assert response.text == ""
+
 
 def test_async_route():
     response = client.get("/async")

@@ -2,7 +2,11 @@
 
 The Starlette team happily welcomes contributions. This document will help you get ready to contribute to Starlette!
 
-> **NOTE**: before writing any code, please first [open an issue] and discuss your ideas with the maintainers.
+This guide references utility shell scripts that were written to automate common tasks. You can find them in the [scripts](./scripts) directory.
+
+These scripts are currently suited to **Linux** and **macOS**, but we would happily take PRs to help us make them more cross-compatible or update the instructions.
+
+> **NOTE**: before writing any code, please first consider [opening an issue][issues] to discuss your ideas with the maintainers.
 
 ## Setting up the repository
 
@@ -12,20 +16,21 @@ The Starlette team happily welcomes contributions. This document will help you g
 4. Create a branch for your work, e.g. `git checkout -b fix-some-bug`.
 5. Remember to include tests and documentation updates if applicable.
 6. Once ready, push to your remote: `git push origin fix-some-bug`.
- 7. [Open a PR] on the main repo.
+ 7. [Open a PR][pr] on the main repo.
 
 ## Install
 
-- Make sure you are using a compatible Python version, as specified in our README.
-- Create a virtual environment and install project dependencies:
+Use the `install` script to install project dependencies in a virtual environment.
 
 ```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+./scripts/install
 ```
 
-- Install an editable version of the project: `pip install -e .` (see [Editable Installs] in the `pip` docs).
+Your Python version will be verified and the virtual environment created using the `python3` executable. To use another executable, use the `-p` option, e.g.:
+
+```bash
+./scripts/install -p py
+```
 
 ## Running the tests
 
@@ -67,10 +72,9 @@ For your information, the docs site configuration is located in the `mkdocs.yml`
 
 Please refer to the [MkDocs docs][MkDocs] for more usage information, including how to add new pages.
 
-[open an issue]: https://github.com/encode/starlette/issues/new
-[Open a PR]: https://github.com/encode/starlette/compare
+[issues]: https://github.com/encode/starlette/issues/new
+[pr]: https://github.com/encode/starlette/compare
 [pytest]: https://docs.pytest.org
 [pytest-cov]: https://github.com/pytest-dev/pytest-cov
 [Black]: https://www.google.com/search?client=safari&rls=en&q=github+black&ie=UTF-8&oe=UTF-8
 [MkDocs]: https://www.mkdocs.org
-[Editable Installs]: https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs

@@ -1,5 +1,6 @@
 # Development Scripts
 
+* `scripts/install` - Install dependencies in a virtual environment.
 * `scripts/test` - Run the test suite.
 * `scripts/lint` - Run the code linting.
 * `scripts/publish` - Publish the latest version to PyPI.

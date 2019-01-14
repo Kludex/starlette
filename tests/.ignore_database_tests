@@ -1,0 +1,7 @@
+# Used by `./scripts/test` when ${STARLETTE_TEST_DATABASE} is unset.
+
+[coverage:run]
+omit =
+  starlette/database/*
+  starlette/middleware/database.py
+  tests/test_database.py

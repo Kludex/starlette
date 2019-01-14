@@ -10,7 +10,7 @@ export PYTHON_VERSION=`python -c "$VERSION_SCRIPT"`
 
 if [ -z "$STARLETTE_TEST_DATABASE" ] ; then
     echo "Variable STARLETTE_TEST_DATABASE is unset. Excluding database tests."
-    export IGNORE_MODULES="--ignore tests/test_database.py"
+    export IGNORE_MODULES="--ignore tests/test_database.py --cov-config tests/.ignore_database_tests"
 else
     echo "Variable STARLETTE_TEST_DATABASE is set"
     export IGNORE_MODULES=""
@@ -20,6 +20,7 @@ set -x
 
 PYTHONPATH=. ${PREFIX}pytest --ignore venv ${IGNORE_MODULES} -W ignore::DeprecationWarning --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
 ${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
+${PREFIX}autoflake --recursive starlette tests
 if [ "${PYTHON_VERSION}" = '3.7' ]; then
     echo "Skipping 'black' on 3.7. See issue https://github.com/ambv/black/issues/494"
 else

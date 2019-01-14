@@ -84,7 +84,7 @@ class HTTPConnection(Mapping):
         return self._scope["session"]
 
     @property
-    def database(self) -> typing.Any:
+    def database(self) -> typing.Any:  # pragma: no cover
         assert (
             "database" in self._scope
         ), "DatabaseMiddleware must be installed to access request.database"

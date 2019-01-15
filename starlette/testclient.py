@@ -129,6 +129,13 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
         }
 
         async def receive() -> Message:
+            nonlocal request_complete, response_complete
+
+            if request_complete:
+                while not response_complete:
+                    await asyncio.sleep(0.0001)
+                return {"type": "http.disconnect"}
+
             body = request.body
             if isinstance(body, str):
                 body_bytes = body.encode("utf-8")  # type: bytes
@@ -141,9 +148,12 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                         chunk = chunk.encode("utf-8")
                     return {"type": "http.request", "body": chunk, "more_body": True}
                 except StopIteration:
+                    request_complete = True
                     return {"type": "http.request", "body": b""}
             else:
                 body_bytes = body
+
+            request_complete = True
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
@@ -182,6 +192,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                 template = message["template"]
                 context = message["context"]
 
+        request_complete = False
         response_started = False
         response_complete = False
         raw_kwargs = {"body": io.BytesIO()}  # type: typing.Dict[str, typing.Any]

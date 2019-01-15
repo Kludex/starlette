@@ -254,6 +254,32 @@ def test_request_disconnect():
         loop.run_until_complete(asgi_callable(receiver, None))
 
 
+def test_request_is_disconnected():
+    """
+    If a client disconnect occurs while reading request body
+    then ClientDisconnect should be raised.
+    """
+    disconnected_after_response = None
+
+    def app(scope):
+        async def asgi(receive, send):
+            nonlocal disconnected_after_response
+
+            request = Request(scope, receive)
+            await request.body()
+            disconnected = await request.is_disconnected()
+            response = JSONResponse({"disconnected": disconnected})
+            await response(receive, send)
+            disconnected_after_response = await request.is_disconnected()
+
+        return asgi
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.json() == {"disconnected": False}
+    assert disconnected_after_response
+
+
 def test_request_cookies():
     def app(scope):
         async def asgi(receive, send):

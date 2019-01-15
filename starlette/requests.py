@@ -1,3 +1,4 @@
+import asyncio
 import http.cookies
 import json
 import typing
@@ -120,6 +121,7 @@ class Request(HTTPConnection):
         assert scope["type"] == "http"
         self._receive = receive
         self._stream_consumed = False
+        self._is_disconnected = False
 
     @property
     def method(self) -> str:
@@ -148,6 +150,7 @@ class Request(HTTPConnection):
                 if not message.get("more_body", False):
                     break
             elif message["type"] == "http.disconnect":
+                self._is_disconnected = True
                 raise ClientDisconnect()
         yield b""
 
@@ -187,3 +190,15 @@ class Request(HTTPConnection):
             for item in self._form.values():
                 if hasattr(item, "close"):
                     await item.close()  # type: ignore
+
+    async def is_disconnected(self) -> bool:
+        if not self._is_disconnected:
+            try:
+                message = await asyncio.wait_for(self._receive(), timeout=0.0000001)
+            except asyncio.TimeoutError as exc:
+                message = {}
+
+            if message.get("type") == "http.disconnect":
+                self._is_disconnected = True
+
+        return self._is_disconnected

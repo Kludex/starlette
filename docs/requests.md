@@ -109,3 +109,7 @@ class App:
 If you access `.stream()` then the byte chunks are provided without storing
 the entire body to memory. Any subsequent calls to `.body()`, `.form()`, or `.json()`
 will raise an error.
+
+In some cases such as long-polling, or streaming responses you might need to
+determine if the client has dropped the connection. You can determine this
+state with `disconnected = await request.is_disconnected()`.

@@ -1,3 +1,23 @@
+## 0.9.10
+
+* Support `@requires(...)` on class methods.
+* Apply URL escaping to form data.
+* Support `HEAD` requests automatically.
+* Add `await request.is_disconnected()`.
+* Pass operationName to GraphQL executor.
+
+## 0.9.9
+
+* Add `TemplateResponse`.
+* Add `CommaSeparatedStrings` datatype.
+* Add `BackgroundTasks` for multiple tasks.
+* Common subclass for `Request` and `WebSocket`, to eg. share `session` functionality.
+* Expose remote address with `request.client`.
+
+## 0.9.8
+
+* Add `request.database.executemany`.
+
 ## 0.9.7
 
 * Ensure that `AuthenticationMiddleware` handles lifespan messages correctly.

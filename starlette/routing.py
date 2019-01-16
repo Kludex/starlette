@@ -84,6 +84,46 @@ def replace_params(
     return path, path_params
 
 
+def compile_path(
+    path: str
+) -> typing.Tuple[typing.Pattern, str, typing.Dict[str, Convertor]]:
+    """
+    Given a path string, like: "/{username:str}", return a three-tuple
+    of (regex, format, {param_name:convertor}).
+
+    regex:      "/(?P<username>[^/]+)"
+    format:     "/{username}"
+    convertors: {"username": StringConvertor()}
+    """
+    path_regex = "^"
+    path_format = ""
+
+    idx = 0
+    param_convertors = {}
+    for match in PARAM_REGEX.finditer(path):
+        param_name, convertor_type = match.groups("str")
+        convertor_type = convertor_type.lstrip(":")
+        assert convertor_type in CONVERTOR_TYPES, (
+            "Unknown path convertor '%s'" % convertor_type
+        )
+        convertor = CONVERTOR_TYPES[convertor_type]
+
+        path_regex += path[idx : match.start()]
+        path_regex += "(?P<%s>%s)" % (param_name, convertor.regex)
+
+        path_format += path[idx : match.start()]
+        path_format += "{%s}" % param_name
+
+        param_convertors[param_name] = convertor
+
+        idx = match.end()
+
+    path_regex += path[idx:] + "$"
+    path_format += path[idx:]
+
+    return re.compile(path_regex), path_format, param_convertors
+
+
 PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
 
@@ -96,45 +136,6 @@ class BaseRoute:
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         raise NotImplementedError()  # pragma: no cover
-
-    def compile_path(
-        self, path: str
-    ) -> typing.Tuple[typing.Pattern, str, typing.Dict[str, Convertor]]:
-        """
-        Given a path string, like: "/{username:str}", return a three-tuple
-        of (regex, format, {param_name:convertor}).
-
-        regex:      "/(?P<username>[^/]+)"
-        format:     "/{username}"
-        convertors: {"username": StringConvertor()}
-        """
-        path_regex = "^"
-        path_format = ""
-
-        idx = 0
-        param_convertors = {}
-        for match in PARAM_REGEX.finditer(path):
-            param_name, convertor_type = match.groups("str")
-            convertor_type = convertor_type.lstrip(":")
-            assert convertor_type in CONVERTOR_TYPES, (
-                "Unknown path convertor '%s'" % convertor_type
-            )
-            convertor = CONVERTOR_TYPES[convertor_type]
-
-            path_regex += path[idx : match.start()]
-            path_regex += "(?P<%s>%s)" % (param_name, convertor.regex)
-
-            path_format += path[idx : match.start()]
-            path_format += "{%s}" % param_name
-
-            param_convertors[param_name] = convertor
-
-            idx = match.end()
-
-        path_regex += path[idx:] + "$"
-        path_format += path[idx:]
-
-        return re.compile(path_regex), path_format, param_convertors
 
 
 class Route(BaseRoute):
@@ -169,9 +170,7 @@ class Route(BaseRoute):
             if "GET" in self.methods:
                 self.methods |= set(["HEAD"])
 
-        self.path_regex, self.path_format, self.param_convertors = self.compile_path(
-            path
-        )
+        self.path_regex, self.path_format, self.param_convertors = compile_path(path)
 
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         if scope["type"] == "http":
@@ -236,9 +235,7 @@ class WebSocketRoute(BaseRoute):
 
         regex = "^" + path + "$"
         regex = re.sub("{([a-zA-Z_][a-zA-Z0-9_]*)}", r"(?P<\1>[^/]+)", regex)
-        self.path_regex, self.path_format, self.param_convertors = self.compile_path(
-            path
-        )
+        self.path_regex, self.path_format, self.param_convertors = compile_path(path)
 
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         if scope["type"] == "websocket":
@@ -283,7 +280,7 @@ class Mount(BaseRoute):
         self.path = path.rstrip("/")
         self.app = app
         self.name = name
-        self.path_regex, self.path_format, self.param_convertors = self.compile_path(
+        self.path_regex, self.path_format, self.param_convertors = compile_path(
             path + "/{path:path}"
         )
 

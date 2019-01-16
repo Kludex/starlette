@@ -8,32 +8,59 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
 
-STYLES = """\
-    .traceback-container {border: 1px solid #038BB8;}
-    .traceback-title {background-color: #038BB8;color: lemonchiffon;padding: 12px;font-size: 20px;margin-top: 0px;}
-    .traceback-content {padding: 5px 0px 20px 20px;}
-    .frame-line {font-weight: unset;padding: 10px 10px 10px 20px;background-color: #E4F4FD;
-    margin-left: 10px;margin-right: 10px;font: #394D54;color: #191f21;font-size: 17px;border: 1px solid #c7dce8;}
+STYLES = """
+.traceback-container {
+    border: 1px solid #038BB8;
+}
+.traceback-title {
+    background-color: #038BB8;
+    color: lemonchiffon;
+    padding: 12px;
+    font-size: 20px;
+    margin-top: 0px;
+}
+.traceback-content {
+    padding: 5px 0px 20px 20px;
+}
+.frame-line {
+    font-weight: unset;
+    padding: 10px 10px 10px 20px;
+    background-color: #E4F4FD;
+    margin-left: 10px;
+    margin-right: 10px;
+    font: #394D54;
+    color: #191f21;
+    font-size: 17px;
+    border: 1px solid #c7dce8;
+}
 """
 
 TEMPLATE = """
-    <style type='text/css'>{style}</style>
-    <title>Starlette Debugger</title>
-    <h1>500 Server Error</h1>
-    <h2>{error}</h2>
-    <div class='traceback-container'>
-    <p class='traceback-title'>Traceback</p>
-    <div class='traceback-content'>{ext_html}</div>
-    </div>
+<html>
+    <head>
+        <style type='text/css'>
+            {styles}
+        </style>
+        <title>Starlette Debugger</title>
+    </head>
+    <body>
+        <h1>500 Server Error</h1>
+        <h2>{error}</h2>
+        <div class='traceback-container'>
+            <p class='traceback-title'>Traceback</p>
+            <div class='traceback-content'>{exc_html}</div>
+        </div>
+    </body>
+</html>
 """
 
 FRAME_TEMPLATE = """
-    <p>
+<div>
     File <span class='debug-filename'>`{frame_filename}`</span>,
     line <i>{frame_lineno}</i>,
     in <b>{frame_name}</b>
     <p class='frame-line'>{frame_line}</p>
-    </p>
+</div>
 """
 
 
@@ -110,13 +137,12 @@ class ServerErrorMiddleware:
         traceback_obj = traceback.TracebackException.from_exception(
             exc, capture_locals=True
         )
-        ext_html = "".join(
+        exc_html = "".join(
             self.genenrate_frame_html(frame) for frame in traceback_obj.stack
         )
         error = f"{traceback_obj.exc_type.__name__}: {traceback_obj}"
 
-        values = {"style": STYLES, "error": error, "ext_html": ext_html}
-        return TEMPLATE.format(**values)
+        return TEMPLATE.format(styles=STYLES, error=error, exc_html=exc_html)
 
     def generate_plain_text(self, exc: Exception) -> str:
         return "".join(traceback.format_tb(exc.__traceback__))

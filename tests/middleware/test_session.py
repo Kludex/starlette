@@ -1,3 +1,5 @@
+import re
+
 from starlette.applications import Starlette
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
@@ -38,6 +40,12 @@ def test_session():
     response = client.post("/update_session", json={"some": "data"})
     assert response.json() == {"session": {"some": "data"}}
 
+    # check cookie max-age
+    set_cookie = response.headers["set-cookie"]
+    max_age_matches = re.search(r"; Max-Age=([0-9]+);", set_cookie)
+    assert max_age_matches is not None
+    assert int(max_age_matches[1]) == 14 * 24 * 3600
+
     response = client.get("/view_session")
     assert response.json() == {"session": {"some": "data"}}
 
@@ -56,7 +64,11 @@ def test_session_expires():
     response = client.post("/update_session", json={"some": "data"})
     assert response.json() == {"session": {"some": "data"}}
 
-    response = client.get("/view_session")
+    # requests removes expired cookies from response.cookies, we need to
+    # fetch session id from the headers and pass it explicitly
+    expired_cookie_header = response.headers["set-cookie"]
+    expired_session_value = re.search(r"session=([^;]*);", expired_cookie_header)[1]
+    response = client.get("/view_session", cookies={"session": expired_session_value})
     assert response.json() == {"session": {}}
 
 

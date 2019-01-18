@@ -55,9 +55,10 @@ class SessionMiddleware:
                     data = b64encode(json.dumps(scope["session"]).encode("utf-8"))
                     data = self.signer.sign(data)
                     headers = MutableHeaders(scope=message)
-                    header_value = "%s=%s; path=/; %s" % (
+                    header_value = "%s=%s; path=/; Max-Age=%d; %s" % (
                         self.session_cookie,
                         data.decode("utf-8"),
+                        self.max_age,
                         self.security_flags,
                     )
                     headers.append("Set-Cookie", header_value)

@@ -16,11 +16,11 @@ app = Starlette()
 
 @app.exception_handler(404)
 async def not_found(request, exc):
-    return HTMLResponse(content=HTML_404_PAGE)
+    return HTMLResponse(content=HTML_404_PAGE, status_code=exc.status_code)
 
 @app.exception_handler(500)
 async def server_error(request, exc):
-    return HTMLResponse(content=HTML_500_PAGE)
+    return HTMLResponse(content=HTML_500_PAGE, status_code=exc.status_code)
 ```
 
 If `debug` is enabled and an error occurs, then instead of using the installed

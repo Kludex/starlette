@@ -4,7 +4,7 @@ import json
 import typing
 from collections.abc import Mapping
 
-from starlette.datastructures import URL, Address, Headers, QueryParams
+from starlette.datastructures import URL, Address, FormData, Headers, QueryParams
 from starlette.formparsers import FormParser, MultiPartParser
 from starlette.types import Message, Receive, Scope
 
@@ -168,7 +168,7 @@ class Request(HTTPConnection):
             self._json = json.loads(body)
         return self._json
 
-    async def form(self) -> dict:
+    async def form(self) -> FormData:
         if not hasattr(self, "_form"):
             assert (
                 parse_options_header is not None
@@ -182,12 +182,12 @@ class Request(HTTPConnection):
                 form_parser = FormParser(self.headers, self.stream())
                 self._form = await form_parser.parse()
             else:
-                self._form = {}
+                self._form = FormData()
         return self._form
 
     async def close(self) -> None:
         if hasattr(self, "_form"):
-            for item in self._form.values():
+            for key, item in self._form.multi_items():
                 if hasattr(item, "close"):
                     await item.close()  # type: ignore
 

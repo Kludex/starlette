@@ -1,7 +1,10 @@
+import io
+
 from starlette.datastructures import (
     URL,
     CommaSeparatedStrings,
     DatabaseURL,
+    FormData,
     Headers,
     MutableHeaders,
     QueryParams,
@@ -201,3 +204,30 @@ def test_queryparams():
 
     q = QueryParams(items=[("a", "123"), ("a", "456")])
     assert QueryParams(q) == q
+
+
+def test_formdata():
+    upload = io.BytesIO(b"test")
+    form = FormData(items=[("a", "123"), ("a", "456"), ("b", upload)])
+    assert "a" in form
+    assert "A" not in form
+    assert "c" not in form
+    assert form["a"] == "456"
+    assert form.get("a") == "456"
+    assert form.get("nope", default=None) is None
+    assert form.getlist("a") == ["123", "456"]
+    assert form.keys() == ["a", "b"]
+    assert form.values() == ["456", upload]
+    assert form.items() == [("a", "456"), ("b", upload)]
+    assert len(form) == 2
+    assert list(form) == ["a", "b"]
+    assert dict(form) == {"a": "456", "b": upload}
+    assert (
+        repr(form)
+        == "FormData(items=[('a', '123'), ('a', '456'), ('b', " + repr(upload) + ")])"
+    )
+    assert FormData(form) == form
+    assert FormData({"a": "123", "b": "789"}) == FormData(
+        items=[("a", "123"), ("b", "789")]
+    )
+    assert FormData({"a": "123", "b": "789"}) != {"a": "123", "b": "789"}

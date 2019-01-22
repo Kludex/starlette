@@ -130,7 +130,7 @@ def test_request_form_urlencoded():
         async def asgi(receive, send):
             request = Request(scope, receive)
             form = await request.form()
-            response = JSONResponse({"form": form})
+            response = JSONResponse({"form": dict(form)})
             await response(receive, send)
 
         return asgi

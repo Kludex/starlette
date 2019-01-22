@@ -1,12 +1,8 @@
-import asyncio
-import io
-import tempfile
 import typing
 from enum import Enum
 from urllib.parse import unquote_plus
 
-from starlette.concurrency import run_in_threadpool
-from starlette.datastructures import Headers
+from starlette.datastructures import FormData, FormValue, Headers, UploadFile
 
 try:
     from multipart.multipart import parse_options_header
@@ -33,31 +29,6 @@ class MultiPartMessage(Enum):
     HEADER_END = 6
     HEADERS_FINISHED = 7
     END = 8
-
-
-class UploadFile:
-    def __init__(self, filename: str) -> None:
-        self.filename = filename
-        self._file = io.BytesIO()  # type: typing.IO[typing.Any]
-        self._loop = asyncio.get_event_loop()
-
-    def create_tempfile(self) -> None:
-        self._file = tempfile.SpooledTemporaryFile()
-
-    async def setup(self) -> None:
-        await run_in_threadpool(self.create_tempfile)
-
-    async def write(self, data: bytes) -> None:
-        await run_in_threadpool(self._file.write, data)
-
-    async def read(self, size: int = None) -> bytes:
-        return await run_in_threadpool(self._file.read, size)
-
-    async def seek(self, offset: int) -> None:
-        await run_in_threadpool(self._file.seek, offset)
-
-    async def close(self) -> None:
-        await run_in_threadpool(self._file.close)
 
 
 class FormParser:
@@ -91,7 +62,7 @@ class FormParser:
         message = (FormMessage.END, b"")
         self.messages.append(message)
 
-    async def parse(self) -> typing.Dict[str, typing.Union[str, UploadFile]]:
+    async def parse(self) -> FormData:
         # Callbacks dictionary.
         callbacks = {
             "on_field_start": self.on_field_start,
@@ -106,7 +77,7 @@ class FormParser:
         field_name = b""
         field_value = b""
 
-        result = {}  # type: typing.Dict[str, typing.Union[str, UploadFile]]
+        items = []  # type: typing.List[typing.Tuple[str, FormValue]]
 
         # Feed the parser with data from the request.
         async for chunk in self.stream:
@@ -127,11 +98,11 @@ class FormParser:
                 elif message_type == FormMessage.FIELD_END:
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))
-                    result[name] = value
+                    items.append((name, value))
                 elif message_type == FormMessage.END:
                     pass
 
-        return result
+        return FormData(items=items)
 
 
 class MultiPartParser:
@@ -177,7 +148,7 @@ class MultiPartParser:
         message = (MultiPartMessage.END, b"")
         self.messages.append(message)
 
-    async def parse(self) -> typing.Dict[str, typing.Union[str, UploadFile]]:
+    async def parse(self) -> FormData:
         # Parse the Content-Type header to get the multipart boundary.
         content_type, params = parse_options_header(self.headers["Content-Type"])
         boundary = params.get(b"boundary")
@@ -203,7 +174,7 @@ class MultiPartParser:
         data = b""
         file = None  # type: typing.Optional[UploadFile]
 
-        result = {}  # type: typing.Dict[str, typing.Union[str, UploadFile]]
+        items = []  # type: typing.List[typing.Tuple[str, FormValue]]
 
         # Feed the parser with data from the request.
         async for chunk in self.stream:
@@ -230,7 +201,6 @@ class MultiPartParser:
                     if b"filename" in options:
                         filename = options[b"filename"].decode("latin-1")
                         file = UploadFile(filename=filename)
-                        await file.setup()
                     else:
                         file = None
                 elif message_type == MultiPartMessage.PART_DATA:
@@ -240,12 +210,12 @@ class MultiPartParser:
                         await file.write(message_bytes)
                 elif message_type == MultiPartMessage.PART_END:
                     if file is None:
-                        result[field_name] = data.decode("latin-1")
+                        items.append((field_name, data.decode("latin-1")))
                     else:
                         await file.seek(0)
-                        result[field_name] = file
+                        items.append((field_name, file))
                 elif message_type == MultiPartMessage.END:
                     pass
 
         parser.finalize()
-        return result
+        return FormData(items=items)

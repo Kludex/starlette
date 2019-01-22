@@ -33,6 +33,28 @@ def app(scope):
     return asgi
 
 
+def multi_items_app(scope):
+    async def asgi(receive, send):
+        request = Request(scope, receive)
+        data = await request.form()
+        output = {}
+        for key, value in data.multi_items():
+            if key not in output:
+                output[key] = []
+            if isinstance(value, UploadFile):
+                content = await value.read()
+                output[key].append(
+                    {"filename": value.filename, "content": content.decode()}
+                )
+            else:
+                output[key].append(value)
+        await request.close()
+        response = JSONResponse(output)
+        await response(receive, send)
+
+    return asgi
+
+
 def app_read_body(scope):
     async def asgi(receive, send):
         request = Request(scope, receive)
@@ -83,6 +105,29 @@ def test_multipart_request_multiple_files(tmpdir):
         assert response.json() == {
             "test1": {"filename": "test1.txt", "content": "<file1 content>"},
             "test2": {"filename": "test2.txt", "content": "<file2 content>"},
+        }
+
+
+def test_multi_items(tmpdir):
+    path1 = os.path.join(tmpdir, "test1.txt")
+    with open(path1, "wb") as file:
+        file.write(b"<file1 content>")
+
+    path2 = os.path.join(tmpdir, "test2.txt")
+    with open(path2, "wb") as file:
+        file.write(b"<file2 content>")
+
+    client = TestClient(multi_items_app)
+    with open(path1, "rb") as f1, open(path2, "rb") as f2:
+        response = client.post(
+            "/", data=[("test1", "abc")], files=[("test1", f1), ("test1", f2)]
+        )
+        assert response.json() == {
+            "test1": [
+                "abc",
+                {"filename": "test1.txt", "content": "<file1 content>"},
+                {"filename": "test2.txt", "content": "<file2 content>"},
+            ]
         }
 
 

@@ -21,7 +21,6 @@ def test_url():
     assert u.password is None
     assert u.path == "/path/to/somewhere"
     assert u.query == "abc=123"
-    assert u.params == ""
     assert u.fragment == "anchor"
 
     new = u.replace(scheme="http")

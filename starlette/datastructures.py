@@ -3,7 +3,7 @@ import typing
 from collections import namedtuple
 from collections.abc import Sequence
 from shlex import shlex
-from urllib.parse import ParseResult, parse_qsl, urlencode, urlparse
+from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 
 from starlette.concurrency import run_in_threadpool
 from starlette.types import Scope
@@ -50,9 +50,9 @@ class URL:
         self._url = url
 
     @property
-    def components(self) -> ParseResult:
+    def components(self) -> SplitResult:
         if not hasattr(self, "_components"):
-            self._components = urlparse(self._url)
+            self._components = urlsplit(self._url)
         return self._components
 
     @property
@@ -66,10 +66,6 @@ class URL:
     @property
     def path(self) -> str:
         return self.components.path
-
-    @property
-    def params(self) -> str:
-        return self.components.params
 
     @property
     def query(self) -> str:

@@ -231,7 +231,7 @@ class QueryParams(typing.Mapping[str, str]):
 
     def __init__(
         self,
-        params: typing.Mapping[str, str] = None,
+        params: typing.Union["QueryParams", typing.Mapping[str, str]] = None,
         items: typing.List[typing.Tuple[str, str]] = None,
         query_string: str = None,
         scope: Scope = None,
@@ -241,7 +241,10 @@ class QueryParams(typing.Mapping[str, str]):
             assert items is None, "Cannot set both 'params' and 'items'"
             assert query_string is None, "Cannot set both 'params' and 'query_string'"
             assert scope is None, "Cannot set both 'params' and 'scope'"
-            _items = list(params.items())
+            if isinstance(params, QueryParams):
+                _items = list(params.multi_items())
+            else:
+                _items = list(params.items())
         elif items is not None:
             assert query_string is None, "Cannot set both 'items' and 'query_string'"
             assert scope is None, "Cannot set both 'items' and 'scope'"
@@ -252,26 +255,28 @@ class QueryParams(typing.Mapping[str, str]):
         elif scope is not None:
             _items = parse_qsl(scope["query_string"].decode("latin-1"))
 
-        self._dict = {k: v for k, v in reversed(_items)}
+        self._dict = {k: v for k, v in _items}
         self._list = _items
 
     def getlist(self, key: typing.Any) -> typing.List[str]:
         return [item_value for item_key, item_value in self._list if item_key == key]
 
     def keys(self) -> typing.List[str]:  # type: ignore
-        return [key for key, value in self._list]
+        return list(self._dict.keys())
 
     def values(self) -> typing.List[str]:  # type: ignore
-        return [value for key, value in self._list]
+        return list(self._dict.values())
 
     def items(self) -> typing.List[typing.Tuple[str, str]]:  # type: ignore
+        return list(self._dict.items())
+
+    def multi_items(self) -> typing.List[typing.Tuple[str, str]]:
         return list(self._list)
 
     def get(self, key: typing.Any, default: typing.Any = None) -> typing.Any:
         if key in self._dict:
             return self._dict[key]
-        else:
-            return default
+        return default
 
     def __getitem__(self, key: typing.Any) -> str:
         return self._dict[key]
@@ -283,7 +288,7 @@ class QueryParams(typing.Mapping[str, str]):
         return iter(self.keys())
 
     def __len__(self) -> int:
-        return len(self._list)
+        return len(self._dict)
 
     def __eq__(self, other: typing.Any) -> bool:
         if not isinstance(other, QueryParams):

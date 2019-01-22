@@ -90,7 +90,7 @@ async def websocket_endpoint(session):
 @app.websocket_route("/ws/{room}")
 async def websocket_params(session):
     await session.accept()
-    await session.send_text("Hello, %s!" % session.path_params["room"])
+    await session.send_text(f"Hello, {session.path_params['room']}!")
     await session.close()
 
 
@@ -208,7 +208,7 @@ def test_router_add_websocket_route():
 
 def http_endpoint(request):
     url = request.url_for("http_endpoint")
-    return Response("URL: %s" % url, media_type="text/plain")
+    return Response(f"URL: {url}", media_type="text/plain")
 
 
 class WebsocketEndpoint:

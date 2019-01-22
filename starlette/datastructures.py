@@ -28,16 +28,16 @@ class URL:
                     break
 
             if host_header is not None:
-                url = "%s://%s%s" % (scheme, host_header, path)
+                url = f"{scheme}://{host_header}{path}"
             elif server is None:
                 url = path
             else:
                 host, port = server
                 default_port = {"http": 80, "https": 443, "ws": 80, "wss": 443}[scheme]
                 if port == default_port:
-                    url = "%s://%s%s" % (scheme, host, path)
+                    url = f"{scheme}://{host}{path}"
                 else:
-                    url = "%s://%s:%s%s" % (scheme, host, port, path)
+                    url = f"{scheme}://{host}:{port}{path}"
 
             if query_string:
                 url += "?" + query_string.decode()
@@ -111,12 +111,12 @@ class URL:
 
             netloc = hostname
             if port is not None:
-                netloc += ":%d" % port
+                netloc += f":{port}"
             if username is not None:
                 userpass = username
                 if password is not None:
-                    userpass += ":%s" % password
-                netloc = "%s@%s" % (userpass, netloc)
+                    userpass += f":{password}"
+                netloc = f"{userpass}@{netloc}"
 
             kwargs["netloc"] = netloc
 
@@ -133,7 +133,7 @@ class URL:
         url = str(self)
         if self.password:
             url = str(self.replace(password="********"))
-        return "%s(%s)" % (self.__class__.__name__, repr(url))
+        return f"{self.__class__.__name__}({repr(url)})"
 
 
 class DatabaseURL(URL):
@@ -191,7 +191,7 @@ class Secret:
         self._value = value
 
     def __repr__(self) -> str:
-        return "%s('**********')" % self.__class__.__name__
+        return f"{self.__class__.__name__}('**********')"
 
     def __str__(self) -> str:
         return self._value
@@ -218,7 +218,7 @@ class CommaSeparatedStrings(Sequence):
 
     def __repr__(self) -> str:
         list_repr = repr([item for item in self])
-        return "%s(%s)" % (self.__class__.__name__, list_repr)
+        return f"{self.__class__.__name__}({list_repr})"
 
     def __str__(self) -> str:
         return ", ".join([repr(item) for item in self])
@@ -294,7 +294,7 @@ class QueryParams(typing.Mapping[str, str]):
         return urlencode(self._list)
 
     def __repr__(self) -> str:
-        return "%s(query_string=%s)" % (self.__class__.__name__, repr(str(self)))
+        return f"{self.__class__.__name__}(query_string={repr(str(self))})"
 
 
 class Headers(typing.Mapping[str, str]):
@@ -383,8 +383,8 @@ class Headers(typing.Mapping[str, str]):
     def __repr__(self) -> str:
         as_dict = dict(self.items())
         if len(as_dict) == len(self):
-            return "%s(%s)" % (self.__class__.__name__, repr(as_dict))
-        return "%s(raw=%s)" % (self.__class__.__name__, repr(self.raw))
+            return f"{self.__class__.__name__}({repr(as_dict)})"
+        return f"{self.__class__.__name__}(raw={repr(self.raw)})"
 
 
 class MutableHeaders(Headers):

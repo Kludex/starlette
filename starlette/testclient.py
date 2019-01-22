@@ -86,7 +86,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
         elif port == default_port:
             headers = [(b"host", host.encode())]
         else:
-            headers = [(b"host", ("%s:%d" % (host, port)).encode())]
+            headers = [(b"host", (f"{host}:{port}").encode())]
 
         # Include other request headers.
         headers += [

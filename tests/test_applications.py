@@ -70,7 +70,7 @@ def all_users_page(request):
 @users.route("/{username}")
 def user_page(request):
     username = request.path_params["username"]
-    return PlainTextResponse("Hello, %s!" % username)
+    return PlainTextResponse(f"Hello, {username}!")
 
 
 app.mount("/users", users)

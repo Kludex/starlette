@@ -103,13 +103,13 @@ def compile_path(
     for match in PARAM_REGEX.finditer(path):
         param_name, convertor_type = match.groups("str")
         convertor_type = convertor_type.lstrip(":")
-        assert convertor_type in CONVERTOR_TYPES, (
-            "Unknown path convertor '%s'" % convertor_type
-        )
+        assert (
+            convertor_type in CONVERTOR_TYPES
+        ), f"Unknown path convertor '{convertor_type}'"
         convertor = CONVERTOR_TYPES[convertor_type]
 
         path_regex += path[idx : match.start()]
-        path_regex += "(?P<%s>%s)" % (param_name, convertor.regex)
+        path_regex += f"(?P<{param_name}>{convertor.regex})"
 
         path_format += path[idx : match.start()]
         path_format += "{%s}" % param_name
@@ -146,7 +146,7 @@ class Route(BaseRoute):
         *,
         methods: typing.List[str] = None,
         name: str = None,
-        include_in_schema: bool = True
+        include_in_schema: bool = True,
     ) -> None:
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path

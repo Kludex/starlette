@@ -51,7 +51,7 @@ For example: `request.headers['content-type']`
 
 #### Query Parameters
 
-Headers are exposed as an immutable multi-dict.
+Query parameters are exposed as an immutable multi-dict.
 
 For example: `request.query_params['search']`
 

@@ -1,3 +1,11 @@
+## 0.9.11
+
+* Session cookies now include browser 'expires', in addition to the existing signed expiry.
+* `request.form()` now returns a multi-dict interface.
+* The query parameter multi-dict implementation now mirrors `dict` more correctly for the
+behavior of `.keys()`, `.values()`, and `.items()` when multiple same-key items occur.
+* Use `urlsplit` throughout in favor of `urlparse`.
+
 ## 0.9.10
 
 * Support `@requires(...)` on class methods.

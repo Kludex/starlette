@@ -102,7 +102,7 @@ class FormParser:
                 elif message_type == FormMessage.END:
                     pass
 
-        return FormData(items=items)
+        return FormData(items)
 
 
 class MultiPartParser:
@@ -218,4 +218,4 @@ class MultiPartParser:
                     pass
 
         parser.finalize()
-        return FormData(items=items)
+        return FormData(items)

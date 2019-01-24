@@ -187,9 +187,7 @@ class Request(HTTPConnection):
 
     async def close(self) -> None:
         if hasattr(self, "_form"):
-            for key, item in self._form.multi_items():
-                if hasattr(item, "close"):
-                    await item.close()  # type: ignore
+            await self._form.close()
 
     async def is_disconnected(self) -> bool:
         if not self._is_disconnected:

@@ -380,6 +380,11 @@ class FormData(ImmutableMultiDict):
 
         super().__init__(value)
 
+    async def close(self) -> None:
+        for key, value in self.multi_items():
+            if isinstance(value, UploadFile):
+                await value.close()
+
 
 class Headers(typing.Mapping[str, str]):
     """

@@ -86,6 +86,20 @@ def test_websocket_endpoint_on_receive_json():
             websocket.send_text("Hello world")
 
 
+def test_websocket_endpoint_on_receive_json_binary():
+    class WebSocketApp(WebSocketEndpoint):
+        encoding = "json"
+
+        async def on_receive(self, websocket, data):
+            await websocket.send_json({"message": data}, mode="binary")
+
+    client = TestClient(WebSocketApp)
+    with client.websocket_connect("/ws") as websocket:
+        websocket.send_json({"hello": "world"}, mode="binary")
+        data = websocket.receive_json(mode="binary")
+        assert data == {"message": {"hello": "world"}}
+
+
 def test_websocket_endpoint_on_receive_text():
     class WebSocketApp(WebSocketEndpoint):
         encoding = "text"

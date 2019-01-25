@@ -21,6 +21,24 @@ def test_websocket_url():
         assert data == {"url": "ws://testserver/123?a=abc"}
 
 
+def test_websocket_binary_json():
+    def app(scope):
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            message = await websocket.receive_json(mode="binary")
+            await websocket.send_json(message, mode="binary")
+            await websocket.close()
+
+        return asgi
+
+    client = TestClient(app)
+    with client.websocket_connect("/123?a=abc") as websocket:
+        websocket.send_json({"test": "data"}, mode="binary")
+        data = websocket.receive_json(mode="binary")
+        assert data == {"test": "data"}
+
+
 def test_websocket_query_params():
     def app(scope):
         async def asgi(receive, send):

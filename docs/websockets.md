@@ -64,6 +64,9 @@ For example: `request.path_params['username']`
 * `await websocket.send_bytes(data)`
 * `await websocket.send_json(data)`
 
+JSON messages default to being sent over text data frames, from version 0.10.0 onwards.
+Use `websocket.send_json(data, mode="binary")` to send JSON over binary data frames.
+
 ### Receiving data
 
 * `await websocket.receive_text()`
@@ -71,6 +74,9 @@ For example: `request.path_params['username']`
 * `await websocket.receive_json()`
 
 May raise `starlette.websockets.Disconnect()`.
+
+JSON messages default to being received over text data frames, from version 0.10.0 onwards.
+Use `websocket.receive_json(data, mode="binary")` to receive JSON over binary data frames.
 
 ### Closing the connection
 

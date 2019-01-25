@@ -87,6 +87,6 @@ class Query(graphene.ObjectType):
 
 app = Starlette()
 
-# We're using `executor=AsyncioExecutor()` here.
-app.add_route('/', GraphQLApp(schema=graphene.Schema(query=Query), executor=AsyncioExecutor()))
+# We're using `executor_class=AsyncioExecutor` here.
+app.add_route('/', GraphQLApp(schema=graphene.Schema(query=Query), executor_class=AsyncioExecutor))
 ```

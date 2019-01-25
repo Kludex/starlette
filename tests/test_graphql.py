@@ -130,11 +130,23 @@ class ASyncQuery(graphene.ObjectType):
 
 
 async_schema = graphene.Schema(query=ASyncQuery)
-async_app = GraphQLApp(schema=async_schema, executor=AsyncioExecutor())
+async_app = GraphQLApp(schema=async_schema, executor_class=AsyncioExecutor)
 
 
 def test_graphql_async():
     client = TestClient(async_app)
+    response = client.get("/?query={ hello }")
+    assert response.status_code == 200
+    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+
+
+async_schema = graphene.Schema(query=ASyncQuery)
+old_style_async_app = GraphQLApp(schema=async_schema, executor=AsyncioExecutor())
+
+
+def test_graphql_async_old_style_executor():
+    # See https://github.com/encode/starlette/issues/242
+    client = TestClient(old_style_async_app)
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
     assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}

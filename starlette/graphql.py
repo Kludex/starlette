@@ -22,15 +22,35 @@ except ImportError:  # pragma: nocover
 
 
 class GraphQLApp:
-    def __init__(self, schema: "graphene.Schema", executor: typing.Any = None) -> None:
+    def __init__(
+        self,
+        schema: "graphene.Schema",
+        executor: typing.Any = None,
+        executor_class: type = None,
+    ) -> None:
         self.schema = schema
-        self.executor = executor
-        self.is_async = isinstance(executor, AsyncioExecutor)
+        if executor is None:
+            # New style in 0.10.0. Use 'executor_class'.
+            # See issue https://github.com/encode/starlette/issues/242
+            self.executor = executor
+            self.executor_class = executor_class
+            self.is_async = executor_class is not None and issubclass(
+                executor_class, AsyncioExecutor
+            )
+        else:
+            # Old style. Use 'executor'.
+            # We should remove this in the next median/major version bump.
+            self.executor = executor
+            self.executor_class = None
+            self.is_async = isinstance(executor, AsyncioExecutor)
 
     def __call__(self, scope: Scope) -> ASGIInstance:
         return functools.partial(self.asgi, scope=scope)
 
     async def asgi(self, receive: Receive, send: Send, scope: Scope) -> None:
+        if self.executor is None and self.executor_class is not None:
+            self.executor = self.executor_class()
+
         request = Request(scope, receive=receive)
         response = await self.handle_graphql(request)
         await response(receive, send)

@@ -86,7 +86,7 @@ if __name__ == '__main__':
     if sys.argv[-1] == "run":
         uvicorn.run(app, host='0.0.0.0', port=8000)
     elif sys.arvg[-1] == "schema":
-        print(yaml.dumps(app.schema, default_flow_style=False))
+        print(yaml.dump(app.schema, default_flow_style=False))
 ```
 
 ### Third party packages

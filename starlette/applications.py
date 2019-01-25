@@ -95,7 +95,9 @@ class Starlette:
         name: str = None,
         include_in_schema: bool = True,
     ) -> None:
-        self.router.add_route(path, route, methods=methods, name=name)
+        self.router.add_route(
+            path, route, methods=methods, name=name, include_in_schema=include_in_schema
+        )
 
     def add_websocket_route(
         self, path: str, route: typing.Callable, name: str = None

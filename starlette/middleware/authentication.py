@@ -33,12 +33,15 @@ class AuthenticationMiddleware:
         return self.app(scope)
 
     async def asgi(self, receive: Receive, send: Send, scope: Scope) -> None:
-        conn = HTTPConnection(scope, receive=receive)
+        conn = HTTPConnection(scope)
         try:
             auth_result = await self.backend.authenticate(conn)
         except AuthenticationError as exc:
             response = self.on_error(conn, exc)
-            await response(receive, send)
+            if scope["type"] == "websocket":
+                await send({"type": "websocket.close", "code": 1000})
+            else:
+                await response(receive, send)
             return
 
         if auth_result is None:

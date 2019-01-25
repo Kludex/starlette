@@ -4,13 +4,14 @@ import inspect
 import typing
 
 from starlette.exceptions import HTTPException
-from starlette.requests import Request, HTTPConnection
+from starlette.requests import HTTPConnection, Request
 from starlette.responses import RedirectResponse, Response
+from starlette.websockets import WebSocket
 
 
-def has_required_scope(request: Request, scopes: typing.Sequence[str]) -> bool:
+def has_required_scope(conn: HTTPConnection, scopes: typing.Sequence[str]) -> bool:
     for scope in scopes:
-        if scope not in request.auth.scopes:
+        if scope not in conn.auth.scopes:
             return False
     return True
 
@@ -23,17 +24,39 @@ def requires(
     scopes_list = [scopes] if isinstance(scopes, str) else list(scopes)
 
     def decorator(func: typing.Callable) -> typing.Callable:
+        type = None
         sig = inspect.signature(func)
         for idx, parameter in enumerate(sig.parameters.values()):
-            if parameter.name == "request":
+            if parameter.name == "request" or parameter.name == "websocket":
+                type = parameter.name
                 break
         else:
-            raise Exception(f'No "request" argument on function "{func}"')
+            raise Exception(
+                f'No "request" or "websocket" argument on function "{func}"'
+            )
 
-        if asyncio.iscoroutinefunction(func):
-
+        if type == "websocket":
+            # Handle websocket functions. (Always async)
             @functools.wraps(func)
-            async def wrapper(*args: typing.Any, **kwargs: typing.Any) -> Response:
+            async def websocket_wrapper(
+                *args: typing.Any, **kwargs: typing.Any
+            ) -> None:
+                websocket = kwargs.get("websocket", args[idx])
+                assert isinstance(websocket, WebSocket)
+
+                if not has_required_scope(websocket, scopes_list):
+                    await websocket.close()
+                else:
+                    await func(*args, **kwargs)
+
+            return websocket_wrapper
+
+        elif asyncio.iscoroutinefunction(func):
+            # Handle async request/response functions.
+            @functools.wraps(func)
+            async def async_wrapper(
+                *args: typing.Any, **kwargs: typing.Any
+            ) -> Response:
                 request = kwargs.get("request", args[idx])
                 assert isinstance(request, Request)
 
@@ -43,21 +66,22 @@ def requires(
                     raise HTTPException(status_code=status_code)
                 return await func(*args, **kwargs)
 
-            return wrapper
+            return async_wrapper
 
-        @functools.wraps(func)
-        def sync_wrapper(*args: typing.Any, **kwargs: typing.Any) -> Response:
-            # Support either `func(request)` or `func(self, request)`
-            request = kwargs.get("request", args[idx])
-            assert isinstance(request, Request)
+        else:
+            # Handle sync request/response functions.
+            @functools.wraps(func)
+            def sync_wrapper(*args: typing.Any, **kwargs: typing.Any) -> Response:
+                request = kwargs.get("request", args[idx])
+                assert isinstance(request, Request)
 
-            if not has_required_scope(request, scopes_list):
-                if redirect is not None:
-                    return RedirectResponse(url=request.url_for(redirect))
-                raise HTTPException(status_code=status_code)
-            return func(*args, **kwargs)
+                if not has_required_scope(request, scopes_list):
+                    if redirect is not None:
+                        return RedirectResponse(url=request.url_for(redirect))
+                    raise HTTPException(status_code=status_code)
+                return func(*args, **kwargs)
 
-        return sync_wrapper
+            return sync_wrapper
 
     return decorator
 

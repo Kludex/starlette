@@ -16,6 +16,7 @@ from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 
 class BasicAuth(AuthenticationBackend):
@@ -104,6 +105,18 @@ def admin(request):
     )
 
 
+@app.websocket_route("/ws")
+@requires("authenticated")
+async def websocket_endpoint(websocket):
+    await websocket.accept()
+    await websocket.send_json(
+        {
+            "authenticated": websocket.user.is_authenticated,
+            "user": websocket.user.display_name,
+        }
+    )
+
+
 def test_invalid_decorator_usage():
     with pytest.raises(Exception):
 
@@ -149,6 +162,21 @@ def test_authentication_required():
         response = client.get("/dashboard", headers={"Authorization": "basic foobar"})
         assert response.status_code == 400
         assert response.text == "Invalid basic auth credentials"
+
+
+def test_websocket_authentication_required():
+    with TestClient(app) as client:
+        with pytest.raises(WebSocketDisconnect):
+            client.websocket_connect("/ws")
+
+        with pytest.raises(WebSocketDisconnect):
+            client.websocket_connect("/ws", headers={"Authorization": "basic foobar"})
+
+        with client.websocket_connect(
+            "/ws", auth=("tomchristie", "example")
+        ) as websocket:
+            data = websocket.receive_json()
+            assert data == {"authenticated": True, "user": "tomchristie"}
 
 
 def test_authentication_redirect():

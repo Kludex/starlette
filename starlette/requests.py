@@ -52,7 +52,7 @@ class HTTPConnection(Mapping):
     @property
     def query_params(self) -> QueryParams:
         if not hasattr(self, "_query_params"):
-            self._query_params = QueryParams(scope=self._scope)
+            self._query_params = QueryParams(self._scope["query_string"])
         return self._query_params
 
     @property

@@ -1,3 +1,11 @@
+## 0.10.0
+
+* WebSockets now default to sending/receiving JSON over text data frames. Use `.send_json(data, mode="binary")` and `.receive_json(mode="binary")` for binary framing.
+* `GraphQLApp` now takes an `executor_class` argument, which should be used in preference to the existing `executor` argument. Resolves an issue with async executors being instantiated before the event loop was setup. The `executor` argument is expected to be deprecated in the next median or major release.
+* Authentication and the `@requires` decorator now support WebSocket endpoints.
+* `MultiDict` and `ImmutableMultiDict` classes are available in `uvicorn.datastructures`.
+* `QueryParams` is now instantiated with standard dict-style `*args, **kwargs` arguments.
+
 ## 0.9.11
 
 * Session cookies now include browser 'expires', in addition to the existing signed expiry.

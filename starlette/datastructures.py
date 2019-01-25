@@ -1,4 +1,3 @@
-import itertools
 import tempfile
 import typing
 from collections import namedtuple
@@ -190,7 +189,8 @@ class Secret:
         self._value = value
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}('**********')"
+        class_name = self.__class__.__name__
+        return f"{class_name}('**********')"
 
     def __str__(self) -> str:
         return self._value
@@ -216,8 +216,9 @@ class CommaSeparatedStrings(Sequence):
         return iter(self._items)
 
     def __repr__(self) -> str:
-        list_repr = repr([item for item in self])
-        return f"{self.__class__.__name__}({list_repr})"
+        class_name = self.__class__.__name__
+        items = [item for item in self]
+        return f"{class_name}({items!r})"
 
     def __str__(self) -> str:
         return ", ".join([repr(item) for item in self])
@@ -226,13 +227,27 @@ class CommaSeparatedStrings(Sequence):
 class ImmutableMultiDict(typing.Mapping):
     def __init__(
         self,
-        value: typing.Union[
+        *args: typing.Union[
             "ImmutableMultiDict",
             typing.Mapping,
             typing.List[typing.Tuple[typing.Any, typing.Any]],
-        ] = None,
+        ],
+        **kwargs: typing.Any,
     ) -> None:
-        if value is None:
+        assert len(args) < 2, "Too many arguments."
+
+        if args:
+            value = args[0]
+        else:
+            value = []
+
+        if kwargs:
+            value = (
+                ImmutableMultiDict(value).multi_items()
+                + ImmutableMultiDict(kwargs).multi_items()
+            )
+
+        if not value:
             _items = []  # type: typing.List[typing.Tuple[typing.Any, typing.Any]]
         elif hasattr(value, "multi_items"):
             value = typing.cast(ImmutableMultiDict, value)
@@ -287,8 +302,9 @@ class ImmutableMultiDict(typing.Mapping):
         return sorted(self._list) == sorted(other._list)
 
     def __repr__(self) -> str:
+        class_name = self.__class__.__name__
         items = self.multi_items()
-        return f"{self.__class__.__name__}({repr(items)})"
+        return f"{class_name}({items!r})"
 
 
 class MultiDict(ImmutableMultiDict):
@@ -325,47 +341,30 @@ class MultiDict(ImmutableMultiDict):
         return self[key]
 
     def setlist(self, key: typing.Any, values: typing.List) -> None:
-        self.pop(key, None)
         if not values:
-            values = []
+            self.pop(key, None)
         else:
+            existing_items = [(k, v) for (k, v) in self._list if k != key]
+            self._list = existing_items + [(key, value) for value in values]
             self._dict[key] = values[-1]
-        self._list.extend(((key, value) for value in values))
 
-    def appendlist(self, key: typing.Any, value: typing.Any) -> None:
+    def append(self, key: typing.Any, value: typing.Any) -> None:
         self._list.append((key, value))
         self._dict[key] = value
 
     def update(
         self,
-        values: typing.Union[
+        *args: typing.Union[
             "MultiDict",
             typing.Mapping,
             typing.List[typing.Tuple[typing.Any, typing.Any]],
-        ] = None,
+        ],
         **kwargs: typing.Any,
     ) -> None:
-        if values is None:
-            items_ = []  # type: typing.List
-        elif hasattr(values, "multi_items"):
-            values = typing.cast(MultiDict, values)
-            items_ = list(values.multi_items())
-        elif hasattr(values, "items"):
-            values = typing.cast(typing.Mapping, values)
-            items_ = list(values.items())
-        else:
-            values = typing.cast(
-                typing.List[typing.Tuple[typing.Any, typing.Any]], values
-            )
-            items_ = values
-
-        keys = {k for k, _ in itertools.chain(items_, kwargs.items())}
-        self._list = [
-            *((k, v) for k, v in self._list if k not in keys),
-            *items_,
-            *list(kwargs.items()),
-        ]
-        self._dict.update(itertools.chain(items_, kwargs.items()))
+        value = MultiDict(*args, **kwargs)
+        existing_items = [(k, v) for (k, v) in self._list if k not in value.keys()]
+        self._list = existing_items + value.multi_items()
+        self._dict.update(value)
 
 
 class QueryParams(ImmutableMultiDict):
@@ -375,42 +374,42 @@ class QueryParams(ImmutableMultiDict):
 
     def __init__(
         self,
-        value: typing.Union[
+        *args: typing.Union[
             "ImmutableMultiDict",
             typing.Mapping,
             typing.List[typing.Tuple[typing.Any, typing.Any]],
             str,
-        ] = None,
-        scope: Scope = None,
+            bytes,
+        ],
         **kwargs: typing.Any,
     ) -> None:
-        if kwargs:  # pragma: no cover
-            # Backwards compatability. We now just use a single argument to
-            # cover all cases, except for the initialize-by-ASGI-scope case.
-            #
-            # This compat case should be removed in 0.10.x
-            value = kwargs.pop("params", value)
-            value = kwargs.pop("items", value)
-            value = kwargs.pop("query_string", value)
-            assert not kwargs, "Unknown parameter"
+        assert len(args) < 2, "Too many arguments."
 
-        if scope is not None:
-            assert value is None, "Cannot set both 'value' and 'scope'"
-            value = scope["query_string"].decode("latin-1")
+        value = args[0] if args else []
 
         if isinstance(value, str):
-            super().__init__(parse_qsl(value))
+            super().__init__(parse_qsl(value), **kwargs)
+        elif isinstance(value, bytes):
+            super().__init__(parse_qsl(value.decode("latin-1")), **kwargs)
         else:
-            super().__init__(value)
+            super().__init__(*args, **kwargs)  # type: ignore
+        self._list = [(str(k), str(v)) for k, v in self._list]
+        self._dict = {str(k): str(v) for k, v in self._dict.items()}
 
     def __str__(self) -> str:
         return urlencode(self._list)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({repr(str(self))})"
+        class_name = self.__class__.__name__
+        query_string = str(self)
+        return f"{class_name}({query_string!r})"
 
 
 class UploadFile:
+    """
+    An uploaded file included as part of the request data.
+    """
+
     def __init__(self, filename: str, file: typing.IO = None) -> None:
         self.filename = filename
         if file is None:
@@ -430,9 +429,6 @@ class UploadFile:
         await run_in_threadpool(self.file.close)
 
 
-FormValue = typing.Union[str, UploadFile]
-
-
 class FormData(ImmutableMultiDict):
     """
     An immutable multidict, containing both file uploads and text input.
@@ -440,23 +436,14 @@ class FormData(ImmutableMultiDict):
 
     def __init__(
         self,
-        value: typing.Union[
+        *args: typing.Union[
             "FormData",
-            typing.Mapping[str, FormValue],
-            typing.List[typing.Tuple[str, FormValue]],
-        ] = None,
-        **kwargs: typing.Any,
+            typing.Mapping[str, typing.Union[str, UploadFile]],
+            typing.List[typing.Tuple[str, typing.Union[str, UploadFile]]],
+        ],
+        **kwargs: typing.Union[str, UploadFile],
     ) -> None:
-        if kwargs:  # pragma: no cover
-            # Backwards compatability. We now just use a single argument to
-            # cover all cases.
-            #
-            # This compat case should be removed in 0.10.x
-            value = kwargs.pop("form", value)
-            value = kwargs.pop("items", value)
-            assert not kwargs, "Unknown parameter"
-
-        super().__init__(value)
+        super().__init__(*args, **kwargs)  # type: ignore
 
     async def close(self) -> None:
         for key, value in self.multi_items():
@@ -548,10 +535,11 @@ class Headers(typing.Mapping[str, str]):
         return sorted(self._list) == sorted(other._list)
 
     def __repr__(self) -> str:
+        class_name = self.__class__.__name__
         as_dict = dict(self.items())
         if len(as_dict) == len(self):
-            return f"{self.__class__.__name__}({repr(as_dict)})"
-        return f"{self.__class__.__name__}(raw={repr(self.raw)})"
+            return f"{class_name}({as_dict!r})"
+        return f"{class_name}(raw={self.raw!r})"
 
 
 class MutableHeaders(Headers):

@@ -2,7 +2,6 @@ import enum
 import json
 import typing
 
-from starlette.datastructures import URL, Headers, QueryParams
 from starlette.requests import HTTPConnection
 from starlette.types import Message, Receive, Scope, Send
 

@@ -2,7 +2,7 @@ import typing
 from enum import Enum
 from urllib.parse import unquote_plus
 
-from starlette.datastructures import FormData, FormValue, Headers, UploadFile
+from starlette.datastructures import FormData, Headers, UploadFile
 
 try:
     from multipart.multipart import parse_options_header
@@ -77,7 +77,9 @@ class FormParser:
         field_name = b""
         field_value = b""
 
-        items = []  # type: typing.List[typing.Tuple[str, FormValue]]
+        items = (
+            []
+        )  # type: typing.List[typing.Tuple[str, typing.Union[str, UploadFile]]]
 
         # Feed the parser with data from the request.
         async for chunk in self.stream:
@@ -174,7 +176,9 @@ class MultiPartParser:
         data = b""
         file = None  # type: typing.Optional[UploadFile]
 
-        items = []  # type: typing.List[typing.Tuple[str, FormValue]]
+        items = (
+            []
+        )  # type: typing.List[typing.Tuple[str, typing.Union[str, UploadFile]]]
 
         # Feed the parser with data from the request.
         async for chunk in self.stream:

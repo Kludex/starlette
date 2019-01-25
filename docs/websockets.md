@@ -12,6 +12,7 @@ from starlette.websockets import WebSocket
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'websocket'
         self.scope = scope
 
     async def __call__(self, receive, send):

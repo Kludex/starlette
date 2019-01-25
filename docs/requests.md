@@ -13,6 +13,7 @@ from starlette.response import Response
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -95,6 +96,7 @@ from starlette.responses import Response
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):

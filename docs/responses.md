@@ -24,6 +24,7 @@ from starlette.responses import Response
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -62,6 +63,7 @@ from starlette.responses import HTMLResponse
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -79,6 +81,7 @@ from starlette.responses import PlainTextResponse
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -107,6 +110,7 @@ env = Environment(loader=FileSystemLoader('templates'))
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -141,6 +145,7 @@ from starlette.responses import JSONResponse
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -164,6 +169,7 @@ from starlette.responses import UJSONResponse
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -181,6 +187,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -210,6 +217,7 @@ async def slow_numbers(minimum, maximum):
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):
@@ -237,6 +245,7 @@ from starlette.responses import FileResponse
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):

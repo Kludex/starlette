@@ -4,7 +4,7 @@ import inspect
 import typing
 
 from starlette.exceptions import HTTPException
-from starlette.requests import Request
+from starlette.requests import Request, HTTPConnection
 from starlette.responses import RedirectResponse, Response
 
 
@@ -68,7 +68,7 @@ class AuthenticationError(Exception):
 
 class AuthenticationBackend:
     async def authenticate(
-        self, request: Request
+        self, conn: HTTPConnection
     ) -> typing.Optional[typing.Tuple["AuthCredentials", "BaseUser"]]:
         raise NotImplemented()  # pragma: no cover
 

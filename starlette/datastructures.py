@@ -1,3 +1,4 @@
+import itertools
 import tempfile
 import typing
 from collections import namedtuple
@@ -288,6 +289,83 @@ class ImmutableMultiDict(typing.Mapping):
     def __repr__(self) -> str:
         items = self.multi_items()
         return f"{self.__class__.__name__}({repr(items)})"
+
+
+class MultiDict(ImmutableMultiDict):
+    def __setitem__(self, key: typing.Any, value: typing.Any) -> None:
+        self.setlist(key, [value])
+
+    def __delitem__(self, key: typing.Any) -> None:
+        self._list = [(k, v) for k, v in self._list if k != key]
+        del self._dict[key]
+
+    def pop(self, key: typing.Any, default: typing.Any = None) -> typing.Any:
+        self._list = [(k, v) for k, v in self._list if k != key]
+        return self._dict.pop(key, default)
+
+    def popitem(self) -> typing.Tuple:
+        key, value = self._dict.popitem()
+        self._list = [(k, v) for k, v in self._list if k != key]
+        return key, value
+
+    def poplist(self, key: typing.Any) -> typing.List:
+        values = [v for k, v in self._list if k == key]
+        self.pop(key)
+        return values
+
+    def clear(self) -> None:
+        self._dict.clear()
+        self._list.clear()
+
+    def setdefault(self, key: typing.Any, default: typing.Any = None) -> typing.Any:
+        if key not in self:
+            self._dict[key] = default
+            self._list.append((key, default))
+
+        return self[key]
+
+    def setlist(self, key: typing.Any, values: typing.List) -> None:
+        self.pop(key, None)
+        if not values:
+            values = []
+        else:
+            self._dict[key] = values[-1]
+        self._list.extend(((key, value) for value in values))
+
+    def appendlist(self, key: typing.Any, value: typing.Any) -> None:
+        self._list.append((key, value))
+        self._dict[key] = value
+
+    def update(
+        self,
+        values: typing.Union[
+            "MultiDict",
+            typing.Mapping,
+            typing.List[typing.Tuple[typing.Any, typing.Any]],
+        ] = None,
+        **kwargs: typing.Any,
+    ) -> None:
+        if values is None:
+            items_ = []  # type: typing.List
+        elif hasattr(values, "multi_items"):
+            values = typing.cast(MultiDict, values)
+            items_ = list(values.multi_items())
+        elif hasattr(values, "items"):
+            values = typing.cast(typing.Mapping, values)
+            items_ = list(values.items())
+        else:
+            values = typing.cast(
+                typing.List[typing.Tuple[typing.Any, typing.Any]], values
+            )
+            items_ = values
+
+        keys = {k for k, _ in itertools.chain(items_, kwargs.items())}
+        self._list = [
+            *((k, v) for k, v in self._list if k not in keys),
+            *items_,
+            *list(kwargs.items()),
+        ]
+        self._dict.update(itertools.chain(items_, kwargs.items()))
 
 
 class QueryParams(ImmutableMultiDict):

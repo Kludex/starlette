@@ -155,7 +155,8 @@ if TESTING:
   DATABASE_URL = DATABASE_URL.replace(database='test_' + DATABASE_URL.database)
 
 
-# Use 'rollback_on_shutdown' during testing, to ensure we have
+# Use 'rollback_on_shutdown' during testing, to ensure we do not persist
+# database changes
 app = Starlette()
 app.add_middleware(
     DatabaseMiddleware,

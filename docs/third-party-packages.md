@@ -148,3 +148,36 @@ app = FastAPI()
 def read_root():
     return {'hello': 'world'}
 ```
+
+### Bocadillo
+
+Link: <a href="https://bocadilloproject.github.io" target="_blank">https://bocadilloproject.github.io</a>
+
+A modern Python web framework filled with asynchronous salsa.
+
+Bocadillo is **async-first** and designed with productivity and simplicity in mind. It is not meant to be minimal: a **carefully chosen set of included batteries** helps you build performant web apps and services with minimal setup.
+
+Key features include:
+
+* Simple, powerful and familiar views and routing, inspired by the greatest (Flask, Falcon).
+* First-class support for both HTTP / REST and WebSocket.
+* Built-in CORS, HSTS, GZip, HTTP streaming, Jinja2 templates, background tasks, static files…
+
+… and more ahead, as depicted in the <a href="https://github.com/bocadilloproject/bocadillo/blob/master/ROADMAP.md" target="_blank">Roadmap</a>.
+
+The example below demonstrates a simple WebSocket echo server.
+
+```python
+from bocadillo import API, WebSocket
+
+api = API()
+
+@api.websocket_route("/echo")
+async def echo(ws: WebSocket):
+    async with ws:
+        async for message in ws:
+            await ws.send(message)
+
+if __name__ == "__main__":
+    api.run()
+```

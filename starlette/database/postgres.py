@@ -1,3 +1,4 @@
+import logging
 import typing
 from types import TracebackType
 
@@ -10,14 +11,15 @@ from starlette.database.core import (
     DatabaseBackend,
     DatabaseSession,
     DatabaseTransaction,
-    compile,
 )
 from starlette.datastructures import DatabaseURL
+
+logger = logging.getLogger("starlette.database")
 
 
 class PostgresBackend(DatabaseBackend):
     def __init__(self, database_url: typing.Union[str, DatabaseURL]) -> None:
-        self.database_url = database_url
+        self.database_url = DatabaseURL(database_url)
         self.dialect = self.get_dialect()
         self.pool = None
 
@@ -53,8 +55,26 @@ class PostgresSession(DatabaseSession):
         self.conn = None
         self.connection_holders = 0
 
+    def _compile(self, query: ClauseElement) -> typing.Tuple[str, list]:
+        compiled = query.compile(dialect=self.dialect)
+        compiled_params = sorted(compiled.params.items())
+
+        mapping = {
+            key: "$" + str(i) for i, (key, _) in enumerate(compiled_params, start=1)
+        }
+        compiled_query = compiled.string % mapping
+
+        processors = compiled._bind_processors
+        args = [
+            processors[key](val) if key in processors else val
+            for key, val in compiled_params
+        ]
+
+        logger.debug(compiled_query, args)
+        return compiled_query, args
+
     async def fetchall(self, query: ClauseElement) -> typing.Any:
-        query, args = compile(query, dialect=self.dialect)
+        query, args = self._compile(query)
 
         conn = await self.acquire_connection()
         try:
@@ -63,7 +83,7 @@ class PostgresSession(DatabaseSession):
             await self.release_connection()
 
     async def fetchone(self, query: ClauseElement) -> typing.Any:
-        query, args = compile(query, dialect=self.dialect)
+        query, args = self._compile(query)
 
         conn = await self.acquire_connection()
         try:
@@ -72,7 +92,7 @@ class PostgresSession(DatabaseSession):
             await self.release_connection()
 
     async def execute(self, query: ClauseElement) -> None:
-        query, args = compile(query, dialect=self.dialect)
+        query, args = self._compile(query)
 
         conn = await self.acquire_connection()
         try:
@@ -88,7 +108,7 @@ class PostgresSession(DatabaseSession):
             # using the same prepared statement.
             for item in values:
                 single_query = query.values(item)
-                single_query, args = compile(single_query, dialect=self.dialect)
+                single_query, args = self._compile(single_query)
                 await conn.execute(single_query, *args)
         finally:
             await self.release_connection()

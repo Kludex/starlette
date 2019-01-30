@@ -7,10 +7,11 @@ python:
     - "3.7-dev"
 
 env:
-    - STARLETTE_TEST_DATABASE=postgresql://localhost/starlette
+    - STARLETTE_TEST_DATABASES="postgresql://localhost/starlette, mysql://localhost/starlette"
 
 services:
     - postgresql
+    - mysql
 
 install:
     - pip install -U -r requirements.txt

@@ -8,8 +8,13 @@ pyyaml
 requests
 ujson
 
-# Database backends
+# Async database drivers
 asyncpg
+aiomysql
+
+# Sync database drivers for standard tooling around setup/teardown/migrations.
+psycopg2-binary
+pymysql
 
 # Testing
 autoflake
@@ -20,7 +25,6 @@ mypy
 pytest
 pytest-cov
 sqlalchemy
-psycopg2-binary
 
 # Documentation
 mkdocs

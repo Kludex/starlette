@@ -40,10 +40,13 @@ We provide a stand-alone **test script** to run tests in a reliable manner. Run 
 ./scripts/test
 ```
 
-By default, tests involving a database are excluded. To include them, set the `STARLETTE_TEST_DATABASE` environment variable to the URL of a PostgreSQL database, e.g.:
+By default, tests involving a database are excluded. To include them, set the `STARLETTE_TEST_DATABASES` environment variable. This should be a comma separated string of database URLs.
 
 ```bash
-export STARLETTE_TEST_DATABASE="postgresql://localhost/starlette"
+# Any of the following are valid for running the database tests...
+export STARLETTE_TEST_DATABASES="postgresql://localhost/starlette"
+export STARLETTE_TEST_DATABASES="mysql://localhost/starlette_test"
+export STARLETTE_TEST_DATABASES="postgresql://localhost/starlette, mysql://localhost/starlette_test"
 ```
 
 ## Linting

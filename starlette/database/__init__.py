@@ -1,5 +1,4 @@
 from starlette.database.core import (
-    compile,
     transaction,
     DatabaseBackend,
     DatabaseSession,
@@ -7,10 +6,4 @@ from starlette.database.core import (
 )
 
 
-__all__ = [
-    "compile",
-    "transaction",
-    "DatabaseBackend",
-    "DatabaseSession",
-    "DatabaseTransaction",
-]
+__all__ = ["transaction", "DatabaseBackend", "DatabaseSession", "DatabaseTransaction"]

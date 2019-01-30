@@ -135,6 +135,9 @@ class URL:
 
 
 class DatabaseURL(URL):
+    def __init__(self, url: typing.Union[str, URL]):
+        return super().__init__(str(url))
+
     @property
     def database(self) -> str:
         return self.path.lstrip("/")

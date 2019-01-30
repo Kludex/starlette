@@ -1,33 +1,11 @@
 import functools
-import logging
 import typing
 from types import TracebackType
 
-from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.sql import ClauseElement
 
 from starlette.requests import Request
 from starlette.responses import Response
-
-logger = logging.getLogger("starlette.database")
-
-
-def compile(query: ClauseElement, dialect: Dialect) -> typing.Tuple[str, list]:
-    # query = execute_defaults(query)  # default values for Insert/Update
-    compiled = query.compile(dialect=dialect)
-    compiled_params = sorted(compiled.params.items())
-
-    mapping = {key: "$" + str(i) for i, (key, _) in enumerate(compiled_params, start=1)}
-    compiled_query = compiled.string % mapping
-
-    processors = compiled._bind_processors
-    args = [
-        processors[key](val) if key in processors else val
-        for key, val in compiled_params
-    ]
-
-    logger.debug(compiled_query)
-    return compiled_query, args
 
 
 def transaction(func: typing.Callable) -> typing.Callable:

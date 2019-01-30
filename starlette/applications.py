@@ -67,6 +67,9 @@ class Starlette:
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
         self.router.mount(path, app=app, name=name)
 
+    def host(self, host: str, app: ASGIApp, name: str = None) -> None:
+        self.router.host(host, app=app, name=name)
+
     def add_middleware(self, middleware_class: type, **kwargs: typing.Any) -> None:
         self.error_middleware.app = middleware_class(
             self.error_middleware.app, **kwargs

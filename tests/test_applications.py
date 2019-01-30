@@ -4,28 +4,16 @@ from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
-from starlette.routing import Mount, Route, Router, WebSocketRoute
+from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
-
-
-class TrustedHostMiddleware:
-    def __init__(self, app, hostname):
-        self.app = app
-        self.hostname = hostname
-
-    def __call__(self, scope):
-        headers = Headers(scope=scope)
-        if headers.get("host") != self.hostname:
-            return PlainTextResponse("Invalid host header", status_code=400)
-        return self.app(scope)
-
 
 app = Starlette()
 
 
-app.add_middleware(TrustedHostMiddleware, hostname="testserver")
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["testserver", "*.example.org"])
 
 
 @app.exception_handler(500)
@@ -74,6 +62,17 @@ def user_page(request):
 
 
 app.mount("/users", users)
+
+
+subdomain = Router()
+
+
+@subdomain.route("/")
+def custom_subdomain(request):
+    return PlainTextResponse("Subdomain: " + request.path_params["subdomain"])
+
+
+app.host("{subdomain}.example.org", subdomain)
 
 
 @app.route("/500")
@@ -129,6 +128,14 @@ def test_mounted_route_path_params():
     assert response.text == "Hello, tomchristie!"
 
 
+def test_subdomain_route():
+    client = TestClient(app, base_url="https://foo.example.org/")
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.text == "Subdomain: foo"
+
+
 def test_websocket_route():
     with client.websocket_connect("/ws") as session:
         text = session.receive_text()
@@ -178,6 +185,10 @@ def test_routes():
                     Route("/{username}", endpoint=user_page),
                 ]
             ),
+        ),
+        Host(
+            "{subdomain}.example.org",
+            app=Router(routes=[Route("/", endpoint=custom_subdomain)]),
         ),
         Route("/500", endpoint=runtime_error, methods=["GET"]),
         WebSocketRoute("/ws", endpoint=websocket_endpoint),

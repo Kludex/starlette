@@ -1,3 +1,8 @@
+## 0.10.1
+
+* Add MySQL database support.
+* Add host-based routing.
+
 ## 0.10.0
 
 * WebSockets now default to sending/receiving JSON over text data frames. Use `.send_json(data, mode="binary")` and `.receive_json(mode="binary")` for binary framing.

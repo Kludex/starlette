@@ -62,18 +62,12 @@ if __name__ == "__main__":
 
 Link: <a href="https://github.com/erm/mangum" target="_blank">https://github.com/erm/mangum</a>
 
-A library for using any ASGI application with FaaS platforms.
-
-It includes:
-
-* Adapter classes for **AWS Lambda & API Gateway** and **Azure Functions**.
-* CLI tools (experimental) for generating, packaging, and validating AWS deployment configurations.
+Serverless ASGI adapter for AWS Lambda & API Gateway.
 
 ```Python
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse
-from mangum.platforms.aws.adapter import AWSLambdaAdapter
-# from mangum.platforms.azure.adapter import AzureFunctionAdapter
+from mangum import Mangum
 
 
 app = Starlette()
@@ -84,8 +78,7 @@ def homepage(request):
     return PlainTextResponse("Hello, world!")
 
 
-handler = AWSLambdaAdapter(app)  # optionally set debug=True
-# handler = AzureFunctionAdapter(app)
+handler = Mangum(app)  # optionally set debug=True
 ```
 
 

@@ -200,11 +200,12 @@ class MultiPartParser:
                 elif message_type == MultiPartMessage.HEADERS_FINISHED:
                     headers = Headers(raw=raw_headers)
                     content_disposition = headers.get("Content-Disposition")
+                    content_type = headers.get("Content-Type", "")
                     disposition, options = parse_options_header(content_disposition)
                     field_name = options[b"name"].decode("latin-1")
                     if b"filename" in options:
                         filename = options[b"filename"].decode("latin-1")
-                        file = UploadFile(filename=filename)
+                        file = UploadFile(filename=filename, content_type=content_type)
                     else:
                         file = None
                 elif message_type == MultiPartMessage.PART_DATA:

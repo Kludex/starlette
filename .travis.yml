@@ -1,10 +1,13 @@
+sudo: required
+dist: xenial
 language: python
 
 cache: pip
 
 python:
     - "3.6"
-    - "3.7-dev"
+    - "3.7"
+    - "3.8-dev"
 
 env:
     - STARLETTE_TEST_DATABASES="postgresql://localhost/starlette, mysql://localhost/starlette"

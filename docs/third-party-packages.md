@@ -140,6 +140,38 @@ def homepage(request):
 handler = Mangum(app)  # optionally set debug=True
 ```
 
+### Nejma ⭐
+
+Link: <a href="https://github.com/taoufik07/nejma" target="_blank">https://github.com/taoufik07/nejma</a>
+
+Helps you manage and send messages to groups of channels.
+
+```python
+
+from nejma.ext.starlette import WebSocketEndpoint
+
+@app.websocket_route("/ws")
+class Chat(WebSocketEndpoint):
+    encoding = "json"
+
+    async def on_receive(self, websocket, data):
+        room_id = data['room_id']
+        message = data['message']
+        username = data['username']
+
+        if message.strip():
+            group = f"group_{room_id}"
+
+            self.channel_layer.add(group, self.channel)
+
+            payload = {
+                "username": username,
+                "message": message,
+                "room_id": room_id
+            }
+            await self.channel_layer.group_send(group, payload)
+```
+Checkout <a href="https://github.com/taoufik07/nejma-chat" target="_blank">nejma-chat</a>, a simple chat application built using `nejma` and `starlette`.
 
 ## Frameworks
 

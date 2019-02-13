@@ -34,6 +34,7 @@ def get_packages(package):
 
 setup(
     name='starlette',
+    python_requires='>=3.6',
     version=get_version('starlette'),
     url='https://github.com/encode/starlette',
     license='BSD',

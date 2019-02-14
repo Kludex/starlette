@@ -7,12 +7,12 @@ python-multipart
 pyyaml
 requests
 ujson
+databases[sqlite]
 
-# Async database drivers
+# Legacy
+sqlalchemy
 asyncpg
 aiomysql
-
-# Sync database drivers for standard tooling around setup/teardown/migrations.
 psycopg2-binary
 pymysql
 
@@ -24,7 +24,6 @@ isort
 mypy
 pytest
 pytest-cov
-sqlalchemy
 
 # Documentation
 mkdocs

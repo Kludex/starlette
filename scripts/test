@@ -21,8 +21,4 @@ set -x
 PYTHONPATH=. ${PREFIX}pytest --ignore venv ${IGNORE_MODULES} -W ignore::DeprecationWarning --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
 ${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
 ${PREFIX}autoflake --recursive starlette tests
-if [ "${PYTHON_VERSION}" = '3.7' ]; then
-    echo "Skipping 'black' on 3.7. See issue https://github.com/ambv/black/issues/494"
-else
-    ${PREFIX}black starlette tests --check
-fi
+${PREFIX}black starlette tests --check

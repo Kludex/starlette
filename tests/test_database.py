@@ -1,5 +1,4 @@
-import os
-
+import databases
 import pytest
 import sqlalchemy
 
@@ -10,10 +9,7 @@ from starlette.middleware.database import DatabaseMiddleware
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
-try:
-    DATABASE_URLS = CommaSeparatedStrings(os.environ["STARLETTE_TEST_DATABASES"])
-except KeyError:  # pragma: no cover
-    pytest.skip("STARLETTE_TEST_DATABASES is not set", allow_module_level=True)
+DATABASE_URL = "sqlite:///test.db"
 
 metadata = sqlalchemy.MetaData()
 
@@ -27,81 +23,74 @@ notes = sqlalchemy.Table(
 
 
 @pytest.fixture(autouse=True, scope="module")
-def create_test_databases():
-    engines = {}
-    for url in DATABASE_URLS:
-        db_url = DatabaseURL(url)
-        if db_url.dialect == "mysql":
-            #  Use the 'pymysql' driver for creating the database & tables.
-            url = str(db_url.replace(scheme="mysql+pymysql"))
-            db_name = db_url.database
-            db_url = db_url.replace(scheme="mysql+pymysql", database="")
-            engine = sqlalchemy.create_engine(str(db_url))
-            engine.execute("CREATE DATABASE IF NOT EXISTS " + db_name)
-
-        engines[url] = sqlalchemy.create_engine(url)
-        metadata.create_all(engines[url])
-
+def create_test_database():
+    engine = sqlalchemy.create_engine(DATABASE_URL)
+    metadata.create_all(engine)
     yield
-
-    for engine in engines.values():
-        engine.execute("DROP TABLE notes")
+    metadata.drop_all(engine)
 
 
-def get_app(database_url):
-    app = Starlette()
-    app.add_middleware(
-        DatabaseMiddleware, database_url=database_url, rollback_on_shutdown=True
-    )
-
-    @app.route("/notes", methods=["GET"])
-    async def list_notes(request):
-        query = notes.select()
-        results = await request.database.fetchall(query)
-        content = [
-            {"text": result["text"], "completed": result["completed"]}
-            for result in results
-        ]
-        return JSONResponse(content)
-
-    @app.route("/notes", methods=["POST"])
-    @transaction
-    async def add_note(request):
-        data = await request.json()
-        query = notes.insert().values(text=data["text"], completed=data["completed"])
-        await request.database.execute(query)
-        if "raise_exc" in request.query_params:
-            raise RuntimeError()
-        return JSONResponse({"text": data["text"], "completed": data["completed"]})
-
-    @app.route("/notes/bulk_create", methods=["POST"])
-    async def bulk_create_notes(request):
-        data = await request.json()
-        query = notes.insert()
-        await request.database.executemany(query, data)
-        return JSONResponse({"notes": data})
-
-    @app.route("/notes/{note_id:int}", methods=["GET"])
-    async def read_note(request):
-        note_id = request.path_params["note_id"]
-        query = notes.select().where(notes.c.id == note_id)
-        result = await request.database.fetchone(query)
-        content = {"text": result["text"], "completed": result["completed"]}
-        return JSONResponse(content)
-
-    @app.route("/notes/{note_id:int}/text", methods=["GET"])
-    async def read_note_text(request):
-        note_id = request.path_params["note_id"]
-        query = sqlalchemy.select([notes.c.text]).where(notes.c.id == note_id)
-        text = await request.database.fetchval(query)
-        return JSONResponse(text)
-
-    return app
+app = Starlette()
+database = databases.Database(DATABASE_URL, force_rollback=True)
 
 
-@pytest.mark.parametrize("database_url", DATABASE_URLS)
-def test_database(database_url):
-    app = get_app(database_url)
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
+
+
+@app.route("/notes", methods=["GET"])
+async def list_notes(request):
+    query = notes.select()
+    results = await database.fetch_all(query)
+    content = [
+        {"text": result["text"], "completed": result["completed"]} for result in results
+    ]
+    return JSONResponse(content)
+
+
+@app.route("/notes", methods=["POST"])
+@database.transaction()
+async def add_note(request):
+    data = await request.json()
+    query = notes.insert().values(text=data["text"], completed=data["completed"])
+    await database.execute(query)
+    if "raise_exc" in request.query_params:
+        raise RuntimeError()
+    return JSONResponse({"text": data["text"], "completed": data["completed"]})
+
+
+@app.route("/notes/bulk_create", methods=["POST"])
+async def bulk_create_notes(request):
+    data = await request.json()
+    query = notes.insert()
+    await database.execute_many(query, data)
+    return JSONResponse({"notes": data})
+
+
+@app.route("/notes/{note_id:int}", methods=["GET"])
+async def read_note(request):
+    note_id = request.path_params["note_id"]
+    query = notes.select().where(notes.c.id == note_id)
+    result = await database.fetch_one(query)
+    content = {"text": result["text"], "completed": result["completed"]}
+    return JSONResponse(content)
+
+
+@app.route("/notes/{note_id:int}/text", methods=["GET"])
+async def read_note_text(request):
+    note_id = request.path_params["note_id"]
+    query = sqlalchemy.select([notes.c.text]).where(notes.c.id == note_id)
+    result = await database.fetch_one(query)
+    return JSONResponse(result[0])
+
+
+def test_database():
     with TestClient(app) as client:
         response = client.post(
             "/notes", json={"text": "buy the milk", "completed": True}
@@ -136,12 +125,9 @@ def test_database(database_url):
         assert response.json() == "buy the milk"
 
 
-@pytest.mark.parametrize("database_url", DATABASE_URLS)
-def test_database_executemany(database_url):
-    app = get_app(database_url)
+def test_database_execute_many():
     with TestClient(app) as client:
         response = client.get("/notes")
-        print(response.json())
 
         data = [
             {"text": "buy the milk", "completed": True},
@@ -151,7 +137,6 @@ def test_database_executemany(database_url):
         assert response.status_code == 200
 
         response = client.get("/notes")
-        print(response.json())
         assert response.status_code == 200
         assert response.json() == [
             {"text": "buy the milk", "completed": True},
@@ -159,12 +144,10 @@ def test_database_executemany(database_url):
         ]
 
 
-@pytest.mark.parametrize("database_url", DATABASE_URLS)
-def test_database_isolated_during_test_cases(database_url):
+def test_database_isolated_during_test_cases():
     """
     Using `TestClient` as a context manager
     """
-    app = get_app(database_url)
     with TestClient(app) as client:
         response = client.post(
             "/notes", json={"text": "just one note", "completed": True}

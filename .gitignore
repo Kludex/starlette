@@ -1,4 +1,5 @@
 *.pyc
+test.db
 .coverage
 .pytest_cache/
 .mypy_cache/

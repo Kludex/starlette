@@ -86,6 +86,9 @@ class HTTPConnection(Mapping):
 
     @property
     def database(self) -> typing.Any:  # pragma: no cover
+        # NOTE: Pending deprecation. You probably want to look at the
+        # stand-alone `databases` package instead.
+        # https://github.com/encode/databases
         assert (
             "database" in self._scope
         ), "DatabaseMiddleware must be installed to access request.database"

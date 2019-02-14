@@ -1,23 +1,31 @@
-Starlette includes optional database support. There is currently only a driver
-for Postgres and MySQL databases, but SQLite support is planned.
+Starlette is not strictly tied to any particular database implementation.
 
-Enabling the built-in database support requires `sqlalchemy`, and an appropriate database driver. 
+You can use it with an asynchronous ORM, such as [GINO](https://python-gino.readthedocs.io/en/latest/),
+or use regular non-async endpoints, and integrate with [SQLAlchemy](https://www.sqlalchemy.org/).
 
-PostgreSQL: requires `asyncpg`
-MySQL: requires `aiomysql`
+In this documentation we'll demonstrate how to integrate against [the `databases` package](https://github.com/encode/databases),
+which provides SQLAlchemy core support against a range of different database drivers.
 
-The database support is completely optional - you can either include the middleware or not, or you can build alternative kinds of backends instead. It does not
-include support for an ORM, but it does support using queries built using
-[SQLAlchemy Core][sqlalchemy-core].
+**Note**: Previous versions of Starlette included a built-in `DatabaseMiddleware`.
+This option is currently still available but should be considered as pending deprecation.
+It will be removed in a future release. The legacy documentation [is available here](https://github.com/encode/starlette/blob/0.10.2/docs/database.md).
 
-Here's a complete example, that includes table definitions, installing the
-`DatabaseMiddleware`, and a couple of endpoints that interact with the database.
+Here's a complete example, that includes table definitions, configuring a `database.Database`
+instance, and a couple of endpoints that interact with the database.
+
+**.env**
+
+```ini
+DATABASE_URL=sqlite:///test.db
+```
+
+**app.py**
 
 ```python
+import databases
 import sqlalchemy
 from starlette.applications import Starlette
 from starlette.config import Config
-from starlette.middleware.database import DatabaseMiddleware
 from starlette.responses import JSONResponse
 
 
@@ -37,17 +45,25 @@ notes = sqlalchemy.Table(
     sqlalchemy.Column("completed", sqlalchemy.Boolean),
 )
 
-
-# Application setup.
+# Main application code.
+database = databases.Database(DATABASE_URL)
 app = Starlette()
-app.add_middleware(DatabaseMiddleware, database_url=DATABASE_URL)
 
 
-# Endpoints.
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
+
+
 @app.route("/notes", methods=["GET"])
 async def list_notes(request):
     query = notes.select()
-    results = await request.database.fetchall(query)
+    results = await database.fetch_all(query)
     content = [
         {
             "text": result["text"],
@@ -65,7 +81,7 @@ async def add_note(request):
        text=data["text"],
        completed=data["completed"]
     )
-    await request.database.execute(query)
+    await database.execute(query)
     return JSONResponse({
         "text": data["text"],
         "completed": data["completed"]
@@ -74,31 +90,30 @@ async def add_note(request):
 
 ## Queries
 
-Queries may be made with as [SQLAlchemy Core queries][sqlalchemy-core], or as raw SQL.
+Queries may be made with as [SQLAlchemy Core queries][sqlalchemy-core].
 
-The following are supported:
+The following methods are supported:
 
-* `request.database.fetchall(query)`
-* `request.database.fetchone(query)`
-* `request.database.fetchval(query)`
-* `request.database.execute(query)`
+* `rows = await database.fetch_all(query)`
+* `row = await database.fetch_one(query)`
+* `async for row in database.iterate(query)`
+* `await database.execute(query)`
+* `await database.execute_many(query)`
 
 ## Transactions
 
-Database transactions are available either as an endpoint decorator, as a
+Database transactions are available either as a decorator, as a
 context manager, or as a low-level API.
 
 Using a decorator on an endpoint:
 
 ```python
-from starlette.databases import transaction
-
-@transaction
+@database.transaction()
 async def populate_note(request):
     # This database insert occurs within a transaction.
     # It will be rolled back by the `RuntimeError`.
     query = notes.insert().values(text="you won't see me", completed=True)
-    await request.database.execute(query)
+    await database.execute(query)
     raise RuntimeError()
 ```
 
@@ -106,7 +121,7 @@ Using a context manager:
 
 ```python
 async def populate_note(request):
-    async with request.database.transaction():
+    async with database.transaction():
         # This database insert occurs within a transaction.
         # It will be rolled back by the `RuntimeError`.
         query = notes.insert().values(text="you won't see me", completed=True)
@@ -118,13 +133,12 @@ Using the low-level API:
 
 ```python
 async def populate_note(request):
-    transaction = request.database.transaction()
-    transaction.start()
+    transaction = await database.transaction()
     try:
         # This database insert occurs within a transaction.
         # It will be rolled back by the `RuntimeError`.
         query = notes.insert().values(text="you won't see me", completed=True)
-        await request.database.execute(query)
+        await database.execute(query)
         raise RuntimeError()
     except:
         transaction.rollback()
@@ -148,24 +162,20 @@ meet those requirements:
 ```python
 from starlette.applications import Starlette
 from starlette.config import Config
+import databases
 
 config = Config(".env")
 
 TESTING = config('TESTING', cast=bool, default=False)
-DATABASE_URL = config('DATABASE_URL', cast=DatabaseURL)
+DATABASE_URL = config('DATABASE_URL', cast=databases.DatabaseURL)
+TEST_DATABASE_URL = DATABASE_URL.replace(database='test_' + DATABASE_URL.database)
+
+# Use 'force_rollback' during testing, to ensure we do not persist database changes
+# between each test case.
 if TESTING:
-  # Use a database name like "test_myapplication" for tests.
-  DATABASE_URL = DATABASE_URL.replace(database='test_' + DATABASE_URL.database)
-
-
-# Use 'rollback_on_shutdown' during testing, to ensure we do not persist
-# database changes
-app = Starlette()
-app.add_middleware(
-    DatabaseMiddleware,
-    database_url=DATABASE_URL,
-    rollback_on_shutdown=TESTING
-)
+    database = database.Database(TEST_DATABASE_URL, force_rollback=True)
+else:
+    database = database.Database(DATABASE_URL)
 ```
 
 We still need to set `TESTING` during a test run, and setup the test database.
@@ -227,7 +237,6 @@ incremental changes to the database. For this we'd strongly recommend
 
 ```shell
 $ pip install alembic
-$ pip install psycopg2-binary  # Install an appropriate database driver.
 $ alembic init migrations
 ```
 

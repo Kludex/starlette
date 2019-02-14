@@ -1,3 +1,9 @@
+"""
+DatabaseMiddleware is pending deprecation.
+
+You can continue using it just fine for now, but you should consider
+moving to the standalone `databases` package instead.
+"""
 import typing
 
 from starlette.database.core import (

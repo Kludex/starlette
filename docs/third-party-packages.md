@@ -228,10 +228,31 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-@app.get('/')
+
+@app.get("/")
 def read_root():
-    return {'hello': 'world'}
+    return {"Hello": "World"}
+
+
+@app.get("/items/{item_id}")
+def read_item(item_id: int, q: str = None):
+    return {"item_id": item_id, "q": q}
 ```
+
+This code declares a path `/`, and a path `/items/{item_id}`.
+
+The path for `/items/{item_id}` has:
+
+* A path parameter `item_id` that will be validated as an `int`, with automatic errors when invalid.
+* An optional (by default `None`) query parameter `q` of type `str`.
+
+Calling `http://example.com/items/2?q=myquery` will return:
+
+```JSON
+{"item_id": 2, "q": "myquery"}
+```
+
+The same way you can declare JSON body schemas, headers, etc.
 
 ### Bocadillo
 

@@ -7,7 +7,7 @@ Here are some of those third party packages:
 
 ### Starlette APISpec
 
-Link: <a href="https://github.com/Woile/starlette-apispec" target="_blank">https://github.com/Woile/starlette-apispec</a>
+<a href="https://github.com/Woile/starlette-apispec" target="_blank">Github</a>
 
 Easy APISpec integration for Starlette.
 
@@ -15,21 +15,21 @@ Document your REST API built with Starlette by declaring OpenAPI (Swagger) schem
 
 ### Starlette API
 
-Link: <a href="https://github.com/PeRDy/starlette-api" target="_blank">https://github.com/PeRDy/starlette-api</a>
+<a href="https://github.com/PeRDy/starlette-api" target="_blank">Github</a>
 
-That library aims to bring a layer on top of Starlette framework to provide useful mechanism for building APIs. It's 
+That library aims to bring a layer on top of Starlette framework to provide useful mechanism for building APIs. It's
 based on API Star, inheriting some nice ideas like:
 
 * **Schema system** based on [Marshmallow](https://github.com/marshmallow-code/marshmallow/) that allows to **declare**
 the inputs and outputs of endpoints and provides a reliable way of **validate** data against those schemas.
 * **Dependency Injection** that ease the process of managing parameters needed in endpoints.
-* **Components** as the base of the plugin ecosystem, allowing you to create custom or use those already defined in 
+* **Components** as the base of the plugin ecosystem, allowing you to create custom or use those already defined in
 your endpoints, injected as parameters.
-* **Starlette ASGI** objects like `Request`, `Response`, `Session` and so on are defined as components and ready to be 
+* **Starlette ASGI** objects like `Request`, `Response`, `Session` and so on are defined as components and ready to be
 injected in your endpoints.
-* **Auto generated API schema** using OpenAPI standard. It uses the schema system of your endpoints to extract all the 
+* **Auto generated API schema** using OpenAPI standard. It uses the schema system of your endpoints to extract all the
 necessary information to generate your API Schema.
-* **Auto generated docs** providing a [Swagger UI](https://swagger.io/tools/swagger-ui/) or 
+* **Auto generated docs** providing a [Swagger UI](https://swagger.io/tools/swagger-ui/) or
 [ReDocs](https://rebilly.github.io/ReDoc/) endpoint.
 
 
@@ -68,12 +68,12 @@ app = Starlette(
 @app.route("/", methods=["GET"])
 def list_puppies(name: str = None) -> Puppy(many=True):
     """
-    List the puppies collection. There is an optional query parameter that 
+    List the puppies collection. There is an optional query parameter that
     specifies a name for filtering the collection based on it.
-    
+
     Request example:
     GET http://example.com/?name=Sandy
-    
+
     Response example:
     200
     [
@@ -85,7 +85,7 @@ def list_puppies(name: str = None) -> Puppy(many=True):
 
 ### webargs-starlette
 
-Link: <a href="https://github.com/sloria/webargs-starlette" target="_blank">https://github.com/sloria/webargs-starlette</a>
+<a href="https://github.com/sloria/webargs-starlette" target="_blank">Github</a>
 
 Declarative request parsing and validation for Starlette, built on top
 of [webargs](https://github.com/marshmallow-code/webargs).
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
 ### Mangum
 
-Link: <a href="https://github.com/erm/mangum" target="_blank">https://github.com/erm/mangum</a>
+<a href="https://github.com/erm/mangum" target="_blank">Github</a>
 
 Serverless ASGI adapter for AWS Lambda & API Gateway.
 
@@ -142,7 +142,7 @@ handler = Mangum(app)  # optionally set debug=True
 
 ### Nejma ⭐
 
-Link: <a href="https://github.com/taoufik07/nejma" target="_blank">https://github.com/taoufik07/nejma</a>
+<a href="https://github.com/taoufik07/nejma" target="_blank">Github</a>
 
 Helps you manage and send messages to groups of channels.
 
@@ -177,7 +177,8 @@ Checkout <a href="https://github.com/taoufik07/nejma-chat" target="_blank">nejma
 
 ### Responder
 
-Link: <a href="https://github.com/kennethreitz/responder" target="_blank">https://github.com/kennethreitz/responder</a>
+<a href="https://github.com/kennethreitz/responder" target="_blank">Github</a> |
+<a href="https://python-responder.org/en/latest/" target="_blank">Documentation</a>
 
 A familiar HTTP Service Framework for Python.
 
@@ -204,7 +205,8 @@ if __name__ == '__main__':
 
 ### FastAPI
 
-Link: <a href="https://github.com/tiangolo/fastapi" target="_blank">https://github.com/tiangolo/fastapi</a>
+<a href="https://github.com/tiangolo/fastapi" target="_blank">Github</a> |
+<a href="https://fastapi.tiangolo.com/" target="_blank">Documentation</a>
 
 High performance, easy to learn, fast to code, ready for production.
 
@@ -256,7 +258,8 @@ The same way you can declare JSON body schemas, headers, etc.
 
 ### Bocadillo
 
-Link: <a href="https://bocadilloproject.github.io" target="_blank">https://bocadilloproject.github.io</a>
+<a href="https://github.com/bocadilloproject/bocadillo" target="_blank">Github</a> |
+<a href="https://bocadilloproject.github.io" target="_blank">Documentation</a>
 
 A modern Python web framework filled with asynchronous salsa.
 

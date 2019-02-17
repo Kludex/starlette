@@ -173,9 +173,9 @@ TEST_DATABASE_URL = DATABASE_URL.replace(database='test_' + DATABASE_URL.databas
 # Use 'force_rollback' during testing, to ensure we do not persist database changes
 # between each test case.
 if TESTING:
-    database = database.Database(TEST_DATABASE_URL, force_rollback=True)
+    database = databases.Database(TEST_DATABASE_URL, force_rollback=True)
 else:
-    database = database.Database(DATABASE_URL)
+    database = databases.Database(DATABASE_URL)
 ```
 
 We still need to set `TESTING` during a test run, and setup the test database.

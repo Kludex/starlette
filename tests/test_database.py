@@ -1,7 +1,7 @@
-import databases
 import pytest
 import sqlalchemy
 
+import databases
 from starlette.applications import Starlette
 from starlette.database import transaction
 from starlette.datastructures import CommaSeparatedStrings, DatabaseURL

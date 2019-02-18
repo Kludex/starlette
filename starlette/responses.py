@@ -138,39 +138,6 @@ class PlainTextResponse(Response):
     media_type = "text/plain"
 
 
-class TemplateResponse(Response):
-    media_type = "text/html"
-
-    def __init__(
-        self,
-        template: typing.Any,
-        context: dict,
-        status_code: int = 200,
-        headers: dict = None,
-        media_type: str = None,
-        background: BackgroundTask = None,
-    ):
-        if "request" not in context:
-            raise ValueError('context must include a "request" key')
-        self.template = template
-        self.context = context
-        content = template.render(context)
-        super().__init__(content, status_code, headers, media_type, background)
-
-    async def __call__(self, receive: Receive, send: Send) -> None:
-        request = self.context["request"]
-        extensions = request.get("extensions", {})
-        if "http.response.template" in extensions:
-            await send(
-                {
-                    "type": "http.response.template",
-                    "template": self.template,
-                    "context": self.context,
-                }
-            )
-        await super().__call__(receive, send)
-
-
 class JSONResponse(Response):
     media_type = "application/json"
 
@@ -314,3 +281,8 @@ class FileResponse(Response):
                     )
         if self.background is not None:
             await self.background()
+
+
+# For compat with earlier versions.
+# We'll drop this with the next median release.
+from starlette.templating import _TemplateResponse as TemplateResponse

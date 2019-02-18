@@ -20,7 +20,10 @@ class Starlette:
         )
         self.lifespan_middleware = LifespanMiddleware(self.error_middleware)
         self.schema_generator = None  # type: typing.Optional[BaseSchemaGenerator]
-        self.template_env = self.load_template_env(template_directory)
+        if template_directory is not None:
+            from starlette.templating import Jinja2Templates
+
+            self.templates = Jinja2Templates(template_directory)
 
     @property
     def routes(self) -> typing.List[BaseRoute]:
@@ -36,25 +39,8 @@ class Starlette:
         self.exception_middleware.debug = value
         self.error_middleware.debug = value
 
-    def load_template_env(self, template_directory: str = None) -> typing.Any:
-        if template_directory is None:
-            return None
-
-        # Import jinja2 lazily.
-        import jinja2
-
-        @jinja2.contextfunction
-        def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
-            request = context["request"]
-            return request.url_for(name, **path_params)
-
-        loader = jinja2.FileSystemLoader(str(template_directory))
-        env = jinja2.Environment(loader=loader, autoescape=True)
-        env.globals["url_for"] = url_for
-        return env
-
     def get_template(self, name: str) -> typing.Any:
-        return self.template_env.get_template(name)
+        return self.templates.get_template(name)
 
     @property
     def schema(self) -> dict:

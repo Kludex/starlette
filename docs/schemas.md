@@ -11,12 +11,13 @@ the docstrings.
 
 ```python
 from starlette.applications import Starlette
-from starlette.schemas import SchemaGenerator, OpenAPIResponse
+from starlette.schemas import SchemaGenerator
 
-app = Starlette()
-app.schema_generator = SchemaGenerator(
+
+schemas = SchemaGenerator(
     {"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}}
 )
+app = Starlette()
 
 
 @app.route("/users", methods=["GET"])
@@ -44,16 +45,17 @@ def create_user(request):
 
 
 @app.route("/schema", methods=["GET"], include_in_schema=False)
-def schema(request):
-    return OpenAPIResponse(app.schema)
+def openapi_schema(request):
+    return schemas.OpenAPIResponse(request=request)
 ```
 
 We can now access an OpenAPI schema at the "/schema" endpoint.
 
-You can inspect the API Schema directly by accessing `app.schema`:
+You can generate the API Schema directly with `.get_schema(routes)`:
 
 ```python
-assert app.schema == {
+schema = schemas.get_schema(routes=app.routes)
+assert schema == {
     "openapi": "3.0.0",
     "info": {"title": "Example API", "version": "1.0"},
     "paths": {
@@ -86,7 +88,8 @@ if __name__ == '__main__':
     if sys.argv[-1] == "run":
         uvicorn.run(app, host='0.0.0.0', port=8000)
     elif sys.arvg[-1] == "schema":
-        print(yaml.dump(app.schema, default_flow_style=False))
+        schema = schemas.get_schema(routes=app.routes)
+        print(yaml.dump(schema, default_flow_style=False))
 ```
 
 ### Third party packages

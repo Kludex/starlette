@@ -38,14 +38,12 @@ app = Router(
         Route("/", endpoint=homepage, methods=["GET"]),
         Mount(
             "/users",
-            app=Router(
-                [
-                    Route("/", endpoint=users),
-                    Route("/me", endpoint=user_me),
-                    Route("/{username}", endpoint=user),
-                    Route("/nomatch", endpoint=user_no_match),
-                ]
-            ),
+            routes=[
+                Route("/", endpoint=users),
+                Route("/me", endpoint=user_me),
+                Route("/{username}", endpoint=user),
+                Route("/nomatch", endpoint=user_no_match),
+            ],
         ),
         Mount("/static", app=staticfiles),
     ]

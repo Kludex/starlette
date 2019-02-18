@@ -11,9 +11,14 @@ from starlette.types import ASGIApp, ASGIInstance, Scope
 
 
 class Starlette:
-    def __init__(self, debug: bool = False, template_directory: str = None) -> None:
+    def __init__(
+        self,
+        debug: bool = False,
+        routes: typing.List[BaseRoute] = None,
+        template_directory: str = None,
+    ) -> None:
         self._debug = debug
-        self.router = Router()
+        self.router = Router(routes)
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
         self.error_middleware = ServerErrorMiddleware(
             self.exception_middleware, debug=debug

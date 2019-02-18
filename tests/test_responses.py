@@ -11,7 +11,6 @@ from starlette.responses import (
     RedirectResponse,
     Response,
     StreamingResponse,
-    TemplateResponse,
     UJSONResponse,
 )
 from starlette.testclient import TestClient

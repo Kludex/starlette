@@ -38,6 +38,10 @@ class HTTPConnection(Mapping):
         return len(self._scope)
 
     @property
+    def app(self) -> typing.Any:
+        return self._scope["app"]
+
+    @property
     def url(self) -> URL:
         if not hasattr(self, "_url"):
             self._url = URL(scope=self._scope)

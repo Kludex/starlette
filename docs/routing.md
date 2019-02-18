@@ -60,6 +60,6 @@ You should add that route for `/users/me` before the one for `/users/{username}`
 ```python
 app = Router([
     Route('/users/me', endpoint=UserMe, methods=['GET']),
-    Route('/{username}', endpoint=User, methods=['GET']),
+    Route('/users/{username}', endpoint=User, methods=['GET']),
 ])
 ```

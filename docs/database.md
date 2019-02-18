@@ -281,7 +281,7 @@ from alembic.config import Config
 
 @pytest.fixture(scope="session", autouse=True)
 def create_test_database():
-    url = str(app.DATABASE_URL)
+    url = str(app.database._url)
     engine = create_engine(url)
     assert not database_exists(url), 'Test database already exists. Aborting tests.'
     create_database(url)             # Create the test database.

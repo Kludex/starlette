@@ -51,7 +51,7 @@ class Jinja2Templates:
     def __init__(self, directory: str) -> None:
         self.env = self.get_env(directory)
 
-    def get_env(self, directory: str) -> jinja2.Environment:
+    def get_env(self, directory: str) -> "jinja2.Environment":
         @jinja2.contextfunction
         def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
             request = context["request"]
@@ -62,7 +62,7 @@ class Jinja2Templates:
         env.globals["url_for"] = url_for
         return env
 
-    def get_template(self, name: str) -> jinja2.Template:
+    def get_template(self, name: str) -> "jinja2.Template":
         return self.env.get_template(name)
 
     def TemplateResponse(

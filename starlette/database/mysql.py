@@ -4,11 +4,11 @@ import typing
 import uuid
 from types import TracebackType
 
+import aiomysql
 from sqlalchemy.dialects.mysql import pymysql
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.sql import ClauseElement
 
-import aiomysql
 from starlette.database.core import (
     DatabaseBackend,
     DatabaseSession,

@@ -276,12 +276,13 @@ We can adjust the `create_test_database` fixture slightly:
 ```python
 from alembic import command
 from alembic.config import Config
+import app
 
 ...
 
 @pytest.fixture(scope="session", autouse=True)
 def create_test_database():
-    url = str(app.database._url)
+    url = str(app.DATABASE_URL)
     engine = create_engine(url)
     assert not database_exists(url), 'Test database already exists. Aborting tests.'
     create_database(url)             # Create the test database.

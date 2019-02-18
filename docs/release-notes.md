@@ -1,7 +1,12 @@
-## 0.10.3
+## 0.10.4
 
 * Templates are now configured independently from the application instance. `templates = Jinja2Templates(directory=...)`. Existing API remains in place, but is no longer documented,
 and will be deprecated in due course. See the template documentation for more details.
+
+## 0.10.3
+
+* Move to independent `databases` package instead of `DatabaseMiddleware`. Existing API
+remains in place, but is no longer documented, and will be deprecated in due course.
 
 ## 0.10.2
 

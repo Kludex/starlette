@@ -420,7 +420,7 @@ class Router:
         redirect_slashes: bool = True,
         default: ASGIApp = None,
     ) -> None:
-        self.routes = [] if routes is None else routes
+        self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 

@@ -1,6 +1,7 @@
 import inspect
 import typing
 
+from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
@@ -73,6 +74,11 @@ class BaseSchemaGenerator:
         """
         docstring = func_or_method.__doc__
         return yaml.safe_load(docstring) if docstring else {}
+
+    def OpenAPIResponse(self, request: Request) -> Response:
+        routes = request.app.routes
+        schema = self.get_schema(routes=routes)
+        return OpenAPIResponse(schema)
 
 
 class SchemaGenerator(BaseSchemaGenerator):

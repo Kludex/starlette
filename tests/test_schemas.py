@@ -3,10 +3,11 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.schemas import OpenAPIResponse, SchemaGenerator
 from starlette.testclient import TestClient
 
-app = Starlette()
-app.schema_generator = SchemaGenerator(
+schemas = SchemaGenerator(
     {"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}}
 )
+
+app = Starlette()
 
 
 @app.websocket_route("/ws")
@@ -64,11 +65,12 @@ class OrganisationsEndpoint(HTTPEndpoint):
 
 @app.route("/schema", methods=["GET"], include_in_schema=False)
 def schema(request):
-    return OpenAPIResponse(app.schema)
+    return schemas.OpenAPIResponse(request=request)
 
 
 def test_schema_generation():
-    assert app.schema == {
+    schema = schemas.get_schema(routes=app.routes)
+    assert schema == {
         "openapi": "3.0.0",
         "info": {"title": "Example API", "version": "1.0"},
         "paths": {
@@ -107,6 +109,11 @@ def test_schema_generation():
             },
         },
     }
+
+
+def test_schema_generation_legacy():
+    app.schema_generator = schemas
+    assert app.schema == schemas.get_schema(routes=app.routes)
 
 
 EXPECTED_SCHEMA = """

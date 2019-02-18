@@ -10,9 +10,6 @@ from urllib.parse import quote_plus
 
 from starlette.background import BackgroundTask
 from starlette.datastructures import URL, MutableHeaders
-# For compat with earlier versions.
-# We'll drop this with the next median release.
-from starlette.templating import _TemplateResponse as TemplateResponse
 from starlette.types import Receive, Send
 
 try:
@@ -284,3 +281,9 @@ class FileResponse(Response):
                     )
         if self.background is not None:
             await self.background()
+
+
+if True:
+    # For compat with earlier versions.
+    # We'll drop this with the next median release.
+    from starlette.templating import _TemplateResponse as TemplateResponse

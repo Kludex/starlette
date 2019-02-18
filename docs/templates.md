@@ -20,11 +20,13 @@ async def homepage(request):
     return templates.TemplateResponse('index.html', {'request': request})
 ```
 
-The Jinja2 environment sets up a global `url_for` included, which allows us to
-use `url_for` inside our templates. We always need to pass the incoming `request`
-instance as part of the template context.
+Note that the incoming `request` instance must be included as part of the
+template context.
 
-We can now link to static files from within our HTML templates. For example:
+The Jinja2 template context will automatically include a `url_for` function,
+so we can correctly hyperlink to other pages within the application.
+
+For example, we can link to static files from within our HTML templates:
 
 ```html
 <link href="{{ url_for('static', path='/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -50,6 +52,6 @@ Jinja2 supports async template rendering, however as a general rule
 we'd recommend that you keep your templates free from logic that invokes
 database lookups, or other I/O operations.
 
-Instead we'd recommend that you ensure that your views perform all I/O,
+Instead we'd recommend that you ensure that your endpoints perform all I/O,
 for example, strictly evaluate any database queries within the view and
 include the final results in the context.

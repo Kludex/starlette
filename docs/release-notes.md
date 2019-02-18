@@ -1,3 +1,12 @@
+## 0.10.3
+
+* Templates are now configured independently from the application instance. `templates = Jinja2Templates(directory=...)`. Existing API remains in place, but is no longer documented,
+and will be deprecated in due course. See the template documentation for more details.
+
+## 0.10.2
+
+* Don't drop explicit port numbers on redirects from `HTTPSRedirectMiddleware`.
+
 ## 0.10.1
 
 * Add MySQL database support.

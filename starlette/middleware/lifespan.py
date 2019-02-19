@@ -38,7 +38,7 @@ class LifespanMiddleware:
             return LifespanHandler(
                 self.app, scope, self.startup_handlers, self.shutdown_handlers
             )
-        return self.app(scope)
+        return self.app(scope)  # pragma: no cover
 
 
 class LifespanHandler:

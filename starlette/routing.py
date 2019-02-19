@@ -286,11 +286,10 @@ class Mount(BaseRoute):
         assert path == "" or path.startswith("/"), "Routed paths must start with '/'"
         assert (
             app is not None or routes is not None
-        ), "Either 'app', or 'routes' must be specified"
+        ), "Either 'app=...', or 'routes=' must be specified"
         self.path = path.rstrip("/")
-        if routes is None:
-            assert app is not None
-            self.app = app
+        if app is not None:
+            self.app = app  # type: ASGIApp
         else:
             self.app = Router(routes=routes)
         self.name = name
@@ -303,23 +302,24 @@ class Mount(BaseRoute):
         return getattr(self.app, "routes", None)
 
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
-        path = scope["path"]
-        match = self.path_regex.match(path)
-        if match:
-            matched_params = match.groupdict()
-            for key, value in matched_params.items():
-                matched_params[key] = self.param_convertors[key].convert(value)
-            remaining_path = "/" + matched_params.pop("path")
-            matched_path = path[: -len(remaining_path)]
-            path_params = dict(scope.get("path_params", {}))
-            path_params.update(matched_params)
-            child_scope = {
-                "path_params": path_params,
-                "root_path": scope.get("root_path", "") + matched_path,
-                "path": remaining_path,
-                "endpoint": self.app,
-            }
-            return Match.FULL, child_scope
+        if scope["type"] in ("http", "websocket"):
+            path = scope["path"]
+            match = self.path_regex.match(path)
+            if match:
+                matched_params = match.groupdict()
+                for key, value in matched_params.items():
+                    matched_params[key] = self.param_convertors[key].convert(value)
+                remaining_path = "/" + matched_params.pop("path")
+                matched_path = path[: -len(remaining_path)]
+                path_params = dict(scope.get("path_params", {}))
+                path_params.update(matched_params)
+                child_scope = {
+                    "path_params": path_params,
+                    "root_path": scope.get("root_path", "") + matched_path,
+                    "path": remaining_path,
+                    "endpoint": self.app,
+                }
+                return Match.FULL, child_scope
         return Match.NONE, {}
 
     def url_path_for(self, name: str, **path_params: str) -> URLPath:
@@ -375,17 +375,18 @@ class Host(BaseRoute):
         return getattr(self.app, "routes", None)
 
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
-        headers = Headers(scope=scope)
-        host = headers.get("host", "").split(":")[0]
-        match = self.host_regex.match(host)
-        if match:
-            matched_params = match.groupdict()
-            for key, value in matched_params.items():
-                matched_params[key] = self.param_convertors[key].convert(value)
-            path_params = dict(scope.get("path_params", {}))
-            path_params.update(matched_params)
-            child_scope = {"path_params": path_params, "endpoint": self.app}
-            return Match.FULL, child_scope
+        if scope["type"] in ("http", "websocket"):
+            headers = Headers(scope=scope)
+            host = headers.get("host", "").split(":")[0]
+            match = self.host_regex.match(host)
+            if match:
+                matched_params = match.groupdict()
+                for key, value in matched_params.items():
+                    matched_params[key] = self.param_convertors[key].convert(value)
+                path_params = dict(scope.get("path_params", {}))
+                path_params.update(matched_params)
+                child_scope = {"path_params": path_params, "endpoint": self.app}
+                return Match.FULL, child_scope
         return Match.NONE, {}
 
     def url_path_for(self, name: str, **path_params: str) -> URLPath:
@@ -426,6 +427,63 @@ class Host(BaseRoute):
         )
 
 
+class Lifespan(BaseRoute):
+    def __init__(
+        self, on_startup: typing.Callable = None, on_shutdown: typing.Callable = None
+    ):
+        self.startup_handlers = [] if on_startup is None else [on_startup]
+        self.shutdown_handlers = [] if on_shutdown is None else [on_shutdown]
+
+    def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
+        if scope["type"] == "lifespan":
+            return Match.FULL, {}
+        return Match.NONE, {}
+
+    def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
+        assert event_type in ("startup", "shutdown")
+
+        if event_type == "startup":
+            self.startup_handlers.append(func)
+        else:
+            assert event_type == "shutdown"
+            self.shutdown_handlers.append(func)
+
+    def on_event(self, event_type: str) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:
+            self.add_event_handler(event_type, func)
+            return func
+
+        return decorator
+
+    async def startup(self) -> None:
+        for handler in self.startup_handlers:
+            if asyncio.iscoroutinefunction(handler):
+                await handler()
+            else:
+                handler()
+
+    async def shutdown(self) -> None:
+        for handler in self.shutdown_handlers:
+            if asyncio.iscoroutinefunction(handler):
+                await handler()
+            else:
+                handler()
+
+    def __call__(self, scope: Scope) -> ASGIInstance:
+        return self.asgi
+
+    async def asgi(self, receive: Receive, send: Send) -> None:
+        message = await receive()
+        assert message["type"] == "lifespan.startup"
+        await self.startup()
+        await send({"type": "lifespan.startup.complete"})
+
+        message = await receive()
+        assert message["type"] == "lifespan.shutdown"
+        await self.shutdown()
+        await send({"type": "lifespan.shutdown.complete"})
+
+
 class Router:
     def __init__(
         self,
@@ -436,6 +494,7 @@ class Router:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
+        self.lifespan = Lifespan()
 
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
         route = Mount(path, app=app, name=name)
@@ -516,9 +575,6 @@ class Router:
     def __call__(self, scope: Scope) -> ASGIInstance:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
-        if scope["type"] == "lifespan":
-            return LifespanHandler(scope)
-
         if "router" not in scope:
             scope["router"] = self
 
@@ -537,31 +593,20 @@ class Router:
             scope.update(partial_scope)
             return partial(scope)
 
-        if self.redirect_slashes and not scope["path"].endswith("/"):
-            redirect_scope = dict(scope)
-            redirect_scope["path"] += "/"
+        if scope["type"] == "http" and self.redirect_slashes:
+            if not scope["path"].endswith("/"):
+                redirect_scope = dict(scope)
+                redirect_scope["path"] += "/"
 
-            for route in self.routes:
-                match, child_scope = route.matches(redirect_scope)
-                if match != Match.NONE:
-                    redirect_url = URL(scope=redirect_scope)
-                    return RedirectResponse(url=str(redirect_url))
+                for route in self.routes:
+                    match, child_scope = route.matches(redirect_scope)
+                    if match != Match.NONE:
+                        redirect_url = URL(scope=redirect_scope)
+                        return RedirectResponse(url=str(redirect_url))
 
+        if scope["type"] == "lifespan":
+            return self.lifespan(scope)
         return self.default(scope)
 
     def __eq__(self, other: typing.Any) -> bool:
         return isinstance(other, Router) and self.routes == other.routes
-
-
-class LifespanHandler:
-    def __init__(self, scope: Scope) -> None:
-        pass
-
-    async def __call__(self, receive: Receive, send: Send) -> None:
-        message = await receive()
-        assert message["type"] == "lifespan.startup"
-        await send({"type": "lifespan.startup.complete"})
-
-        message = await receive()
-        assert message["type"] == "lifespan.shutdown"
-        await send({"type": "lifespan.shutdown.complete"})

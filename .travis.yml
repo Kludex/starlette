@@ -9,18 +9,8 @@ python:
     - "3.7"
     - "3.8-dev"
 
-env:
-    - STARLETTE_TEST_DATABASES="postgresql://localhost/starlette, mysql://localhost/starlette"
-
-services:
-    - postgresql
-    - mysql
-
 install:
     - pip install -U -r requirements.txt
-
-before_script:
-    - psql -c 'create database starlette;' -U postgres
 
 script:
     - scripts/test

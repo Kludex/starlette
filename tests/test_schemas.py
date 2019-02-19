@@ -166,11 +166,6 @@ def test_schema_generation():
     }
 
 
-def test_schema_generation_legacy():
-    app.schema_generator = schemas
-    assert app.schema == schemas.get_schema(routes=app.routes)
-
-
 EXPECTED_SCHEMA = """
 info:
   title: Example API

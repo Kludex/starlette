@@ -3,7 +3,6 @@ import io
 from starlette.datastructures import (
     URL,
     CommaSeparatedStrings,
-    DatabaseURL,
     FormData,
     Headers,
     MultiDict,
@@ -46,21 +45,6 @@ def test_hidden_password():
 
     u = URL("https://username:password@example.org/path/to/somewhere")
     assert repr(u) == "URL('https://username:********@example.org/path/to/somewhere')"
-
-
-def test_database_url():
-    u = DatabaseURL("postgresql://username:password@localhost/mydatabase")
-    u = u.replace(database="test_" + u.database)
-    assert u.database == "test_mydatabase"
-    assert str(u) == "postgresql://username:password@localhost/test_mydatabase"
-
-    u = DatabaseURL("postgresql://localhost/mydatabase")
-    assert u.dialect == "postgresql"
-    assert u.driver == ""
-
-    u = DatabaseURL("postgresql+asyncpg://localhost/mydatabase")
-    assert u.dialect == "postgresql"
-    assert u.driver == "asyncpg"
 
 
 def test_csv():

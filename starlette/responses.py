@@ -281,9 +281,3 @@ class FileResponse(Response):
                     )
         if self.background is not None:
             await self.background()
-
-
-if True:
-    # For compat with earlier versions.
-    # We'll drop this with the next median release.
-    from starlette.templating import _TemplateResponse as TemplateResponse

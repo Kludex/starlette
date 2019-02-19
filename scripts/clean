@@ -6,6 +6,9 @@ fi
 if [ -d 'site' ] ; then
     rm -r site
 fi
+if [ -d 'htmlcov' ] ; then
+    rm -r htmlcov
+fi
 if [ -d 'starlette.egg-info' ] ; then
     rm -r starlette.egg-info
 fi

@@ -1,3 +1,19 @@
+## 0.11.0
+
+* `DatabaseMiddleware` is now dropped in favour of `databases`
+* Templates are no longer configured on the application instance. Use `templates = Jinja2Templates(directory=...)` and `return templates.TemplateResponse('index.html', {"request": request})`
+* Schema generation is no longer attached to the application instance. Use `schemas = SchemaGenerator(...)` and `return schemas.OpenAPIResponse(request=request)`
+* `LifespanMiddleware` is dropped in favor of router-based lifespan handling.
+* Application instances now accept a `routes` argument, `Starlette(routes=[...])`
+
+## 0.10.6
+
+* Add `Lifespan` routing component.
+
+## 0.10.5
+
+* Ensure `templating` does not strictly require `jinja2` to be installed.
+
 ## 0.10.4
 
 * Templates are now configured independently from the application instance. `templates = Jinja2Templates(directory=...)`. Existing API remains in place, but is no longer documented,

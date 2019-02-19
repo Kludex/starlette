@@ -3,7 +3,7 @@ import os
 import pytest
 
 from starlette.config import Config, Environ, EnvironError
-from starlette.datastructures import DatabaseURL, Secret
+from starlette.datastructures import URL, Secret
 
 
 def test_config(tmpdir):
@@ -21,13 +21,13 @@ def test_config(tmpdir):
     config = Config(path, environ={"DEBUG": "true"})
 
     DEBUG = config("DEBUG", cast=bool)
-    DATABASE_URL = config("DATABASE_URL", cast=DatabaseURL)
+    DATABASE_URL = config("DATABASE_URL", cast=URL)
     REQUEST_TIMEOUT = config("REQUEST_TIMEOUT", cast=int, default=10)
     REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
     SECRET_KEY = config("SECRET_KEY", cast=Secret)
 
     assert DEBUG is True
-    assert DATABASE_URL.database == "database_name"
+    assert DATABASE_URL.path == "/database_name"
     assert REQUEST_TIMEOUT == 10
     assert REQUEST_HOSTNAME == "example.com"
     assert repr(SECRET_KEY) == "Secret('**********')"

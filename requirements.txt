@@ -1,5 +1,6 @@
 # Optionals
 aiofiles
+databases[sqlite]
 graphene
 itsdangerous
 jinja2
@@ -7,14 +8,6 @@ python-multipart
 pyyaml
 requests
 ujson
-databases[sqlite]
-
-# Legacy
-sqlalchemy
-asyncpg
-aiomysql
-psycopg2-binary
-pymysql
 
 # Testing
 autoflake

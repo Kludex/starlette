@@ -134,30 +134,6 @@ class URL:
         return f"{self.__class__.__name__}({repr(url)})"
 
 
-class DatabaseURL(URL):
-    def __init__(self, url: typing.Union[str, URL]):
-        return super().__init__(str(url))
-
-    @property
-    def database(self) -> str:
-        return self.path.lstrip("/")
-
-    @property
-    def dialect(self) -> str:
-        return self.scheme.split("+")[0]
-
-    @property
-    def driver(self) -> str:
-        if "+" not in self.scheme:
-            return ""
-        return self.scheme.split("+", 1)[1]
-
-    def replace(self, **kwargs: typing.Any) -> "URL":
-        if "database" in kwargs:
-            kwargs["path"] = "/" + kwargs.pop("database")
-        return super().replace(**kwargs)
-
-
 class URLPath(str):
     """
     A URL path string that may also hold an associated protocol and/or host.

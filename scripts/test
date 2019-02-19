@@ -20,5 +20,5 @@ set -x
 
 PYTHONPATH=. ${PREFIX}pytest --ignore venv ${IGNORE_MODULES} -W ignore::DeprecationWarning --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
 ${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
-${PREFIX}autoflake --recursive starlette tests
-${PREFIX}black starlette tests --check
+${PREFIX}autoflake --recursive starlette tests setup.py
+${PREFIX}black starlette tests setup.py --check

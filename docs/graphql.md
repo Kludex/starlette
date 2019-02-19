@@ -23,6 +23,7 @@ app.add_route('/', GraphQLApp(schema=graphene.Schema(query=Query)))
 If you load up the page in a browser, you'll be served the GraphiQL tool,
 which you can use to interact with your GraphQL API.
 
+
 ![GraphiQL](img/graphiql.png)
 
 ## Accessing request information

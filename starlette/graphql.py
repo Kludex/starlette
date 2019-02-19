@@ -27,8 +27,10 @@ class GraphQLApp:
         schema: "graphene.Schema",
         executor: typing.Any = None,
         executor_class: type = None,
+        graphiql: bool = True,
     ) -> None:
         self.schema = schema
+        self.graphiql = graphiql
         if executor is None:
             # New style in 0.10.0. Use 'executor_class'.
             # See issue https://github.com/encode/starlette/issues/242
@@ -58,6 +60,10 @@ class GraphQLApp:
     async def handle_graphql(self, request: Request) -> Response:
         if request.method in ("GET", "HEAD"):
             if "text/html" in request.headers.get("Accept", ""):
+                if not self.graphiql:
+                    return PlainTextResponse(
+                        "Not Found", status_code=status.HTTP_404_NOT_FOUND
+                    )
                 return await self.handle_graphiql(request)
 
             data = request.query_params  # type: typing.Mapping[str, typing.Any]

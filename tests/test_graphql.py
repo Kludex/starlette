@@ -33,7 +33,7 @@ class Query(graphene.ObjectType):
 
 
 schema = graphene.Schema(query=Query)
-app = GraphQLApp(schema=schema)
+app = GraphQLApp(schema=schema, graphiql=True)
 client = TestClient(app)
 
 
@@ -99,6 +99,14 @@ def test_graphiql_get():
     response = client.get("/", headers={"accept": "text/html"})
     assert response.status_code == 200
     assert "<!DOCTYPE html>" in response.text
+
+
+def test_graphiql_not_found():
+    app = GraphQLApp(schema=schema, graphiql=False)
+    client = TestClient(app)
+    response = client.get("/", headers={"accept": "text/html"})
+    assert response.status_code == 404
+    assert response.text == "Not Found"
 
 
 def test_add_graphql_route():

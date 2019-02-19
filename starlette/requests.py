@@ -18,6 +18,10 @@ class ClientDisconnect(Exception):
     pass
 
 
+class State:
+    pass
+
+
 class HTTPConnection(Mapping):
     """
     A base class for incoming HTTP connections, that is used to provide
@@ -89,16 +93,6 @@ class HTTPConnection(Mapping):
         return self._scope["session"]
 
     @property
-    def database(self) -> typing.Any:  # pragma: no cover
-        # NOTE: Pending deprecation. You probably want to look at the
-        # stand-alone `databases` package instead.
-        # https://github.com/encode/databases
-        assert (
-            "database" in self._scope
-        ), "DatabaseMiddleware must be installed to access request.database"
-        return self._scope["database"]
-
-    @property
     def auth(self) -> typing.Any:
         assert (
             "auth" in self._scope
@@ -111,6 +105,12 @@ class HTTPConnection(Mapping):
             "user" in self._scope
         ), "AuthenticationMiddleware must be installed to access request.user"
         return self._scope["user"]
+
+    @property
+    def state(self) -> State:
+        if "state" not in self._scope:
+            self._scope["state"] = State()
+        return self._scope["state"]
 
     def url_for(self, name: str, **path_params: typing.Any) -> str:
         router = self._scope["router"]

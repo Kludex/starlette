@@ -5,6 +5,7 @@
 * Schema generation is no longer attached to the application instance. Use `schemas = SchemaGenerator(...)` and `return schemas.OpenAPIResponse(request=request)`
 * `LifespanMiddleware` is dropped in favor of router-based lifespan handling.
 * Application instances now accept a `routes` argument, `Starlette(routes=[...])`
+* Schema generation now includes mounted routes.
 
 ## 0.10.6
 

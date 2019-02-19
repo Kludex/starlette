@@ -115,3 +115,12 @@ will raise an error.
 In some cases such as long-polling, or streaming responses you might need to
 determine if the client has dropped the connection. You can determine this
 state with `disconnected = await request.is_disconnected()`.
+
+#### Other state
+
+If you want to store additional information on the request you can do so
+using `request.state`.
+
+For example:
+
+`request.state.time_started = time.time()`

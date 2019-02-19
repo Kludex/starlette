@@ -3,7 +3,7 @@ import typing
 
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import BaseRoute, Route
+from starlette.routing import BaseRoute, Mount, Route
 
 try:
     import yaml
@@ -48,10 +48,22 @@ class BaseSchemaGenerator:
         endpoints_info: list = []
 
         for route in routes:
-            if not isinstance(route, Route) or not route.include_in_schema:
+            if isinstance(route, Mount):
+                routes = route.routes or []
+                sub_endpoints = [
+                    EndpointInfo(
+                        path="".join((route.path, sub_endpoint.path)),
+                        http_method=sub_endpoint.http_method,
+                        func=sub_endpoint.func,
+                    )
+                    for sub_endpoint in self.get_endpoints(routes)
+                ]
+                endpoints_info.extend(sub_endpoints)
+
+            elif not isinstance(route, Route) or not route.include_in_schema:
                 continue
 
-            if inspect.isfunction(route.endpoint) or inspect.ismethod(route.endpoint):
+            elif inspect.isfunction(route.endpoint) or inspect.ismethod(route.endpoint):
                 for method in route.methods or ["GET"]:
                     if method == "HEAD":
                         continue
@@ -66,6 +78,7 @@ class BaseSchemaGenerator:
                     endpoints_info.append(
                         EndpointInfo(route.path, method.lower(), func)
                     )
+
         return endpoints_info
 
     def parse_docstring(self, func_or_method: typing.Callable) -> dict:
@@ -73,7 +86,22 @@ class BaseSchemaGenerator:
         Given a function, parse the docstring as YAML and return a dictionary of info.
         """
         docstring = func_or_method.__doc__
-        return yaml.safe_load(docstring) if docstring else {}
+        if not docstring:
+            return {}
+
+        # We support having regular docstrings before the schema
+        # definition. Here we return just the schema part from
+        # the docstring.
+        docstring = docstring.split("---")[-1]
+
+        parsed = yaml.safe_load(docstring)
+
+        if not isinstance(parsed, dict):
+            # A regular docstring (not yaml formatted) can return
+            # a simple string here, which wouldn't follow the schema.
+            return {}
+
+        return parsed
 
     def OpenAPIResponse(self, request: Request) -> Response:
         routes = request.app.routes
@@ -91,9 +119,15 @@ class SchemaGenerator(BaseSchemaGenerator):
         endpoints_info = self.get_endpoints(routes)
 
         for endpoint in endpoints_info:
+
+            parsed = self.parse_docstring(endpoint.func)
+
+            if not parsed:
+                continue
+
             if endpoint.path not in schema["paths"]:
                 schema["paths"][endpoint.path] = {}
-            schema["paths"][endpoint.path][endpoint.http_method] = self.parse_docstring(
-                endpoint.func
-            )
+
+            schema["paths"][endpoint.path][endpoint.http_method] = parsed
+
         return schema

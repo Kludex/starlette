@@ -1,3 +1,8 @@
+## 0.11.1
+
+* Add `request.state` interface, for storing arbitrary additional information.
+* Support disabling GraphiQL with `GraphQLApp(..., graphiql=False)`.
+
 ## 0.11.0
 
 * `DatabaseMiddleware` is now dropped in favour of `databases`

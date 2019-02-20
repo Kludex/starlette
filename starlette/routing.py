@@ -610,3 +610,18 @@ class Router:
 
     def __eq__(self, other: typing.Any) -> bool:
         return isinstance(other, Router) and self.routes == other.routes
+
+
+# Reinstated temporarily for Responder. This class should be considered as deprecated in 0.11+
+class LifespanHandler:
+    def __init__(self, scope: Scope) -> None:  # pragma: nocover
+        pass
+
+    async def __call__(self, receive: Receive, send: Send) -> None:  # pragma: nocover
+        message = await receive()
+        assert message["type"] == "lifespan.startup"
+        await send({"type": "lifespan.startup.complete"})
+
+        message = await receive()
+        assert message["type"] == "lifespan.shutdown"
+        await send({"type": "lifespan.shutdown.complete"})

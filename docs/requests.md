@@ -8,7 +8,7 @@ Signature: `Request(scope, receive=None)`
 
 ```python
 from starlette.requests import Request
-from starlette.response import Response
+from starlette.responses import Response
 
 
 class App:

@@ -186,7 +186,7 @@ import pytest
 from starlette.config import environ
 from starlette.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy_utils import database_exists, create_database, drop_database
 
 # This sets `os.environ`, but provides some additional protection.
 # If we placed it below the application import, it would raise an error

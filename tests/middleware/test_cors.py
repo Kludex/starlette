@@ -55,7 +55,7 @@ def test_cors_allow_specific_origin():
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["https://example.org"],
-        allow_headers=["X-Example"],
+        allow_headers=["X-Example", "Content-Type"],
     )
 
     @app.route("/")
@@ -68,13 +68,13 @@ def test_cors_allow_specific_origin():
     headers = {
         "Origin": "https://example.org",
         "Access-Control-Request-Method": "GET",
-        "Access-Control-Request-Headers": "X-Example",
+        "Access-Control-Request-Headers": "X-Example, Content-Type",
     }
     response = client.options("/", headers=headers)
     assert response.status_code == 200
     assert response.text == "OK"
     assert response.headers["access-control-allow-origin"] == "https://example.org"
-    assert response.headers["access-control-allow-headers"] == "X-Example"
+    assert response.headers["access-control-allow-headers"] == "X-Example, Content-Type"
 
     # Test standard response
     headers = {"Origin": "https://example.org"}
@@ -120,7 +120,9 @@ def test_cors_allow_origin_regex():
     app = Starlette()
 
     app.add_middleware(
-        CORSMiddleware, allow_headers=["X-Example"], allow_origin_regex="https://*"
+        CORSMiddleware,
+        allow_headers=["X-Example", "Content-Type"],
+        allow_origin_regex="https://*",
     )
 
     @app.route("/")
@@ -149,13 +151,13 @@ def test_cors_allow_origin_regex():
     headers = {
         "Origin": "https://another.com",
         "Access-Control-Request-Method": "GET",
-        "Access-Control-Request-Headers": "X-Example",
+        "Access-Control-Request-Headers": "X-Example, content-type",
     }
     response = client.options("/", headers=headers)
     assert response.status_code == 200
     assert response.text == "OK"
     assert response.headers["access-control-allow-origin"] == "https://another.com"
-    assert response.headers["access-control-allow-headers"] == "X-Example"
+    assert response.headers["access-control-allow-headers"] == "X-Example, Content-Type"
 
     # Test disallowed pre-flight response
     headers = {

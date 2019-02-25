@@ -56,7 +56,7 @@ class CORSMiddleware:
         self.app = app
         self.allow_origins = allow_origins
         self.allow_methods = allow_methods
-        self.allow_headers = allow_headers
+        self.allow_headers = [h.lower() for h in allow_headers]
         self.allow_all_origins = "*" in allow_origins
         self.allow_all_headers = "*" in allow_headers
         self.allow_origin_regex = compiled_allow_origin_regex
@@ -117,7 +117,7 @@ class CORSMiddleware:
         if self.allow_all_headers and requested_headers is not None:
             headers["Access-Control-Allow-Headers"] = requested_headers
         elif requested_headers is not None:
-            for header in requested_headers.split(","):
+            for header in [h.lower() for h in requested_headers.split(",")]:
                 if header.strip() not in self.allow_headers:
                     failures.append("headers")
 

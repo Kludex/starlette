@@ -180,8 +180,6 @@ app.add_middleware(
 @app.route('/', methods=['GET'])
 async def homepage(request):
     ...
-
-
 ```
 
 Now let's deal with our test configuration.

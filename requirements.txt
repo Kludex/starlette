@@ -1,6 +1,5 @@
 # Optionals
 aiofiles
-databases[sqlite]
 graphene
 itsdangerous
 jinja2
@@ -12,7 +11,7 @@ ujson
 # Testing
 autoflake
 black
-codecov
+databases[sqlite]
 isort
 mypy
 pytest

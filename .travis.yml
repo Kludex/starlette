@@ -16,4 +16,5 @@ script:
     - scripts/test
 
 after_script:
+    - pip install codecov
     - codecov

@@ -11,10 +11,7 @@ from starlette.types import ASGIApp, ASGIInstance, Scope
 
 class Starlette:
     def __init__(
-        self,
-        debug: bool = False,
-        routes: typing.List[BaseRoute] = None,
-        template_directory: str = None,
+        self, debug: bool = False, routes: typing.List[BaseRoute] = None
     ) -> None:
         self._debug = debug
         self.router = Router(routes)

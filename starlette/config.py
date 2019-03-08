@@ -89,7 +89,7 @@ class Config:
         if cast is None or value is None:
             return value
         elif cast is bool and isinstance(value, str):
-            mapping = {"true": True, "false": False}
+            mapping = {"true": True, "1": True, "false": False, "0": False}
             value = value.lower()
             if value not in mapping:
                 raise ValueError(

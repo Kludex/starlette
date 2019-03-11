@@ -61,7 +61,7 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 import uvicorn
 
-app = Starlette()
+app = Starlette(debug=True)
 
 @app.route('/')
 async def homepage(request):
@@ -114,6 +114,8 @@ $ uvicorn example:App
 INFO: Started server process [11509]
 INFO: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```
+
+Run uvicorn with `--reload` to enable auto-reloading on code changes.
 
 ## Modularity
 

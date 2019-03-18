@@ -271,6 +271,12 @@ def test_reverse_mount_urls():
     )
 
 
+def test_mount_at_root():
+    mounted = Router([Mount("/", ok, name="users")])
+    client = TestClient(mounted)
+    assert client.get("/").status_code == 200
+
+
 def users_api(request):
     return JSONResponse({"users": [{"username": "tom"}]})
 

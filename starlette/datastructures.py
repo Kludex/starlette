@@ -568,7 +568,7 @@ class MutableHeaders(Headers):
                 pop_indexes.append(idx)
 
         for idx in reversed(pop_indexes):
-            del (self._list[idx])
+            del self._list[idx]
 
     @property
     def raw(self) -> typing.List[typing.Tuple[bytes, bytes]]:

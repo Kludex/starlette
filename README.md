@@ -103,6 +103,7 @@ from starlette.responses import PlainTextResponse
 
 class App:
     def __init__(self, scope):
+        assert scope['type'] == 'http'
         self.scope = scope
 
     async def __call__(self, receive, send):

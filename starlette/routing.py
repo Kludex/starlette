@@ -10,7 +10,7 @@ from starlette.datastructures import URL, Headers, URLPath
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse
-from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
 
 
@@ -34,16 +34,13 @@ def request_response(func: typing.Callable) -> ASGIApp:
     """
     is_coroutine = asyncio.iscoroutinefunction(func)
 
-    def app(scope: Scope) -> ASGIInstance:
-        async def awaitable(receive: Receive, send: Send) -> None:
-            request = Request(scope, receive=receive)
-            if is_coroutine:
-                response = await func(request)
-            else:
-                response = await run_in_threadpool(func, request)
-            await response(receive, send)
-
-        return awaitable
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive=receive)
+        if is_coroutine:
+            response = await func(request)
+        else:
+            response = await run_in_threadpool(func, request)
+        await response(scope, receive, send)
 
     return app
 
@@ -54,12 +51,9 @@ def websocket_session(func: typing.Callable) -> ASGIApp:
     """
     # assert asyncio.iscoroutinefunction(func), "WebSocket endpoints must be async"
 
-    def app(scope: Scope) -> ASGIInstance:
-        async def awaitable(receive: Receive, send: Send) -> None:
-            session = WebSocket(scope, receive=receive, send=send)
-            await func(session)
-
-        return awaitable
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        session = WebSocket(scope, receive=receive, send=send)
+        await func(session)
 
     return app
 
@@ -135,7 +129,7 @@ class BaseRoute:
     def url_path_for(self, name: str, **path_params: str) -> URLPath:
         raise NotImplementedError()  # pragma: no cover
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         raise NotImplementedError()  # pragma: no cover
 
 
@@ -202,12 +196,15 @@ class Route(BaseRoute):
         assert not remaining_params
         return URLPath(path=path, protocol="http")
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.methods and scope["method"] not in self.methods:
             if "app" in scope:
                 raise HTTPException(status_code=405)
-            return PlainTextResponse("Method Not Allowed", status_code=405)
-        return self.app(scope)
+            else:
+                response = PlainTextResponse("Method Not Allowed", status_code=405)
+            await response(scope, receive, send)
+        else:
+            await self.app(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
         return (
@@ -264,8 +261,8 @@ class WebSocketRoute(BaseRoute):
         assert not remaining_params
         return URLPath(path=path, protocol="websocket")
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        return self.app(scope)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        await self.app(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
         return (
@@ -352,8 +349,8 @@ class Mount(BaseRoute):
                     pass
         raise NoMatchFound()
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        return self.app(scope)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        await self.app(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
         return (
@@ -416,8 +413,8 @@ class Host(BaseRoute):
                     pass
         raise NoMatchFound()
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        return self.app(scope)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        await self.app(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
         return (
@@ -469,10 +466,7 @@ class Lifespan(BaseRoute):
             else:
                 handler()
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        return self.asgi
-
-    async def asgi(self, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         message = await receive()
         assert message["type"] == "lifespan.startup"
         await self.startup()
@@ -553,16 +547,20 @@ class Router:
 
         return decorator
 
-    def not_found(self, scope: Scope) -> ASGIInstance:
+    async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
-            return WebSocketClose()
+            websocket_close = WebSocketClose()
+            await websocket_close(receive, send)
+            return
 
         # If we're running inside a starlette application then raise an
         # exception, so that the configurable exception handler can deal with
         # returning the response. For plain ASGI apps, just return the response.
         if "app" in scope:
             raise HTTPException(status_code=404)
-        return PlainTextResponse("Not Found", status_code=404)
+        else:
+            response = PlainTextResponse("Not Found", status_code=404)
+        await response(scope, receive, send)
 
     def url_path_for(self, name: str, **path_params: str) -> URLPath:
         for route in self.routes:
@@ -572,7 +570,7 @@ class Router:
                 pass
         raise NoMatchFound()
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
         if "router" not in scope:
@@ -584,14 +582,16 @@ class Router:
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
                 scope.update(child_scope)
-                return route(scope)
+                await route(scope, receive, send)
+                return
             elif match == Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
 
         if partial is not None:
             scope.update(partial_scope)
-            return partial(scope)
+            await partial(scope, receive, send)
+            return
 
         if scope["type"] == "http" and self.redirect_slashes:
             if not scope["path"].endswith("/"):
@@ -602,26 +602,14 @@ class Router:
                     match, child_scope = route.matches(redirect_scope)
                     if match != Match.NONE:
                         redirect_url = URL(scope=redirect_scope)
-                        return RedirectResponse(url=str(redirect_url))
+                        response = RedirectResponse(url=str(redirect_url))
+                        await response(scope, receive, send)
+                        return
 
         if scope["type"] == "lifespan":
-            return self.lifespan(scope)
-        return self.default(scope)
+            await self.lifespan(scope, receive, send)
+        else:
+            await self.default(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
         return isinstance(other, Router) and self.routes == other.routes
-
-
-# Reinstated temporarily for Responder. This class should be considered as deprecated in 0.11+
-class LifespanHandler:
-    def __init__(self, scope: Scope) -> None:  # pragma: nocover
-        pass
-
-    async def __call__(self, receive: Receive, send: Send) -> None:  # pragma: nocover
-        message = await receive()
-        assert message["type"] == "lifespan.startup"
-        await send({"type": "lifespan.startup.complete"})
-
-        message = await receive()
-        assert message["type"] == "lifespan.shutdown"
-        await send({"type": "lifespan.shutdown.complete"})

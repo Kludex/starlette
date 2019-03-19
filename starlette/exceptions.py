@@ -5,7 +5,7 @@ import typing
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
-from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 class HTTPException(Exception):
@@ -44,47 +44,44 @@ class ExceptionMiddleware:
                 return self._exception_handlers[cls]
         return None
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
-            return self.app(scope)
+            await self.app(scope, receive, send)
+            return
 
-        async def app(receive: Receive, send: Send) -> None:
-            response_started = False
+        response_started = False
 
-            async def sender(message: Message) -> None:
-                nonlocal response_started
+        async def sender(message: Message) -> None:
+            nonlocal response_started
 
-                if message["type"] == "http.response.start":
-                    response_started = True
-                await send(message)
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
 
-            try:
-                instance = self.app(scope)
-                await instance(receive, sender)
-            except Exception as exc:
-                handler = None
+        try:
+            await self.app(scope, receive, sender)
+        except Exception as exc:
+            handler = None
 
-                if isinstance(exc, HTTPException):
-                    handler = self._status_handlers.get(exc.status_code)
+            if isinstance(exc, HTTPException):
+                handler = self._status_handlers.get(exc.status_code)
 
-                if handler is None:
-                    handler = self._lookup_exception_handler(exc)
+            if handler is None:
+                handler = self._lookup_exception_handler(exc)
 
-                if handler is None:
-                    raise exc from None
+            if handler is None:
+                raise exc from None
 
-                if response_started:
-                    msg = "Caught handled exception, but response already started."
-                    raise RuntimeError(msg) from exc
+            if response_started:
+                msg = "Caught handled exception, but response already started."
+                raise RuntimeError(msg) from exc
 
-                request = Request(scope, receive=receive)
-                if asyncio.iscoroutinefunction(handler):
-                    response = await handler(request, exc)
-                else:
-                    response = await run_in_threadpool(handler, request, exc)
-                await response(receive, sender)
-
-        return app
+            request = Request(scope, receive=receive)
+            if asyncio.iscoroutinefunction(handler):
+                response = await handler(request, exc)
+            else:
+                response = await run_in_threadpool(handler, request, exc)
+            await response(scope, receive, sender)
 
     def http_exception(self, request: Request, exc: HTTPException) -> Response:
         if exc.status_code in {204, 304}:

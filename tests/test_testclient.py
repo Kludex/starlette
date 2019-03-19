@@ -51,3 +51,38 @@ def test_error_on_startup():
     with pytest.raises(RuntimeError):
         with TestClient(startup_error_app):
             pass  # pragma: no cover
+
+
+def test_testclient_asgi2():
+    def app(scope):
+        async def inner(receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": [[b"content-type", b"text/plain"]],
+                }
+            )
+            await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+        return inner
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+
+
+def test_testclient_asgi3():
+    async def app(scope, receive, send):
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"

@@ -2,7 +2,7 @@ import typing
 
 from starlette.background import BackgroundTask
 from starlette.responses import Response
-from starlette.types import Receive, Send
+from starlette.types import Receive, Scope, Send
 
 try:
     import jinja2
@@ -27,7 +27,7 @@ class _TemplateResponse(Response):
         content = template.render(context)
         super().__init__(content, status_code, headers, media_type, background)
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         request = self.context.get("request", {})
         extensions = request.get("extensions", {})
         if "http.response.template" in extensions:
@@ -38,7 +38,7 @@ class _TemplateResponse(Response):
                     "context": self.context,
                 }
             )
-        await super().__call__(receive, send)
+        await super().__call__(scope, receive, send)
 
 
 class Jinja2Templates:

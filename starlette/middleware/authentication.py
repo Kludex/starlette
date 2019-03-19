@@ -1,4 +1,3 @@
-import functools
 import typing
 
 from starlette.authentication import (
@@ -9,7 +8,7 @@ from starlette.authentication import (
 )
 from starlette.requests import HTTPConnection
 from starlette.responses import PlainTextResponse, Response
-from starlette.types import ASGIApp, ASGIInstance, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class AuthenticationMiddleware:
@@ -27,12 +26,11 @@ class AuthenticationMiddleware:
             on_error if on_error is not None else self.default_on_error
         )  # type: typing.Callable[[HTTPConnection, AuthenticationError], Response]
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        if scope["type"] in ["http", "websocket"]:
-            return functools.partial(self.asgi, scope=scope)
-        return self.app(scope)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ["http", "websocket"]:
+            await self.app(scope, receive, send)
+            return
 
-    async def asgi(self, receive: Receive, send: Send, scope: Scope) -> None:
         conn = HTTPConnection(scope)
         try:
             auth_result = await self.backend.authenticate(conn)
@@ -41,14 +39,13 @@ class AuthenticationMiddleware:
             if scope["type"] == "websocket":
                 await send({"type": "websocket.close", "code": 1000})
             else:
-                await response(receive, send)
+                await response(scope, receive, send)
             return
 
         if auth_result is None:
             auth_result = AuthCredentials(), UnauthenticatedUser()
         scope["auth"], scope["user"] = auth_result
-        inner = self.app(scope)
-        await inner(receive, send)
+        await self.app(scope, receive, send)
 
     @staticmethod
     def default_on_error(conn: HTTPConnection, exc: Exception) -> Response:

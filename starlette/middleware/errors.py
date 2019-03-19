@@ -1,12 +1,11 @@
 import asyncio
-import functools
 import traceback
 import typing
 
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
-from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 STYLES = """
 .traceback-container {
@@ -83,12 +82,11 @@ class ServerErrorMiddleware:
         self.handler = handler
         self.debug = debug
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
-            return self.app(scope)
-        return functools.partial(self.asgi, scope=scope)
+            await self.app(scope, receive, send)
+            return
 
-    async def asgi(self, receive: Receive, send: Send, scope: Scope) -> None:
         response_started = False
 
         async def _send(message: Message) -> None:
@@ -99,8 +97,7 @@ class ServerErrorMiddleware:
             await send(message)
 
         try:
-            asgi = self.app(scope)
-            await asgi(receive, _send)
+            await self.app(scope, receive, _send)
         except Exception as exc:
             if not response_started:
                 request = Request(scope)
@@ -117,7 +114,7 @@ class ServerErrorMiddleware:
                     else:
                         response = await run_in_threadpool(self.handler, request, exc)
 
-                await response(receive, send)
+                await response(scope, receive, send)
 
             # We always continue to raise the exception.
             # This allows servers to log the error, or allows test clients

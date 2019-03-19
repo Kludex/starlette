@@ -10,7 +10,7 @@ from urllib.parse import quote_plus
 
 from starlette.background import BackgroundTask
 from starlette.datastructures import URL, MutableHeaders
-from starlette.types import Receive, Send
+from starlette.types import Receive, Scope, Send
 
 try:
     import aiofiles
@@ -116,7 +116,7 @@ class Response:
     def delete_cookie(self, key: str, path: str = "/", domain: str = None) -> None:
         self.set_cookie(key, expires=0, max_age=0, path=path, domain=domain)
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await send(
             {
                 "type": "http.response.start",
@@ -181,7 +181,7 @@ class StreamingResponse(Response):
         self.background = background
         self.init_headers(headers)
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await send(
             {
                 "type": "http.response.start",
@@ -239,7 +239,7 @@ class FileResponse(Response):
         self.headers.setdefault("last-modified", last_modified)
         self.headers.setdefault("etag", etag)
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.stat_result is None:
             try:
                 stat_result = await aio_stat(self.path)

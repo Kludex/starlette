@@ -1,8 +1,10 @@
+import asyncio
 import os
 import time
 
 import pytest
 
+from starlette.datastructures import Headers
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 
@@ -110,8 +112,12 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
         file.write("outside root dir")
 
     app = StaticFiles(directory=directory)
-    # We can't test this with 'requests', so we call the app directly here.
-    response = app({"type": "http", "method": "GET", "path": "/../example.txt"})
+    # We can't test this with 'requests', so we test the app directly here.
+    path = app.get_path({"path": "/../example.txt"})
+    method = "GET"
+    headers = Headers()
+    loop = asyncio.get_event_loop()
+    response = loop.run_until_complete(app.get_response(path, method, headers))
     assert response.status_code == 404
     assert response.body == b"Not Found"
 

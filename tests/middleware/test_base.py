@@ -28,11 +28,14 @@ def exc(request):
 
 
 @app.route("/no-response")
-class App:
-    def __init__(self, scope):
+class NoResponse:
+    def __init__(self, scope, receive, send):
         pass
 
-    async def __call__(self, receive, send):
+    def __await__(self):
+        return self.dispatch().__await__()
+
+    async def dispatch(self):
         pass
 
 

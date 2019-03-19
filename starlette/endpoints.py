@@ -12,16 +12,17 @@ from starlette.websockets import WebSocket
 
 
 class HTTPEndpoint:
-    def __init__(self, scope: Scope) -> None:
+    def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "http"
         self.scope = scope
+        self.receive = receive
+        self.send = send
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
-        request = Request(self.scope, receive=receive)
-        response = await self.dispatch(request)
-        await response(receive, send)
+    def __await__(self) -> typing.Generator:
+        return self.dispatch().__await__()
 
-    async def dispatch(self, request: Request) -> Response:
+    async def dispatch(self) -> None:
+        request = Request(self.scope, receive=self.receive)
         handler_name = "get" if request.method == "HEAD" else request.method.lower()
         handler = getattr(self, handler_name, self.method_not_allowed)
         is_async = asyncio.iscoroutinefunction(handler)
@@ -29,7 +30,7 @@ class HTTPEndpoint:
             response = await handler(request)
         else:
             response = await run_in_threadpool(handler, request)
-        return response
+        await response(self.scope, self.receive, self.send)
 
     async def method_not_allowed(self, request: Request) -> Response:
         # If we're running inside a starlette application then raise an
@@ -44,12 +45,17 @@ class WebSocketEndpoint:
 
     encoding = None  # May be "text", "bytes", or "json".
 
-    def __init__(self, scope: Scope) -> None:
+    def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "websocket"
         self.scope = scope
+        self.receive = receive
+        self.send = send
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
-        websocket = WebSocket(self.scope, receive=receive, send=send)
+    def __await__(self) -> typing.Generator:
+        return self.dispatch().__await__()
+
+    async def dispatch(self) -> None:
+        websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
         await self.on_connect(websocket)
 
         close_code = status.WS_1000_NORMAL_CLOSURE

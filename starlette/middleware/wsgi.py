@@ -4,7 +4,7 @@ import sys
 import typing
 
 from starlette.concurrency import run_in_threadpool
-from starlette.types import ASGIInstance, Message, Receive, Scope, Send
+from starlette.types import Message, Receive, Scope, Send
 
 
 def build_environ(scope: Scope, body: bytes) -> dict:
@@ -56,9 +56,10 @@ class WSGIMiddleware:
     def __init__(self, app: typing.Callable, workers: int = 10) -> None:
         self.app = app
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "http"
-        return WSGIResponder(self.app, scope)
+        responder = WSGIResponder(self.app, scope)
+        await responder(receive, send)
 
 
 class WSGIResponder:

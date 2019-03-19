@@ -19,12 +19,9 @@ def not_modified(request):
 
 
 class HandledExcAfterResponse:
-    def __init__(self, scope):
-        pass
-
-    async def __call__(self, receive, send):
+    async def __call__(self, scope, receive, send):
         response = PlainTextResponse("OK", status_code=200)
-        await response(receive, send)
+        await response(scope, receive, send)
         raise HTTPException(status_code=406)
 
 
@@ -33,7 +30,7 @@ router = Router(
         Route("/runtime_error", endpoint=raise_runtime_error),
         Route("/not_acceptable", endpoint=not_acceptable),
         Route("/not_modified", endpoint=not_modified),
-        Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse),
+        Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse()),
         WebSocketRoute("/runtime_error", endpoint=raise_runtime_error),
     ]
 )

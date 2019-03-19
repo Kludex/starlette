@@ -1,8 +1,8 @@
 import typing
 
 from starlette.datastructures import URL, Headers
-from starlette.responses import PlainTextResponse, RedirectResponse
-from starlette.types import ASGIApp, ASGIInstance, Scope
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 ENFORCE_DOMAIN_WILDCARD = "Domain wildcard patterns must be like '*.example.com'."
 
@@ -23,23 +23,34 @@ class TrustedHostMiddleware:
         self.allow_any = "*" in allowed_hosts
         self.www_redirect = www_redirect
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        if scope["type"] in ("http", "websocket") and not self.allow_any:
-            headers = Headers(scope=scope)
-            host = headers.get("host", "").split(":")[0]
-            found_www_redirect = False
-            for pattern in self.allowed_hosts:
-                if host == pattern or (
-                    pattern.startswith("*") and host.endswith(pattern[1:])
-                ):
-                    break
-                elif "www." + host == pattern:
-                    found_www_redirect = True
-            else:
-                if found_www_redirect and self.www_redirect:
-                    url = URL(scope=scope)
-                    redirect_url = url.replace(netloc="www." + url.netloc)
-                    return RedirectResponse(url=str(redirect_url))
-                return PlainTextResponse("Invalid host header", status_code=400)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.allow_any or scope["type"] not in (
+            "http",
+            "websocket",
+        ):  # pragma: no cover
+            await self.app(scope, receive, send)
+            return
 
-        return self.app(scope)
+        headers = Headers(scope=scope)
+        host = headers.get("host", "").split(":")[0]
+        is_valid_host = False
+        found_www_redirect = False
+        for pattern in self.allowed_hosts:
+            if host == pattern or (
+                pattern.startswith("*") and host.endswith(pattern[1:])
+            ):
+                is_valid_host = True
+                break
+            elif "www." + host == pattern:
+                found_www_redirect = True
+
+        if is_valid_host:
+            await self.app(scope, receive, send)
+        else:
+            if found_www_redirect and self.www_redirect:
+                url = URL(scope=scope)
+                redirect_url = url.replace(netloc="www." + url.netloc)
+                response = RedirectResponse(url=str(redirect_url))  # type: Response
+            else:
+                response = PlainTextResponse("Invalid host header", status_code=400)
+            await response(scope, receive, send)

@@ -17,12 +17,9 @@ from starlette.testclient import TestClient
 
 
 def test_text_response():
-    def app(scope):
-        async def asgi(receive, send):
-            response = Response("hello, world", media_type="text/plain")
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        response = Response("hello, world", media_type="text/plain")
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -30,12 +27,9 @@ def test_text_response():
 
 
 def test_bytes_response():
-    def app(scope):
-        async def asgi(receive, send):
-            response = Response(b"xxxxx", media_type="image/png")
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        response = Response(b"xxxxx", media_type="image/png")
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -43,12 +37,9 @@ def test_bytes_response():
 
 
 def test_ujson_response():
-    def app(scope):
-        async def asgi(receive, send):
-            response = UJSONResponse({"hello": "world"})
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        response = UJSONResponse({"hello": "world"})
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -56,15 +47,12 @@ def test_ujson_response():
 
 
 def test_redirect_response():
-    def app(scope):
-        async def asgi(receive, send):
-            if scope["path"] == "/":
-                response = Response("hello, world", media_type="text/plain")
-            else:
-                response = RedirectResponse("/")
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        if scope["path"] == "/":
+            response = Response("hello, world", media_type="text/plain")
+        else:
+            response = RedirectResponse("/")
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/redirect")
@@ -75,7 +63,7 @@ def test_redirect_response():
 def test_streaming_response():
     filled_by_bg_task = ""
 
-    def app(scope):
+    async def app(scope, receive, send):
         async def numbers(minimum, maximum):
             for i in range(minimum, maximum + 1):
                 yield str(i)
@@ -89,15 +77,11 @@ def test_streaming_response():
                 filled_by_bg_task = filled_by_bg_task + thing
 
         cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
-
-        async def asgi(receive, send):
-            generator = numbers(1, 5)
-            response = StreamingResponse(
-                generator, media_type="text/plain", background=cleanup_task
-            )
-            await response(receive, send)
-
-        return asgi
+        generator = numbers(1, 5)
+        response = StreamingResponse(
+            generator, media_type="text/plain", background=cleanup_task
+        )
+        await response(scope, receive, send)
 
     assert filled_by_bg_task == ""
     client = TestClient(app)
@@ -107,16 +91,11 @@ def test_streaming_response():
 
 
 def test_response_headers():
-    def app(scope):
-        async def asgi(receive, send):
-            headers = {"x-header-1": "123", "x-header-2": "456"}
-            response = Response(
-                "hello, world", media_type="text/plain", headers=headers
-            )
-            response.headers["x-header-2"] = "789"
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        headers = {"x-header-1": "123", "x-header-2": "456"}
+        response = Response("hello, world", media_type="text/plain", headers=headers)
+        response.headers["x-header-2"] = "789"
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -125,16 +104,12 @@ def test_response_headers():
 
 
 def test_response_phrase():
-    def app(scope):
-        return Response(status_code=204)
-
+    app = Response(status_code=204)
     client = TestClient(app)
     response = client.get("/")
     assert response.reason == "No Content"
 
-    def app(scope):
-        return Response(b"", status_code=123)
-
+    app = Response(b"", status_code=123)
     client = TestClient(app)
     response = client.get("/")
     assert response.reason == ""
@@ -162,8 +137,11 @@ def test_file_response(tmpdir):
 
     cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
 
-    def app(scope):
-        return FileResponse(path=path, filename="example.png", background=cleanup_task)
+    async def app(scope, receive, send):
+        response = FileResponse(
+            path=path, filename="example.png", background=cleanup_task
+        )
+        await response(scope, receive, send)
 
     assert filled_by_bg_task == ""
     client = TestClient(app)
@@ -180,9 +158,7 @@ def test_file_response(tmpdir):
 
 
 def test_file_response_with_directory_raises_error(tmpdir):
-    def app(scope):
-        return FileResponse(path=tmpdir, filename="example.png")
-
+    app = FileResponse(path=tmpdir, filename="example.png")
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         client.get("/")
@@ -191,10 +167,7 @@ def test_file_response_with_directory_raises_error(tmpdir):
 
 def test_file_response_with_missing_file_raises_error(tmpdir):
     path = os.path.join(tmpdir, "404.txt")
-
-    def app(scope):
-        return FileResponse(path=path, filename="404.txt")
-
+    app = FileResponse(path=path, filename="404.txt")
     client = TestClient(app)
     with pytest.raises(RuntimeError) as exc:
         client.get("/")
@@ -202,23 +175,19 @@ def test_file_response_with_missing_file_raises_error(tmpdir):
 
 
 def test_set_cookie():
-    def app(scope):
-        async def asgi(receive, send):
-            response = Response("Hello, world!", media_type="text/plain")
-            response.set_cookie(
-                "mycookie",
-                "myvalue",
-                max_age=10,
-                expires=10,
-                path="/",
-                domain="localhost",
-                secure=True,
-                httponly=True,
-            )
-
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        response = Response("Hello, world!", media_type="text/plain")
+        response.set_cookie(
+            "mycookie",
+            "myvalue",
+            max_age=10,
+            expires=10,
+            path="/",
+            domain="localhost",
+            secure=True,
+            httponly=True,
+        )
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -226,17 +195,14 @@ def test_set_cookie():
 
 
 def test_delete_cookie():
-    def app(scope):
-        async def asgi(receive, send):
-            request = Request(scope, receive)
-            response = Response("Hello, world!", media_type="text/plain")
-            if request.cookies.get("mycookie"):
-                response.delete_cookie("mycookie")
-            else:
-                response.set_cookie("mycookie", "myvalue")
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        request = Request(scope, receive)
+        response = Response("Hello, world!", media_type="text/plain")
+        if request.cookies.get("mycookie"):
+            response.delete_cookie("mycookie")
+        else:
+            response.set_cookie("mycookie", "myvalue")
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -246,10 +212,7 @@ def test_delete_cookie():
 
 
 def test_populate_headers():
-    def app(scope):
-        headers = {}
-        return Response(content="hi", headers=headers, media_type="text/html")
-
+    app = Response(content="hi", headers={}, media_type="text/html")
     client = TestClient(app)
     response = client.get("/")
     assert response.text == "hi"
@@ -258,13 +221,7 @@ def test_populate_headers():
 
 
 def test_head_method():
-    def app(scope):
-        async def asgi(receive, send):
-            response = Response("hello, world", media_type="text/plain")
-            await response(receive, send)
-
-        return asgi
-
+    app = Response("hello, world", media_type="text/plain")
     client = TestClient(app)
     response = client.head("/")
     assert response.text == ""

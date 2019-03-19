@@ -29,10 +29,6 @@ def user_no_match(request):  # pragma: no cover
     return Response(content, media_type="text/plain")
 
 
-def staticfiles(request):
-    return Response("xxxxx", media_type="image/png")
-
-
 app = Router(
     [
         Route("/", endpoint=homepage, methods=["GET"]),
@@ -45,7 +41,7 @@ app = Router(
                 Route("/nomatch", endpoint=user_no_match),
             ],
         ),
-        Mount("/static", app=staticfiles),
+        Mount("/static", app=Response("xxxxx", media_type="image/png")),
     ]
 )
 
@@ -209,21 +205,18 @@ def http_endpoint(request):
     return Response(f"URL: {url}", media_type="text/plain")
 
 
-class WebsocketEndpoint:
-    def __init__(self, scope):
-        self.scope = scope
-
-    async def __call__(self, receive, send):
-        session = WebSocket(scope=self.scope, receive=receive, send=send)
-        await session.accept()
-        await session.send_json({"URL": str(session.url_for("WebsocketEndpoint"))})
-        await session.close()
+class WebSocketEndpoint:
+    async def __call__(self, scope, receive, send):
+        websocket = WebSocket(scope=scope, receive=receive, send=send)
+        await websocket.accept()
+        await websocket.send_json({"URL": str(websocket.url_for("websocket_endpoint"))})
+        await websocket.close()
 
 
 mixed_protocol_app = Router(
     routes=[
         Route("/", endpoint=http_endpoint),
-        WebSocketRoute("/", endpoint=WebsocketEndpoint),
+        WebSocketRoute("/", endpoint=WebSocketEndpoint(), name="websocket_endpoint"),
     ]
 )
 
@@ -242,8 +235,7 @@ def test_protocol_switch():
         client.websocket_connect("/404")
 
 
-def ok(request):
-    return PlainTextResponse("OK")
+ok = PlainTextResponse("OK")
 
 
 def test_mount_urls():
@@ -336,8 +328,9 @@ def test_host_reverse_urls():
     )
 
 
-def subdomain_app(scope):
-    return JSONResponse({"subdomain": scope["path_params"]["subdomain"]})
+async def subdomain_app(scope, receive, send):
+    response = JSONResponse({"subdomain": scope["path_params"]["subdomain"]})
+    await response(scope, receive, send)
 
 
 subdomain_app = Router(

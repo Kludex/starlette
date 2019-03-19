@@ -12,14 +12,9 @@ def test_async_task():
 
     task = BackgroundTask(async_task)
 
-    def app(scope):
-        async def asgi(receive, send):
-            response = Response(
-                "task initiated", media_type="text/plain", background=task
-            )
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        response = Response("task initiated", media_type="text/plain", background=task)
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -36,14 +31,9 @@ def test_sync_task():
 
     task = BackgroundTask(sync_task)
 
-    def app(scope):
-        async def asgi(receive, send):
-            response = Response(
-                "task initiated", media_type="text/plain", background=task
-            )
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        response = Response("task initiated", media_type="text/plain", background=task)
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")
@@ -58,18 +48,15 @@ def test_multiple_tasks():
         nonlocal TASK_COUNTER
         TASK_COUNTER += amount
 
-    def app(scope):
-        async def asgi(receive, send):
-            tasks = BackgroundTasks()
-            tasks.add_task(increment, amount=1)
-            tasks.add_task(increment, amount=2)
-            tasks.add_task(increment, amount=3)
-            response = Response(
-                "tasks initiated", media_type="text/plain", background=tasks
-            )
-            await response(receive, send)
-
-        return asgi
+    async def app(scope, receive, send):
+        tasks = BackgroundTasks()
+        tasks.add_task(increment, amount=1)
+        tasks.add_task(increment, amount=2)
+        tasks.add_task(increment, amount=3)
+        response = Response(
+            "tasks initiated", media_type="text/plain", background=tasks
+        )
+        await response(scope, receive, send)
 
     client = TestClient(app)
     response = client.get("/")

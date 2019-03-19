@@ -15,68 +15,59 @@ class ForceMultipartDict(dict):
 FORCE_MULTIPART = ForceMultipartDict()
 
 
-def app(scope):
-    async def asgi(receive, send):
-        request = Request(scope, receive)
-        data = await request.form()
-        output = {}
-        for key, value in data.items():
-            if isinstance(value, UploadFile):
-                content = await value.read()
-                output[key] = {
+async def app(scope, receive, send):
+    request = Request(scope, receive)
+    data = await request.form()
+    output = {}
+    for key, value in data.items():
+        if isinstance(value, UploadFile):
+            content = await value.read()
+            output[key] = {
+                "filename": value.filename,
+                "content": content.decode(),
+                "content_type": value.content_type,
+            }
+        else:
+            output[key] = value
+    await request.close()
+    response = JSONResponse(output)
+    await response(scope, receive, send)
+
+
+async def multi_items_app(scope, receive, send):
+    request = Request(scope, receive)
+    data = await request.form()
+    output = {}
+    for key, value in data.multi_items():
+        if key not in output:
+            output[key] = []
+        if isinstance(value, UploadFile):
+            content = await value.read()
+            output[key].append(
+                {
                     "filename": value.filename,
                     "content": content.decode(),
                     "content_type": value.content_type,
                 }
-            else:
-                output[key] = value
-        await request.close()
-        response = JSONResponse(output)
-        await response(receive, send)
-
-    return asgi
-
-
-def multi_items_app(scope):
-    async def asgi(receive, send):
-        request = Request(scope, receive)
-        data = await request.form()
-        output = {}
-        for key, value in data.multi_items():
-            if key not in output:
-                output[key] = []
-            if isinstance(value, UploadFile):
-                content = await value.read()
-                output[key].append(
-                    {
-                        "filename": value.filename,
-                        "content": content.decode(),
-                        "content_type": value.content_type,
-                    }
-                )
-            else:
-                output[key].append(value)
-        await request.close()
-        response = JSONResponse(output)
-        await response(receive, send)
-
-    return asgi
+            )
+        else:
+            output[key].append(value)
+    await request.close()
+    response = JSONResponse(output)
+    await response(scope, receive, send)
 
 
-def app_read_body(scope):
-    async def asgi(receive, send):
-        request = Request(scope, receive)
-        # Read bytes, to force request.stream() to return the already parsed body
-        body_bytes = await request.body()
-        data = await request.form()
-        output = {}
-        for key, value in data.items():
-            output[key] = value
-        await request.close()
-        response = JSONResponse(output)
-        await response(receive, send)
-
-    return asgi
+async def app_read_body(scope, receive, send):
+    request = Request(scope, receive)
+    # Read bytes, to force request.stream() to return the already parsed body
+    body_bytes = await request.body()
+    data = await request.form()
+    output = {}
+    for key, value in data.items():
+        output[key] = value
+    await request.close()
+    response = JSONResponse(output)
+    await response(scope, receive, send)
 
 
 def test_multipart_request_data(tmpdir):

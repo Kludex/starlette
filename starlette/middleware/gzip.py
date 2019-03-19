@@ -2,7 +2,7 @@ import gzip
 import io
 
 from starlette.datastructures import Headers, MutableHeaders
-from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 class GZipMiddleware:
@@ -10,17 +10,19 @@ class GZipMiddleware:
         self.app = app
         self.minimum_size = minimum_size
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             headers = Headers(scope=scope)
             if "gzip" in headers.get("Accept-Encoding", ""):
-                return GZipResponder(self.app, scope, self.minimum_size)
-        return self.app(scope)
+                responder = GZipResponder(self.app, self.minimum_size)
+                await responder(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
 
 
 class GZipResponder:
-    def __init__(self, app: ASGIApp, scope: Scope, minimum_size: int) -> None:
-        self.inner = app(scope)
+    def __init__(self, app: ASGIApp, minimum_size: int) -> None:
+        self.app = app
         self.minimum_size = minimum_size
         self.send = unattached_send  # type: Send
         self.initial_message = {}  # type: Message
@@ -28,9 +30,9 @@ class GZipResponder:
         self.gzip_buffer = io.BytesIO()
         self.gzip_file = gzip.GzipFile(mode="wb", fileobj=self.gzip_buffer)
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         self.send = send
-        await self.inner(receive, self.send_with_gzip)
+        await self.app(scope, receive, self.send_with_gzip)
 
     async def send_with_gzip(self, message: Message) -> None:
         message_type = message["type"]

@@ -11,10 +11,10 @@ class FakeAuthMiddleware:
     def __init__(self, app) -> None:
         self.app = app
 
-    def __call__(self, scope):
+    async def __call__(self, scope, receive, send):
         headers = Headers(scope=scope)
         scope["user"] = "Jane" if headers.get("Authorization") == "Bearer 123" else None
-        return self.app(scope)
+        await self.app(scope, receive, send)
 
 
 class Query(graphene.ObjectType):

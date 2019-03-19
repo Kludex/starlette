@@ -3,8 +3,8 @@ import re
 import typing
 
 from starlette.datastructures import Headers, MutableHeaders
-from starlette.responses import PlainTextResponse
-from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
+from starlette.responses import PlainTextResponse, Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 ALL_METHODS = ("DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT")
 
@@ -63,21 +63,25 @@ class CORSMiddleware:
         self.simple_headers = simple_headers
         self.preflight_headers = preflight_headers
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        if scope["type"] == "http":
-            method = scope["method"]
-            headers = Headers(scope=scope)
-            origin = headers.get("origin")
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":  # pragma: no cover
+            await self.app(scope, receive, send)
+            return
 
-            if origin is not None:
-                if method == "OPTIONS" and "access-control-request-method" in headers:
-                    return self.preflight_response(request_headers=headers)
-                else:
-                    return functools.partial(
-                        self.simple_response, scope=scope, request_headers=headers
-                    )
+        method = scope["method"]
+        headers = Headers(scope=scope)
+        origin = headers.get("origin")
 
-        return self.app(scope)
+        if origin is None:
+            await self.app(scope, receive, send)
+            return
+
+        if method == "OPTIONS" and "access-control-request-method" in headers:
+            response = self.preflight_response(request_headers=headers)
+            await response(scope, receive, send)
+            return
+
+        await self.simple_response(scope, receive, send, request_headers=headers)
 
     def is_allowed_origin(self, origin: str) -> bool:
         if self.allow_all_origins:
@@ -90,7 +94,7 @@ class CORSMiddleware:
 
         return origin in self.allow_origins
 
-    def preflight_response(self, request_headers: Headers) -> ASGIInstance:
+    def preflight_response(self, request_headers: Headers) -> Response:
         requested_origin = request_headers["origin"]
         requested_method = request_headers["access-control-request-method"]
         requested_headers = request_headers.get("access-control-request-headers")
@@ -131,11 +135,10 @@ class CORSMiddleware:
         return PlainTextResponse("OK", status_code=200, headers=headers)
 
     async def simple_response(
-        self, receive: Receive, send: Send, scope: Scope, request_headers: Headers
+        self, scope: Scope, receive: Receive, send: Send, request_headers: Headers
     ) -> None:
-        inner = self.app(scope)
         send = functools.partial(self.send, send=send, request_headers=request_headers)
-        await inner(receive, send)
+        await self.app(scope, receive, send)
 
     async def send(
         self, message: Message, send: Send, request_headers: Headers

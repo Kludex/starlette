@@ -1,4 +1,3 @@
-import functools
 import json
 import typing
 from base64 import b64decode, b64encode
@@ -8,7 +7,7 @@ from itsdangerous.exc import BadTimeSignature, SignatureExpired
 
 from starlette.datastructures import MutableHeaders, Secret
 from starlette.requests import Request
-from starlette.types import ASGIApp, ASGIInstance, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 class SessionMiddleware:
@@ -29,26 +28,26 @@ class SessionMiddleware:
         if https_only:  # Secure flag can be used with HTTPS only
             self.security_flags += "; secure"
 
-    def __call__(self, scope: Scope) -> ASGIInstance:
-        if scope["type"] in ("http", "websocket"):
-            request = Request(scope)
-            if self.session_cookie in request.cookies:
-                data = request.cookies[self.session_cookie].encode("utf-8")
-                try:
-                    data = self.signer.unsign(data, max_age=self.max_age)
-                    scope["session"] = json.loads(b64decode(data))
-                except (BadTimeSignature, SignatureExpired):
-                    scope["session"] = {}
-            else:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket"):  # pragma: no cover
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope)
+        initial_session_was_empty = True
+
+        if self.session_cookie in request.cookies:
+            data = request.cookies[self.session_cookie].encode("utf-8")
+            try:
+                data = self.signer.unsign(data, max_age=self.max_age)
+                scope["session"] = json.loads(b64decode(data))
+                initial_session_was_empty = False
+            except (BadTimeSignature, SignatureExpired):
                 scope["session"] = {}
-            return functools.partial(self.asgi, scope=scope)
-        return self.app(scope)  # pragma: no cover
+        else:
+            scope["session"] = {}
 
-    async def asgi(self, receive: Receive, send: Send, scope: Scope) -> None:
-        was_empty_session = not scope["session"]
-        inner = self.app(scope)
-
-        async def sender(message: Message) -> None:
+        async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
                 if scope["session"]:
                     # We have session data to persist.
@@ -62,7 +61,7 @@ class SessionMiddleware:
                         self.security_flags,
                     )
                     headers.append("Set-Cookie", header_value)
-                elif not was_empty_session:
+                elif not initial_session_was_empty:
                     # The session has been cleared.
                     headers = MutableHeaders(scope=message)
                     header_value = "%s=%s; %s" % (
@@ -73,4 +72,4 @@ class SessionMiddleware:
                     headers.append("Set-Cookie", header_value)
             await send(message)
 
-        await inner(receive, sender)
+        await self.app(scope, receive, send_wrapper)

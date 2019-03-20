@@ -205,6 +205,7 @@ class FileResponse(Response):
     def __init__(
         self,
         path: str,
+        status_code: int = 200,
         headers: dict = None,
         media_type: str = None,
         background: BackgroundTask = None,
@@ -214,7 +215,7 @@ class FileResponse(Response):
     ) -> None:
         assert aiofiles is not None, "'aiofiles' must be installed to use FileResponse"
         self.path = path
-        self.status_code = 200
+        self.status_code = status_code
         self.filename = filename
         self.send_header_only = method is not None and method.upper() == "HEAD"
         if media_type is None:

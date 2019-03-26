@@ -163,7 +163,7 @@ class RedirectResponse(Response):
         self, url: typing.Union[str, URL], status_code: int = 302, headers: dict = None
     ) -> None:
         super().__init__(content=b"", status_code=status_code, headers=headers)
-        self.headers["location"] = quote_plus(str(url), safe=":/#?&=@[]!$&'()*+,;")
+        self.headers["location"] = quote_plus(str(url), safe=":/%#?&=@[]!$&'()*+,;")
 
 
 class StreamingResponse(Response):

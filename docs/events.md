@@ -49,10 +49,6 @@ registered startup handlers have completed.
 The shutdown handlers will run once all connections have been closed, and
 any in-process background tasks have completed.
 
-**Note**: The ASGI lifespan protocol has only recently been added to the spec,
-and is only currently supported by the `uvicorn` server. Make sure to use the
-latest `uvicorn` release if you need startup/cleanup support.
-
 ## Running event handlers in tests
 
 You might want to explicitly call into your event handlers in any test setup

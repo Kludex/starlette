@@ -297,6 +297,8 @@ class WebSocketTestSession:
             self._send_queue.put(exc)
 
     async def _asgi_receive(self) -> Message:
+        while self._receive_queue.empty():
+            await asyncio.sleep(0)
         return self._receive_queue.get()
 
     async def _asgi_send(self, message: Message) -> None:

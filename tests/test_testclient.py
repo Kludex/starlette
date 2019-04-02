@@ -1,8 +1,10 @@
+import asyncio
 import pytest
 
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 mock_service = Starlette()
 
@@ -86,3 +88,27 @@ def test_testclient_asgi3():
     client = TestClient(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
+
+
+def test_websocket_blocking_receive():
+    def app(scope):
+        async def respond(websocket):
+            await websocket.send_json({"message": "test"})
+
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            asyncio.ensure_future(respond(websocket))
+            try:
+                # this will block as the client does not send us data
+                # it should not prevent `respond` from executing though
+                await websocket.receive_json()
+            except WebSocketDisconnect:
+                pass
+
+        return asgi
+
+    client = TestClient(app)
+    with client.websocket_connect("/") as websocket:
+        data = websocket.receive_json()
+        assert data == {"message": "test"}

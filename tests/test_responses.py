@@ -90,6 +90,23 @@ def test_streaming_response():
     assert filled_by_bg_task == "6, 7, 8, 9"
 
 
+def test_sync_streaming_response():
+    async def app(scope, receive, send):
+        def numbers(minimum, maximum):
+            for i in range(minimum, maximum + 1):
+                yield str(i)
+                if i != maximum:
+                    yield ", "
+
+        generator = numbers(1, 5)
+        response = StreamingResponse(generator, media_type="text/plain")
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "1, 2, 3, 4, 5"
+
+
 def test_response_headers():
     async def app(scope, receive, send):
         headers = {"x-header-1": "123", "x-header-2": "456"}

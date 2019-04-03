@@ -154,7 +154,7 @@ class App:
 
 ### StreamingResponse
 
-Takes an async generator and streams the response body.
+Takes an async generator or a normal generator/iterator and streams the response body.
 
 ```python
 from starlette.responses import StreamingResponse
@@ -179,6 +179,8 @@ class App:
         response = StreamingResponse(generator, media_type='text/html')
         await response(receive, send)
 ```
+
+Have in mind that <a href="https://docs.python.org/3/glossary.html#term-file-like-object" target="_blank">file-like</a> objects (like those created by `open()`) are normal iterators. So, you can return them directly in a `StreamingResponse`.
 
 ### FileResponse
 

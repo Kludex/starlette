@@ -211,3 +211,8 @@ A middleware class for logging exceptions to [Sentry](https://sentry.io/).
 
 Uvicorn includes a middleware class for determining the client IP address,
 when proxy servers are being used, based on the `X-Forwarded-Proto` and `X-Forwarded-For` headers. For more complex proxy configurations, you might want to adapt this middleware.
+
+#### [TimingMiddleware](https://github.com/steinnes/timing-asgi)
+
+A middleware class to emit timing information (cpu and wall time) for each request which
+passes through it.  Includes examples for how to emit these timings as statsd metrics.

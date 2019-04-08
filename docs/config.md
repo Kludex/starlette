@@ -32,7 +32,7 @@ app.debug = DEBUG
 DEBUG=True
 DATABASE_URL=postgresql://localhost/myproject
 SECRET_KEY=43n080musdfjt54t-09sdgr
-ALLOWED_HOSTS="127.0.0.1", "localhost"
+ALLOWED_HOSTS=127.0.0.1, localhost
 ```
 
 ## Configuration precedence

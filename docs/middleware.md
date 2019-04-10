@@ -165,13 +165,13 @@ app.add_middleware(CustomHeaderMiddleware)
 If you want to provide configuration options to the middleware class you should
 override the `__init__` method, ensuring that the first argument is `app`, and
 any remaining arguments are optional keyword arguments. Make sure to set the `app`
-attribute on the class if you do this.
+attribute on the instance if you do this.
 
 ```python
 class CustomHeaderMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, header_value='Example'):
         self.app = app
-        self.header_value
+        self.header_value = header_value
 
     async def dispatch(self, request, call_next):
         response = await call_next(request)

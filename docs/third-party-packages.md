@@ -43,7 +43,7 @@ type annotations.
 
 Serverless ASGI adapter for AWS Lambda & API Gateway.
 
-### Nejma ⭐
+### Nejma
 
 <a href="https://github.com/taoufik07/nejma" target="_blank">GitHub</a>
 

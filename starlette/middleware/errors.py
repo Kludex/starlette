@@ -121,7 +121,7 @@ class ServerErrorMiddleware:
             # to optionally raise the error within the test case.
             raise exc from None
 
-    def genenrate_frame_html(self, frame: traceback.FrameSummary) -> str:
+    def generate_frame_html(self, frame: traceback.FrameSummary) -> str:
         values = {
             "frame_filename": frame.filename,
             "frame_lineno": frame.lineno,
@@ -135,7 +135,7 @@ class ServerErrorMiddleware:
             exc, capture_locals=True
         )
         exc_html = "".join(
-            self.genenrate_frame_html(frame) for frame in traceback_obj.stack
+            self.generate_frame_html(frame) for frame in traceback_obj.stack
         )
         error = f"{traceback_obj.exc_type.__name__}: {traceback_obj}"
 

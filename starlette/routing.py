@@ -470,15 +470,15 @@ class Lifespan(BaseRoute):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         message = await receive()
         assert message["type"] == "lifespan.startup"
+
         try:
             await self.startup()
-        except BaseException as exc:
+        except BaseException:
             msg = traceback.format_exc()
             await send({"type": "lifespan.startup.failed", "message": msg})
-            raise exc from None
-        else:
-            await send({"type": "lifespan.startup.complete"})
+            raise
 
+        await send({"type": "lifespan.startup.complete"})
         message = await receive()
         assert message["type"] == "lifespan.shutdown"
         await self.shutdown()

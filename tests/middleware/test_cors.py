@@ -226,3 +226,26 @@ def test_cors_vary_header_is_properly_set():
     response = client.get("/", headers=headers)
     assert response.status_code == 200
     assert response.headers["vary"] == "Accept-Encoding, Origin"
+
+
+def test_cors_allowed_origin_does_not_leak_between_credentialed_requests():
+    app = Starlette()
+    app.add_middleware(
+        CORSMiddleware, allow_origins=["*"], allow_headers=["*"], allow_methods=["*"]
+    )
+
+    @app.route("/")
+    def homepage(request):
+        return PlainTextResponse("Homepage", status_code=200)
+
+    client = TestClient(app)
+    response = client.get("/", headers={"Origin": "https://someplace.org"})
+    assert response.headers["access-control-allow-origin"] == "*"
+
+    response = client.get(
+        "/", headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"}
+    )
+    assert response.headers["access-control-allow-origin"] == "https://someplace.org"
+
+    response = client.get("/", headers={"Origin": "https://someplace.org"})
+    assert response.headers["access-control-allow-origin"] == "*"

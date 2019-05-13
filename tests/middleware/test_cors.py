@@ -231,10 +231,7 @@ def test_cors_vary_header_is_properly_set():
 def test_cors_allowed_origin_does_not_leak_between_credentialed_requests():
     app = Starlette()
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_headers=["*"],
-        allow_methods=["*"],
+        CORSMiddleware, allow_origins=["*"], allow_headers=["*"], allow_methods=["*"]
     )
 
     @app.route("/")
@@ -246,10 +243,9 @@ def test_cors_allowed_origin_does_not_leak_between_credentialed_requests():
     assert response.headers["access-control-allow-origin"] == "*"
 
     response = client.get(
-        "/",
-        headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"}
+        "/", headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"}
     )
-    assert response.headers["access-control-allow-origin"] == "https://someplace.org"  # noqa
+    assert response.headers["access-control-allow-origin"] == "https://someplace.org"
 
     response = client.get("/", headers={"Origin": "https://someplace.org"})
     assert response.headers["access-control-allow-origin"] == "*"

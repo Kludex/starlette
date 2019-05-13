@@ -98,7 +98,6 @@ class CORSMiddleware:
         requested_origin = request_headers["origin"]
         requested_method = request_headers["access-control-request-method"]
         requested_headers = request_headers.get("access-control-request-headers")
-        requested_cookie = "cookie" in request_headers
 
         headers = dict(self.preflight_headers)
         failures = []

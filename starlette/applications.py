@@ -5,7 +5,6 @@ from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import BaseRoute, Router
-from starlette.schemas import BaseSchemaGenerator
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 

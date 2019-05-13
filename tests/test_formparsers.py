@@ -60,7 +60,7 @@ async def multi_items_app(scope, receive, send):
 async def app_read_body(scope, receive, send):
     request = Request(scope, receive)
     # Read bytes, to force request.stream() to return the already parsed body
-    body_bytes = await request.body()
+    await request.body()
     data = await request.form()
     output = {}
     for key, value in data.items():

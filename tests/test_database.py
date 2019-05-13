@@ -3,7 +3,6 @@ import pytest
 import sqlalchemy
 
 from starlette.applications import Starlette
-from starlette.datastructures import CommaSeparatedStrings
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 

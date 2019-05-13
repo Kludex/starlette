@@ -28,7 +28,7 @@ class BasicAuth(AuthenticationBackend):
         try:
             scheme, credentials = auth.split()
             decoded = base64.b64decode(credentials).decode("ascii")
-        except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
+        except (ValueError, UnicodeDecodeError, binascii.Error):
             raise AuthenticationError("Invalid basic auth credentials")
 
         username, _, password = decoded.partition(":")
@@ -96,7 +96,7 @@ class Dashboard(HTTPEndpoint):
 
 @app.route("/admin/sync")
 @requires("authenticated", redirect="homepage")
-def admin(request):
+def admin_sync(request):
     return JSONResponse(
         {
             "authenticated": request.user.is_authenticated,

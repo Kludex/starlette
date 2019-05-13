@@ -200,7 +200,7 @@ class Request(HTTPConnection):
         if not self._is_disconnected:
             try:
                 message = await asyncio.wait_for(self._receive(), timeout=0.0000001)
-            except asyncio.TimeoutError as exc:
+            except asyncio.TimeoutError:
                 message = {}
 
             if message.get("type") == "http.disconnect":

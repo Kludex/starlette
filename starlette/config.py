@@ -98,7 +98,7 @@ class Config:
             return mapping[value]
         try:
             return cast(value)
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError):
             raise ValueError(
                 f"Config '{key}' has value '{value}'. Not a valid {cast.__name__}."
             )

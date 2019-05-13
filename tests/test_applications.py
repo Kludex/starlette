@@ -1,7 +1,6 @@
 import os
 
 from starlette.applications import Starlette
-from starlette.datastructures import Headers
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware

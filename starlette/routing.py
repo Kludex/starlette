@@ -345,7 +345,7 @@ class Mount(BaseRoute):
                     return URLPath(
                         path=path.rstrip("/") + str(url), protocol=url.protocol
                     )
-                except NoMatchFound as exc:
+                except NoMatchFound:
                     pass
         raise NoMatchFound()
 
@@ -409,7 +409,7 @@ class Host(BaseRoute):
                 try:
                     url = route.url_path_for(remaining_name, **remaining_params)
                     return URLPath(path=str(url), protocol=url.protocol, host=host)
-                except NoMatchFound as exc:
+                except NoMatchFound:
                     pass
         raise NoMatchFound()
 
@@ -566,7 +566,7 @@ class Router:
         for route in self.routes:
             try:
                 return route.url_path_for(name, **path_params)
-            except NoMatchFound as exc:
+            except NoMatchFound:
                 pass
         raise NoMatchFound()
 

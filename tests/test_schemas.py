@@ -1,6 +1,6 @@
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
-from starlette.schemas import OpenAPIResponse, SchemaGenerator
+from starlette.schemas import SchemaGenerator
 from starlette.testclient import TestClient
 
 schemas = SchemaGenerator(

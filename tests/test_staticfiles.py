@@ -4,7 +4,6 @@ import time
 
 import pytest
 
-from starlette.datastructures import Headers
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 
@@ -68,7 +67,7 @@ def test_staticfiles_with_missing_file_returns_404(tmpdir):
 def test_staticfiles_instantiated_with_missing_directory(tmpdir):
     with pytest.raises(RuntimeError) as exc:
         path = os.path.join(tmpdir, "no_such_directory")
-        app = StaticFiles(directory=path)
+        StaticFiles(directory=path)
     assert "does not exist" in str(exc)
 
 

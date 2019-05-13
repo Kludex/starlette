@@ -75,6 +75,7 @@ make sure to setup Graphene's AsyncioExecutor using the `executor` argument.
 ```python
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from starlette.applications import Starlette
+from starlette.graphql import GraphQLApp
 import graphene
 
 

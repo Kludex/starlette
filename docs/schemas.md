@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     if sys.argv[-1] == "run":
         uvicorn.run(app, host='0.0.0.0', port=8000)
-    elif sys.arvg[-1] == "schema":
+    elif sys.argv[-1] == "schema":
         schema = schemas.get_schema(routes=app.routes)
         print(yaml.dump(schema, default_flow_style=False))
 ```

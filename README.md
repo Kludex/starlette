@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.starlette.io/"><img width="320" height="192" src="https://raw.githubusercontent.com/encode/starlette/master/docs/starlette.png" alt='starlette'></a>
+  <a href="https://www.starlette.io/"><img width="100%" src="https://raw.githubusercontent.com/encode/starlette/master/docs/starlette.png" alt='starlette'></a>
 </p>
 <p align="center">
     <em>✨ The little ASGI framework that shines. ✨</em>

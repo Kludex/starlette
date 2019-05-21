@@ -1,3 +1,10 @@
+## 0.12.0
+
+* Switch to ASGI 3.0.
+* Fixes to CORS middleware.
+* Add `StaticFiles(html=True)` support.
+* Fix path quoting in redirect responses.
+
 ## 0.11.1
 
 * Add `request.state` interface, for storing arbitrary additional information.

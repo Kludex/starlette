@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="100%" src="https://raw.githubusercontent.com/encode/starlette/master/docs/starlette.png" alt='starlette'>
+  <img width="420px" src="/img/starlette.png" alt='starlette'>
 </p>
 <p align="center">
     <em>✨ The little ASGI framework that shines. ✨</em>

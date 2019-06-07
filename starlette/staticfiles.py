@@ -70,11 +70,11 @@ class StaticFiles:
             assert spec is not None, f"Package {package!r} could not be found."
             assert (
                 spec.origin is not None
-            ), "Directory 'statics' in package {package!r} could not be found."
+            ), f"Directory 'statics' in package {package!r} could not be found."
             directory = os.path.normpath(os.path.join(spec.origin, "..", "statics"))
             assert os.path.isdir(
                 directory
-            ), "Directory 'statics' in package {package!r} could not be found."
+            ), f"Directory 'statics' in package {package!r} could not be found."
             directories.append(directory)
 
         return directories

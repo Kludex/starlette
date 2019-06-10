@@ -58,7 +58,7 @@ class StaticFiles:
         self, directory: str = None, packages: typing.List[str] = None
     ) -> typing.List[str]:
         """
-        Given `directory` and `packages` arugments, return a list of all the
+        Given `directory` and `packages` arguments, return a list of all the
         directories that should be used for serving static files from.
         """
         directories = []

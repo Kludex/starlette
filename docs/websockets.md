@@ -10,16 +10,11 @@ Signature: `WebSocket(scope, receive=None, send=None)`
 from starlette.websockets import WebSocket
 
 
-class App:
-    def __init__(self, scope):
-        assert scope['type'] == 'websocket'
-        self.scope = scope
-
-    async def __call__(self, receive, send):
-        websocket = WebSocket(self.scope, receive=receive, send=send)
-        await websocket.accept()
-        await websocket.send_text('Hello, world!')
-        await websocket.close()
+async def app(self, scope, receive, send):
+    websocket = WebSocket(scope=scope, receive=receive, send=send)
+    await websocket.accept()
+    await websocket.send_text('Hello, world!')
+    await websocket.close()
 ```
 
 WebSockets present a mapping interface, so you can use them in the same

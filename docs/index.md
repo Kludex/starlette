@@ -104,7 +104,7 @@ class App:
 
     async def __call__(self, receive, send):
         response = PlainTextResponse('Hello, world!')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 Run the `App` application in `example.py`:

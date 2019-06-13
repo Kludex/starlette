@@ -20,7 +20,7 @@ class App:
         request = Request(self.scope, receive)
         content = '%s %s' % (request.method, request.url.path)
         response = Response(content, media_type='text/plain')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 Requests present a mapping interface, so you can use them in the same
@@ -105,7 +105,7 @@ class App:
         async for chunk in request.stream():
             body += chunk
         response = Response(body, media_type='text/plain')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 If you access `.stream()` then the byte chunks are provided without storing

@@ -14,7 +14,7 @@ class App:
 
     async def __call__(self, receive, send):
         response = HTMLResponse('<html><body>Hello, world!</body></html>')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 
 
 def test_app():

@@ -29,7 +29,7 @@ class App:
 
     async def __call__(self, receive, send):
         response = Response('Hello, world!', media_type='text/plain')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 #### Set Cookie
 
@@ -68,7 +68,7 @@ class App:
 
     async def __call__(self, receive, send):
         response = HTMLResponse('<html><body><h1>Hello, world!</h1></body></html>')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 ### PlainTextResponse
@@ -86,7 +86,7 @@ class App:
 
     async def __call__(self, receive, send):
         response = PlainTextResponse('Hello, world!')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 ### JSONResponse
@@ -104,7 +104,7 @@ class App:
 
     async def __call__(self, receive, send):
         response = JSONResponse({'hello': 'world'})
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 ### UJSONResponse
@@ -128,7 +128,7 @@ class App:
 
     async def __call__(self, receive, send):
         response = UJSONResponse({'hello': 'world'})
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 ### RedirectResponse
@@ -149,7 +149,7 @@ class App:
             response = RedirectResponse(url='/')
         else:
             response = PlainTextResponse('Hello, world!')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 ### StreamingResponse
@@ -177,7 +177,7 @@ class App:
     async def __call__(self, receive, send):
         generator = slow_numbers(1, 10)
         response = StreamingResponse(generator, media_type='text/html')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```
 
 Have in mind that <a href="https://docs.python.org/3/glossary.html#term-file-like-object" target="_blank">file-like</a> objects (like those created by `open()`) are normal iterators. So, you can return them directly in a `StreamingResponse`.
@@ -206,5 +206,5 @@ class App:
 
     async def __call__(self, receive, send):
         response = FileResponse('statics/favicon.ico')
-        await response(receive, send)
+        await response(self.scope, receive, send)
 ```

@@ -242,15 +242,19 @@ def test_request_is_disconnected():
 
 def test_request_state_object():
     s = State({'old': 'foo'})
-    s.new = 'value'           # test __setattr__
-    assert s.new == 'value'   # test __getattr__
+    s.new = 'value'                   # test __setattr__
+    assert s.new == 'value'           # test __getattr__
+    assert s._state['new'] == 'value' # test if inner _state dict is updated.
 
-    delattr(s, 'new')         # test __delattr__
+    delattr(s, 'new') # test __delattr__
 
     try:
         assert s.new == 'value' # will bombed with AttributeError
     except AttributeError as e:
         assert str(e) == "'State' object has no attribute 'new'"
+
+    delattr(s, '_state') # Deleting _state dict should not bombed.
+
 
 def test_request_state():
     async def app(scope, receive, send):

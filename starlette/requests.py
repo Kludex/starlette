@@ -18,9 +18,30 @@ class ClientDisconnect(Exception):
     pass
 
 
-class State:
-    def __init__(self, state_dict={}):
-        self.__dict__.update(state_dict)
+class State(object):
+    def __init__(self, state={}):
+        self._state = state
+
+    def __setattr__(self, key, value: typing.Any) -> None:
+        if key == '_state':
+            super(State, self).__setattr__(key, value)
+        else:
+            self._state[key] = value
+
+    def __getattr__(self, key) -> typing.Any:
+        if key == '_state':
+            super(State, self).__getattr__(key)
+        else:
+            if key in self._state:
+                return self._state[key]
+            else:
+                raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__.__name__, key))
+
+    def __delattr__(self, key) -> None:
+        if key == '_state':
+            super(State, self).__delattr__(key)
+        else:
+            del self._state[key]
 
 
 class HTTPConnection(Mapping):

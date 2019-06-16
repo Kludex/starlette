@@ -19,7 +19,8 @@ class ClientDisconnect(Exception):
 
 
 class State:
-    pass
+    def __init__(self, state_dict={}):
+        self.__dict__.update(state_dict)
 
 
 class HTTPConnection(Mapping):
@@ -31,6 +32,9 @@ class HTTPConnection(Mapping):
     def __init__(self, scope: Scope, receive: Receive = None) -> None:
         assert scope["type"] in ("http", "websocket")
         self._scope = scope
+
+        # Ensure 'state' has an empty dict if it's not already populated.
+        self._scope.setdefault('state', {})
 
     def __getitem__(self, key: str) -> str:
         return self._scope[key]
@@ -108,9 +112,10 @@ class HTTPConnection(Mapping):
 
     @property
     def state(self) -> State:
-        if "state" not in self._scope:
-            self._scope["state"] = State()
-        return self._scope["state"]
+        if not hasattr(self, '_state'):
+            # Create a state instance with a reference to the dict in which it should store info
+            self._state = State(self._scope['state'])
+        return self._state
 
     def url_for(self, name: str, **path_params: typing.Any) -> str:
         router = self._scope["router"]

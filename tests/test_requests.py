@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from starlette.requests import ClientDisconnect, Request
+from starlette.requests import ClientDisconnect, Request, State
 from starlette.responses import JSONResponse, Response
 from starlette.testclient import TestClient
 
@@ -174,8 +174,8 @@ def test_request_scope_interface():
     """
     request = Request({"type": "http", "method": "GET", "path": "/abc/"})
     assert request["method"] == "GET"
-    assert dict(request) == {"type": "http", "method": "GET", "path": "/abc/"}
-    assert len(request) == 3
+    assert dict(request) == {"type": "http", "method": "GET", "path": "/abc/", "state": {}}
+    assert len(request) == 4
 
 
 def test_request_without_setting_receive():
@@ -240,11 +240,23 @@ def test_request_is_disconnected():
     assert disconnected_after_response
 
 
+def test_request_state_object():
+    s = State({'old': 'foo'})
+    s.new = 'value'           # test __setattr__
+    assert s.new == 'value'   # test __getattr__
+
+    delattr(s, 'new')         # test __delattr__
+
+    try:
+        assert s.new == 'value' # will bombed with AttributeError
+    except AttributeError as e:
+        assert str(e) == "'State' object has no attribute 'new'"
+
 def test_request_state():
     async def app(scope, receive, send):
         request = Request(scope, receive)
         request.state.example = 123
-        response = JSONResponse({"state.example": request["state"].example})
+        response = JSONResponse({"state.example": request.state.example})
         await response(scope, receive, send)
 
     client = TestClient(app)

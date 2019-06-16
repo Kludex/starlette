@@ -19,25 +19,19 @@ class ClientDisconnect(Exception):
 
 
 class State(object):
-    def __init__(self, state={}):
-        self._state = state
+    def __init__(self, state: typing.Dict={}):
+        super(State, self).__setattr__('_state', state)
 
-    def __setattr__(self, key, value: typing.Any) -> None:
-        if key == '_state':
-            super(State, self).__setattr__(key, value)
+    def __setattr__(self, key: typing.Any, value: typing.Any) -> None:
+        self._state[key] = value
+
+    def __getattr__(self, key: typing.Any) -> typing.Any:
+        if key in self._state:
+            return self._state[key]
         else:
-            self._state[key] = value
+            raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__.__name__, key))
 
-    def __getattr__(self, key) -> typing.Any:
-        if key == '_state':
-            super(State, self).__getattr__(key)
-        else:
-            if key in self._state:
-                return self._state[key]
-            else:
-                raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__.__name__, key))
-
-    def __delattr__(self, key) -> None:
+    def __delattr__(self, key: typing.Any) -> None:
         if key == '_state':
             super(State, self).__delattr__(key)
         else:

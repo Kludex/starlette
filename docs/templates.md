@@ -21,7 +21,7 @@ async def homepage(request):
     return templates.TemplateResponse('index.html', {'request': request})
 ```
 
-Note that the [StaticFiles](https://www.starlette.io/staticfiles/) application must be mounted and configured to serve the templates, and the incoming `request` instance must be included as part of the
+Note that the incoming `request` instance must be included as part of the
 template context.
 
 The Jinja2 template context will automatically include a `url_for` function,

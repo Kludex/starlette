@@ -7,12 +7,13 @@ what you want to use by default.
 ```python
 from starlette.applications import Starlette
 from starlette.templating import Jinja2Templates
+from starlette.staticfiles import StaticFiles
 
 
 templates = Jinja2Templates(directory='templates')
 
 app = Starlette(debug=True)
-app.mount('/static', StaticFiles(directory='statics'), name='static')
+app.mount('/static', StaticFiles(directory='static'), name='static')
 
 
 @app.route('/')
@@ -20,7 +21,7 @@ async def homepage(request):
     return templates.TemplateResponse('index.html', {'request': request})
 ```
 
-Note that the incoming `request` instance must be included as part of the
+Note that the [StaticFiles](https://www.starlette.io/staticfiles/) application must be mounted and configured to serve the templates, and the incoming `request` instance must be included as part of the
 template context.
 
 The Jinja2 template context will automatically include a `url_for` function,

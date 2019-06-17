@@ -34,8 +34,7 @@ class State(object):
             )
 
     def __delattr__(self, key: typing.Any) -> None:
-        if hasattr(self, "_state"):
-            del self._state[key]
+        del self._state[key]
 
 
 class HTTPConnection(Mapping):

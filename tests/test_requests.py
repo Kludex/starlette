@@ -174,7 +174,12 @@ def test_request_scope_interface():
     """
     request = Request({"type": "http", "method": "GET", "path": "/abc/"})
     assert request["method"] == "GET"
-    assert dict(request) == {"type": "http", "method": "GET", "path": "/abc/", "state": {}}
+    assert dict(request) == {
+        "type": "http",
+        "method": "GET",
+        "path": "/abc/",
+        "state": {},
+    }
     assert len(request) == 4
 
 
@@ -241,24 +246,24 @@ def test_request_is_disconnected():
 
 
 def test_request_state_object():
-    scope = {'state': {'old': 'foo'}}
+    scope = {"state": {"old": "foo"}}
 
-    s = State(scope['state'])
-    assert s._state == scope['state']
-    assert getattr(s, '_state') == scope['state']
+    s = State(scope["state"])
+    assert s._state == scope["state"]
+    assert getattr(s, "_state") == scope["state"]
 
-    s.new = 'value'                   # test __setattr__
-    assert s.new == 'value'           # test __getattr__
-    assert s._state['new'] == 'value' # test if inner _state dict is updated.
+    s.new = "value"  # test __setattr__
+    assert s.new == "value"  # test __getattr__
+    assert s._state["new"] == "value"  # test if inner _state dict is updated.
 
-    del s.new # test __delattr__
+    del s.new  # test __delattr__
 
     try:
-        assert s.new == 'value' # will bombed with AttributeError
+        assert s.new == "value"  # will bombed with AttributeError
     except AttributeError as e:
         assert str(e) == "'State' object has no attribute 'new'"
 
-    del s._state # Deleting _state dict should not bombed.
+    del s._state  # Deleting _state dict should not bombed.
 
 
 def test_request_state():

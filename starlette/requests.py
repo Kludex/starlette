@@ -19,8 +19,8 @@ class ClientDisconnect(Exception):
 
 
 class State(object):
-    def __init__(self, state: typing.Dict={}):
-        super(State, self).__setattr__('_state', state)
+    def __init__(self, state: typing.Dict = {}):
+        super(State, self).__setattr__("_state", state)
 
     def __setattr__(self, key: typing.Any, value: typing.Any) -> None:
         self._state[key] = value
@@ -29,10 +29,12 @@ class State(object):
         if key in self._state:
             return self._state[key]
         else:
-            raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__.__name__, key))
+            raise AttributeError(
+                "'{}' object has no attribute '{}'".format(self.__class__.__name__, key)
+            )
 
     def __delattr__(self, key: typing.Any) -> None:
-        if key == '_state':
+        if key == "_state":
             super(State, self).__delattr__(key)
         else:
             del self._state[key]
@@ -49,7 +51,7 @@ class HTTPConnection(Mapping):
         self._scope = scope
 
         # Ensure 'state' has an empty dict if it's not already populated.
-        self._scope.setdefault('state', {})
+        self._scope.setdefault("state", {})
 
     def __getitem__(self, key: str) -> str:
         return self._scope[key]
@@ -127,9 +129,9 @@ class HTTPConnection(Mapping):
 
     @property
     def state(self) -> State:
-        if not hasattr(self, '_state'):
+        if not hasattr(self, "_state"):
             # Create a state instance with a reference to the dict in which it should store info
-            self._state = State(self._scope['state'])
+            self._state = State(self._scope["state"])
         return self._state
 
     def url_for(self, name: str, **path_params: typing.Any) -> str:

@@ -13,20 +13,16 @@ def test_custom_middleware():
             response.headers["Custom-Header"] = "Example"
             return response
 
-
     app = Starlette()
     app.add_middleware(CustomMiddleware)
-
 
     @app.route("/")
     def homepage(request):
         return PlainTextResponse("Homepage")
 
-
     @app.route("/exc")
     def exc(request):
         raise Exception()
-
 
     @app.route("/no-response")
     class NoResponse:
@@ -38,7 +34,6 @@ def test_custom_middleware():
 
         async def dispatch(self):
             pass
-
 
     @app.websocket_route("/ws")
     async def websocket_endpoint(session):
@@ -84,9 +79,10 @@ def test_middleware_decorator():
     assert response.text == "Homepage"
     assert response.headers["Custom"] == "Example"
 
+
 def test_state_data_across_multiple_middlewares():
-    expected_value1 = 'foo'
-    expected_value2 = 'bar'
+    expected_value1 = "foo"
+    expected_value2 = "bar"
 
     class aMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):

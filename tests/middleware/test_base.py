@@ -6,41 +6,47 @@ from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
 
 
+class CustomMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Custom-Header"] = "Example"
+        return response
+
+
+app = Starlette()
+app.add_middleware(CustomMiddleware)
+
+
+@app.route("/")
+def homepage(request):
+    return PlainTextResponse("Homepage")
+
+
+@app.route("/exc")
+def exc(request):
+    raise Exception()
+
+
+@app.route("/no-response")
+class NoResponse:
+    def __init__(self, scope, receive, send):
+        pass
+
+    def __await__(self):
+        return self.dispatch().__await__()
+
+    async def dispatch(self):
+        pass
+
+
+@app.websocket_route("/ws")
+async def websocket_endpoint(session):
+    await session.accept()
+    await session.send_text("Hello, world!")
+    await session.close()
+
+
 def test_custom_middleware():
-    class CustomMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):
-            response = await call_next(request)
-            response.headers["Custom-Header"] = "Example"
-            return response
-
-    app = Starlette()
-    app.add_middleware(CustomMiddleware)
-
-    @app.route("/")
-    def homepage(request):
-        return PlainTextResponse("Homepage")
-
-    @app.route("/exc")
-    def exc(request):
-        raise Exception()
-
-    @app.route("/no-response")
-    class NoResponse:
-        def __init__(self, scope, receive, send):
-            pass
-
-        def __await__(self):
-            return self.dispatch().__await__()
-
-        async def dispatch(self):
-            pass
-
-    @app.websocket_route("/ws")
-    async def websocket_endpoint(session):
-        await session.accept()
-        await session.send_text("Hello, world!")
-        await session.close()
-
     client = TestClient(app)
     response = client.get("/")
     assert response.headers["Custom-Header"] == "Example"

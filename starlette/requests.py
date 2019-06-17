@@ -34,9 +34,7 @@ class State(object):
             )
 
     def __delattr__(self, key: typing.Any) -> None:
-        if key == "_state":
-            super(State, self).__delattr__(key)
-        else:
+        if hasattr(self, "_state"):
             del self._state[key]
 
 

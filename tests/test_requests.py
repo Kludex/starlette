@@ -252,18 +252,16 @@ def test_request_state_object():
     assert s._state == scope["state"]
     assert getattr(s, "_state") == scope["state"]
 
-    s.new = "value"  # test __setattr__
-    assert s.new == "value"  # test __getattr__
+    s.new = "value"
+    assert s.new == "value"
     assert s._state["new"] == "value"  # test if inner _state dict is updated.
 
-    del s.new  # test __delattr__
+    del s.new
 
     try:
         assert s.new == "value"  # will bombed with AttributeError
     except AttributeError as e:
         assert str(e) == "'State' object has no attribute 'new'"
-
-    del s._state  # Deleting _state dict should not bombed.
 
 
 def test_request_state():

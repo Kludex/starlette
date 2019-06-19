@@ -174,13 +174,8 @@ def test_request_scope_interface():
     """
     request = Request({"type": "http", "method": "GET", "path": "/abc/"})
     assert request["method"] == "GET"
-    assert dict(request) == {
-        "type": "http",
-        "method": "GET",
-        "path": "/abc/",
-        "state": {},
-    }
-    assert len(request) == 4
+    assert dict(request) == {"type": "http", "method": "GET", "path": "/abc/"}
+    assert len(request) == 3
 
 
 def test_request_without_setting_receive():
@@ -249,19 +244,14 @@ def test_request_state_object():
     scope = {"state": {"old": "foo"}}
 
     s = State(scope["state"])
-    assert s._state == scope["state"]
-    assert getattr(s, "_state") == scope["state"]
 
     s.new = "value"
     assert s.new == "value"
-    assert s._state["new"] == "value"  # test if inner _state dict is updated.
 
     del s.new
 
-    try:
-        assert s.new == "value"  # will bombed with AttributeError
-    except AttributeError as e:
-        assert str(e) == "'State' object has no attribute 'new'"
+    with pytest.raises(AttributeError):
+        s.new
 
 
 def test_request_state():

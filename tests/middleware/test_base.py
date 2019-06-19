@@ -93,19 +93,23 @@ def test_state_data_across_multiple_middlewares():
     class aMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
             request.state.foo = expected_value1
+            print("a", dict(request))
             response = await call_next(request)
             return response
 
     class bMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
             request.state.bar = expected_value2
+            print("b", dict(request))
             response = await call_next(request)
             response.headers["X-State-Foo"] = request.state.foo
             return response
 
     class cMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
+            print("c", dict(request))
             response = await call_next(request)
+            print("c", dict(request))
             response.headers["X-State-Bar"] = request.state.bar
             return response
 

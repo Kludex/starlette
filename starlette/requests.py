@@ -26,12 +26,11 @@ class State(object):
         self._state[key] = value
 
     def __getattr__(self, key: typing.Any) -> typing.Any:
-        if key in self._state:
+        try:
             return self._state[key]
-        else:
-            raise AttributeError(
-                "'{}' object has no attribute '{}'".format(self.__class__.__name__, key)
-            )
+        except KeyError:
+            message = "'{}' object has no attribute '{}'"
+            raise AttributeError(message.format(self.__class__.__name__, key))
 
     def __delattr__(self, key: typing.Any) -> None:
         del self._state[key]
@@ -45,45 +44,42 @@ class HTTPConnection(Mapping):
 
     def __init__(self, scope: Scope, receive: Receive = None) -> None:
         assert scope["type"] in ("http", "websocket")
-        self._scope = scope
-
-        # Ensure 'state' has an empty dict if it's not already populated.
-        self._scope.setdefault("state", {})
+        self.scope = scope
 
     def __getitem__(self, key: str) -> str:
-        return self._scope[key]
+        return self.scope[key]
 
     def __iter__(self) -> typing.Iterator[str]:
-        return iter(self._scope)
+        return iter(self.scope)
 
     def __len__(self) -> int:
-        return len(self._scope)
+        return len(self.scope)
 
     @property
     def app(self) -> typing.Any:
-        return self._scope["app"]
+        return self.scope["app"]
 
     @property
     def url(self) -> URL:
         if not hasattr(self, "_url"):
-            self._url = URL(scope=self._scope)
+            self._url = URL(scope=self.scope)
         return self._url
 
     @property
     def headers(self) -> Headers:
         if not hasattr(self, "_headers"):
-            self._headers = Headers(scope=self._scope)
+            self._headers = Headers(scope=self.scope)
         return self._headers
 
     @property
     def query_params(self) -> QueryParams:
         if not hasattr(self, "_query_params"):
-            self._query_params = QueryParams(self._scope["query_string"])
+            self._query_params = QueryParams(self.scope["query_string"])
         return self._query_params
 
     @property
     def path_params(self) -> dict:
-        return self._scope.get("path_params", {})
+        return self.scope.get("path_params", {})
 
     @property
     def cookies(self) -> typing.Dict[str, str]:
@@ -100,39 +96,41 @@ class HTTPConnection(Mapping):
 
     @property
     def client(self) -> Address:
-        host, port = self._scope.get("client") or (None, None)
+        host, port = self.scope.get("client") or (None, None)
         return Address(host=host, port=port)
 
     @property
     def session(self) -> dict:
         assert (
-            "session" in self._scope
+            "session" in self.scope
         ), "SessionMiddleware must be installed to access request.session"
-        return self._scope["session"]
+        return self.scope["session"]
 
     @property
     def auth(self) -> typing.Any:
         assert (
-            "auth" in self._scope
+            "auth" in self.scope
         ), "AuthenticationMiddleware must be installed to access request.auth"
-        return self._scope["auth"]
+        return self.scope["auth"]
 
     @property
     def user(self) -> typing.Any:
         assert (
-            "user" in self._scope
+            "user" in self.scope
         ), "AuthenticationMiddleware must be installed to access request.user"
-        return self._scope["user"]
+        return self.scope["user"]
 
     @property
     def state(self) -> State:
         if not hasattr(self, "_state"):
+            # Ensure 'state' has an empty dict if it's not already populated.
+            self.scope.setdefault("state", {})
             # Create a state instance with a reference to the dict in which it should store info
-            self._state = State(self._scope["state"])
+            self._state = State(self.scope["state"])
         return self._state
 
     def url_for(self, name: str, **path_params: typing.Any) -> str:
-        router = self._scope["router"]
+        router = self.scope["router"]
         url_path = router.url_path_for(name, **path_params)
         return url_path.make_absolute_url(base_url=self.url)
 
@@ -151,7 +149,7 @@ class Request(HTTPConnection):
 
     @property
     def method(self) -> str:
-        return self._scope["method"]
+        return self.scope["method"]
 
     @property
     def receive(self) -> Receive:

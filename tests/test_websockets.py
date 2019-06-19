@@ -281,10 +281,5 @@ def test_websocket_scope_interface():
         send=mock_send,
     )
     assert websocket["type"] == "websocket"
-    assert dict(websocket) == {
-        "type": "websocket",
-        "path": "/abc/",
-        "headers": [],
-        "state": {},
-    }
-    assert len(websocket) == 4
+    assert dict(websocket) == {"type": "websocket", "path": "/abc/", "headers": []}
+    assert len(websocket) == 3

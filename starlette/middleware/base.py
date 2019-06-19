@@ -29,7 +29,7 @@ class BaseHTTPMiddleware:
         loop = asyncio.get_event_loop()
         queue = asyncio.Queue()  # type: asyncio.Queue
 
-        scope = dict(request)
+        scope = request.scope
         receive = request.receive
         send = queue.put
 

@@ -84,3 +84,46 @@ def test_middleware_decorator():
     response = client.get("/homepage")
     assert response.text == "Homepage"
     assert response.headers["Custom"] == "Example"
+
+
+def test_state_data_across_multiple_middlewares():
+    expected_value1 = "foo"
+    expected_value2 = "bar"
+
+    class aMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            request.state.foo = expected_value1
+            print("a", dict(request))
+            response = await call_next(request)
+            return response
+
+    class bMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            request.state.bar = expected_value2
+            print("b", dict(request))
+            response = await call_next(request)
+            response.headers["X-State-Foo"] = request.state.foo
+            return response
+
+    class cMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            print("c", dict(request))
+            response = await call_next(request)
+            print("c", dict(request))
+            response.headers["X-State-Bar"] = request.state.bar
+            return response
+
+    app = Starlette()
+    app.add_middleware(aMiddleware)
+    app.add_middleware(bMiddleware)
+    app.add_middleware(cMiddleware)
+
+    @app.route("/")
+    def homepage(request):
+        return PlainTextResponse("OK")
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "OK"
+    assert response.headers["X-State-Foo"] == expected_value1
+    assert response.headers["X-State-Bar"] == expected_value2

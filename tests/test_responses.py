@@ -8,11 +8,11 @@ from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import (
     FileResponse,
+    JSONResponse,
     RedirectResponse,
     Response,
     StreamingResponse,
     UJSONResponse,
-    JSONResponse,
 )
 from starlette.testclient import TestClient
 

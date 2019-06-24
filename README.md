@@ -103,20 +103,16 @@ an ASGI toolkit. You can use any of its components independently.
 from starlette.responses import PlainTextResponse
 
 
-class App:
-    def __init__(self, scope):
-        assert scope['type'] == 'http'
-        self.scope = scope
-
-    async def __call__(self, receive, send):
-        response = PlainTextResponse('Hello, world!')
-        await response(receive, send)
+async def app(scope, receive, send):
+    assert scope['type'] == 'http'
+    response = PlainTextResponse('Hello, world!')
+    await response(scope, receive, send)
 ```
 
-Run the `App` application in `example.py`:
+Run the `app` application in `example.py`:
 
 ```shell
-$ uvicorn example:App
+$ uvicorn example:app
 INFO: Started server process [11509]
 INFO: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```

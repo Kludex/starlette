@@ -13,7 +13,7 @@ class HTTPSRedirectMiddleware:
             redirect_scheme = {"http": "https", "ws": "wss"}[url.scheme]
             netloc = url.hostname if url.port in (80, 443) else url.netloc
             url = url.replace(scheme=redirect_scheme, netloc=netloc)
-            response = RedirectResponse(url, status_code=301)
+            response = RedirectResponse(url, status_code=308)
             await response(scope, receive, send)
         else:
             await self.app(scope, receive, send)

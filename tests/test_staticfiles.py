@@ -65,19 +65,19 @@ def test_staticfiles_with_missing_file_returns_404(tmpdir):
 
 
 def test_staticfiles_instantiated_with_missing_directory(tmpdir):
-    with pytest.raises(RuntimeError) as exc:
+    with pytest.raises(RuntimeError) as exc_info:
         path = os.path.join(tmpdir, "no_such_directory")
         StaticFiles(directory=path)
-    assert "does not exist" in str(exc)
+    assert "does not exist" in str(exc_info.value)
 
 
 def test_staticfiles_configured_with_missing_directory(tmpdir):
     path = os.path.join(tmpdir, "no_such_directory")
     app = StaticFiles(directory=path, check_dir=False)
     client = TestClient(app)
-    with pytest.raises(RuntimeError) as exc:
+    with pytest.raises(RuntimeError) as exc_info:
         client.get("/example.txt")
-    assert "does not exist" in str(exc)
+    assert "does not exist" in str(exc_info.value)
 
 
 def test_staticfiles_configured_with_file_instead_of_directory(tmpdir):
@@ -87,9 +87,9 @@ def test_staticfiles_configured_with_file_instead_of_directory(tmpdir):
 
     app = StaticFiles(directory=path, check_dir=False)
     client = TestClient(app)
-    with pytest.raises(RuntimeError) as exc:
+    with pytest.raises(RuntimeError) as exc_info:
         client.get("/example.txt")
-    assert "is not a directory" in str(exc)
+    assert "is not a directory" in str(exc_info.value)
 
 
 def test_staticfiles_config_check_occurs_only_once(tmpdir):

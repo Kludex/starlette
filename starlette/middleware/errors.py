@@ -52,6 +52,11 @@ p {
 .collapsed {
   display: none;
 }
+.source-code {
+  font-family: courier;
+  font-size: small;
+  padding-bottom: 10px;
+}
 """
 
 JS = """
@@ -98,7 +103,7 @@ FRAME_TEMPLATE = """
     in <b>{frame_name}</b>
     <span class="collapse-btn" data-frame-id="{frame_filename}-{frame_lineno}" onclick="collapse(this)">&#8210;</span>
     </p>
-    <div id="{frame_filename}-{frame_lineno}">{code_context}</div>
+    <div id="{frame_filename}-{frame_lineno}" class="source-code {collapsed}">{code_context}</div>
 </div>
 """
 
@@ -183,7 +188,7 @@ class ServerErrorMiddleware:
             return LINE.format(**values)
         return CENTER_LINE.format(**values)
 
-    def generate_frame_html(self, frame: inspect.FrameInfo, center_lineno: int) -> str:
+    def generate_frame_html(self, frame: inspect.FrameInfo, center_lineno: int, is_collapsed: bool) -> str:
         code_context = "".join(
             self.format_line(context_position, line, frame.lineno, center_lineno)
             for context_position, line in enumerate(frame.code_context)
@@ -194,6 +199,7 @@ class ServerErrorMiddleware:
             "frame_lineno": frame.lineno,
             "frame_name": frame.function,
             "code_context": code_context,
+            "collapsed": "collapsed" if is_collapsed else ""
         }
         return FRAME_TEMPLATE.format(**values)
 
@@ -206,9 +212,12 @@ class ServerErrorMiddleware:
         )
 
         center_lineno = int((limit - 1) / 2)
-        exc_html = "".join(
-            self.generate_frame_html(frame, center_lineno) for frame in reversed(frames)
-        )
+        exc_html = ""
+        is_collapsed = False
+        for frame in reversed(frames):
+            exc_html += self.generate_frame_html(frame, center_lineno, is_collapsed)
+            is_collapsed = True
+
         error = f"{traceback_obj.exc_type.__name__}: {traceback_obj}"
 
         return TEMPLATE.format(styles=STYLES, js=JS, error=error, exc_html=exc_html)

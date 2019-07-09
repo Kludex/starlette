@@ -188,7 +188,9 @@ class ServerErrorMiddleware:
             return LINE.format(**values)
         return CENTER_LINE.format(**values)
 
-    def generate_frame_html(self, frame: inspect.FrameInfo, center_lineno: int, is_collapsed: bool) -> str:
+    def generate_frame_html(
+        self, frame: inspect.FrameInfo, center_lineno: int, is_collapsed: bool
+    ) -> str:
         code_context = "".join(
             self.format_line(context_position, line, frame.lineno, center_lineno)
             for context_position, line in enumerate(frame.code_context)

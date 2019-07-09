@@ -101,7 +101,7 @@ FRAME_TEMPLATE = """
     <p class="frame-filename"><span class="debug-filename frame-line">File {frame_filename}</span>,
     line <i>{frame_lineno}</i>,
     in <b>{frame_name}</b>
-    <span class="collapse-btn" data-frame-id="{frame_filename}-{frame_lineno}" onclick="collapse(this)">&#8210;</span>
+    <span class="collapse-btn" data-frame-id="{frame_filename}-{frame_lineno}" onclick="collapse(this)">{collapse_button}</span>
     </p>
     <div id="{frame_filename}-{frame_lineno}" class="source-code {collapsed}">{code_context}</div>
 </div>
@@ -199,7 +199,8 @@ class ServerErrorMiddleware:
             "frame_lineno": frame.lineno,
             "frame_name": frame.function,
             "code_context": code_context,
-            "collapsed": "collapsed" if is_collapsed else ""
+            "collapsed": "collapsed" if is_collapsed else "",
+            "collapse_button": "+" if is_collapsed else "&#8210;",
         }
         return FRAME_TEMPLATE.format(**values)
 

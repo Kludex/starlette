@@ -418,6 +418,7 @@ class UploadFile:
     """
     An uploaded file included as part of the request data.
     """
+    spool_max_size = 1024 * 1024
 
     def __init__(
         self, filename: str, file: typing.IO = None, content_type: str = ""
@@ -425,7 +426,7 @@ class UploadFile:
         self.filename = filename
         self.content_type = content_type
         if file is None:
-            file = tempfile.SpooledTemporaryFile()
+            file = tempfile.SpooledTemporaryFile(max_size=self.spool_max_size)
         self.file = file
 
     async def write(self, data: typing.Union[bytes, str]) -> None:

@@ -418,6 +418,7 @@ class UploadFile:
     """
     An uploaded file included as part of the request data.
     """
+
     spool_max_size = 1024 * 1024
 
     def __init__(

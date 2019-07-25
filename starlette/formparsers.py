@@ -31,6 +31,13 @@ class MultiPartMessage(Enum):
     END = 8
 
 
+def _user_safe_decode(src: bytes, codec: str) -> str:
+    try:
+        return src.decode(codec)
+    except LookupError:
+        return src.decode("latin-1")
+
+
 class FormParser:
     def __init__(
         self, headers: Headers, stream: typing.AsyncGenerator[bytes, None]
@@ -153,6 +160,9 @@ class MultiPartParser:
     async def parse(self) -> FormData:
         # Parse the Content-Type header to get the multipart boundary.
         content_type, params = parse_options_header(self.headers["Content-Type"])
+        charset = params.get(b"charset", "latin-1")
+        if type(charset) == bytes:
+            charset = charset.decode("latin-1")
         boundary = params.get(b"boundary")
 
         # Callbacks dictionary.
@@ -204,7 +214,7 @@ class MultiPartParser:
                     disposition, options = parse_options_header(content_disposition)
                     field_name = options[b"name"].decode("latin-1")
                     if b"filename" in options:
-                        filename = options[b"filename"].decode("latin-1")
+                        filename = _user_safe_decode(options[b"filename"], charset)
                         file = UploadFile(filename=filename, content_type=content_type)
                     else:
                         file = None
@@ -215,7 +225,7 @@ class MultiPartParser:
                         await file.write(message_bytes)
                 elif message_type == MultiPartMessage.PART_END:
                     if file is None:
-                        items.append((field_name, data.decode("latin-1")))
+                        items.append((field_name, _user_safe_decode(data, charset)))
                     else:
                         await file.seek(0)
                         items.append((field_name, file))

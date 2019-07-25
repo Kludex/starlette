@@ -1,6 +1,6 @@
 import os
 
-from starlette.formparsers import UploadFile
+from starlette.formparsers import UploadFile, _user_safe_decode
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
@@ -206,6 +206,49 @@ def test_multipart_request_mixed_files_and_data(tmpdir):
     }
 
 
+def test_multipart_request_with_charset_for_filename(tmpdir):
+    client = TestClient(app)
+    response = client.post(
+        "/",
+        data=(
+            # file
+            b"--a7f7ac8d4e2e437c877bb7b8d7cc549c\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="file\xc4\x85.txt"\r\n'
+            b"Content-Type: text/plain\r\n\r\n"
+            b"<file content>\r\n"
+            b"--a7f7ac8d4e2e437c877bb7b8d7cc549c--\r\n"
+        ),
+        headers={
+            "Content-Type": "multipart/form-data; charset=utf-8; boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+        },
+    )
+    assert response.json() == {
+        "file": {
+            "filename": "fileą.txt",
+            "content": "<file content>",
+            "content_type": "text/plain",
+        }
+    }
+
+
+def test_multipart_request_with_encoded_value(tmpdir):
+    client = TestClient(app)
+    response = client.post(
+        "/",
+        data=(
+            b"--20b303e711c4ab8c443184ac833ab00f\r\n"
+            b"Content-Disposition: form-data; "
+            b'name="value"\r\n\r\n'
+            b"Transf\xc3\xa9rer\r\n"
+            b"--20b303e711c4ab8c443184ac833ab00f--\r\n"
+        ),
+        headers={
+            "Content-Type": "multipart/form-data; charset=utf-8; boundary=20b303e711c4ab8c443184ac833ab00f"
+        },
+    )
+    assert response.json() == {"value": "Transférer"}
+
+
 def test_urlencoded_request_data(tmpdir):
     client = TestClient(app)
     response = client.post("/", data={"some": "data"})
@@ -242,3 +285,13 @@ def test_multipart_multi_field_app_reads_body(tmpdir):
         "/", data={"some": "data", "second": "key pair"}, files=FORCE_MULTIPART
     )
     assert response.json() == {"some": "data", "second": "key pair"}
+
+
+def test_user_safe_decode_helper():
+    result = _user_safe_decode(b"\xc4\x99\xc5\xbc\xc4\x87", "utf-8")
+    assert result == "ężć"
+
+
+def test_user_safe_decode_ignores_wrong_charset():
+    result = _user_safe_decode(b"abc", "latin-8")
+    assert result == "abc"

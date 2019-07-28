@@ -213,7 +213,7 @@ def test_multipart_request_with_charset_for_filename(tmpdir):
         data=(
             # file
             b"--a7f7ac8d4e2e437c877bb7b8d7cc549c\r\n"
-            b'Content-Disposition: form-data; name="file"; filename="file\xc4\x85.txt"\r\n'
+            b'Content-Disposition: form-data; name="file"; filename="\xe6\x96\x87\xe6\x9b\xb8.txt"\r\n'
             b"Content-Type: text/plain\r\n\r\n"
             b"<file content>\r\n"
             b"--a7f7ac8d4e2e437c877bb7b8d7cc549c--\r\n"
@@ -224,9 +224,34 @@ def test_multipart_request_with_charset_for_filename(tmpdir):
     )
     assert response.json() == {
         "file": {
-            "filename": "fileą.txt",
+            "filename": "文書.txt",
             "content": "<file content>",
             "content_type": "text/plain",
+        }
+    }
+
+
+def test_multipart_request_without_charset_for_filename(tmpdir):
+    client = TestClient(app)
+    response = client.post(
+        "/",
+        data=(
+            # file
+            b"--a7f7ac8d4e2e437c877bb7b8d7cc549c\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="\xe7\x94\xbb\xe5\x83\x8f.jpg"\r\n'
+            b"Content-Type: image/jpeg\r\n\r\n"
+            b"<file content>\r\n"
+            b"--a7f7ac8d4e2e437c877bb7b8d7cc549c--\r\n"
+        ),
+        headers={
+            "Content-Type": "multipart/form-data; boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+        },
+    )
+    assert response.json() == {
+        "file": {
+            "filename": "画像.jpg",
+            "content": "<file content>",
+            "content_type": "image/jpeg",
         }
     }
 

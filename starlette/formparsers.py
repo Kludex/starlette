@@ -160,7 +160,7 @@ class MultiPartParser:
     async def parse(self) -> FormData:
         # Parse the Content-Type header to get the multipart boundary.
         content_type, params = parse_options_header(self.headers["Content-Type"])
-        charset = params.get(b"charset", "latin-1")
+        charset = params.get(b"charset", "utf-8")
         if type(charset) == bytes:
             charset = charset.decode("latin-1")
         boundary = params.get(b"boundary")
@@ -181,7 +181,8 @@ class MultiPartParser:
         parser = multipart.MultipartParser(boundary, callbacks)
         header_field = b""
         header_value = b""
-        raw_headers = []  # type: typing.List[typing.Tuple[bytes, bytes]]
+        content_disposition = None
+        content_type = b""
         field_name = ""
         data = b""
         file = None  # type: typing.Optional[UploadFile]
@@ -197,25 +198,30 @@ class MultiPartParser:
             self.messages.clear()
             for message_type, message_bytes in messages:
                 if message_type == MultiPartMessage.PART_BEGIN:
-                    raw_headers = []
+                    content_disposition = None
+                    content_type = b""
                     data = b""
                 elif message_type == MultiPartMessage.HEADER_FIELD:
                     header_field += message_bytes
                 elif message_type == MultiPartMessage.HEADER_VALUE:
                     header_value += message_bytes
                 elif message_type == MultiPartMessage.HEADER_END:
-                    raw_headers.append((header_field.lower(), header_value))
+                    field = header_field.lower()
+                    if field == b"content-disposition":
+                        content_disposition = header_value
+                    elif field == b"content-type":
+                        content_type = header_value
                     header_field = b""
                     header_value = b""
                 elif message_type == MultiPartMessage.HEADERS_FINISHED:
-                    headers = Headers(raw=raw_headers)
-                    content_disposition = headers.get("Content-Disposition")
-                    content_type = headers.get("Content-Type", "")
                     disposition, options = parse_options_header(content_disposition)
-                    field_name = options[b"name"].decode("latin-1")
+                    field_name = _user_safe_decode(options[b"name"], charset)
                     if b"filename" in options:
                         filename = _user_safe_decode(options[b"filename"], charset)
-                        file = UploadFile(filename=filename, content_type=content_type)
+                        file = UploadFile(
+                            filename=filename,
+                            content_type=content_type.decode("latin-1"),
+                        )
                     else:
                         file = None
                 elif message_type == MultiPartMessage.PART_DATA:

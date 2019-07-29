@@ -34,7 +34,7 @@ class MultiPartMessage(Enum):
 def _user_safe_decode(src: bytes, codec: str) -> str:
     try:
         return src.decode(codec)
-    except LookupError:
+    except (UnicodeDecodeError, LookupError):
         return src.decode("latin-1")
 
 

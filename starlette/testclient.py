@@ -463,9 +463,14 @@ class TestClient(requests.Session):
     async def wait_startup(self) -> None:
         await self.receive_queue.put({"type": "lifespan.startup"})
         message = await self.send_queue.get()
-        if message is None:
-            self.task.result()
-        assert message["type"] == "lifespan.startup.complete"
+        assert message["type"] in (
+            "lifespan.startup.complete",
+            "lifespan.startup.failed",
+        )
+        if message["type"] == "lifespan.startup.failed":
+            message = await self.send_queue.get()
+            if message is None:
+                self.task.result()
 
     async def wait_shutdown(self) -> None:
         await self.receive_queue.put({"type": "lifespan.shutdown"})

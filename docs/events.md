@@ -59,7 +59,6 @@ startup and shutdown events are called.
 
 ```python
 from example import app
-from starlette.lifespan import LifespanContext
 from starlette.testclient import TestClient
 
 

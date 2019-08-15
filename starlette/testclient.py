@@ -154,6 +154,13 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             "extensions": {"http.response.template": {}},
         }
 
+        request_complete = False
+        response_started = False
+        response_complete = False
+        raw_kwargs = {"body": io.BytesIO()}  # type: typing.Dict[str, typing.Any]
+        template = None
+        context = None
+
         async def receive() -> Message:
             nonlocal request_complete, response_complete
 
@@ -217,13 +224,6 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             elif message["type"] == "http.response.template":
                 template = message["template"]
                 context = message["context"]
-
-        request_complete = False
-        response_started = False
-        response_complete = False
-        raw_kwargs = {"body": io.BytesIO()}  # type: typing.Dict[str, typing.Any]
-        template = None
-        context = None
 
         try:
             loop = asyncio.get_event_loop()
@@ -463,9 +463,14 @@ class TestClient(requests.Session):
     async def wait_startup(self) -> None:
         await self.receive_queue.put({"type": "lifespan.startup"})
         message = await self.send_queue.get()
-        if message is None:
-            self.task.result()
-        assert message["type"] == "lifespan.startup.complete"
+        assert message["type"] in (
+            "lifespan.startup.complete",
+            "lifespan.startup.failed",
+        )
+        if message["type"] == "lifespan.startup.failed":
+            message = await self.send_queue.get()
+            if message is None:
+                self.task.result()
 
     async def wait_shutdown(self) -> None:
         await self.receive_queue.put({"type": "lifespan.shutdown"})

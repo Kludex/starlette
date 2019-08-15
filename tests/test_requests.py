@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from starlette.requests import ClientDisconnect, Request
+from starlette.requests import ClientDisconnect, Request, State
 from starlette.responses import JSONResponse, Response
 from starlette.testclient import TestClient
 
@@ -240,11 +240,25 @@ def test_request_is_disconnected():
     assert disconnected_after_response
 
 
+def test_request_state_object():
+    scope = {"state": {"old": "foo"}}
+
+    s = State(scope["state"])
+
+    s.new = "value"
+    assert s.new == "value"
+
+    del s.new
+
+    with pytest.raises(AttributeError):
+        s.new
+
+
 def test_request_state():
     async def app(scope, receive, send):
         request = Request(scope, receive)
         request.state.example = 123
-        response = JSONResponse({"state.example": request["state"].example})
+        response = JSONResponse({"state.example": request.state.example})
         await response(scope, receive, send)
 
     client = TestClient(app)

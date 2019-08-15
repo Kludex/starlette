@@ -121,6 +121,27 @@ class URL:
         components = self.components._replace(**kwargs)
         return self.__class__(components.geturl())
 
+    def include_query_params(self, **kwargs: typing.Any) -> "URL":
+        params = MultiDict(parse_qsl(self.query))
+        params.update({str(key): str(value) for key, value in kwargs.items()})
+        query = urlencode(params.multi_items())
+        return self.replace(query=query)
+
+    def replace_query_params(self, **kwargs: typing.Any) -> "URL":
+        query = urlencode([(str(key), str(value)) for key, value in kwargs.items()])
+        return self.replace(query=query)
+
+    def remove_query_params(
+        self, keys: typing.Union[str, typing.Sequence[str]]
+    ) -> "URL":
+        if isinstance(keys, str):
+            keys = [keys]
+        params = MultiDict(parse_qsl(self.query))
+        for key in keys:
+            params.pop(key, None)
+        query = urlencode(params.multi_items())
+        return self.replace(query=query)
+
     def __eq__(self, other: typing.Any) -> bool:
         return str(self) == str(other)
 
@@ -398,13 +419,15 @@ class UploadFile:
     An uploaded file included as part of the request data.
     """
 
+    spool_max_size = 1024 * 1024
+
     def __init__(
         self, filename: str, file: typing.IO = None, content_type: str = ""
     ) -> None:
         self.filename = filename
         self.content_type = content_type
         if file is None:
-            file = tempfile.SpooledTemporaryFile()
+            file = tempfile.SpooledTemporaryFile(max_size=self.spool_max_size)
         self.file = file
 
     async def write(self, data: typing.Union[bytes, str]) -> None:

@@ -7,12 +7,13 @@ what you want to use by default.
 ```python
 from starlette.applications import Starlette
 from starlette.templating import Jinja2Templates
+from starlette.staticfiles import StaticFiles
 
 
 templates = Jinja2Templates(directory='templates')
 
 app = Starlette(debug=True)
-app.mount('/static', StaticFiles(directory='statics'), name='static')
+app.mount('/static', StaticFiles(directory='static'), name='static')
 
 
 @app.route('/')

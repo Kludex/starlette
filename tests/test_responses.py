@@ -8,6 +8,7 @@ from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import (
     FileResponse,
+    JSONResponse,
     RedirectResponse,
     Response,
     StreamingResponse,
@@ -44,6 +45,16 @@ def test_ujson_response():
     client = TestClient(app)
     response = client.get("/")
     assert response.json() == {"hello": "world"}
+
+
+def test_json_none_response():
+    async def app(scope, receive, send):
+        response = JSONResponse(None)
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.json() is None
 
 
 def test_redirect_response():
@@ -177,18 +188,18 @@ def test_file_response(tmpdir):
 def test_file_response_with_directory_raises_error(tmpdir):
     app = FileResponse(path=tmpdir, filename="example.png")
     client = TestClient(app)
-    with pytest.raises(RuntimeError) as exc:
+    with pytest.raises(RuntimeError) as exc_info:
         client.get("/")
-    assert "is not a file" in str(exc)
+    assert "is not a file" in str(exc_info.value)
 
 
 def test_file_response_with_missing_file_raises_error(tmpdir):
     path = os.path.join(tmpdir, "404.txt")
     app = FileResponse(path=path, filename="404.txt")
     client = TestClient(app)
-    with pytest.raises(RuntimeError) as exc:
+    with pytest.raises(RuntimeError) as exc_info:
         client.get("/")
-    assert "does not exist" in str(exc)
+    assert "does not exist" in str(exc_info.value)
 
 
 def test_set_cookie():

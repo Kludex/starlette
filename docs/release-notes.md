@@ -1,3 +1,9 @@
+## 0.12.1
+
+* Add `URL.include_query_params(**kwargs)`
+* Add `URL.replace_query_params(**kwargs)`
+* Add `URL.remove_query_params(param_names)`
+
 ## 0.12.0
 
 * Switch to ASGI 3.0.

@@ -7,18 +7,14 @@ from starlette.responses import HTMLResponse
 from starlette.testclient import TestClient
 
 
-class App:
-    def __init__(self, scope):
-        assert scope['type'] == 'http'
-        self.scope = scope
-
-    async def __call__(self, receive, send):
-        response = HTMLResponse('<html><body>Hello, world!</body></html>')
-        await response(receive, send)
+async def app(scope, receive, send):
+    assert scope['type'] == 'http'
+    response = HTMLResponse('<html><body>Hello, world!</body></html>')
+    await response(scope, receive, send)
 
 
 def test_app():
-    client = TestClient(App)
+    client = TestClient(app)
     response = client.get('/')
     assert response.status_code == 200
 ```
@@ -48,20 +44,16 @@ from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
 
-class App:
-    def __init__(self, scope):
-        assert scope['type'] == 'websocket'
-        self.scope = scope
-
-    async def __call__(self, receive, send):
-        websocket = WebSocket(self.scope, receive=receive, send=send)
-        await websocket.accept()
-        await websocket.send_text('Hello, world!')
-        await websocket.close()
+async def app(scope, receive, send):
+    assert scope['type'] == 'websocket'
+    websocket = WebSocket(scope, receive=receive, send=send)
+    await websocket.accept()
+    await websocket.send_text('Hello, world!')
+    await websocket.close()
 
 
 def test_app():
-    client = TestClient(App)
+    client = TestClient(app)
     with client.websocket_connect('/') as websocket:
         data = websocket.receive_text()
         assert data == 'Hello, world!'

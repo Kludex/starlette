@@ -42,11 +42,22 @@ def test_raise_on_startup():
     def run_startup():
         raise RuntimeError()
 
-    app = Router(routes=[Lifespan(on_startup=run_startup)])
+    router = Router(routes=[Lifespan(on_startup=run_startup)])
 
+    async def app(scope, receive, send):
+        async def _send(message):
+            nonlocal startup_failed
+            if message["type"] == "lifespan.startup.failed":
+                startup_failed = True
+            return await send(message)
+
+        await router(scope, receive, _send)
+
+    startup_failed = False
     with pytest.raises(RuntimeError):
         with TestClient(app):
             pass  # pragma: nocover
+    assert startup_failed
 
 
 def test_raise_on_shutdown():

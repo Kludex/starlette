@@ -6,7 +6,7 @@ import itsdangerous
 from itsdangerous.exc import BadTimeSignature, SignatureExpired
 
 from starlette.datastructures import MutableHeaders, Secret
-from starlette.requests import Request
+from starlette.requests import HTTPConnection
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
@@ -33,11 +33,11 @@ class SessionMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request = Request(scope)
+        connection = HTTPConnection(scope)
         initial_session_was_empty = True
 
-        if self.session_cookie in request.cookies:
-            data = request.cookies[self.session_cookie].encode("utf-8")
+        if self.session_cookie in connection.cookies:
+            data = connection.cookies[self.session_cookie].encode("utf-8")
             try:
                 data = self.signer.unsign(data, max_age=self.max_age)
                 scope["session"] = json.loads(b64decode(data))

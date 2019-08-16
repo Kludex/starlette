@@ -82,6 +82,7 @@ class WSGIResponder:
             body += message.get("body", b"")
             more_body = message.get("more_body", False)
         environ = build_environ(self.scope, body)
+        sender = None
         try:
             sender = self.loop.create_task(self.sender(send))
             await run_in_threadpool(self.wsgi, environ, self.start_response)
@@ -93,7 +94,7 @@ class WSGIResponder:
                     self.exc_info[1], self.exc_info[2]
                 )
         finally:
-            if not sender.done():
+            if sender and not sender.done():
                 sender.cancel()  # pragma: no cover
 
     async def sender(self, send: Send) -> None:

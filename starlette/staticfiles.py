@@ -27,7 +27,7 @@ class NotModifiedResponse(Response):
     )
 
     def __init__(self, headers: Headers):
-        return super().__init__(
+        super().__init__(
             status_code=304,
             headers={
                 name: value
@@ -145,7 +145,6 @@ class StaticFiles:
     async def lookup_path(
         self, path: str
     ) -> typing.Tuple[str, typing.Optional[os.stat_result]]:
-        stat_result = None
         for directory in self.all_directories:
             full_path = os.path.join(directory, path)
             try:

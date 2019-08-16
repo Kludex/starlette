@@ -1,3 +1,4 @@
+import html
 import asyncio
 import inspect
 import traceback
@@ -221,7 +222,7 @@ class ServerErrorMiddleware:
             exc_html += self.generate_frame_html(frame, center_lineno, is_collapsed)
             is_collapsed = True
 
-        error = f"{traceback_obj.exc_type.__name__}: {traceback_obj}"
+        error = f"{traceback_obj.exc_type.__name__}: {html.escape(traceback_obj)}"
 
         return TEMPLATE.format(styles=STYLES, js=JS, error=error, exc_html=exc_html)
 

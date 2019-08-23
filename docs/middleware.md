@@ -222,3 +222,7 @@ passes through it.  Includes examples for how to emit these timings as statsd me
 This middleware adds authentication to any ASGI application, requiring users to sign in
 using their GitHub account (via [OAuth](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/)).
 Access can be restricted to specific users or to members of specific GitHub organizations or teams.
+
+#### [PrometheusMiddleware](https://github.com/perdy/starlette-prometheus)
+
+A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...

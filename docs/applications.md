@@ -80,7 +80,7 @@ exceptions that occur within the application:
 ### Storing state on the app instance
 
 You can store arbitrary extra state on the application instance, using the
-generic `app.state` attribute.
+generic `app.state` attribute.  This can then be accessed in middleware or endpoints via `request.app`.
 
 For example:
 

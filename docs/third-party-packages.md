@@ -20,13 +20,6 @@ Simple APISpec integration for Starlette.
 Document your REST API built with Starlette by declaring OpenAPI (Swagger)
 schemas in YAML format in your endpoint's docstrings.
 
-### Starlette API
-
-<a href="https://github.com/PeRDy/starlette-api" target="_blank">GitHub</a>
-
-That library aims to bring a layer on top of Starlette framework to provide useful mechanism for building APIs. Based on API Star. Some featuers: marshmallow schemas, dependency injection, auto generated api schemas,
-auto generated docs.
-
 ### webargs-starlette
 
 <a href="https://github.com/sloria/webargs-starlette" target="_blank">GitHub</a>
@@ -81,3 +74,12 @@ Inspired by **APIStar**'s previous server system with type declarations for rout
 
 A modern Python web framework filled with asynchronous salsa.
 Bocadillo is **async-first** and designed with productivity and simplicity in mind. It is not meant to be minimal: a **carefully chosen set of included batteries** helps you build performant web apps and services with minimal setup.
+
+### Flama
+
+<a href="https://github.com/perdy/flama/" target="_blank">GitHub</a> |
+<a href="https://flama.perdy.io/" target="_blank">Documentation</a>
+
+Formerly Starlette API.
+
+Flama aims to bring a layer on top of Starlette to provide an **easy to learn** and **fast to develop** approach for building **highly performant** GraphQL and REST APIs. In the same way of Starlette is, Flama is a perfect option for developing **asynchronous** and **production-ready** services.

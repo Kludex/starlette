@@ -1,6 +1,6 @@
 import typing
 
-from starlette.datastructures import URLPath
+from starlette.datastructures import State, URLPath
 from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
@@ -13,6 +13,7 @@ class Starlette:
         self, debug: bool = False, routes: typing.List[BaseRoute] = None
     ) -> None:
         self._debug = debug
+        self.state = State()
         self.router = Router(routes)
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
         self.error_middleware = ServerErrorMiddleware(

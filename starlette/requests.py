@@ -4,7 +4,7 @@ import json
 import typing
 from collections.abc import Mapping
 
-from starlette.datastructures import URL, Address, FormData, Headers, QueryParams
+from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
 from starlette.formparsers import FormParser, MultiPartParser
 from starlette.types import Message, Receive, Scope
 
@@ -16,24 +16,6 @@ except ImportError:  # pragma: nocover
 
 class ClientDisconnect(Exception):
     pass
-
-
-class State(object):
-    def __init__(self, state: typing.Dict = {}):
-        super(State, self).__setattr__("_state", state)
-
-    def __setattr__(self, key: typing.Any, value: typing.Any) -> None:
-        self._state[key] = value
-
-    def __getattr__(self, key: typing.Any) -> typing.Any:
-        try:
-            return self._state[key]
-        except KeyError:
-            message = "'{}' object has no attribute '{}'"
-            raise AttributeError(message.format(self.__class__.__name__, key))
-
-    def __delattr__(self, key: typing.Any) -> None:
-        del self._state[key]
 
 
 class HTTPConnection(Mapping):

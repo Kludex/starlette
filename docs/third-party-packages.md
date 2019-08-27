@@ -50,6 +50,12 @@ Serverless ASGI adapter for AWS Lambda & API Gateway.
 Manage and send messages to groups of channels using websockets.
 Checkout <a href="https://github.com/taoufik07/nejma-chat" target="_blank">nejma-chat</a>, a simple chat application built using `nejma` and `starlette`.
 
+### Starlette Prometheus
+
+<a href="https://github.com/perdy/starlette-prometheus" target="_blank">GitHub</a>
+
+A plugin for providing an endpoint that exposes [Prometheus](https://prometheus.io/) metrics based on its [official python client](https://github.com/prometheus/client_python).
+
 ## Frameworks
 
 ### Responder

@@ -300,3 +300,61 @@ def test_chunked_encoding():
 
     response = client.post("/", data=post_body())
     assert response.json() == {"body": "foobar"}
+
+
+def test_request_send_push_promise():
+    async def app(scope, receive, send):
+        # the server is push-enabled
+        scope["extensions"]["http.response.push"] = {}
+
+        request = Request(scope, receive, send)
+        await request.send_push_promise("/style.css")
+
+        response = JSONResponse({"json": "OK"})
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.json() == {"json": "OK"}
+
+
+def test_request_send_push_promise_without_push_extension():
+    """
+    If server does not support the `http.response.push` extension,
+    .send_push_promise() does nothing.
+    """
+
+    async def app(scope, receive, send):
+        request = Request(scope)
+        await request.send_push_promise("/style.css")
+
+        response = JSONResponse({"json": "OK"})
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.json() == {"json": "OK"}
+
+
+def test_request_send_push_promise_without_setting_send():
+    """
+    If Request is instantiated without the send channel, then
+    .send_push_promise() is not available.
+    """
+
+    async def app(scope, receive, send):
+        # the server is push-enabled
+        scope["extensions"]["http.response.push"] = {}
+
+        data = "OK"
+        request = Request(scope)
+        try:
+            await request.send_push_promise("/style.css")
+        except RuntimeError:
+            data = "Send channel not available"
+        response = JSONResponse({"json": data})
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.json() == {"json": "Send channel not available"}

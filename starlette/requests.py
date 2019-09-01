@@ -6,12 +6,21 @@ from collections.abc import Mapping
 
 from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
 from starlette.formparsers import FormParser, MultiPartParser
-from starlette.types import Message, Receive, Scope
+from starlette.types import Message, Receive, Scope, Send
 
 try:
     from multipart.multipart import parse_options_header
 except ImportError:  # pragma: nocover
     parse_options_header = None  # type: ignore
+
+
+SERVER_PUSH_HEADERS_TO_COPY = {
+    "accept",
+    "accept-encoding",
+    "accept-language",
+    "cache-control",
+    "user-agent",
+}
 
 
 class ClientDisconnect(Exception):
@@ -121,11 +130,18 @@ async def empty_receive() -> Message:
     raise RuntimeError("Receive channel has not been made available")
 
 
+async def empty_send(message: Message) -> None:
+    raise RuntimeError("Send channel has not been made available")
+
+
 class Request(HTTPConnection):
-    def __init__(self, scope: Scope, receive: Receive = empty_receive):
+    def __init__(
+        self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send
+    ):
         super().__init__(scope)
         assert scope["type"] == "http"
         self._receive = receive
+        self._send = send
         self._stream_consumed = False
         self._is_disconnected = False
 
@@ -206,3 +222,15 @@ class Request(HTTPConnection):
                 self._is_disconnected = True
 
         return self._is_disconnected
+
+    async def send_push_promise(self, path: str) -> None:
+        if "http.response.push" in self.scope.get("extensions", {}):
+            raw_headers = []
+            for name in SERVER_PUSH_HEADERS_TO_COPY:
+                for value in self.headers.getlist(name):
+                    raw_headers.append(
+                        (name.encode("latin-1"), value.encode("latin-1"))
+                    )
+            await self._send(
+                {"type": "http.response.push", "path": path, "headers": raw_headers}
+            )

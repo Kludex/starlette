@@ -36,7 +36,7 @@ def request_response(func: typing.Callable) -> ASGIApp:
     is_coroutine = asyncio.iscoroutinefunction(func)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        request = Request(scope, receive=receive)
+        request = Request(scope, receive=receive, send=send)
         if is_coroutine:
             response = await func(request)
         else:

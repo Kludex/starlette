@@ -25,6 +25,7 @@ nav:
     - API Schemas: 'schemas.md'
     - Events: 'events.md'
     - Background Tasks: 'background.md'
+    - Server Push: 'server-push.md'
     - Exceptions: 'exceptions.md'
     - Configuration: 'config.md'
     - Test Client: 'testclient.md'

@@ -80,10 +80,14 @@ exceptions that occur within the application:
 ### Storing state on the app instance
 
 You can store arbitrary extra state on the application instance, using the
-generic `app.state` attribute.  This can then be accessed in middleware or endpoints via `request.app`.
+generic `app.state` attribute.
 
 For example:
 
 ```python
 app.state.ADMIN_EMAIL = 'admin@example.org'
 ```
+
+### Acessing the app instance
+
+Where a `request` is available (i.e. endpoints and middleware), the app is available on `request.app`.  For other situations it can be imported from wherever it's instantiated.

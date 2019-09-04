@@ -140,6 +140,10 @@ filename = form["upload_file"].filename
 contents = await form["upload_file"].read()
 ```
 
+#### Application
+
+The originating Starlette application can be accessed via `request.app`.
+
 #### Other state
 
 If you want to store additional information on the request you can do so

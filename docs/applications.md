@@ -87,3 +87,7 @@ For example:
 ```python
 app.state.ADMIN_EMAIL = 'admin@example.org'
 ```
+
+### Acessing the app instance
+
+Where a `request` is available (i.e. endpoints and middleware), the app is available on `request.app`.  For other situations it can be imported from wherever it's instantiated.

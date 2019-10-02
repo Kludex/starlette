@@ -178,10 +178,10 @@ class Request(HTTPConnection):
 
     async def body(self) -> bytes:
         if not hasattr(self, "_body"):
-            body = b""
+            chunks = []
             async for chunk in self.stream():
-                body += chunk
-            self._body = body
+                chunks.append(chunk)
+            self._body = b"".join(chunks)
         return self._body
 
     async def json(self) -> typing.Any:

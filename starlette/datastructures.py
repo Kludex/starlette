@@ -44,7 +44,7 @@ class URL:
             if query_string:
                 url += "?" + query_string.decode()
         elif components:
-            assert not url, 'Cannot set both "scope" and "**components".'
+            assert not url, 'Cannot set both "url" and "**components".'
             url = URL("").replace(**components).components.geturl()
 
         self._url = url

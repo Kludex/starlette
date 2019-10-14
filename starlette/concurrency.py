@@ -8,10 +8,12 @@ try:
 except ImportError:  # pragma: no cover
     contextvars = None  # type: ignore
 
+T = typing.TypeVar("T")
+
 
 async def run_in_threadpool(
-    func: typing.Callable, *args: typing.Any, **kwargs: typing.Any
-) -> typing.Any:
+    func: typing.Callable[..., T], *args: typing.Any, **kwargs: typing.Any
+) -> T:
     loop = asyncio.get_event_loop()
     if contextvars is not None:  # pragma: no cover
         # Ensure we run in the same context

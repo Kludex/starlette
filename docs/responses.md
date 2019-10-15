@@ -113,7 +113,7 @@ async def app(scope, receive, send):
 
 ### RedirectResponse
 
-Returns an HTTP redirect. Uses a 302 status code by default.
+Returns an HTTP redirect. Uses a 307 status code by default.
 
 ```python
 from starlette.responses import PlainTextResponse, RedirectResponse

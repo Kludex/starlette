@@ -227,6 +227,10 @@ Access can be restricted to specific users or to members of specific GitHub orga
 
 A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...
 
+#### [BugsnagMiddleware](https://github.com/ashinabraham/starlette-bugsnag)
+
+A middleware class for logging exceptions to [Bugsnag](https://www.bugsnag.com/).
+
 #### [EarlyDataMiddleware](https://github.com/HarrySky/starlette-early-data)
 
 Middleware and decorator for detecting and denying [TLSv1.3 early data](https://tools.ietf.org/html/rfc8470) requests.

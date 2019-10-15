@@ -79,3 +79,19 @@ def test_force_500_response():
     response = force_500_client.get("/")
     assert response.status_code == 500
     assert response.text == ""
+
+
+def test_repr():
+    assert repr(HTTPException(404)) == (
+        "HTTPException(status_code=404, detail='Not Found')"
+    )
+    assert repr(HTTPException(404, detail="Not Found: foo")) == (
+        "HTTPException(status_code=404, detail='Not Found: foo')"
+    )
+
+    class CustomHTTPException(HTTPException):
+        pass
+
+    assert repr(CustomHTTPException(500, detail="Something custom")) == (
+        "CustomHTTPException(status_code=500, detail='Something custom')"
+    )

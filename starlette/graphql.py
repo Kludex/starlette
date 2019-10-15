@@ -107,7 +107,9 @@ class GraphQLApp:
             if result.errors
             else None
         )
-        response_data = {"data": result.data, "errors": error_data}
+        response_data = {"data": result.data}
+        if error_data:
+            response_data["errors"] = error_data
         status_code = (
             status.HTTP_400_BAD_REQUEST if result.errors else status.HTTP_200_OK
         )

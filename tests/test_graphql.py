@@ -40,19 +40,19 @@ client = TestClient(app)
 def test_graphql_get():
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
-    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+    assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
 def test_graphql_post():
     response = client.post("/?query={ hello }")
     assert response.status_code == 200
-    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+    assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
 def test_graphql_post_json():
     response = client.post("/", json={"query": "{ hello }"})
     assert response.status_code == 200
-    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+    assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
 def test_graphql_post_graphql():
@@ -60,7 +60,7 @@ def test_graphql_post_graphql():
         "/", data="{ hello }", headers={"content-type": "application/graphql"}
     )
     assert response.status_code == 200
-    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+    assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
 def test_graphql_post_invalid_media_type():
@@ -115,7 +115,7 @@ def test_add_graphql_route():
     client = TestClient(app)
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
-    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+    assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
 def test_graphql_context():
@@ -127,7 +127,7 @@ def test_graphql_context():
         "/", json={"query": "{ whoami }"}, headers={"Authorization": "Bearer 123"}
     )
     assert response.status_code == 200
-    assert response.json() == {"data": {"whoami": "Jane"}, "errors": None}
+    assert response.json() == {"data": {"whoami": "Jane"}}
 
 
 class ASyncQuery(graphene.ObjectType):
@@ -145,7 +145,7 @@ def test_graphql_async():
     client = TestClient(async_app)
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
-    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+    assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
 async_schema = graphene.Schema(query=ASyncQuery)
@@ -157,4 +157,4 @@ def test_graphql_async_old_style_executor():
     client = TestClient(old_style_async_app)
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
-    assert response.json() == {"data": {"hello": "Hello stranger"}, "errors": None}
+    assert response.json() == {"data": {"hello": "Hello stranger"}}

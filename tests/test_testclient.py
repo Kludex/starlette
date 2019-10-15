@@ -45,7 +45,7 @@ def test_use_testclient_in_endpoint():
     assert response.json() == {"mock": "example"}
 
 
-def testclient_as_contextmanager():
+def test_use_testclient_as_contextmanager():
     with TestClient(app):
         pass
 

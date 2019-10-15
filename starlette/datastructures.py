@@ -122,7 +122,7 @@ class URL:
         return self.__class__(components.geturl())
 
     def include_query_params(self, **kwargs: typing.Any) -> "URL":
-        params = MultiDict(parse_qsl(self.query))
+        params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
         params.update({str(key): str(value) for key, value in kwargs.items()})
         query = urlencode(params.multi_items())
         return self.replace(query=query)
@@ -136,7 +136,7 @@ class URL:
     ) -> "URL":
         if isinstance(keys, str):
             keys = [keys]
-        params = MultiDict(parse_qsl(self.query))
+        params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
         for key in keys:
             params.pop(key, None)
         query = urlencode(params.multi_items())
@@ -397,9 +397,11 @@ class QueryParams(ImmutableMultiDict):
         value = args[0] if args else []
 
         if isinstance(value, str):
-            super().__init__(parse_qsl(value), **kwargs)
+            super().__init__(parse_qsl(value, keep_blank_values=True), **kwargs)
         elif isinstance(value, bytes):
-            super().__init__(parse_qsl(value.decode("latin-1")), **kwargs)
+            super().__init__(
+                parse_qsl(value.decode("latin-1"), keep_blank_values=True), **kwargs
+            )
         else:
             super().__init__(*args, **kwargs)  # type: ignore
         self._list = [(str(k), str(v)) for k, v in self._list]

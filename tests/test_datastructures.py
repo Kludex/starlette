@@ -167,6 +167,17 @@ def test_headers_mutablecopy():
     assert c.items() == [("a", "abc"), ("b", "789")]
 
 
+def test_url_blank_params():
+    q = QueryParams("a=123&abc&def&b=456")
+    assert "a" in q
+    assert "abc" in q
+    assert "def" in q
+    assert "b" in q
+    assert len(q.get("abc")) == 0
+    assert len(q["a"]) == 3
+    assert list(q.keys()) == ["a", "abc", "def", "b"]
+
+
 def test_queryparams():
     q = QueryParams("a=123&a=456&b=789")
     assert "a" in q

@@ -226,3 +226,7 @@ Access can be restricted to specific users or to members of specific GitHub orga
 #### [PrometheusMiddleware](https://github.com/perdy/starlette-prometheus)
 
 A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...
+
+#### [EarlyDataMiddleware](https://github.com/HarrySky/starlette-early-data)
+
+Middleware and decorator for detecting and denying [TLSv1.3 early data](https://tools.ietf.org/html/rfc8470) requests.

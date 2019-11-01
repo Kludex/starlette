@@ -400,3 +400,14 @@ def test_url_for_with_root_path():
         "index": "https://www.example.org/sub_path/",
         "submount": "https://www.example.org/sub_path/submount/",
     }
+
+
+double_mount_routes = [
+    Mount("/mount", name="mount", routes=[Mount("/static", ..., name="static")],),
+]
+
+
+def test_url_for_with_double_mount():
+    app = Starlette(routes=double_mount_routes)
+    url = app.url_path_for("mount:static", path="123")
+    assert url == "/mount/static/123"

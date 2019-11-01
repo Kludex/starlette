@@ -1,3 +1,7 @@
+## 0.12.11
+
+* Fix `request.url_for()` when an ASGI `root_path` is being used.
+
 ## 0.12.1
 
 * Add `URL.include_query_params(**kwargs)`

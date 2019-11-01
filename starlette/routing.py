@@ -84,7 +84,7 @@ PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
 
 def compile_path(
-    path: str
+    path: str,
 ) -> typing.Tuple[typing.Pattern, str, typing.Dict[str, Convertor]]:
     """
     Given a path string, like: "/{username:str}", return a three-tuple

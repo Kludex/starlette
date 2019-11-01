@@ -97,7 +97,7 @@ class Response:
         secure: bool = False,
         httponly: bool = False,
     ) -> None:
-        cookie = http.cookies.SimpleCookie()
+        cookie = http.cookies.SimpleCookie()  # type: http.cookies.BaseCookie
         cookie[key] = value
         if max_age is not None:
             cookie[key]["max-age"] = max_age  # type: ignore

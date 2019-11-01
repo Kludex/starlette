@@ -95,7 +95,9 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
     def send(  # type: ignore
         self, request: requests.PreparedRequest, *args: typing.Any, **kwargs: typing.Any
     ) -> requests.Response:
-        scheme, netloc, path, query, fragment = urlsplit(request.url)  # type: ignore
+        scheme, netloc, path, query, fragment = (
+            str(item) for item in urlsplit(request.url)
+        )
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
 

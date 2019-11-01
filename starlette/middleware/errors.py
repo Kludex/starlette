@@ -194,7 +194,7 @@ class ServerErrorMiddleware:
     ) -> str:
         code_context = "".join(
             self.format_line(context_position, line, frame.lineno, center_lineno)
-            for context_position, line in enumerate(frame.code_context)
+            for context_position, line in enumerate(frame.code_context or [])
         )
 
         values = {

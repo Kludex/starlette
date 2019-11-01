@@ -78,7 +78,7 @@ class HTTPConnection(Mapping):
             cookies = {}
             cookie_header = self.headers.get("cookie")
             if cookie_header:
-                cookie = http.cookies.SimpleCookie()
+                cookie = http.cookies.SimpleCookie()  # type: http.cookies.BaseCookie
                 cookie.load(cookie_header)
                 for key, morsel in cookie.items():
                     cookies[key] = morsel.value

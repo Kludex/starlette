@@ -1,3 +1,7 @@
+## 0.12.12
+
+* Fix `request.url_for()` for the Mount-within-a-Mount case.
+
 ## 0.12.11
 
 * Fix `request.url_for()` when an ASGI `root_path` is being used.

@@ -1,5 +1,6 @@
 import pytest
 
+from starlette.applications import Starlette
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
@@ -165,10 +166,22 @@ def test_url_for():
         == "https://example.org/"
     )
     assert (
+        app.url_path_for("homepage").make_absolute_url(
+            base_url="https://example.org/root_path/"
+        )
+        == "https://example.org/root_path/"
+    )
+    assert (
         app.url_path_for("user", username="tomchristie").make_absolute_url(
             base_url="https://example.org"
         )
         == "https://example.org/users/tomchristie"
+    )
+    assert (
+        app.url_path_for("user", username="tomchristie").make_absolute_url(
+            base_url="https://example.org/root_path/"
+        )
+        == "https://example.org/root_path/users/tomchristie"
     )
     assert (
         app.url_path_for("websocket_endpoint").make_absolute_url(
@@ -353,3 +366,37 @@ def test_subdomain_reverse_urls():
         ).make_absolute_url("https://whatever")
         == "https://foo.example.org/homepage"
     )
+
+
+async def echo_urls(request):
+    return JSONResponse(
+        {
+            "index": request.url_for("index"),
+            "submount": request.url_for("mount:submount"),
+        }
+    )
+
+
+echo_url_routes = [
+    Route("/", echo_urls, name="index", methods=["GET"]),
+    Mount(
+        "/submount",
+        name="mount",
+        routes=[Route("/", echo_urls, name="submount", methods=["GET"])],
+    ),
+]
+
+
+def test_url_for_with_root_path():
+    app = Starlette(routes=echo_url_routes)
+    client = TestClient(app, base_url="https://www.example.org/", root_path="/sub_path")
+    response = client.get("/")
+    assert response.json() == {
+        "index": "https://www.example.org/sub_path/",
+        "submount": "https://www.example.org/sub_path/submount/",
+    }
+    response = client.get("/submount/")
+    assert response.json() == {
+        "index": "https://www.example.org/sub_path/",
+        "submount": "https://www.example.org/sub_path/submount/",
+    }

@@ -309,9 +309,11 @@ class Mount(BaseRoute):
                 matched_path = path[: -len(remaining_path)]
                 path_params = dict(scope.get("path_params", {}))
                 path_params.update(matched_params)
+                root_path = scope.get("root_path", "")
                 child_scope = {
                     "path_params": path_params,
-                    "root_path": scope.get("root_path", "") + matched_path,
+                    "app_root_path": scope.get("app_root_path", root_path),
+                    "root_path": root_path + matched_path,
                     "path": remaining_path,
                     "endpoint": self.app,
                 }

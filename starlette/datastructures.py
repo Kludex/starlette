@@ -21,7 +21,7 @@ class URL:
             scheme = scope.get("scheme", "http")
             server = scope.get("server", None)
             path = scope.get("root_path", "") + scope["path"]
-            query_string = scope["query_string"]
+            query_string = scope.get("query_string", b"")
 
             host_header = None
             for key, value in scope["headers"]:
@@ -185,7 +185,8 @@ class URLPath(str):
         else:
             netloc = base_url.netloc
 
-        return str(URL(scheme=scheme, netloc=netloc, path=str(self)))
+        path = base_url.path.rstrip("/") + str(self)
+        return str(URL(scheme=scheme, netloc=netloc, path=path))
 
 
 class Secret:

@@ -430,10 +430,19 @@ class Host(BaseRoute):
 
 class Lifespan(BaseRoute):
     def __init__(
-        self, on_startup: typing.Callable = None, on_shutdown: typing.Callable = None
+        self,
+        on_startup: typing.Union[typing.Callable, typing.List[typing.Callable]] = None,
+        on_shutdown: typing.Union[typing.Callable, typing.List[typing.Callable]] = None,
     ):
-        self.startup_handlers = [] if on_startup is None else [on_startup]
-        self.shutdown_handlers = [] if on_shutdown is None else [on_shutdown]
+        self.startup_handlers = self.to_list(on_startup)
+        self.shutdown_handlers = self.to_list(on_shutdown)
+
+    def to_list(
+        self, item: typing.Union[typing.Callable, typing.List[typing.Callable]] = None
+    ) -> typing.List[typing.Callable]:
+        if item is None:
+            return []
+        return list(item) if isinstance(item, (list, tuple)) else [item]
 
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         if scope["type"] == "lifespan":
@@ -494,11 +503,13 @@ class Router:
         routes: typing.List[BaseRoute] = None,
         redirect_slashes: bool = True,
         default: ASGIApp = None,
+        on_startup: typing.List[typing.Callable] = None,
+        on_shutdown: typing.List[typing.Callable] = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
-        self.lifespan = Lifespan()
+        self.lifespan = Lifespan(on_startup=on_startup, on_shutdown=on_shutdown)
 
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
         route = Mount(path, app=app, name=name)

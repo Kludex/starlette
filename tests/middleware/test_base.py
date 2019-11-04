@@ -1,8 +1,10 @@
 import pytest
 
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
+from starlette.routing import Route
 from starlette.testclient import TestClient
 
 
@@ -123,3 +125,35 @@ def test_state_data_across_multiple_middlewares():
     assert response.text == "OK"
     assert response.headers["X-State-Foo"] == expected_value1
     assert response.headers["X-State-Bar"] == expected_value2
+
+
+def test_app_middleware_argument():
+    def homepage(request):
+        return PlainTextResponse("Homepage")
+
+    app = Starlette(
+        routes=[Route("/", homepage)], middleware=[Middleware(CustomMiddleware)]
+    )
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.headers["Custom-Header"] == "Example"
+
+
+def test_app_disabled_middleware_argument():
+    def homepage(request):
+        return PlainTextResponse("Homepage")
+
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(CustomMiddleware, enabled=False)],
+    )
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert "Custom-Header" not in response.headers
+
+
+def test_middleware_repr():
+    middleware = Middleware(CustomMiddleware)
+    assert repr(middleware) == "Middleware(CustomMiddleware)"

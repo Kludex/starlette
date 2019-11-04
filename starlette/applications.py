@@ -2,6 +2,7 @@ import typing
 
 from starlette.datastructures import State, URLPath
 from starlette.exceptions import ExceptionMiddleware
+from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import BaseRoute, Router
@@ -10,15 +11,51 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 class Starlette:
     def __init__(
-        self, debug: bool = False, routes: typing.List[BaseRoute] = None
+        self,
+        debug: bool = False,
+        routes: typing.List[BaseRoute] = None,
+        middleware: typing.List[Middleware] = None,
+        exception_handlers: typing.Dict[
+            typing.Union[int, typing.Type[Exception]], typing.Callable
+        ] = None,
+        on_startup: typing.List[typing.Callable] = None,
+        on_shutdown: typing.List[typing.Callable] = None,
     ) -> None:
         self._debug = debug
         self.state = State()
-        self.router = Router(routes)
-        self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
-        self.error_middleware = ServerErrorMiddleware(
-            self.exception_middleware, debug=debug
+        self.router = Router(routes, on_startup=on_startup, on_shutdown=on_shutdown)
+        self.exception_handlers = (
+            {} if exception_handlers is None else dict(exception_handlers)
         )
+        self.user_middleware = list(middleware or [])
+        self.middleware_stack = self.build_middleware_stack()
+
+    def build_middleware_stack(self) -> ASGIApp:
+        debug = self.debug
+        error_handler = None
+        exception_handlers = {}
+
+        for key, value in self.exception_handlers.items():
+            if key in (500, Exception):
+                error_handler = value
+            else:
+                exception_handlers[key] = value
+
+        server_errors = Middleware(
+            ServerErrorMiddleware, options={"handler": error_handler, "debug": debug},
+        )
+        exceptions = Middleware(
+            ExceptionMiddleware,
+            options={"handlers": exception_handlers, "debug": debug},
+        )
+
+        middleware = [server_errors] + self.user_middleware + [exceptions]
+
+        app = self.router
+        for cls, options, enabled in reversed(middleware):
+            if enabled:
+                app = cls(app=app, **options)
+        return app
 
     @property
     def routes(self) -> typing.List[BaseRoute]:
@@ -31,8 +68,7 @@ class Starlette:
     @debug.setter
     def debug(self, value: bool) -> None:
         self._debug = value
-        self.exception_middleware.debug = value
-        self.error_middleware.debug = value
+        self.middleware_stack = self.build_middleware_stack()
 
     def on_event(self, event_type: str) -> typing.Callable:
         return self.router.lifespan.on_event(event_type)
@@ -44,21 +80,16 @@ class Starlette:
         self.router.host(host, app=app, name=name)
 
     def add_middleware(self, middleware_class: type, **kwargs: typing.Any) -> None:
-        self.error_middleware.app = middleware_class(
-            self.error_middleware.app, **kwargs
-        )
+        self.user_middleware.insert(0, Middleware(middleware_class, options=kwargs))
+        self.middleware_stack = self.build_middleware_stack()
 
     def add_exception_handler(
         self,
         exc_class_or_status_code: typing.Union[int, typing.Type[Exception]],
         handler: typing.Callable,
     ) -> None:
-        if exc_class_or_status_code in (500, Exception):
-            self.error_middleware.handler = handler
-        else:
-            self.exception_middleware.add_exception_handler(
-                exc_class_or_status_code, handler
-            )
+        self.exception_handlers[exc_class_or_status_code] = handler
+        self.middleware_stack = self.build_middleware_stack()
 
     def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
         self.router.lifespan.add_event_handler(event_type, func)
@@ -131,4 +162,4 @@ class Starlette:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         scope["app"] = self
-        await self.error_middleware(scope, receive, send)
+        await self.middleware_stack(scope, receive, send)

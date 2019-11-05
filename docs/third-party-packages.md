@@ -67,14 +67,6 @@ yaml support, OpenAPI schema generation, background tasks, graphql.
 High performance, easy to learn, fast to code, ready for production web API framework.
 Inspired by **APIStar**'s previous server system with type declarations for route parameters, based on the OpenAPI specification version 3.0.0+ (with JSON Schema), powered by **Pydantic** for the data handling.
 
-### Bocadillo
-
-<a href="https://github.com/bocadilloproject/bocadillo" target="_blank">GitHub</a> |
-<a href="https://bocadilloproject.github.io" target="_blank">Documentation</a>
-
-A modern Python web framework filled with asynchronous salsa.
-Bocadillo is **async-first** and designed with productivity and simplicity in mind. It is not meant to be minimal: a **carefully chosen set of included batteries** helps you build performant web apps and services with minimal setup.
-
 ### Flama
 
 <a href="https://github.com/perdy/flama/" target="_blank">GitHub</a> |

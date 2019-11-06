@@ -2,17 +2,19 @@
 
 * Fix `request.url_for()` for the Mount-within-a-Mount case.
 
-## 0.12.11
+## 0.12.11
 
 * Fix `request.url_for()` when an ASGI `root_path` is being used.
 
-## 0.12.1
+## 0.12.1
 
 * Add `URL.include_query_params(**kwargs)`
 * Add `URL.replace_query_params(**kwargs)`
 * Add `URL.remove_query_params(param_names)`
+* `request.state` properly persisting across middleware.
+* Added `request.scope` interface.
 
-## 0.12.0
+## 0.12.0
 
 * Switch to ASGI 3.0.
 * Fixes to CORS middleware.

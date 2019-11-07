@@ -62,7 +62,7 @@ The middleware responds to two particular types of HTTP request...
 
 #### CORS preflight requests
 
-These are any `OPTION` request with `Origin` and `Access-Control-Request-Method` headers.
+These are any `OPTIONS` request with `Origin` and `Access-Control-Request-Method` headers.
 In this case the middleware will intercept the incoming request and respond with
 appropriate CORS headers, and either a 200 or 400 response for informational purposes.
 

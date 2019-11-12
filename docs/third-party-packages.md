@@ -49,11 +49,19 @@ Checkout <a href="https://github.com/taoufik07/nejma-chat" target="_blank">nejma
 
 A plugin for providing an endpoint that exposes [Prometheus](https://prometheus.io/) metrics based on its [official python client](https://github.com/prometheus/client_python).
 
+### Authlib
+
+<a href="https://github.com/lepture/Authlib" target="_blank">GitHub</a> |
+<a href="https://docs.authlib.org/en/latest/" target="_blank">Documentation</a>
+
+The ultimate Python library in building OAuth and OpenID Connect clients and servers. Check out how to integrate with [Starlette](https://docs.authlib.org/en/latest/client/starlette.html).
+
+
 ## Frameworks
 
 ### Responder
 
-<a href="https://github.com/kennethreitz/responder" target="_blank">GitHub</a> |
+<a href="https://github.com/taoufik07/responder" target="_blank">GitHub</a> |
 <a href="https://python-responder.org/en/latest/" target="_blank">Documentation</a>
 
 Async web service framework. Some Features: flask-style route expression,

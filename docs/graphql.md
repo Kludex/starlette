@@ -5,6 +5,7 @@ Here's an example of integrating the support into your application.
 
 ```python
 from starlette.applications import Starlette
+from starlette.routing import Route
 from starlette.graphql import GraphQLApp
 import graphene
 
@@ -15,9 +16,11 @@ class Query(graphene.ObjectType):
     def resolve_hello(self, info, name):
         return "Hello " + name
 
+routes = [
+    Route('/', GraphQLApp(schema=graphene.Schema(query=Query)))
+]
 
-app = Starlette()
-app.add_route('/', GraphQLApp(schema=graphene.Schema(query=Query)))
+app = Starlette(routes=route)
 ```
 
 If you load up the page in a browser, you'll be served the GraphiQL tool,
@@ -76,6 +79,7 @@ make sure to setup Graphene's AsyncioExecutor using the `executor` argument.
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from starlette.applications import Starlette
 from starlette.graphql import GraphQLApp
+from starlette.routing import Route
 import graphene
 
 
@@ -86,9 +90,13 @@ class Query(graphene.ObjectType):
         # We can make asynchronous network calls here.
         return "Hello " + name
 
+routes = [
+    # We're using `executor_class=AsyncioExecutor` here.
+    Route('/', GraphQLApp(
+        schema=graphene.Schema(query=Query),
+        executor_class=AsyncioExecutor
+    ))
+]
 
-app = Starlette()
-
-# We're using `executor_class=AsyncioExecutor` here.
-app.add_route('/', GraphQLApp(schema=graphene.Schema(query=Query), executor_class=AsyncioExecutor))
+app = Starlette(routes=routes)
 ```

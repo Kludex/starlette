@@ -14,12 +14,10 @@ Signature: `send_push_promise(path)`
 ```python
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse
+from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
-app = Starlette()
 
-
-@app.route("/")
 async def homepage(request):
     """
     Homepage which uses server push to deliver the stylesheet.
@@ -29,6 +27,10 @@ async def homepage(request):
         '<html><head><link rel="stylesheet" href="/static/style.css"/></head></html>'
     )
 
+routes = [
+    Route("/", endpoint=homepage),
+    Mount("/static", StaticFiles(directory="static"), name="static")
+]
 
-app.mount("/static", StaticFiles(directory="static"))
+app = Starlette(routes=routes)
 ```

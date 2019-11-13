@@ -125,5 +125,5 @@ class WebSocketClose:
     def __init__(self, code: int = 1000) -> None:
         self.code = code
 
-    async def __call__(self, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "websocket.close", "code": self.code})

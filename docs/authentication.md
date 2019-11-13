@@ -9,8 +9,10 @@ from starlette.authentication import (
     AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser,
     AuthCredentials
 )
+from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
+from starlette.routing import Route
 import base64
 import binascii
 
@@ -30,21 +32,24 @@ class BasicAuthBackend(AuthenticationBackend):
             raise AuthenticationError('Invalid basic auth credentials')
 
         username, _, password = decoded.partition(":")
-        # TODO: You'd want to verify the username and password here,
-        #       possibly by installing `DatabaseMiddleware`
-        #       and retrieving user information from `request.database`.
+        # TODO: You'd want to verify the username and password here.
         return AuthCredentials(["authenticated"]), SimpleUser(username)
 
 
-app = Starlette()
-app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend())
-
-
-@app.route('/')
 async def homepage(request):
     if request.user.is_authenticated:
-        return PlainTextResponse('hello, ' + request.user.display_name)
-    return PlainTextResponse('hello, you')
+        return PlainTextResponse('Hello, ' + request.user.display_name)
+    return PlainTextResponse('Hello, you')
+
+routes = [
+    Route("/", endpoint=homepage)
+]
+
+middleware = [
+    Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())
+]
+
+app = Starlette(routes=routes, middleware=middleware)
 ```
 
 ## Users
@@ -81,7 +86,6 @@ incoming request includes the required authentication scopes.
 from starlette.authentication import requires
 
 
-@app.route('/dashboard')
 @requires('authenticated')
 async def dashboard(request):
     ...
@@ -93,7 +97,6 @@ You can include either one or multiple required scopes:
 from starlette.authentication import requires
 
 
-@app.route('/dashboard')
 @requires(['authenticated', 'admin'])
 async def dashboard(request):
     ...
@@ -107,7 +110,6 @@ about the URL layout from unauthenticated users.
 from starlette.authentication import requires
 
 
-@app.route('/dashboard')
 @requires(['authenticated', 'admin'], status_code=404)
 async def dashboard(request):
     ...
@@ -120,12 +122,10 @@ page.
 from starlette.authentication import requires
 
 
-@app.route('/homepage')
 async def homepage(request):
     ...
 
 
-@app.route('/dashboard')
 @requires('authenticated', redirect='homepage')
 async def dashboard(request):
     ...
@@ -135,7 +135,6 @@ For class-based endpoints, you should wrap the decorator
 around a method on the class.
 
 ```python
-@app.route("/dashboard")
 class Dashboard(HTTPEndpoint):
     @requires("authenticated")
     async def get(self, request):

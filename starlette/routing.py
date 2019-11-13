@@ -130,8 +130,27 @@ class BaseRoute:
     def url_path_for(self, name: str, **path_params: str) -> URLPath:
         raise NotImplementedError()  # pragma: no cover
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         raise NotImplementedError()  # pragma: no cover
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """
+        A route may be used in isolation as a stand-alone ASGI app.
+        This is a somewhat contrived case, as they'll almost always be used
+        within a Router, but could be useful for some tooling and minimal apps.
+        """
+        match, child_scope = self.matches(scope)
+        if match == Match.NONE:
+            if scope["type"] == "http":
+                response = PlainTextResponse("Not Found", status_code=404)
+                await response(scope, receive, send)
+            elif scope["type"] == "websocket":
+                websocket_close = WebSocketClose()
+                await websocket_close(scope, receive, send)
+            return
+
+        scope.update(child_scope)
+        await self.handle(scope, receive, send)
 
 
 class Route(BaseRoute):
@@ -197,7 +216,7 @@ class Route(BaseRoute):
         assert not remaining_params
         return URLPath(path=path, protocol="http")
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.methods and scope["method"] not in self.methods:
             if "app" in scope:
                 raise HTTPException(status_code=405)
@@ -260,7 +279,7 @@ class WebSocketRoute(BaseRoute):
         assert not remaining_params
         return URLPath(path=path, protocol="websocket")
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.app(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
@@ -353,7 +372,7 @@ class Mount(BaseRoute):
                     pass
         raise NoMatchFound()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.app(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
@@ -417,7 +436,7 @@ class Host(BaseRoute):
                     pass
         raise NoMatchFound()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.app(scope, receive, send)
 
     def __eq__(self, other: typing.Any) -> bool:
@@ -428,58 +447,69 @@ class Host(BaseRoute):
         )
 
 
-class Lifespan(BaseRoute):
+class Router:
     def __init__(
         self,
-        on_startup: typing.Union[typing.Callable, typing.List[typing.Callable]] = None,
-        on_shutdown: typing.Union[typing.Callable, typing.List[typing.Callable]] = None,
-    ):
-        self.startup_handlers = self.to_list(on_startup)
-        self.shutdown_handlers = self.to_list(on_shutdown)
+        routes: typing.List[BaseRoute] = None,
+        redirect_slashes: bool = True,
+        default: ASGIApp = None,
+        on_startup: typing.List[typing.Callable] = None,
+        on_shutdown: typing.List[typing.Callable] = None,
+    ) -> None:
+        self.routes = [] if routes is None else list(routes)
+        self.redirect_slashes = redirect_slashes
+        self.default = self.not_found if default is None else default
+        self.on_startup = [] if on_startup is None else list(on_startup)
+        self.on_shutdown = [] if on_shutdown is None else list(on_shutdown)
 
-    def to_list(
-        self, item: typing.Union[typing.Callable, typing.List[typing.Callable]] = None
-    ) -> typing.List[typing.Callable]:
-        if item is None:
-            return []
-        return list(item) if isinstance(item, (list, tuple)) else [item]
+    async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "websocket":
+            websocket_close = WebSocketClose()
+            await websocket_close(scope, receive, send)
+            return
 
-    def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
-        if scope["type"] == "lifespan":
-            return Match.FULL, {}
-        return Match.NONE, {}
-
-    def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
-        assert event_type in ("startup", "shutdown")
-
-        if event_type == "startup":
-            self.startup_handlers.append(func)
+        # If we're running inside a starlette application then raise an
+        # exception, so that the configurable exception handler can deal with
+        # returning the response. For plain ASGI apps, just return the response.
+        if "app" in scope:
+            raise HTTPException(status_code=404)
         else:
-            assert event_type == "shutdown"
-            self.shutdown_handlers.append(func)
+            response = PlainTextResponse("Not Found", status_code=404)
+        await response(scope, receive, send)
 
-    def on_event(self, event_type: str) -> typing.Callable:
-        def decorator(func: typing.Callable) -> typing.Callable:
-            self.add_event_handler(event_type, func)
-            return func
-
-        return decorator
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
+        for route in self.routes:
+            try:
+                return route.url_path_for(name, **path_params)
+            except NoMatchFound:
+                pass
+        raise NoMatchFound()
 
     async def startup(self) -> None:
-        for handler in self.startup_handlers:
+        """
+        Run any `.on_startup` event handlers.
+        """
+        for handler in self.on_startup:
             if asyncio.iscoroutinefunction(handler):
                 await handler()
             else:
                 handler()
 
     async def shutdown(self) -> None:
-        for handler in self.shutdown_handlers:
+        """
+        Run any `.on_shutdown` event handlers.
+        """
+        for handler in self.on_shutdown:
             if asyncio.iscoroutinefunction(handler):
                 await handler()
             else:
                 handler()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def lifespan(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """
+        Handle ASGI lifespan messages, which allows us to manage application
+        startup and shutdown events.
+        """
         message = await receive()
         assert message["type"] == "lifespan.startup"
 
@@ -496,21 +526,61 @@ class Lifespan(BaseRoute):
         await self.shutdown()
         await send({"type": "lifespan.shutdown.complete"})
 
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """
+        The main entry point to the Router class.
+        """
+        assert scope["type"] in ("http", "websocket", "lifespan")
 
-class Router:
-    def __init__(
-        self,
-        routes: typing.List[BaseRoute] = None,
-        redirect_slashes: bool = True,
-        default: ASGIApp = None,
-        on_startup: typing.List[typing.Callable] = None,
-        on_shutdown: typing.List[typing.Callable] = None,
-    ) -> None:
-        self.routes = [] if routes is None else list(routes)
-        self.redirect_slashes = redirect_slashes
-        self.default = self.not_found if default is None else default
-        self.lifespan = Lifespan(on_startup=on_startup, on_shutdown=on_shutdown)
+        if "router" not in scope:
+            scope["router"] = self
 
+        if scope["type"] == "lifespan":
+            await self.lifespan(scope, receive, send)
+            return
+
+        partial = None
+
+        for route in self.routes:
+            # Determine if any route matches the incoming scope,
+            # and hand over to the matching route if found.
+            match, child_scope = route.matches(scope)
+            if match == Match.FULL:
+                scope.update(child_scope)
+                await route.handle(scope, receive, send)
+                return
+            elif match == Match.PARTIAL and partial is None:
+                partial = route
+                partial_scope = child_scope
+
+        if partial is not None:
+            #  Handle partial matches. These are cases where an endpoint is
+            # able to handle the request, but is not a preferred option.
+            # We use this in particular to deal with "406 Method Not Found".
+            scope.update(partial_scope)
+            await partial.handle(scope, receive, send)
+            return
+
+        if scope["type"] == "http" and self.redirect_slashes:
+            if not scope["path"].endswith("/"):
+                redirect_scope = dict(scope)
+                redirect_scope["path"] += "/"
+
+                for route in self.routes:
+                    match, child_scope = route.matches(redirect_scope)
+                    if match != Match.NONE:
+                        redirect_url = URL(scope=redirect_scope)
+                        response = RedirectResponse(url=str(redirect_url))
+                        await response(scope, receive, send)
+                        return
+
+        await self.default(scope, receive, send)
+
+    def __eq__(self, other: typing.Any) -> bool:
+        return isinstance(other, Router) and self.routes == other.routes
+
+    # The following usages are now discouraged in favour of configuration
+    #  during Router.__init__(...)
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
         route = Mount(path, app=app, name=name)
         self.routes.append(route)
@@ -568,74 +638,17 @@ class Router:
 
         return decorator
 
-    async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "websocket":
-            websocket_close = WebSocketClose()
-            await websocket_close(receive, send)
-            return
+    def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
+        assert event_type in ("startup", "shutdown")
 
-        # If we're running inside a starlette application then raise an
-        # exception, so that the configurable exception handler can deal with
-        # returning the response. For plain ASGI apps, just return the response.
-        if "app" in scope:
-            raise HTTPException(status_code=404)
+        if event_type == "startup":
+            self.on_startup.append(func)
         else:
-            response = PlainTextResponse("Not Found", status_code=404)
-        await response(scope, receive, send)
+            self.on_shutdown.append(func)
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
-        for route in self.routes:
-            try:
-                return route.url_path_for(name, **path_params)
-            except NoMatchFound:
-                pass
-        raise NoMatchFound()
+    def on_event(self, event_type: str) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:
+            self.add_event_handler(event_type, func)
+            return func
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        assert scope["type"] in ("http", "websocket", "lifespan")
-
-        if "router" not in scope:
-            scope["router"] = self
-
-        partial = None
-
-        for route in self.routes:
-            match, child_scope = route.matches(scope)
-            if match == Match.FULL:
-                scope.update(child_scope)
-                await route(scope, receive, send)
-                return
-            elif match == Match.PARTIAL and partial is None:
-                partial = route
-                partial_scope = child_scope
-
-        if partial is not None:
-            scope.update(partial_scope)
-            await partial(scope, receive, send)
-            return
-
-        if scope["type"] == "http" and self.redirect_slashes:
-            if scope["path"].endswith("/"):
-                redirect_path = scope["path"].rstrip("/")
-            else:
-                redirect_path = scope["path"] + "/"
-
-            if redirect_path:  # Note that we skip the "/" -> "" case.
-                redirect_scope = dict(scope)
-                redirect_scope["path"] = redirect_path
-
-                for route in self.routes:
-                    match, child_scope = route.matches(redirect_scope)
-                    if match != Match.NONE:
-                        redirect_url = URL(scope=redirect_scope)
-                        response = RedirectResponse(url=str(redirect_url))
-                        await response(scope, receive, send)
-                        return
-
-        if scope["type"] == "lifespan":
-            await self.lifespan(scope, receive, send)
-        else:
-            await self.default(scope, receive, send)
-
-    def __eq__(self, other: typing.Any) -> bool:
-        return isinstance(other, Router) and self.routes == other.routes
+        return decorator

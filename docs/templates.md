@@ -6,19 +6,22 @@ what you want to use by default.
 
 ```python
 from starlette.applications import Starlette
+from starlette.routing import Route, Mount
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 
 
 templates = Jinja2Templates(directory='templates')
 
-app = Starlette(debug=True)
-app.mount('/static', StaticFiles(directory='static'), name='static')
-
-
-@app.route('/')
 async def homepage(request):
     return templates.TemplateResponse('index.html', {'request': request})
+
+routes = [
+    Route('/', endpoint=homepage),
+    Mount('/static', StaticFiles(directory='static'), name='static')
+]
+
+app = Starlette(debug=True, routes=routes)
 ```
 
 Note that the incoming `request` instance must be included as part of the

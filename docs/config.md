@@ -21,8 +21,7 @@ DATABASE_URL = config('DATABASE_URL', cast=databases.DatabaseURL)
 SECRET_KEY = config('SECRET_KEY', cast=Secret)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=CommaSeparatedStrings)
 
-app = Starlette()
-app.debug = DEBUG
+app = Starlette(debug=DEBUG)
 ...
 ```
 
@@ -160,28 +159,27 @@ organisations = sqlalchemy.Table(
 
 ```python
 from starlette.applications import Starlette
-from starlette.middleware.database import DatabaseMiddleware
+from starlette.middleware import Middleware
 from starlette.middleware.session import SessionMiddleware
+from starlette.routing import Route
 from myproject import settings
 
 
-app = Starlette()
-
-app.debug = settings.DEBUG
-
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=settings.SECRET_KEY,
-)
-app.add_middleware(
-    DatabaseMiddleware,
-    database_url=settings.DATABASE_URL,
-    rollback_on_shutdown=settings.TESTING
-)
-
-@app.route('/', methods=['GET'])
 async def homepage(request):
     ...
+
+routes = [
+    Route("/", endpoint=homepage)
+]
+
+middleware = [
+    Middleware(
+        SessionMiddleware,
+        secret_key=settings.SECRET_KEY,
+    )
+]
+
+app = Starlette(debug=settings.DEBUG, routes=routes, middleware=middleware)
 ```
 
 Now let's deal with our test configuration.

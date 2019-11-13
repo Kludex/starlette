@@ -10,11 +10,36 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class Starlette:
+    """
+    Creates an application instance.
+
+    **Parameters:**
+
+    * **debug** - Boolean indicating if debug tracebacks should be returned on errors.
+    * **routes** - A list of routes to serve incoming HTTP and WebSocket requests.
+    * **middleware** - A list of middleware to run for every request. A starlette
+    application will always automatically include two middleware classes.
+    `ServerErrorMiddleware` is added the very outermost middleware, to handle
+    any uncaught errors occuring anywhere in the entire stack.
+    `ExceptionMiddleware` is added as the very innermost middleware, to deal
+    with handled exception cases occuring in the routing or endpoints.
+    * **exception_handlers** - A dictionary mapping either integer status codes,
+    or exception class types onto callables which handle the exceptions.
+    Exception handler callables should be of the form `handler(request, exc) -> response`
+    and may be be either standard functions, or async functions.
+    * **on_startup** - A list of callables to run on application startup.
+    Startup handler callables do not take any arguments, and may be be either
+    standard functions, or async functions.
+    * **on_shutdown** - A list of callables to run on application shutdown.
+    Shutdown handler callables do not take any arguments, and may be be either
+    standard functions, or async functions.
+    """
+
     def __init__(
         self,
         debug: bool = False,
         routes: typing.List[BaseRoute] = None,
-        middleware: typing.List[Middleware] = None,
+        middleware: typing.List[typing.Optional[Middleware]] = None,
         exception_handlers: typing.Dict[
             typing.Union[int, typing.Type[Exception]], typing.Callable
         ] = None,
@@ -27,7 +52,7 @@ class Starlette:
         self.exception_handlers = (
             {} if exception_handlers is None else dict(exception_handlers)
         )
-        self.user_middleware = list(middleware or [])
+        self.user_middleware = [item for item in middleware or [] if item is not None]
         self.middleware_stack = self.build_middleware_stack()
 
     def build_middleware_stack(self) -> ASGIApp:
@@ -41,20 +66,19 @@ class Starlette:
             else:
                 exception_handlers[key] = value
 
-        server_errors = Middleware(
-            ServerErrorMiddleware, options={"handler": error_handler, "debug": debug},
+        middleware = (
+            [Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug,)]
+            + self.user_middleware
+            + [
+                Middleware(
+                    ExceptionMiddleware, handlers=exception_handlers, debug=debug,
+                )
+            ]
         )
-        exceptions = Middleware(
-            ExceptionMiddleware,
-            options={"handlers": exception_handlers, "debug": debug},
-        )
-
-        middleware = [server_errors] + self.user_middleware + [exceptions]
 
         app = self.router
-        for cls, options, enabled in reversed(middleware):
-            if enabled:
-                app = cls(app=app, **options)
+        for cls, options in reversed(middleware):
+            app = cls(app=app, **options)
         return app
 
     @property
@@ -70,8 +94,17 @@ class Starlette:
         self._debug = value
         self.middleware_stack = self.build_middleware_stack()
 
+    def url_path_for(self, name: str, **path_params: str) -> URLPath:
+        return self.router.url_path_for(name, **path_params)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        scope["app"] = self
+        await self.middleware_stack(scope, receive, send)
+
+    # The following usages are now discouraged in favour of configuration
+    #  during Starlette.__init__(...)
     def on_event(self, event_type: str) -> typing.Callable:
-        return self.router.lifespan.on_event(event_type)
+        return self.router.on_event(event_type)
 
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
         self.router.mount(path, app=app, name=name)
@@ -79,8 +112,8 @@ class Starlette:
     def host(self, host: str, app: ASGIApp, name: str = None) -> None:
         self.router.host(host, app=app, name=name)
 
-    def add_middleware(self, middleware_class: type, **kwargs: typing.Any) -> None:
-        self.user_middleware.insert(0, Middleware(middleware_class, options=kwargs))
+    def add_middleware(self, middleware_class: type, **options: typing.Any) -> None:
+        self.user_middleware.insert(0, Middleware(middleware_class, **options))
         self.middleware_stack = self.build_middleware_stack()
 
     def add_exception_handler(
@@ -92,7 +125,7 @@ class Starlette:
         self.middleware_stack = self.build_middleware_stack()
 
     def add_event_handler(self, event_type: str, func: typing.Callable) -> None:
-        self.router.lifespan.add_event_handler(event_type, func)
+        self.router.add_event_handler(event_type, func)
 
     def add_route(
         self,
@@ -156,10 +189,3 @@ class Starlette:
             return func
 
         return decorator
-
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
-        return self.router.url_path_for(name, **path_params)
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        scope["app"] = self
-        await self.middleware_stack(scope, receive, send)

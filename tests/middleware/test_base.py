@@ -140,20 +140,6 @@ def test_app_middleware_argument():
     assert response.headers["Custom-Header"] == "Example"
 
 
-def test_app_disabled_middleware_argument():
-    def homepage(request):
-        return PlainTextResponse("Homepage")
-
-    app = Starlette(
-        routes=[Route("/", homepage)],
-        middleware=[Middleware(CustomMiddleware, enabled=False)],
-    )
-
-    client = TestClient(app)
-    response = client.get("/")
-    assert "Custom-Header" not in response.headers
-
-
 def test_middleware_repr():
     middleware = Middleware(CustomMiddleware)
     assert repr(middleware) == "Middleware(CustomMiddleware)"

@@ -11,23 +11,26 @@ HTML_404_PAGE = ...
 HTML_500_PAGE = ...
 
 
-app = Starlette()
-
-
-@app.exception_handler(404)
 async def not_found(request, exc):
     return HTMLResponse(content=HTML_404_PAGE, status_code=exc.status_code)
 
-@app.exception_handler(500)
 async def server_error(request, exc):
     return HTMLResponse(content=HTML_500_PAGE, status_code=exc.status_code)
+
+
+exception_handlers = {
+    404: not_found,
+    500: server_error
+}
+
+app = Starlette(routes=routes, exception_handlers=exception_handlers)
 ```
 
 If `debug` is enabled and an error occurs, then instead of using the installed
 500 handler, Starlette will respond with a traceback response.
 
 ```python
-app = Starlette(debug=True)
+app = Starlette(debug=True, routes=routes, exception_handlers=exception_handlers)
 ```
 
 As well as registering handlers for specific status codes, you can also
@@ -37,9 +40,12 @@ In particular you might want to override how the built-in `HTTPException` class
 is handled. For example, to use JSON style responses:
 
 ```python
-@app.exception_handler(HTTPException)
 async def http_exception(request, exc):
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+exception_handlers = {
+    HTTPException: http_exception
+}
 ```
 
 ## Errors and handled exceptions

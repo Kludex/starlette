@@ -17,30 +17,32 @@ class App(HTTPEndpoint):
 ```
 
 If you're using a Starlette application instance to handle routing, you can
-dispatch to an `HTTPEndpoint` class by using the `@app.route()` decorator, or the
-`app.add_route()` function. Make sure to dispatch to the class itself, rather
-than to an instance of the class:
+dispatch to an `HTTPEndpoint` class. Make sure to dispatch to the class itself,
+rather than to an instance of the class:
 
 ```python
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse
 from starlette.endpoints import HTTPEndpoint
+from starlette.routing import Route
 
 
-app = Starlette()
-
-
-@app.route("/")
 class Homepage(HTTPEndpoint):
     async def get(self, request):
         return PlainTextResponse(f"Hello, world!")
 
 
-@app.route("/{username}")
 class User(HTTPEndpoint):
     async def get(self, request):
         username = request.path_params['username']
         return PlainTextResponse(f"Hello, {username}")
+
+routes = [
+    Route("/", Homepage),
+    Route("/{username}", User)
+]
+
+app = Starlette(routes=routes)
 ```
 
 HTTP endpoint classes will respond with "405 Method not allowed" responses for any
@@ -90,8 +92,8 @@ import uvicorn
 from starlette.applications import Starlette
 from starlette.endpoints import WebSocketEndpoint, HTTPEndpoint
 from starlette.responses import HTMLResponse
+from starlette.routing import Route, WebSocketRoute
 
-app = Starlette()
 
 html = """
 <!DOCTYPE html>
@@ -127,22 +129,20 @@ html = """
 </html>
 """
 
-
-@app.route("/")
 class Homepage(HTTPEndpoint):
     async def get(self, request):
         return HTMLResponse(html)
 
-
-@app.websocket_route("/ws")
 class Echo(WebSocketEndpoint):
-
     encoding = "text"
 
     async def on_receive(self, websocket, data):
         await websocket.send_text(f"Message text was: {data}")
 
+routes = [
+    Route("/", Homepage),
+    WebSocketRoute("/ws", WebSocketEndpoint)
+]
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+app = Starlette(routes=routes)
 ```

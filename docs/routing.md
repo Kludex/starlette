@@ -1,65 +1,208 @@
-
-Starlette includes a `Router` class which is an ASGI application that
-dispatches incoming requests to endpoints or submounted applications.
+Starlette has a simple but capable request routing system. A routing table
+is defined as a list of routes, and passed when instantiating the application.
 
 ```python
-from starlette.routing import Mount, Route, Router
-from myproject import Homepage, SubMountedApp
+from starlette.applications import Starlette
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
 
 
-app = Router([
-    Route('/', endpoint=Homepage, methods=['GET']),
-    Mount('/mount', app=SubMountedApp)
-])
+async def homepage(request):
+    return PlainTextResponse("Homepage")
+
+async def about(request):
+   return PlainTextResponse("About")
+
+
+routes = [
+    Route("/", endpoint=homepage),
+    Route("/about", endpoint=about),
+]
+
+app = Starlette(routes=routes)
 ```
+
+The `endpoint` argument can be one of:
+
+* A regular function or async function, which accepts a single `request`
+argument and which should return a response.
+* A class that implements the ASGI interface, such as Starlette's [class based
+views](endpoints.md).
+
+## Path Parameters
 
 Paths can use URI templating style to capture path components.
 
 ```python
-Route('/users/{username}', endpoint=User, methods=['GET'])
+Route('/users/{username}', user)
 ```
 
 Convertors for `int`, `float`, and `path` are also available:
 
 ```python
-Route('/users/{user_id:int}', endpoint=User, methods=['GET'])
+Route('/users/{user_id:int}', user)
 ```
 
 Path parameters are made available in the request, as the `request.path_params`
 dictionary.
 
-Because the target of a `Mount` is an ASGI instance itself, routers
-allow for easy composition. For example:
-
 ```python
-app = Router([
-    Route('/', endpoint=Homepage, methods=['GET']),
-    Mount('/users', app=Router([
-        Route('/', endpoint=Users, methods=['GET', 'POST']),
-        Route('/{username}', endpoint=User, methods=['GET']),
-    ]))
-])
+async def user(request):
+    user_id = request.path_params['user_id']
+    ...
 ```
 
-The router will respond with "404 Not found" or "405 Method not allowed"
-responses for requests which do not match.
+## Handling HTTP methods
+
+Routes can also specify which HTTP methods are handled by an endpoint:
+
+```python
+Route('/users/{user_id:int}', user, methods=["GET", "POST"])
+```
+
+By default function endpoints will only accept `GET` requests, unless specified.
+
+## Submounting routes
+
+In large applications you might find that you want to break out parts of the
+routing table, based on a common path prefix.
+
+```python
+routes = [
+    Route('/', homepage),
+    Mount('/users', routes=[
+        Route('/', users, methods=['GET', 'POST']),
+        Route('/{username}', user),
+    ])
+]
+```
+
+This style allows you to define different subsets of the routing table in
+different parts of your project.
+
+```python
+from myproject import users, auth
+
+routes = [
+    Route('/', homepage),
+    Mount('/users', routes=users.routes),
+    Mount('/auth', routes=auth.routes),
+]
+```
+
+You can also use mounting to include sub-applications within your Starlette
+application. For example...
+
+```python
+# This is a standalone static files server:
+app = StaticFiles(directory="static")
+
+# This is a static files server mounted within a Starlette application,
+# underneath the "/static" path.
+routes = [
+    ...
+    Mount("/static", StaticFiles(directory="static"), name="static")
+]
+
+app = Starlette(routes=routes)
+```
+
+## Reverse URL lookups
+
+You'll often want to be able to generate the URL for a particular route,
+such as in cases where you need to return a redirect response.
+
+```python
+routes = [
+    Route("/", homepage, name="homepage")
+]
+
+# We can use the following to return a URL...
+url = request.url_for("homepage")
+```
+
+URL lookups can include path parameters...
+
+```python
+routes = [
+    Route("/users/{username}", user, name="user_detail")
+]
+
+# We can use the following to return a URL...
+url = request.url_for("user_detail", username=...)
+```
+
+If a `Mount` includes a `name`, then submounts should use a `{prefix}:{name}`
+style for reverse URL lookups.
+
+```python
+routes = [
+    Mount("/users", name="users", routes=[
+        Route("/", user, name="user_list"),
+        Route("/{username}", user, name="user_detail")
+    ])
+]
+
+# We can use the following to return URLs...
+url = request.url_for("users:user_list")
+url = request.url_for("users:user_detail", username=...)
+```
+
+Mounted applications may include a `path=...` parameter.
+
+```python
+routes = [
+    ...
+    Mount("/static", StaticFiles(directory="static"), name="static")
+]
+
+# We can use the following to return URLs...
+url = request.url_for("static", path="/css/base.css")
+```
+
+For cases where there is no `request` instance, you can make reverse lookups
+against the application, although these will only return the URL path.
+
+```python
+url = app.url_path_for("user_detail", username=...)
+```
+
+## Route priority
 
 Incoming paths are matched against each `Route` in order.
 
-If you need to have a `Route` with a fixed path that would also match a
-`Route` with parameters you should add the `Route` with the fixed path first.
+In cases where more that one route could match an incoming path, you should
+take care to ensure that more specific routes are listed before general cases.
 
-For example, with an additional `Route` like:
+For example:
 
 ```python
-Route('/users/me', endpoint=UserMe, methods=['GET'])
+# Don't do this: `/users/me` will never match incoming requests.
+routes = [
+    Route('/users/{username}', user),
+    Route('/users/me', current_user),
+]
+
+# Do this: `/users/me` is tested first.
+routes = [
+    Route('/users/me', current_user),
+    Route('/users/{username}', user),
+]
 ```
 
-You should add that route for `/users/me` before the one for `/users/{username}`:
+## Working with Router instances
+
+If you're working at a low-level you might want to use a plain `Router`
+instance, rather that creating a `Starlette` application. This gives you
+a lightweight ASGI application that just provides the application routing,
+without wrapping it up in any middleware.
 
 ```python
-app = Router([
-    Route('/users/me', endpoint=UserMe, methods=['GET']),
-    Route('/users/{username}', endpoint=User, methods=['GET']),
+app = Router(routes=[
+    Route('/', homepage),
+    Mount('/users', routes=[
+        Route('/', users, methods=['GET', 'POST']),
+        Route('/{username}', user),
+    ])
 ])
 ```

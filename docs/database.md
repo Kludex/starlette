@@ -45,22 +45,10 @@ notes = sqlalchemy.Table(
     sqlalchemy.Column("completed", sqlalchemy.Boolean),
 )
 
-# Main application code.
 database = databases.Database(DATABASE_URL)
-app = Starlette()
 
 
-@app.on_event("startup")
-async def startup():
-    await database.connect()
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    await database.disconnect()
-
-
-@app.route("/notes", methods=["GET"])
+# Main application code.
 async def list_notes(request):
     query = notes.select()
     results = await database.fetch_all(query)
@@ -73,8 +61,6 @@ async def list_notes(request):
     ]
     return JSONResponse(content)
 
-
-@app.route("/notes", methods=["POST"])
 async def add_note(request):
     data = await request.json()
     query = notes.insert().values(
@@ -86,6 +72,17 @@ async def add_note(request):
         "text": data["text"],
         "completed": data["completed"]
     })
+
+routes = [
+    Route("/notes", endpoint=list_notes, methods=["GET"]),
+    Route("/notes", endpoint=add_note, methods=["POST"]),
+]
+
+app = Starlette(
+    routes=routes,
+    on_startup=[database.connect],
+    on_shutdown=[database.disconnect]
+)
 ```
 
 ## Queries

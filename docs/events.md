@@ -8,39 +8,27 @@ is shutting down.
 These event handlers can either be `async` coroutines, or regular syncronous
 functions.
 
-The event handlers can be registered with a decorator syntax, like so:
+The event handlers should be included on the application like so:
 
 ```python
 from starlette.applications import Starlette
 
 
-app = Starlette()
+async def some_startup_task():
+    pass
 
-@app.on_event('startup')
-async def open_database_connection_pool():
+async def some_shutdown_task():
+    pass
+
+routes = [
     ...
+]
 
-@app.on_event('shutdown')
-async def close_database_connection_pool():
-    ...
-```
-Or as a regular function call:
-
-```python
-from starlette.applications import Starlette
-
-
-app = Starlette()
-
-async def open_database_connection_pool():
-    ...
-
-async def close_database_connection_pool():
-    ...
-
-app.add_event_handler('startup', open_database_connection_pool)
-app.add_event_handler('shutdown', close_database_connection_pool)
-
+app = Starlette(
+    routes=routes,
+    on_startup=[some_startup_task],
+    on_shutdown=[some_shutdown_task]
+)
 ```
 
 Starlette will not start serving any incoming requests until all of the
@@ -64,9 +52,9 @@ from starlette.testclient import TestClient
 
 def test_homepage():
     with TestClient(app) as client:
-        # Application 'startup' handlers are called on entering the block.
+        # Application 'on_startup' handlers are called on entering the block.
         response = client.get("/")
         assert response.status_code == 200
 
-    # Application 'shutdown' handlers are called on exiting the block.
+    # Application 'on_shutdown' handlers are called on exiting the block.
 ```

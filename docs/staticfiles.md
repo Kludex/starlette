@@ -14,13 +14,17 @@ You can combine this ASGI application with Starlette's routing to provide
 comprehensive static file serving.
 
 ```python
-from starlette.routing import Router, Mount
+from starlette.applications import Starlette
+from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
 
-app = Router(routes=[
+routes = [
+    ...
     Mount('/static', app=StaticFiles(directory='static'), name="static"),
-])
+]
+
+app = Starlette(routes=routes)
 ```
 
 Static files will respond with "404 Not found" or "405 Method not allowed"
@@ -31,13 +35,17 @@ The `packages` option can be used to include "static" directories contained with
 a python package. The Python "bootstrap4" package is an example of this.
 
 ```python
-from starlette.routing import Router, Mount
+from starlette.applications import Starlette
+from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
 
-app = Router(routes=[
+routes=[
+    ...
     Mount('/static', app=StaticFiles(directory='static', packages=['bootstrap4']), name="static"),
-])
+]
+
+app = Starlette(routes=routes)
 ```
 
 You may prefer to include static files directly inside the "static" directory

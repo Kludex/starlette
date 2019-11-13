@@ -13,11 +13,12 @@ Signature: `BackgroundTask(func, *args, **kwargs)`
 ```python
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
+from starlette.routing import Route
 from starlette.background import BackgroundTask
 
-app = Starlette()
 
-@app.route('/user/signup', methods=['POST'])
+...
+
 async def signup(request):
     data = await request.json()
     username = data['username']
@@ -28,6 +29,14 @@ async def signup(request):
 
 async def send_welcome_email(to_address):
     ...
+
+
+routes = [
+    ...
+    Route('/user/signup', endpoint=signup, methods=['POST'])
+]
+
+app = Starlette(routes=routes)
 ```
 
 ### BackgroundTasks
@@ -41,9 +50,6 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.background import BackgroundTasks
 
-app = Starlette()
-
-@app.route('/user/signup', methods=['POST'])
 async def signup(request):
     data = await request.json()
     username = data['username']
@@ -60,4 +66,9 @@ async def send_welcome_email(to_address):
 async def send_admin_notification(username):
     ...
 
+routes = [
+    Route('/user/signup', endpoint=signup, methods=['POST'])
+]
+
+app = Starlette(routes=routes)
 ```

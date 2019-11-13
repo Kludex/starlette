@@ -11,16 +11,14 @@ the docstrings.
 
 ```python
 from starlette.applications import Starlette
+from starlette.routing import Route
 from starlette.schemas import SchemaGenerator
 
 
 schemas = SchemaGenerator(
     {"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}}
 )
-app = Starlette()
 
-
-@app.route("/users", methods=["GET"])
 def list_users(request):
     """
     responses:
@@ -32,7 +30,6 @@ def list_users(request):
     raise NotImplementedError()
 
 
-@app.route("/users", methods=["POST"])
 def create_user(request):
     """
     responses:
@@ -44,9 +41,17 @@ def create_user(request):
     raise NotImplementedError()
 
 
-@app.route("/schema", methods=["GET"], include_in_schema=False)
 def openapi_schema(request):
     return schemas.OpenAPIResponse(request=request)
+
+
+routes = [
+    Route("/users", endpoint=list_users, methods=["GET"])
+    Route("/users", endpoint=create_user, methods=["POST"])
+    Route("/schema", endpoint=openapi_schema, include_in_schema=False)
+]
+
+app = Starlette()
 ```
 
 We can now access an OpenAPI schema at the "/schema" endpoint.
@@ -86,7 +91,7 @@ if __name__ == '__main__':
     assert sys.argv[-1] in ("run", "schema"), "Usage: example.py [run|schema]"
 
     if sys.argv[-1] == "run":
-        uvicorn.run(app, host='0.0.0.0', port=8000)
+        uvicorn.run("example:app", host='0.0.0.0', port=8000)
     elif sys.argv[-1] == "schema":
         schema = schemas.get_schema(routes=app.routes)
         print(yaml.dump(schema, default_flow_style=False))

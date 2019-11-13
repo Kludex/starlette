@@ -411,3 +411,40 @@ def test_url_for_with_double_mount():
     app = Starlette(routes=double_mount_routes)
     url = app.url_path_for("mount:static", path="123")
     assert url == "/mount/static/123"
+
+
+def test_standalone_route_matches():
+    app = Route("/", PlainTextResponse("Hello, World!"))
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.text == "Hello, World!"
+
+
+def test_standalone_route_does_not_match():
+    app = Route("/", PlainTextResponse("Hello, World!"))
+    client = TestClient(app)
+    response = client.get("/invalid")
+    assert response.status_code == 404
+    assert response.text == "Not Found"
+
+
+async def ws_helloworld(websocket):
+    await websocket.accept()
+    await websocket.send_text("Hello, world!")
+    await websocket.close()
+
+
+def test_standalone_ws_route_matches():
+    app = WebSocketRoute("/", ws_helloworld)
+    client = TestClient(app)
+    with client.websocket_connect("/") as websocket:
+        text = websocket.receive_text()
+        assert text == "Hello, world!"
+
+
+def test_standalone_ws_route_does_not_match():
+    app = WebSocketRoute("/", ws_helloworld)
+    client = TestClient(app)
+    with pytest.raises(WebSocketDisconnect):
+        client.websocket_connect("/invalid")

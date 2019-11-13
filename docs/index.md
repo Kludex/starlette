@@ -56,19 +56,27 @@ $ pip3 install uvicorn
 
 ## Example
 
+**example.py**:
+
 ```python
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
-import uvicorn
+from starlette.routing import Route
 
-app = Starlette(debug=True)
 
-@app.route('/')
 async def homepage(request):
     return JSONResponse({'hello': 'world'})
 
-if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+
+app = Starlette(debug=True, routes=[
+    Route('/', homepage),
+])
+```
+
+Then run the application...
+
+```shell
+$ uvicorn example:app
 ```
 
 For a more complete example, [see here](https://github.com/encode/starlette-example).

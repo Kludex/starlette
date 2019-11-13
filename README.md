@@ -76,7 +76,7 @@ routes = [
     Route("/", endpoint=homepage)
 ]
 
-app = Starlette(debug=True, routes=route)
+app = Starlette(debug=True, routes=routes)
 ```
 
 Then run the application using Uvicorn:

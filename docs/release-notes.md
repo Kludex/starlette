@@ -1,3 +1,9 @@
+## 0.13.0
+
+* Switch to promoting application configuration on init style everywhere.
+  This means dropping the decorator style in favour of declarative routing
+  tables and middleware definitions.
+
 ## 0.12.12
 
 * Fix `request.url_for()` for the Mount-within-a-Mount case.

@@ -450,11 +450,11 @@ class Host(BaseRoute):
 class Router:
     def __init__(
         self,
-        routes: typing.List[BaseRoute] = None,
+        routes: typing.Sequence[BaseRoute] = None,
         redirect_slashes: bool = True,
         default: ASGIApp = None,
-        on_startup: typing.List[typing.Callable] = None,
-        on_shutdown: typing.List[typing.Callable] = None,
+        on_startup: typing.Sequence[typing.Callable] = None,
+        on_shutdown: typing.Sequence[typing.Callable] = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes

@@ -101,7 +101,7 @@ app = StaticFiles(directory="static")
 # underneath the "/static" path.
 routes = [
     ...
-    Mount("/static", StaticFiles(directory="static"), name="static")
+    Mount("/static", app=StaticFiles(directory="static"), name="static")
 ]
 
 app = Starlette(routes=routes)
@@ -153,7 +153,7 @@ Mounted applications may include a `path=...` parameter.
 ```python
 routes = [
     ...
-    Mount("/static", StaticFiles(directory="static"), name="static")
+    Mount("/static", app=StaticFiles(directory="static"), name="static")
 ]
 
 # We can use the following to return URLs...

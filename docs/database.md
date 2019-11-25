@@ -202,7 +202,7 @@ def create_test_database():
   We use the `sqlalchemy_utils` package here for a few helpers in consistently
   creating and dropping the database.
   """
-  url = str(app.DATABASE_URL)
+  url = str(app.TEST_DATABASE_URL)
   engine = create_engine(url)
   assert not database_exists(url), 'Test database already exists. Aborting tests.'
   create_database(url)             # Create the test database.

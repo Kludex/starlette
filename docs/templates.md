@@ -36,6 +36,20 @@ For example, we can link to static files from within our HTML templates:
 <link href="{{ url_for('static', path='/css/bootstrap.min.css') }}" rel="stylesheet">
 ```
 
+If you want to use [custom filters][jinja2], you will need to update the `env`
+property of `Jinja2Templates`:
+
+```python
+from commonmark import commonmark
+from starlette.templating import Jinja2Templates
+
+def marked_filter(text):
+    return commonmark(text)
+
+templates = Jinja2Templates(directory='templates')
+templates.env.filters['marked'] = marked_filter
+```
+
 ## Testing template responses
 
 When using the test client, template responses include `.template` and `.context`
@@ -59,3 +73,5 @@ database lookups, or other I/O operations.
 Instead we'd recommend that you ensure that your endpoints perform all I/O,
 for example, strictly evaluate any database queries within the view and
 include the final results in the context.
+
+[jinja2]: https://jinja.palletsprojects.com/en/2.10.x/api/?highlight=environment#writing-filters

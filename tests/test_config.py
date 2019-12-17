@@ -5,6 +5,8 @@ import pytest
 from starlette.config import Config, Environ, EnvironError
 from starlette.datastructures import URL, Secret
 
+from pathlib import Path
+
 
 def test_config(tmpdir, monkeypatch):
     path = os.path.join(tmpdir, ".env")
@@ -44,6 +46,10 @@ def test_config(tmpdir, monkeypatch):
     with pytest.raises(ValueError):
         config.get("REQUEST_HOSTNAME", cast=bool)
 
+    config = Config(Path(path))
+    REQUEST_HOSTNAME= config("REQUEST_HOSTNAME")
+    assert REQUEST_HOSTNAME == "example.com"
+
     config = Config()
     monkeypatch.setenv("STARLETTE_EXAMPLE_TEST", "123")
     monkeypatch.setenv("BOOL_AS_INT", "1")
@@ -53,7 +59,6 @@ def test_config(tmpdir, monkeypatch):
     monkeypatch.setenv("BOOL_AS_INT", "2")
     with pytest.raises(ValueError):
         config.get("BOOL_AS_INT", cast=bool)
-
 
 def test_environ():
     environ = Environ()

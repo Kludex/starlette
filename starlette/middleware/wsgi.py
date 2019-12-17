@@ -88,7 +88,7 @@ class WSGIResponder:
             await run_in_threadpool(self.wsgi, environ, self.start_response)
             self.send_queue.append(None)
             self.send_event.set()
-            await asyncio.wait_for(sender, None)
+            await asyncio.wait_for(sender, None)  # type: ignore
             if self.exc_info is not None:
                 raise self.exc_info[0].with_traceback(
                     self.exc_info[1], self.exc_info[2]

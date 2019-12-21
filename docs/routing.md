@@ -11,7 +11,7 @@ async def homepage(request):
     return PlainTextResponse("Homepage")
 
 async def about(request):
-   return PlainTextResponse("About")
+    return PlainTextResponse("About")
 
 
 routes = [

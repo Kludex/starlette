@@ -63,6 +63,13 @@ type annotations.
 
 The ultimate Python library in building OAuth and OpenID Connect clients and servers. Check out how to integrate with [Starlette](https://docs.authlib.org/en/latest/client/starlette.html).
 
+### Starlette Context
+
+<a href="https://github.com/tomwojcik/starlette-context" target="_blank">GitHub</a>
+
+Middleware for Starlette that allows you to store and access the context data of a request.
+Can be used with logging so logs automatically use request headers such as x-request-id or x-correlation-id.
+
 ## Frameworks
 
 ### Responder

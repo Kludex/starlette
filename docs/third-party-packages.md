@@ -20,6 +20,12 @@ Simple APISpec integration for Starlette.
 Document your REST API built with Starlette by declaring OpenAPI (Swagger)
 schemas in YAML format in your endpoint's docstrings.
 
+### SpecTree 
+
+<a href="https://github.com/0b01001001/spectree" target="_blank">GitHub</a>
+
+Generate OpenAPI spec document and validate request & response with Python annotations. Less boilerplate code(no need for YAML).
+
 ### Mangum
 
 <a href="https://github.com/erm/mangum" target="_blank">GitHub</a>

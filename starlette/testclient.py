@@ -95,7 +95,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
         self.raise_server_exceptions = raise_server_exceptions
         self.root_path = root_path
 
-    def send(  # type: ignore
+    def send(
         self, request: requests.PreparedRequest, *args: typing.Any, **kwargs: typing.Any
     ) -> requests.Response:
         scheme, netloc, path, query, fragment = (

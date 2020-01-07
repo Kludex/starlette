@@ -460,7 +460,7 @@ class FormData(ImmutableMultiDict):
         ],
         **kwargs: typing.Union[str, UploadFile],
     ) -> None:
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
 
     async def close(self) -> None:
         for key, value in self.multi_items():

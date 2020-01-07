@@ -14,10 +14,10 @@ try:
     from graphql.error import format_error as format_graphql_error
     from graphql.error import GraphQLError
 except ImportError:  # pragma: nocover
-    graphene = None  # type: ignore
-    AsyncioExecutor = None  # type: ignore
-    format_graphql_error = None  # type: ignore
-    GraphQLError = None  # type: ignore
+    graphene = None
+    AsyncioExecutor = None
+    format_graphql_error = None
+    GraphQLError = None
 
 
 class GraphQLApp:

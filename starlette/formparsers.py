@@ -8,8 +8,8 @@ try:
     from multipart.multipart import parse_options_header
     import multipart
 except ImportError:  # pragma: nocover
-    parse_options_header = None  # type: ignore
-    multipart = None  # type: ignore
+    parse_options_header = None
+    multipart = None
 
 
 class FormMessage(Enum):

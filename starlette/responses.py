@@ -18,8 +18,8 @@ try:
     import aiofiles
     from aiofiles.os import stat as aio_stat
 except ImportError:  # pragma: nocover
-    aiofiles = None  # type: ignore
-    aio_stat = None  # type: ignore
+    aiofiles = None
+    aio_stat = None
 
 try:
     import ujson
@@ -100,17 +100,17 @@ class Response:
         cookie = http.cookies.SimpleCookie()  # type: http.cookies.BaseCookie
         cookie[key] = value
         if max_age is not None:
-            cookie[key]["max-age"] = max_age  # type: ignore
+            cookie[key]["max-age"] = max_age
         if expires is not None:
-            cookie[key]["expires"] = expires  # type: ignore
+            cookie[key]["expires"] = expires
         if path is not None:
             cookie[key]["path"] = path
         if domain is not None:
             cookie[key]["domain"] = domain
         if secure:
-            cookie[key]["secure"] = True  # type: ignore
+            cookie[key]["secure"] = True
         if httponly:
-            cookie[key]["httponly"] = True  # type: ignore
+            cookie[key]["httponly"] = True
         cookie_val = cookie.output(header="").strip()
         self.raw_headers.append((b"set-cookie", cookie_val.encode("latin-1")))
 

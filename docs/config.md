@@ -85,7 +85,7 @@ type is useful.
 CommaSeparatedStrings(['127.0.0.1', 'localhost'])
 >>> print(list(settings.ALLOWED_HOSTS))
 ['127.0.0.1', 'localhost']
->>> print(len(settings.ALLOWED_HOSTS[0]))
+>>> print(len(settings.ALLOWED_HOSTS))
 2
 >>> print(settings.ALLOWED_HOSTS[0])
 '127.0.0.1'

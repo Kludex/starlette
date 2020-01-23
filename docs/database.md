@@ -1,6 +1,6 @@
 Starlette is not strictly tied to any particular database implementation.
 
-You can use it with an asynchronous ORM, such as [GINO](https://python-gino.readthedocs.io/en/latest/),
+You can use it with an asynchronous ORM, such as [GINO](https://python-gino.org/),
 or use regular non-async endpoints, and integrate with [SQLAlchemy](https://www.sqlalchemy.org/).
 
 In this documentation we'll demonstrate how to integrate against [the `databases` package](https://github.com/encode/databases),

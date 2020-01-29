@@ -69,6 +69,13 @@ type annotations.
 
 The ultimate Python library in building OAuth and OpenID Connect clients and servers. Check out how to integrate with [Starlette](https://docs.authlib.org/en/latest/client/starlette.html).
 
+### Starlette OAuth2 API
+
+<a href="https://gitlab.com/jorgecarleitao/starlette-oauth2-api" target="_blank">Gitlab</a>
+
+A starlette middleware to add authentication and authorization through JWTs.
+It relies solely on an auth provider to issue access and/or id tokens to clients.
+
 ### Starlette Context
 
 <a href="https://github.com/tomwojcik/starlette-context" target="_blank">GitHub</a>

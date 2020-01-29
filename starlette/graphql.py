@@ -15,9 +15,9 @@ try:
     from graphql.error import GraphQLError
 except ImportError:  # pragma: nocover
     graphene = None
-    AsyncioExecutor = None
-    format_graphql_error = None
-    GraphQLError = None
+    AsyncioExecutor = None  # type: ignore
+    format_graphql_error = None  # type: ignore
+    GraphQLError = None  # type: ignore
 
 
 class GraphQLApp:

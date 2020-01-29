@@ -117,6 +117,11 @@ def test_router():
     assert response.status_code == 200
     assert response.text == "User fixed me"
 
+    response = client.get("/users/tomchristie/")
+    assert response.status_code == 200
+    assert response.url == "http://testserver/users/tomchristie"
+    assert response.text == "User tomchristie"
+
     response = client.get("/users/nomatch")
     assert response.status_code == 200
     assert response.text == "User nomatch"

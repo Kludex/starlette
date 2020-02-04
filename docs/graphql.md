@@ -20,7 +20,7 @@ routes = [
     Route('/', GraphQLApp(schema=graphene.Schema(query=Query)))
 ]
 
-app = Starlette(routes=route)
+app = Starlette(routes=routes)
 ```
 
 If you load up the page in a browser, you'll be served the GraphiQL tool,

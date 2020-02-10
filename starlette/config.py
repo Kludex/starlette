@@ -57,12 +57,12 @@ class Config:
             self.file_values = self._read_file(env_file)
 
     def __call__(
-        self, key: str, cast: type = None, default: typing.Any = undefined
+        self, key: str, cast: typing.Callable = None, default: typing.Any = undefined,
     ) -> typing.Any:
         return self.get(key, cast, default)
 
     def get(
-        self, key: str, cast: type = None, default: typing.Any = undefined
+        self, key: str, cast: typing.Callable = None, default: typing.Any = undefined,
     ) -> typing.Any:
         if key in self.environ:
             value = self.environ[key]
@@ -87,7 +87,7 @@ class Config:
         return file_values
 
     def _perform_cast(
-        self, key: str, value: typing.Any, cast: type = None
+        self, key: str, value: typing.Any, cast: typing.Callable = None,
     ) -> typing.Any:
         if cast is None or value is None:
             return value

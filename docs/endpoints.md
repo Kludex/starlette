@@ -141,7 +141,7 @@ class Echo(WebSocketEndpoint):
 
 routes = [
     Route("/", Homepage),
-    WebSocketRoute("/ws", WebSocketEndpoint)
+    WebSocketRoute("/ws", Echo)
 ]
 
 app = Starlette(routes=routes)

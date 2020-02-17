@@ -7,7 +7,7 @@ import stat
 import typing
 from email.utils import formatdate
 from mimetypes import guess_type
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus
 
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
@@ -229,7 +229,13 @@ class FileResponse(Response):
         self.background = background
         self.init_headers(headers)
         if self.filename is not None:
-            content_disposition = 'attachment; filename="{}"'.format(self.filename)
+            content_disposition_filename = quote(self.filename)
+            if content_disposition_filename != self.filename:
+                content_disposition = "attachment; filename*=utf-8''{}".format(
+                    content_disposition_filename
+                )
+            else:
+                content_disposition = 'attachment; filename="{}"'.format(self.filename)
             self.headers.setdefault("content-disposition", content_disposition)
         self.stat_result = stat_result
         if stat_result is not None:

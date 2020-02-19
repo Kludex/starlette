@@ -89,6 +89,8 @@ class BaseSchemaGenerator:
         if not docstring:
             return {}
 
+        assert yaml is not None, "`pyyaml` must be installed to use parse_docstring."
+
         # We support having regular docstrings before the schema
         # definition. Here we return just the schema part from
         # the docstring.

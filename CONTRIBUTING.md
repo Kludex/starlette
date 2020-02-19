@@ -75,5 +75,5 @@ Please refer to the [MkDocs docs][MkDocs] for more usage information, including 
 [pull-request]: https://github.com/encode/starlette/compare
 [pytest]: https://docs.pytest.org
 [pytest-cov]: https://github.com/pytest-dev/pytest-cov
-[black]: https://www.google.com/search?client=safari&rls=en&q=github+black&ie=UTF-8&oe=UTF-8
+[black]: https://github.com/psf/black
 [MkDocs]: https://www.mkdocs.org

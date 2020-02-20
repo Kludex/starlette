@@ -152,6 +152,57 @@ def test_websocket_send_and_receive_json():
         assert data == {"message": {"hello": "world"}}
 
 
+def test_websocket_iter_text():
+    def app(scope):
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            async for data in websocket.iter_text():
+                await websocket.send_text("Message was: " + data)
+
+        return asgi
+
+    client = TestClient(app)
+    with client.websocket_connect("/") as websocket:
+        websocket.send_text("Hello, world!")
+        data = websocket.receive_text()
+        assert data == "Message was: Hello, world!"
+
+
+def test_websocket_iter_bytes():
+    def app(scope):
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            async for data in websocket.iter_bytes():
+                await websocket.send_bytes(b"Message was: " + data)
+
+        return asgi
+
+    client = TestClient(app)
+    with client.websocket_connect("/") as websocket:
+        websocket.send_bytes(b"Hello, world!")
+        data = websocket.receive_bytes()
+        assert data == b"Message was: Hello, world!"
+
+
+def test_websocket_iter_json():
+    def app(scope):
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            async for data in websocket.iter_json():
+                await websocket.send_json({"message": data})
+
+        return asgi
+
+    client = TestClient(app)
+    with client.websocket_connect("/") as websocket:
+        websocket.send_json({"hello": "world"})
+        data = websocket.receive_json()
+        assert data == {"message": {"hello": "world"}}
+
+
 def test_client_close():
     close_code = None
 

@@ -273,3 +273,8 @@ A middleware class for logging exceptions to [Bugsnag](https://www.bugsnag.com/)
 #### [EarlyDataMiddleware](https://github.com/HarrySky/starlette-early-data)
 
 Middleware and decorator for detecting and denying [TLSv1.3 early data](https://tools.ietf.org/html/rfc8470) requests.
+
+#### [AuthlibMiddleware](https://github.com/aogier/starlette-authlib)
+
+A drop-in replacement for Starlette session middleware, using [authlib's jwt](https://docs.authlib.org/en/latest/jose/jwt.html)
+module.

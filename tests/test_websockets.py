@@ -1,6 +1,9 @@
+import asyncio
+
 import pytest
 
 from starlette import status
+from starlette.concurrency import run_until_first_complete
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
@@ -201,6 +204,36 @@ def test_websocket_iter_json():
         websocket.send_json({"hello": "world"})
         data = websocket.receive_json()
         assert data == {"message": {"hello": "world"}}
+
+
+def test_websocket_concurrency_pattern():
+    def app(scope):
+        async def reader(websocket, queue):
+            async for data in websocket.iter_json():
+                await queue.put(data)
+
+        async def writer(websocket, queue):
+            while True:
+                message = await queue.get()
+                await websocket.send_json(message)
+
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            queue = asyncio.Queue()
+            await websocket.accept()
+            await run_until_first_complete(
+                (reader, {"websocket": websocket, "queue": queue}),
+                (writer, {"websocket": websocket, "queue": queue}),
+            )
+            await websocket.close()
+
+        return asgi
+
+    client = TestClient(app)
+    with client.websocket_connect("/") as websocket:
+        websocket.send_json({"hello": "world"})
+        data = websocket.receive_json()
+        assert data == {"hello": "world"}
 
 
 def test_client_close():

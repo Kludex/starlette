@@ -20,7 +20,7 @@ class StringConvertor(Convertor):
 
     def to_string(self, value: typing.Any) -> str:
         value = str(value)
-        assert "/" not in value, "May not contain path seperators"
+        assert "/" not in value, "May not contain path separators"
         assert value, "Must not be empty"
         return value
 

@@ -14,6 +14,9 @@ from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, MutableHeaders
 from starlette.types import Receive, Scope, Send
 
+# Workaround for adding samesite support to pre 3.8 python
+http.cookies.Morsel._reserved["samesite"] = "SameSite"  # type: ignore
+
 try:
     import aiofiles
     from aiofiles.os import stat as aio_stat
@@ -96,6 +99,7 @@ class Response:
         domain: str = None,
         secure: bool = False,
         httponly: bool = False,
+        samesite: str = "lax",
     ) -> None:
         cookie = http.cookies.SimpleCookie()  # type: http.cookies.BaseCookie
         cookie[key] = value
@@ -111,6 +115,13 @@ class Response:
             cookie[key]["secure"] = True
         if httponly:
             cookie[key]["httponly"] = True
+        if samesite is not None:
+            assert samesite.lower() in [
+                "strict",
+                "lax",
+                "none",
+            ], "samesite must be either 'strict', 'lax' or 'none'"
+            cookie[key]["samesite"] = samesite
         cookie_val = cookie.output(header="").strip()
         self.raw_headers.append((b"set-cookie", cookie_val.encode("latin-1")))
 

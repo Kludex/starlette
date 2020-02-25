@@ -229,6 +229,7 @@ def test_set_cookie():
             domain="localhost",
             secure=True,
             httponly=True,
+            samesite="none",
         )
         await response(scope, receive, send)
 

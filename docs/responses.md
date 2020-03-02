@@ -177,3 +177,10 @@ async def app(scope, receive, send):
     response = FileResponse('statics/favicon.ico')
     await response(scope, receive, send)
 ```
+
+## Third party middleware
+
+### [SSEResponse(EventSourceResponse)](https://github.com/sysid/sse-starlette)
+
+Server Sent Response implements the ServerSentEvent Protocol: https://www.w3.org/TR/2009/WD-eventsource-20090421.  
+It enables event streaming from the server to the client without the complexity of websockets.

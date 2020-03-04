@@ -295,7 +295,7 @@ class Mount(BaseRoute):
         self,
         path: str,
         app: ASGIApp = None,
-        routes: typing.List[BaseRoute] = None,
+        routes: typing.Sequence[BaseRoute] = None,
         name: str = None,
     ) -> None:
         assert path == "" or path.startswith("/"), "Routed paths must start with '/'"

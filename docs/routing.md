@@ -36,11 +36,21 @@ Paths can use URI templating style to capture path components.
 ```python
 Route('/users/{username}', user)
 ```
+By default this will capture characters up to the end of the path or the next `/`.
 
-Convertors for `int`, `float`, and `path` are also available:
+You can use convertors to modify what is captured. Four convertors are available:
+
+* `str` returns a string, and is the default.
+* `int` returns a Python integer.
+* `float` returns a Python float.
+* `path` returns the rest of the path, including any additional `/` characers.
+
+Convertors are used by prefixing them with a colon, like so:
 
 ```python
 Route('/users/{user_id:int}', user)
+Route('/floating-point/{number:float}', floating_point)
+Route('/uploaded/{rest_of_path:path}', uploaded)
 ```
 
 Path parameters are made available in the request, as the `request.path_params`

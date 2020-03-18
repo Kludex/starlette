@@ -73,6 +73,8 @@ Cookies are exposed as a regular dictionary interface.
 
 For example: `request.cookies.get('mycookie')`
 
+Cookies are ignored in case of an invalid cookie. (RFC2109)
+
 #### Body
 
 There are a few different interfaces for returning the body of the request:

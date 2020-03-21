@@ -285,6 +285,17 @@ def test_request_cookies():
     assert response.text == "Hello, cookies!"
 
 
+def test_invalid_cookie():
+    async def app(scope, receive, send):
+        request = Request(scope, receive)
+        response = JSONResponse({"cookies": request.cookies})
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/", cookies={"invalid/cookie": "test", "valid": "test2"})
+    assert response.json() == {"cookies": {}}
+
+
 def test_chunked_encoding():
     async def app(scope, receive, send):
         request = Request(scope, receive)

@@ -50,7 +50,7 @@ class CORSMiddleware:
             }
         )
         allow_headers = SAFELISTED_HEADERS | set([h.lower for h in allow_headers])
-        if allow_headers and "*" not in allowed_headers:
+        if allow_headers and "*" not in allow_headers:
             preflight_headers["Access-Control-Allow-Headers"] = ", ".join(allow_headers)
         if allow_credentials:
             preflight_headers["Access-Control-Allow-Credentials"] = "true"

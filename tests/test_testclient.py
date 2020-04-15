@@ -58,7 +58,6 @@ def test_error_on_startup():
 
 
 def test_exception_in_middleware():
-
     class MiddlewareException(Exception):
         pass
 

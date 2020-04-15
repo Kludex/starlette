@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -53,6 +54,25 @@ def test_use_testclient_as_contextmanager():
 def test_error_on_startup():
     with pytest.raises(RuntimeError):
         with TestClient(startup_error_app):
+            pass  # pragma: no cover
+
+
+def test_exception_in_middleware():
+
+    class MiddlewareException(Exception):
+        pass
+
+    class BrokenMiddleware:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            raise MiddlewareException()
+
+    broken_middleware = Starlette(middleware=[Middleware(BrokenMiddleware)])
+
+    with pytest.raises(MiddlewareException):
+        with TestClient(broken_middleware):
             pass  # pragma: no cover
 
 

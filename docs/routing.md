@@ -43,6 +43,7 @@ You can use convertors to modify what is captured. Four convertors are available
 * `str` returns a string, and is the default.
 * `int` returns a Python integer.
 * `float` returns a Python float.
+* `uuid` return a Python `uuid.UUID` instance.
 * `path` returns the rest of the path, including any additional `/` characers.
 
 Convertors are used by prefixing them with a colon, like so:

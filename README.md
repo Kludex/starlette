@@ -8,9 +8,6 @@
 <a href="https://github.com/encode/starlette/actions">
     <img src="https://github.com/encode/starlette/workflows/Test%20Suite/badge.svg" alt="Build Status">
 </a>
-<a href="https://codecov.io/gh/encode/starlette">
-    <img src="https://codecov.io/gh/encode/starlette/branch/master/graph/badge.svg" alt="Coverage">
-</a>
 <a href="https://pypi.org/project/starlette/">
     <img src="https://badge.fury.io/py/starlette.svg" alt="Package version">
 </a>

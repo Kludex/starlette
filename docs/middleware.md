@@ -278,3 +278,9 @@ Middleware and decorator for detecting and denying [TLSv1.3 early data](https://
 
 A drop-in replacement for Starlette session middleware, using [authlib's jwt](https://docs.authlib.org/en/latest/jose/jwt.html)
 module.
+
+#### [StarletteOpentracing](https://github.com/acidjunk/starlette-opentracing)
+
+A middleware class that emits tracing info to [OpenTracing.io](https://opentracing.io/) compatible tracers and 
+can be used to profile and monitor distributed applications.
+

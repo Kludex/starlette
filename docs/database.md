@@ -86,6 +86,9 @@ app = Starlette(
 )
 ```
 
+Finally, you will need to create the database tables. It is recommended to use
+Alembic, which we briefly go over in [Migrations](#migrations)
+
 ## Queries
 
 Queries may be made with as [SQLAlchemy Core queries][sqlalchemy-core].
@@ -260,6 +263,34 @@ config.set_main_option('sqlalchemy.url', str(app.DATABASE_URL))
 target_metadata = app.metadata
 
 ...
+```
+
+Then, using our notes example above, create an initial revision:
+
+```shell
+alembic revision -m "Create notes table"
+```
+
+And populate the new file (within `migrations/versions`) with the necessary directives:
+
+```python
+
+def upgrade():
+    op.create_table(
+      'notes',
+      sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+      sqlalchemy.Column("text", sqlalchemy.String),
+      sqlalchemy.Column("completed", sqlalchemy.Boolean),
+    )
+
+def downgrade():
+    op.drop_table('notes')
+```
+
+And run your first migration. Our notes app can now run!
+
+```shell
+alembic upgrade head
 ```
 
 **Running migrations during testing**

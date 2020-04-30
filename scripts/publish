@@ -1,6 +1,7 @@
 #!/bin/sh -e
 
 VERSION_FILE="starlette/__init__.py"
+PYTHONPATH=.
 
 if [ -d 'venv' ] ; then
     PREFIX="venv/bin/"

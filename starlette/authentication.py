@@ -62,7 +62,9 @@ def requires(
 
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:
-                        return RedirectResponse(url=request.url_for(redirect))
+                        return RedirectResponse(
+                            url=request.url_for(redirect), status_code=303
+                        )
                     raise HTTPException(status_code=status_code)
                 return await func(*args, **kwargs)
 
@@ -77,7 +79,9 @@ def requires(
 
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:
-                        return RedirectResponse(url=request.url_for(redirect))
+                        return RedirectResponse(
+                            url=request.url_for(redirect), status_code=303
+                        )
                     raise HTTPException(status_code=status_code)
                 return func(*args, **kwargs)
 

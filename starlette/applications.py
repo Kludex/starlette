@@ -45,10 +45,19 @@ class Starlette:
         ] = None,
         on_startup: typing.Sequence[typing.Callable] = None,
         on_shutdown: typing.Sequence[typing.Callable] = None,
+        lifespan: typing.Callable[["Starlette"], typing.AsyncGenerator] = None,
     ) -> None:
+        # The lifespan context function is a newer style that replaces
+        # on_startup / on_shutdown handlers. Use one or the other, not both.
+        assert lifespan is None or (
+            on_startup is None and on_shutdown is None
+        ), "Use either 'lifespan' or 'on_startup'/'on_shutdown', not both."
+
         self._debug = debug
         self.state = State()
-        self.router = Router(routes, on_startup=on_startup, on_shutdown=on_shutdown)
+        self.router = Router(
+            routes, on_startup=on_startup, on_shutdown=on_shutdown, lifespan=lifespan
+        )
         self.exception_handlers = (
             {} if exception_handlers is None else dict(exception_handlers)
         )

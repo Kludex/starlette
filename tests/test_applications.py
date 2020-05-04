@@ -280,3 +280,45 @@ def test_app_add_event_handler():
         assert not cleanup_complete
     assert startup_complete
     assert cleanup_complete
+
+
+def test_app_async_lifespan():
+    startup_complete = False
+    cleanup_complete = False
+
+    async def lifespan(app):
+        nonlocal startup_complete, cleanup_complete
+        startup_complete = True
+        yield
+        cleanup_complete = True
+
+    app = Starlette(lifespan=lifespan)
+
+    assert not startup_complete
+    assert not cleanup_complete
+    with TestClient(app):
+        assert startup_complete
+        assert not cleanup_complete
+    assert startup_complete
+    assert cleanup_complete
+
+
+def test_app_sync_lifespan():
+    startup_complete = False
+    cleanup_complete = False
+
+    def lifespan(app):
+        nonlocal startup_complete, cleanup_complete
+        startup_complete = True
+        yield
+        cleanup_complete = True
+
+    app = Starlette(lifespan=lifespan)
+
+    assert not startup_complete
+    assert not cleanup_complete
+    with TestClient(app):
+        assert startup_complete
+        assert not cleanup_complete
+    assert startup_complete
+    assert cleanup_complete

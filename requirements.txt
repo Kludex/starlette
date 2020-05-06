@@ -16,6 +16,7 @@ isort
 mypy
 pytest
 pytest-cov
+pytest-asyncio
 
 # Documentation
 mkdocs

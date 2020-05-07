@@ -4,6 +4,9 @@ import time
 
 import pytest
 
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 
@@ -18,6 +21,30 @@ def test_staticfiles(tmpdir):
     response = client.get("/example.txt")
     assert response.status_code == 200
     assert response.text == "<file content>"
+
+
+def test_staticfiles_head_with_middleware(tmpdir):
+    """
+    see https://github.com/encode/starlette/pull/935
+    """
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("x" * 100)
+
+    routes = [
+        Mount("/static", app=StaticFiles(directory=tmpdir), name="static"),
+    ]
+    app = Starlette(routes=routes)
+
+    @app.middleware("http")
+    async def does_nothing_middleware(request: Request, call_next):
+        response = await call_next(request)
+        return response
+
+    client = TestClient(app)
+    response = client.head("/static/example.txt")
+    assert response.status_code == 200
+    assert response.headers.get("content-length") == "100"
 
 
 def test_staticfiles_with_package():

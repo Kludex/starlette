@@ -52,7 +52,7 @@ class BaseHTTPMiddleware:
                 if message is None:
                     break
                 assert message["type"] == "http.response.body"
-                yield message["body"]
+                yield message.get("body", b"")
             task.result()
 
         response = StreamingResponse(

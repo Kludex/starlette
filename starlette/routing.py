@@ -107,7 +107,7 @@ def compile_path(
         ), f"Unknown path convertor '{convertor_type}'"
         convertor = CONVERTOR_TYPES[convertor_type]
 
-        path_regex += path[idx : match.start()]
+        path_regex += re.escape(path[idx : match.start()])
         path_regex += f"(?P<{param_name}>{convertor.regex})"
 
         path_format += path[idx : match.start()]
@@ -117,7 +117,7 @@ def compile_path(
 
         idx = match.end()
 
-    path_regex += path[idx:] + "$"
+    path_regex += re.escape(path[idx:]) + "$"
     path_format += path[idx:]
 
     return re.compile(path_regex), path_format, param_convertors

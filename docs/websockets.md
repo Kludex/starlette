@@ -47,7 +47,7 @@ For example: `websocket.query_params['search']`
 
 Router path parameters are exposed as a dictionary interface.
 
-For example: `request.path_params['username']`
+For example: `websocket.path_params['username']`
 
 ### Accepting the connection
 

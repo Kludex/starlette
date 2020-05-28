@@ -5,7 +5,7 @@ is shutting down.
 
 ## Registering events
 
-These event handlers can either be `async` coroutines, or regular syncronous
+These event handlers can either be `async` coroutines, or regular synchronous
 functions.
 
 The event handlers should be included on the application like so:

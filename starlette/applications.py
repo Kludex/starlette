@@ -19,7 +19,7 @@ class Starlette:
     * **routes** - A list of routes to serve incoming HTTP and WebSocket requests.
     * **middleware** - A list of middleware to run for every request. A starlette
     application will always automatically include two middleware classes.
-    `ServerErrorMiddleware` is added the very outermost middleware, to handle
+    `ServerErrorMiddleware` is added as the very outermost middleware, to handle
     any uncaught errors occuring anywhere in the entire stack.
     `ExceptionMiddleware` is added as the very innermost middleware, to deal
     with handled exception cases occuring in the routing or endpoints.

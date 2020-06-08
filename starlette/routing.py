@@ -572,7 +572,7 @@ class Router:
         if partial is not None:
             #  Handle partial matches. These are cases where an endpoint is
             # able to handle the request, but is not a preferred option.
-            # We use this in particular to deal with "406 Method Not Found".
+            # We use this in particular to deal with "405 Method Not Allowed".
             scope.update(partial_scope)
             await partial.handle(scope, receive, send)
             return

@@ -39,6 +39,13 @@ Serverless ASGI adapter for AWS Lambda & API Gateway.
 Manage and send messages to groups of channels using websockets.
 Checkout <a href="https://github.com/taoufik07/nejma-chat" target="_blank">nejma-chat</a>, a simple chat application built using `nejma` and `starlette`.
 
+### ChannelBox
+
+<a href="https://github.com/Sobolev5/channel-box" target="_blank">GitHub</a>
+
+Another solution for websocket broadcast. Send messages to channel groups from any part of your code. 
+Checkout <a href="http://backend.starlette-vue.site/chat/chat1/" target="_blank">channel-box-chat</a>, a simple chat application built using `channel-box` and `starlette`.
+
 ### Scout APM
 
 <a href="https://github.com/scoutapp/scout_apm_python" target="_blank">GitHub</a>

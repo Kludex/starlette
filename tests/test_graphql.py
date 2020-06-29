@@ -1,4 +1,5 @@
 import graphene
+import pytest
 from graphql.execution.executors.asyncio import AsyncioExecutor
 
 from starlette.applications import Starlette
@@ -149,10 +150,17 @@ def test_graphql_async():
 
 
 async_schema = graphene.Schema(query=ASyncQuery)
-old_style_async_app = GraphQLApp(schema=async_schema, executor=AsyncioExecutor())
 
 
-def test_graphql_async_old_style_executor():
+@pytest.fixture
+def old_style_async_app(event_loop) -> GraphQLApp:
+    old_style_async_app = GraphQLApp(
+        schema=async_schema, executor=AsyncioExecutor(loop=event_loop),
+    )
+    return old_style_async_app
+
+
+def test_graphql_async_old_style_executor(old_style_async_app: GraphQLApp):
     # See https://github.com/encode/starlette/issues/242
     client = TestClient(old_style_async_app)
     response = client.get("/?query={ hello }")

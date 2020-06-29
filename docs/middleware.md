@@ -281,6 +281,9 @@ module.
 
 #### [StarletteOpentracing](https://github.com/acidjunk/starlette-opentracing)
 
-A middleware class that emits tracing info to [OpenTracing.io](https://opentracing.io/) compatible tracers and 
+A middleware class that emits tracing info to [OpenTracing.io](https://opentracing.io/) compatible tracers and
 can be used to profile and monitor distributed applications.
 
+#### [RateLimitMiddleware](https://github.com/abersheeran/asgi-ratelimit)
+
+A rate limit middleware. Regular expression matches url; flexible rules; highly customizable. Very easy to use.

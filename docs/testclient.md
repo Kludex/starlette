@@ -70,7 +70,7 @@ always raised by the test client.
 
 * `.websocket_connect(url, subprotocols=None, **options)` - Takes the same set of arguments as `requests.get()`.
 
-May raise `starlette.websockets.Disconnect` if the application does not accept the websocket connection.
+May raise `starlette.websockets.WebSocketDisconnect` if the application does not accept the websocket connection.
 
 #### Sending data
 
@@ -84,7 +84,7 @@ May raise `starlette.websockets.Disconnect` if the application does not accept t
 * `.receive_bytes()` - Wait for incoming bytestring sent by the application and return it.
 * `.receive_json(mode="text")` - Wait for incoming json data sent by the application and return it. Use `mode="binary"` to send JSON over binary data frames.
 
-May raise `starlette.websockets.Disconnect`.
+May raise `starlette.websockets.WebSocketDisconnect`.
 
 #### Closing the connection
 

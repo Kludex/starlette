@@ -13,5 +13,5 @@ set -x
 PYTHONPATH=. ${PREFIX}pytest --ignore venv --cov-config tests/.ignore_lifespan -W ignore::DeprecationWarning --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
 ${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
 ${PREFIX}autoflake --recursive starlette tests setup.py
-${PREFIX}isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --combine-as --line-width 88 --recursive --check starlette tests setup.py
+${PREFIX}isort --profile=black --combine-as --check starlette tests setup.py
 ${PREFIX}black starlette tests setup.py --check

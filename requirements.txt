@@ -12,7 +12,7 @@ ujson
 autoflake
 black
 databases[sqlite]
-isort
+isort==5.*
 mypy
 pytest
 pytest-cov

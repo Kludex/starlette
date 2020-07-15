@@ -5,8 +5,8 @@ from urllib.parse import unquote_plus
 from starlette.datastructures import FormData, Headers, UploadFile
 
 try:
-    from multipart.multipart import parse_options_header
     import multipart
+    from multipart.multipart import parse_options_header
 except ImportError:  # pragma: nocover
     parse_options_header = None
     multipart = None

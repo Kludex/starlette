@@ -128,3 +128,18 @@ def test_build_environ():
         "wsgi.url_scheme": "https",
         "wsgi.version": (1, 0),
     }
+
+
+def test_build_environ_encoding() -> None:
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "GET",
+        "path": "/小星",
+        "root_path": "/中国",
+        "query_string": b"a=123&b=456",
+        "headers": [],
+    }
+    environ = build_environ(scope, b"")
+    assert environ["SCRIPT_NAME"] == "/中国".encode("utf8").decode("latin-1")
+    assert environ["PATH_INFO"] == "/小星".encode("utf8").decode("latin-1")

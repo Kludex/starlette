@@ -13,8 +13,8 @@ def build_environ(scope: Scope, body: bytes) -> dict:
     """
     environ = {
         "REQUEST_METHOD": scope["method"],
-        "SCRIPT_NAME": scope.get("root_path", ""),
-        "PATH_INFO": scope["path"],
+        "SCRIPT_NAME": scope.get("root_path", "").encode("utf8").decode("latin1"),
+        "PATH_INFO": scope["path"].encode("utf8").decode("latin1"),
         "QUERY_STRING": scope["query_string"].decode("ascii"),
         "SERVER_PROTOCOL": f"HTTP/{scope['http_version']}",
         "wsgi.version": (1, 0),

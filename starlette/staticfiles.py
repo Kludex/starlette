@@ -107,12 +107,6 @@ class StaticFiles:
         if scope["method"] not in ("GET", "HEAD"):
             return PlainTextResponse("Method Not Allowed", status_code=405)
 
-        if path.startswith(".."):
-            # Most clients will normalize the path, so we shouldn't normally
-            # get this, but don't allow misbehaving clients to break out of
-            # the static files directory.
-            return PlainTextResponse("Not Found", status_code=404)
-
         full_path, stat_result = await self.lookup_path(path)
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
@@ -147,6 +141,12 @@ class StaticFiles:
     ) -> typing.Tuple[str, typing.Optional[os.stat_result]]:
         for directory in self.all_directories:
             full_path = os.path.join(directory, path)
+            if (
+                os.path.commonprefix([os.path.realpath(full_path), directory])
+                != directory
+            ):
+                # Don't allow misbehaving clients to break out of the static files directory.
+                continue
             try:
                 stat_result = await aio_stat(full_path)
                 return (full_path, stat_result)

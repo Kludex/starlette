@@ -1,3 +1,13 @@
+## 0.13.5
+
+* Add support for `Starlette(lifespan=...)` functions.
+* More robust path-traversal check in StaticFiles app.
+* Fix WSGI PATH_INFO encoding.
+* RedirectResponse now accepts optional background parameter
+* Allow path routes to contain regex meta characters
+* Treat ASGI HTTP 'body' as an optional key.
+* Don't use thread pooling for writing to in-memory upload files.
+
 ## 0.13.0
 
 * Switch to promoting application configuration on init style everywhere.

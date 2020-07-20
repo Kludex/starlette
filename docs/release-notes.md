@@ -1,3 +1,7 @@
+## 0.13.6
+
+* Fix 404 errors with `StaticFiles`.
+
 ## 0.13.5
 
 * Add support for `Starlette(lifespan=...)` functions.

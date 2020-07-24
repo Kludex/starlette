@@ -39,7 +39,7 @@ For example: `websocket.headers['sec-websocket-version']`
 
 #### Query Parameters
 
-Headers are exposed as an immutable multi-dict.
+Query parameters are exposed as an immutable multi-dict.
 
 For example: `websocket.query_params['search']`
 

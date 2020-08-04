@@ -3,7 +3,7 @@ import typing
 
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
 DispatchFunction = typing.Callable[
@@ -27,7 +27,7 @@ class BaseHTTPMiddleware:
 
     async def call_next(self, request: Request) -> Response:
         loop = asyncio.get_event_loop()
-        queue = asyncio.Queue()  # type: asyncio.Queue
+        queue: "asyncio.Queue[typing.Optional[Message]]" = asyncio.Queue(maxsize=1)
 
         scope = request.scope
         receive = request.receive

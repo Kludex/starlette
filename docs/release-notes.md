@@ -1,3 +1,7 @@
+## 0.13.7
+
+* Fix high memory usage when using `BaseHTTPMiddleware` middleware classes and streaming responses.
+
 ## 0.13.6
 
 * Fix 404 errors with `StaticFiles`.

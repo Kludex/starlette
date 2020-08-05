@@ -5,7 +5,7 @@ Starlette also includes a `StaticFiles` class for serving files in a given direc
 
 Signature: `StaticFiles(directory=None, packages=None, check_dir=True)`
 
-* `directory` - A string denoting a directory path.
+* `directory` - A string or [os.Pathlike][pathlike] denoting a directory path.
 * `packages` - A list of strings of python packages.
 * `html` - Run in HTML mode. Automatically loads `index.html` for directories if such file exist.
 * `check_dir` - Ensure that the directory exists upon instantiation. Defaults to `True`.
@@ -51,3 +51,5 @@ app = Starlette(routes=routes)
 You may prefer to include static files directly inside the "static" directory
 rather than using Python packaging to include static files, but it can be useful
 for bundling up reusable components.
+
+[pathlike]: https://docs.python.org/3/library/os.html#os.PathLike

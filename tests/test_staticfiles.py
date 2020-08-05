@@ -1,5 +1,6 @@
 import asyncio
 import os
+import pathlib
 import time
 
 import pytest
@@ -17,6 +18,19 @@ def test_staticfiles(tmpdir):
         file.write("<file content>")
 
     app = StaticFiles(directory=tmpdir)
+    client = TestClient(app)
+    response = client.get("/example.txt")
+    assert response.status_code == 200
+    assert response.text == "<file content>"
+
+
+def test_staticfiles_with_pathlib(tmpdir):
+    base_dir = pathlib.Path(tmpdir)
+    path = base_dir / "example.txt"
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    app = StaticFiles(directory=base_dir)
     client = TestClient(app)
     response = client.get("/example.txt")
     assert response.status_code == 200

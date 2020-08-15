@@ -16,6 +16,8 @@ jobs:
       - uses: "actions/setup-python@v1"
         with:
           python-version: 3.7
+      - name: "Install dependencies"
+        run: "scripts/install"
       - name: "Publish"
         run: "scripts/publish"
         env:

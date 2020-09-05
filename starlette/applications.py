@@ -76,11 +76,11 @@ class Starlette:
                 exception_handlers[key] = value
 
         middleware = (
-            [Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug,)]
+            [Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug)]
             + self.user_middleware
             + [
                 Middleware(
-                    ExceptionMiddleware, handlers=exception_handlers, debug=debug,
+                    ExceptionMiddleware, handlers=exception_handlers, debug=debug
                 )
             ]
         )

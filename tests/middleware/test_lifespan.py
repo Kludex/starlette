@@ -24,7 +24,7 @@ def test_routed_lifespan():
     app = Router(
         on_startup=[run_startup],
         on_shutdown=[run_shutdown],
-        routes=[Route("/", hello_world),],
+        routes=[Route("/", hello_world)],
     )
 
     assert not startup_complete

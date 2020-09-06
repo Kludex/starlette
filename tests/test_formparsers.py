@@ -192,7 +192,9 @@ def test_multipart_request_mixed_files_and_data(tmpdir):
             b"--a7f7ac8d4e2e437c877bb7b8d7cc549c--\r\n"
         ),
         headers={
-            "Content-Type": "multipart/form-data; boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+            "Content-Type": (
+                "multipart/form-data; boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+            )
         },
     )
     assert response.json() == {
@@ -213,13 +215,16 @@ def test_multipart_request_with_charset_for_filename(tmpdir):
         data=(
             # file
             b"--a7f7ac8d4e2e437c877bb7b8d7cc549c\r\n"
-            b'Content-Disposition: form-data; name="file"; filename="\xe6\x96\x87\xe6\x9b\xb8.txt"\r\n'
+            b'Content-Disposition: form-data; name="file"; filename="\xe6\x96\x87\xe6\x9b\xb8.txt"\r\n'  # noqa: E501
             b"Content-Type: text/plain\r\n\r\n"
             b"<file content>\r\n"
             b"--a7f7ac8d4e2e437c877bb7b8d7cc549c--\r\n"
         ),
         headers={
-            "Content-Type": "multipart/form-data; charset=utf-8; boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+            "Content-Type": (
+                "multipart/form-data; charset=utf-8; "
+                "boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+            )
         },
     )
     assert response.json() == {
@@ -238,13 +243,15 @@ def test_multipart_request_without_charset_for_filename(tmpdir):
         data=(
             # file
             b"--a7f7ac8d4e2e437c877bb7b8d7cc549c\r\n"
-            b'Content-Disposition: form-data; name="file"; filename="\xe7\x94\xbb\xe5\x83\x8f.jpg"\r\n'
+            b'Content-Disposition: form-data; name="file"; filename="\xe7\x94\xbb\xe5\x83\x8f.jpg"\r\n'  # noqa: E501
             b"Content-Type: image/jpeg\r\n\r\n"
             b"<file content>\r\n"
             b"--a7f7ac8d4e2e437c877bb7b8d7cc549c--\r\n"
         ),
         headers={
-            "Content-Type": "multipart/form-data; boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+            "Content-Type": (
+                "multipart/form-data; boundary=a7f7ac8d4e2e437c877bb7b8d7cc549c"
+            )
         },
     )
     assert response.json() == {
@@ -268,7 +275,10 @@ def test_multipart_request_with_encoded_value(tmpdir):
             b"--20b303e711c4ab8c443184ac833ab00f--\r\n"
         ),
         headers={
-            "Content-Type": "multipart/form-data; charset=utf-8; boundary=20b303e711c4ab8c443184ac833ab00f"
+            "Content-Type": (
+                "multipart/form-data; charset=utf-8; "
+                "boundary=20b303e711c4ab8c443184ac833ab00f"
+            )
         },
     )
     assert response.json() == {"value": "Transférer"}

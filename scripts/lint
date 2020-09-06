@@ -4,11 +4,10 @@ export PREFIX=""
 if [ -d 'venv' ] ; then
     export PREFIX="venv/bin/"
 fi
+export SOURCE_FILES="starlette tests"
 
 set -x
 
-${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
-${PREFIX}autoflake --in-place --recursive starlette tests setup.py
-${PREFIX}black starlette tests setup.py
-${PREFIX}isort --profile=black --combine-as starlette tests setup.py
-${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
+${PREFIX}autoflake --in-place --recursive $SOURCE_FILES
+${PREFIX}isort --project=starlette $SOURCE_FILES
+${PREFIX}black $SOURCE_FILES

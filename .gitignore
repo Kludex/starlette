@@ -3,5 +3,11 @@ test.db
 .coverage
 .pytest_cache/
 .mypy_cache/
-starlette.egg-info/
-venv/
+__pycache__/
+htmlcov/
+site/
+*.egg-info/
+venv*/
+.python-version
+build/
+dist/

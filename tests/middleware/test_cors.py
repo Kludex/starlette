@@ -181,7 +181,7 @@ def test_cors_allow_origin_regex_fullmatch():
     app.add_middleware(
         CORSMiddleware,
         allow_headers=["X-Example", "Content-Type"],
-        allow_origin_regex="https://.*\.example.org",
+        allow_origin_regex=r"https://.*\.example.org",
     )
 
     @app.route("/")

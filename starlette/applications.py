@@ -25,8 +25,9 @@ class Starlette:
     with handled exception cases occuring in the routing or endpoints.
     * **exception_handlers** - A dictionary mapping either integer status codes,
     or exception class types onto callables which handle the exceptions.
-    Exception handler callables should be of the form `handler(request, exc) -> response`
-    and may be be either standard functions, or async functions.
+    Exception handler callables should be of the form
+    `handler(request, exc) -> response` and may be be either standard functions, or
+    async functions.
     * **on_startup** - A list of callables to run on application startup.
     Startup handler callables do not take any arguments, and may be be either
     standard functions, or async functions.

@@ -520,20 +520,20 @@ class Router:
         """
         first = True
         app = scope.get("app")
-        message = await receive()
+        await receive()
         try:
             if inspect.isasyncgenfunction(self.lifespan_context):
                 async for item in self.lifespan_context(app):
                     assert first, "Lifespan context yielded multiple times."
                     first = False
                     await send({"type": "lifespan.startup.complete"})
-                    message = await receive()
+                    await receive()
             else:
                 for item in self.lifespan_context(app):  # type: ignore
                     assert first, "Lifespan context yielded multiple times."
                     first = False
                     await send({"type": "lifespan.startup.complete"})
-                    message = await receive()
+                    await receive()
         except BaseException:
             if first:
                 exc_text = traceback.format_exc()

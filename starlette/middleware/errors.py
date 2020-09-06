@@ -109,7 +109,7 @@ FRAME_TEMPLATE = """
     </p>
     <div id="{frame_filename}-{frame_lineno}" class="source-code {collapsed}">{code_context}</div>
 </div>
-"""
+"""  # noqa: E501
 
 LINE = """
 <p><span class="frame-line">
@@ -200,10 +200,12 @@ class ServerErrorMiddleware:
         )
 
         values = {
-            # HTML escape - filename could contain < or >, especially if it's a virtual file e.g. <stdin> in the REPL
+            # HTML escape - filename could contain < or >, especially if it's a virtual
+            # file e.g. <stdin> in the REPL
             "frame_filename": html.escape(frame.filename),
             "frame_lineno": frame.lineno,
-            # HTML escape - if you try very hard it's possible to name a function with < or >
+            # HTML escape - if you try very hard it's possible to name a function with <
+            # or >
             "frame_name": html.escape(frame.function),
             "code_context": code_context,
             "collapsed": "collapsed" if is_collapsed else "",
@@ -226,7 +228,10 @@ class ServerErrorMiddleware:
             is_collapsed = True
 
         # escape error class and text
-        error = f"{html.escape(traceback_obj.exc_type.__name__)}: {html.escape(str(traceback_obj))}"
+        error = (
+            f"{html.escape(traceback_obj.exc_type.__name__)}: "
+            f"{html.escape(str(traceback_obj))}"
+        )
 
         return TEMPLATE.format(styles=STYLES, js=JS, error=error, exc_html=exc_html)
 

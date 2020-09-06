@@ -442,8 +442,12 @@ def test_url_for_with_root_path():
     }
 
 
+async def stub_app(scope, receive, send):
+    pass  # pragma: no cover
+
+
 double_mount_routes = [
-    Mount("/mount", name="mount", routes=[Mount("/static", ..., name="static")]),
+    Mount("/mount", name="mount", routes=[Mount("/static", stub_app, name="static")]),
 ]
 
 

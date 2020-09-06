@@ -44,7 +44,8 @@ def build_environ(scope: Scope, body: bytes) -> dict:
             corrected_name = "CONTENT_TYPE"
         else:
             corrected_name = f"HTTP_{name}".upper().replace("-", "_")
-        # HTTPbis say only ASCII chars are allowed in headers, but we latin1 just in case
+        # HTTPbis say only ASCII chars are allowed in headers, but we latin1 just in
+        # case
         value = value.decode("latin1")
         if corrected_name in environ:
             value = environ[corrected_name] + "," + value

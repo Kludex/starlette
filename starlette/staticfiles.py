@@ -147,7 +147,8 @@ class StaticFiles:
             full_path = os.path.realpath(os.path.join(directory, path))
             directory = os.path.realpath(directory)
             if os.path.commonprefix([full_path, directory]) != directory:
-                # Don't allow misbehaving clients to break out of the static files directory.
+                # Don't allow misbehaving clients to break out of the static files
+                # directory.
                 continue
             try:
                 stat_result = await aio_stat(full_path)

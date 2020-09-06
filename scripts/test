@@ -1,17 +1,18 @@
-#!/bin/sh -e
+#!/bin/sh
 
 export PREFIX=""
 if [ -d 'venv' ] ; then
     export PREFIX="venv/bin/"
 fi
 
-export VERSION_SCRIPT="import sys; print('%s.%s' % sys.version_info[0:2])"
-export PYTHON_VERSION=`python -c "$VERSION_SCRIPT"`
+set -ex
 
-set -x
+if [ -z $GITHUB_ACTIONS ]; then
+    scripts/check
+fi
 
-PYTHONPATH=. ${PREFIX}pytest --ignore venv --cov-config tests/.ignore_lifespan -W ignore::DeprecationWarning --cov=starlette --cov=tests --cov-fail-under=100 --cov-report=term-missing ${@}
-${PREFIX}mypy starlette --ignore-missing-imports --disallow-untyped-defs
-${PREFIX}autoflake --recursive starlette tests setup.py
-${PREFIX}isort --profile=black --combine-as --check starlette tests setup.py
-${PREFIX}black starlette tests setup.py --check
+${PREFIX}pytest $@
+
+if [ -z $GITHUB_ACTIONS ]; then
+    scripts/coverage
+fi

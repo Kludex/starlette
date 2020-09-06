@@ -153,7 +153,8 @@ class HTTPConnection(Mapping):
         if not hasattr(self, "_state"):
             # Ensure 'state' has an empty dict if it's not already populated.
             self.scope.setdefault("state", {})
-            # Create a state instance with a reference to the dict in which it should store info
+            # Create a state instance with a reference to the dict in which it should
+            # store info
             self._state = State(self.scope["state"])
         return self._state
 

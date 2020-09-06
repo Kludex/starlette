@@ -2,6 +2,8 @@
 name: Test Suite
 
 on:
+  push:
+    branches: ["master"]
   pull_request:
     branches: ["master"]
 
@@ -21,5 +23,9 @@ jobs:
           python-version: "${{ matrix.python-version }}"
       - name: "Install dependencies"
         run: "scripts/install"
+      - name: "Run linting checks"
+        run: "scripts/check"
+      - name: "Build package & docs"
+        run: "scripts/build"
       - name: "Run tests"
         run: "scripts/test"

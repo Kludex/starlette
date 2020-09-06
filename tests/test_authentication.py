@@ -130,7 +130,7 @@ def async_inject_decorator(**kwargs):
 @app.route("/dashboard/decorated")
 @async_inject_decorator(additional="payload")
 @requires("authenticated")
-async def decorated_sync(request, additional):
+async def decorated_async(request, additional):
     return JSONResponse(
         {
             "authenticated": request.user.is_authenticated,
@@ -176,7 +176,7 @@ def ws_inject_decorator(**kwargs):
 @app.websocket_route("/ws/decorated")
 @ws_inject_decorator(additional="payload")
 @requires("authenticated")
-async def websocket_endpoint(websocket, additional):
+async def websocket_endpoint_decorated(websocket, additional):
     await websocket.accept()
     await websocket.send_json(
         {

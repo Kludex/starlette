@@ -106,8 +106,8 @@ class CORSMiddleware:
 
         if self.is_allowed_origin(origin=requested_origin):
             if not self.allow_all_origins:
-                # If self.allow_all_origins is True, then the "Access-Control-Allow-Origin"
-                # header is already set to "*".
+                # If self.allow_all_origins is True, then the
+                # "Access-Control-Allow-Origin" header is already set to "*".
                 # If we only allow specific origins, then we have to mirror back
                 # the Origin header in the response.
                 headers["Access-Control-Allow-Origin"] = requested_origin

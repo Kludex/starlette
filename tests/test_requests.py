@@ -287,9 +287,9 @@ def test_request_cookies():
 
 def test_cookie_lenient_parsing():
     """
-    The following test is based on a cookie set by Okta, a well-known authorization service.
-    It turns out that it's common practice to set cookies that would be invalid according to
-    the spec.
+    The following test is based on a cookie set by Okta, a well-known authorization
+    service. It turns out that it's common practice to set cookies that would be
+    invalid according to the spec.
     """
     tough_cookie = (
         "provider-oauth-nonce=validAsciiblabla; "

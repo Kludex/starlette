@@ -45,9 +45,7 @@ def test_staticfiles_head_with_middleware(tmpdir):
     with open(path, "w") as file:
         file.write("x" * 100)
 
-    routes = [
-        Mount("/static", app=StaticFiles(directory=tmpdir), name="static"),
-    ]
+    routes = [Mount("/static", app=StaticFiles(directory=tmpdir), name="static")]
     app = Starlette(routes=routes)
 
     @app.middleware("http")

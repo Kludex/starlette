@@ -1,3 +1,0 @@
-[coverage:run]
-omit =
-  starlette/middleware/lifespan.py

@@ -181,7 +181,7 @@ class Route(BaseRoute):
         if methods is None:
             self.methods = None
         else:
-            self.methods = set(method.upper() for method in methods)
+            self.methods = {method.upper() for method in methods}
             if "GET" in self.methods:
                 self.methods.add("HEAD")
 

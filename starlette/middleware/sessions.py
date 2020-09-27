@@ -64,7 +64,7 @@ class SessionMiddleware:
                 elif not initial_session_was_empty:
                     # The session has been cleared.
                     headers = MutableHeaders(scope=message)
-                    header_value = "%s=%s; %s" % (
+                    header_value = "{}={}; {}".format(
                         self.session_cookie,
                         "null; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;",
                         self.security_flags,

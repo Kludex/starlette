@@ -449,7 +449,7 @@ class TestClient(requests.Session):
 
         return session
 
-    def __enter__(self) -> requests.Session:
+    def __enter__(self) -> "TestClient":
         loop = asyncio.get_event_loop()
         self.send_queue = asyncio.Queue()  # type: asyncio.Queue
         self.receive_queue = asyncio.Queue()  # type: asyncio.Queue

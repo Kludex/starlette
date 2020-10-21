@@ -101,6 +101,44 @@ def test_streaming_response():
     assert filled_by_bg_task == "6, 7, 8, 9"
 
 
+def test_streaming_response_custom_iterator():
+    async def app(scope, receive, send):
+        class CustomAsyncIterator:
+            def __init__(self):
+                self._called = 0
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                if self._called == 5:
+                    raise StopAsyncIteration()
+                self._called += 1
+                return str(self._called)
+
+        response = StreamingResponse(CustomAsyncIterator(), media_type="text/plain")
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "12345"
+
+
+def test_streaming_response_custom_iterable():
+    async def app(scope, receive, send):
+        class CustomAsyncIterable:
+            async def __aiter__(self):
+                for i in range(5):
+                    yield str(i + 1)
+
+        response = StreamingResponse(CustomAsyncIterable(), media_type="text/plain")
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.text == "12345"
+
+
 def test_sync_streaming_response():
     async def app(scope, receive, send):
         def numbers(minimum, maximum):

@@ -1,6 +1,5 @@
 import hashlib
 import http.cookies
-import inspect
 import json
 import os
 import stat
@@ -204,7 +203,7 @@ class StreamingResponse(Response):
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> None:
-        if inspect.isasyncgen(content):
+        if isinstance(content, typing.AsyncIterable):
             self.body_iterator = content
         else:
             self.body_iterator = iterate_in_threadpool(content)

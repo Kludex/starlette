@@ -66,7 +66,7 @@ async def app(scope, receive, send):
 
 ### PlainTextResponse
 
-Takes some text or bytes and returns an plain text response.
+Takes some text or bytes and returns a plain text response.
 
 ```python
 from starlette.responses import PlainTextResponse

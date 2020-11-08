@@ -24,11 +24,6 @@ except ImportError:  # pragma: nocover
     aiofiles = None  # type: ignore
     aio_stat = None  # type: ignore
 
-try:
-    import ujson
-except ImportError:  # pragma: nocover
-    ujson = None  # type: ignore
-
 
 # Compatibility wrapper for `mimetypes.guess_type` to support `os.PathLike` on <py3.8
 def guess_type(
@@ -170,14 +165,6 @@ class JSONResponse(Response):
             indent=None,
             separators=(",", ":"),
         ).encode("utf-8")
-
-
-class UJSONResponse(JSONResponse):
-    media_type = "application/json"
-
-    def render(self, content: typing.Any) -> bytes:
-        assert ujson is not None, "ujson must be installed to use UJSONResponse"
-        return ujson.dumps(content, ensure_ascii=False).encode("utf-8")
 
 
 class RedirectResponse(Response):

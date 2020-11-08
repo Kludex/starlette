@@ -6,7 +6,6 @@ jinja2
 python-multipart
 pyyaml
 requests
-ujson
 
 # Testing
 autoflake

@@ -12,7 +12,6 @@ from starlette.responses import (
     RedirectResponse,
     Response,
     StreamingResponse,
-    UJSONResponse,
 )
 from starlette.testclient import TestClient
 
@@ -35,16 +34,6 @@ def test_bytes_response():
     client = TestClient(app)
     response = client.get("/")
     assert response.content == b"xxxxx"
-
-
-def test_ujson_response():
-    async def app(scope, receive, send):
-        response = UJSONResponse({"hello": "world"})
-        await response(scope, receive, send)
-
-    client = TestClient(app)
-    response = client.get("/")
-    assert response.json() == {"hello": "world"}
 
 
 def test_json_none_response():

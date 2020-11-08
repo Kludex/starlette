@@ -92,25 +92,29 @@ async def app(scope, receive, send):
     await response(scope, receive, send)
 ```
 
-### UJSONResponse
+#### Custom JSON serialization
 
-A JSON response class that uses the optimised `ujson` library for serialisation.
+If you need fine-grained control over JSON serialization, you can subclass
+`JSONResponse` and override the `render` method.
 
-Using `ujson` will result in faster JSON serialisation, but is also less careful
-than Python's built-in implementation in how it handles some edge-cases.
-
-In general you *probably* want to stick with `JSONResponse` by default unless
-you are micro-optimising a particular endpoint.
+For example, if you wanted to use a third-party JSON library such as
+[orjson](https://pypi.org/project/orjson/):
 
 ```python
-from starlette.responses import UJSONResponse
+from typing import Any
+
+import orjson
+from starlette.responses import JSONResponse
 
 
-async def app(scope, receive, send):
-    assert scope['type'] == 'http'
-    response = UJSONResponse({'hello': 'world'})
-    await response(scope, receive, send)
+class OrjsonResponse(JSONResponse):
+    def render(self, content: Any) -> bytes:
+        return orjson.dumps(content)
 ```
+
+In general you *probably* want to stick with `JSONResponse` by default unless
+you are micro-optimising a particular endpoint or need to serialize non-standard
+object types.
 
 ### RedirectResponse
 

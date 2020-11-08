@@ -57,7 +57,6 @@ setup(
             "python-multipart",
             "pyyaml",
             "requests",
-            "ujson",
         ]
     },
     classifiers=[

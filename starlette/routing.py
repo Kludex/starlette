@@ -1,6 +1,8 @@
 import asyncio
+import functools
 import inspect
 import re
+import sys
 import traceback
 import typing
 from enum import Enum
@@ -28,12 +30,23 @@ class Match(Enum):
     FULL = 2
 
 
+def iscoroutinefunction_or_partial(obj: typing.Any) -> bool:
+    """
+    Correctly determines if an object is a coroutine function,
+    with a fix for partials on Python < 3.8.
+    """
+    if sys.version_info < (3, 8):  # pragma: no cover
+        while isinstance(obj, functools.partial):
+            obj = obj.func
+    return inspect.iscoroutinefunction(obj)
+
+
 def request_response(func: typing.Callable) -> ASGIApp:
     """
     Takes a function or coroutine `func(request) -> response`,
     and returns an ASGI application.
     """
-    is_coroutine = asyncio.iscoroutinefunction(func)
+    is_coroutine = iscoroutinefunction_or_partial(func)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive=receive, send=send)
@@ -169,7 +182,10 @@ class Route(BaseRoute):
         self.name = get_name(endpoint) if name is None else name
         self.include_in_schema = include_in_schema
 
-        if inspect.isfunction(endpoint) or inspect.ismethod(endpoint):
+        endpoint_handler = endpoint
+        while isinstance(endpoint_handler, functools.partial):
+            endpoint_handler = endpoint_handler.func
+        if inspect.isfunction(endpoint_handler) or inspect.ismethod(endpoint_handler):
             # Endpoint is function or method. Treat it as `func(request) -> response`.
             self.app = request_response(endpoint)
             if methods is None:

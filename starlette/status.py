@@ -5,6 +5,7 @@ And RFC 6585 - https://tools.ietf.org/html/rfc6585
 And RFC 4918 - https://tools.ietf.org/html/rfc4918
 And RFC 8470 - https://tools.ietf.org/html/rfc8470
 And RFC 2324 - https://tools.ietf.org/html/rfc2324
+And RFC 5842 - https://tools.ietf.org/html/rfc5842
 """
 HTTP_100_CONTINUE = 100
 HTTP_101_SWITCHING_PROTOCOLS = 101
@@ -16,6 +17,7 @@ HTTP_204_NO_CONTENT = 204
 HTTP_205_RESET_CONTENT = 205
 HTTP_206_PARTIAL_CONTENT = 206
 HTTP_207_MULTI_STATUS = 207
+HTTP_208_ALREADY_REPORTED = 208
 HTTP_300_MULTIPLE_CHOICES = 300
 HTTP_301_MOVED_PERMANENTLY = 301
 HTTP_302_FOUND = 302

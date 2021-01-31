@@ -268,7 +268,6 @@ class WebSocketTestSession:
         self.app = app
         self.scope = scope
         self.accepted_subprotocol = None
-        self._loop = asyncio.new_event_loop()
         self._receive_queue = queue.Queue()  # type: queue.Queue
         self._send_queue = queue.Queue()  # type: queue.Queue
         self._thread = threading.Thread(target=self._run)
@@ -293,13 +292,16 @@ class WebSocketTestSession:
         """
         The sub-thread in which the websocket session runs.
         """
+        loop = asyncio.new_event_loop()
         scope = self.scope
         receive = self._asgi_receive
         send = self._asgi_send
         try:
-            self._loop.run_until_complete(self.app(scope, receive, send))
+            loop.run_until_complete(self.app(scope, receive, send))
         except BaseException as exc:
             self._send_queue.put(exc)
+        finally:
+            loop.close()
 
     async def _asgi_receive(self) -> Message:
         while self._receive_queue.empty():

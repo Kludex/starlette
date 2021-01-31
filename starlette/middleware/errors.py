@@ -217,15 +217,15 @@ class ServerErrorMiddleware:
         traceback_obj = traceback.TracebackException.from_exception(
             exc, capture_locals=True
         )
-        frames = inspect.getinnerframes(
-            traceback_obj.exc_traceback, limit  # type: ignore
-        )
 
         exc_html = ""
         is_collapsed = False
-        for frame in reversed(frames):
-            exc_html += self.generate_frame_html(frame, is_collapsed)
-            is_collapsed = True
+        exc_traceback = exc.__traceback__
+        if exc_traceback is not None:
+            frames = inspect.getinnerframes(exc_traceback, limit)
+            for frame in reversed(frames):
+                exc_html += self.generate_frame_html(frame, is_collapsed)
+                is_collapsed = True
 
         # escape error class and text
         error = (

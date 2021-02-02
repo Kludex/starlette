@@ -1,3 +1,17 @@
+## 0.14.2
+
+February 2, 2021
+
+### Fixed
+
+* Fixed `ServerErrorMiddleware` compatibility with Python 3.9.1/3.8.7 when debug mode is enabled -
+  [#1132](https://github.com/encode/starlette/pull/1132).
+* Fixed unclosed socket `ResourceWarning`s when using the `TestClient` with WebSocket endpoints -
+  #1132.
+* Improved detection of `async` endpoints wrapped in `functools.partial` on Python 3.8+ -
+  [#1106](https://github.com/encode/starlette/pull/1106).
+
+
 ## 0.14.1
 
 November 9th, 2020

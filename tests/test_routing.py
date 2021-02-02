@@ -590,16 +590,35 @@ def test_raise_on_shutdown():
             pass  # pragma: nocover
 
 
+class AsyncEndpointClassMethod:
+    @classmethod
+    async def async_endpoint(cls, arg, request):
+        return JSONResponse({"arg": arg})
+
+
 async def _partial_async_endpoint(arg, request):
     return JSONResponse({"arg": arg})
 
 
 partial_async_endpoint = functools.partial(_partial_async_endpoint, "foo")
+partial_cls_async_endpoint = functools.partial(
+    AsyncEndpointClassMethod.async_endpoint, "foo"
+)
 
-partial_async_app = Router(routes=[Route("/", partial_async_endpoint)])
+partial_async_app = Router(
+    routes=[
+        Route("/", partial_async_endpoint),
+        Route("/cls", partial_cls_async_endpoint),
+    ]
+)
 
 
 def test_partial_async_endpoint():
-    response = TestClient(partial_async_app).get("/")
+    test_client = TestClient(partial_async_app)
+    response = test_client.get("/")
     assert response.status_code == 200
     assert response.json() == {"arg": "foo"}
+
+    cls_method_response = test_client.get("/cls")
+    assert cls_method_response.status_code == 200
+    assert cls_method_response.json() == {"arg": "foo"}

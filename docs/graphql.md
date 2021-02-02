@@ -70,9 +70,9 @@ async def log_user_agent(user_agent):
 
 If you're working with a standard ORM, then just use regular function calls for
 your "resolve" methods, and Starlette will manage running the GraphQL query within a
-seperate thread.
+separate thread.
 
-If you want to use an asyncronous ORM, then use "async resolve" methods, and
+If you want to use an asynchronous ORM, then use "async resolve" methods, and
 make sure to setup Graphene's AsyncioExecutor using the `executor` argument.
 
 ```python

@@ -243,3 +243,40 @@ def test_staticfiles_html(tmpdir):
     response = client.get("/missing")
     assert response.status_code == 404
     assert response.text == "<h1>Custom not found page</h1>"
+
+
+def test_staticfiles_cache_invalidation_for_deleted_file_html_mode(tmpdir):
+    path_404 = os.path.join(tmpdir, "404.html")
+    with open(path_404, "w") as file:
+        file.write("<p>404 file</p>")
+    path_some = os.path.join(tmpdir, "some.html")
+    with open(path_some, "w") as file:
+        file.write("<p>some file</p>")
+
+    common_modified_time = time.mktime(
+        time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S")
+    )
+    os.utime(path_404, (common_modified_time, common_modified_time))
+    os.utime(path_some, (common_modified_time, common_modified_time))
+
+    app = StaticFiles(directory=tmpdir, html=True)
+    client = TestClient(app)
+
+    resp_exists = client.get("/some.html")
+    assert resp_exists.status_code == 200
+    assert resp_exists.text == "<p>some file</p>"
+
+    resp_cached = client.get(
+        "/some.html",
+        headers={"If-Modified-Since": resp_exists.headers["last-modified"]},
+    )
+    assert resp_cached.status_code == 304
+
+    os.remove(path_some)
+
+    resp_deleted = client.get(
+        "/some.html",
+        headers={"If-Modified-Since": resp_exists.headers["last-modified"]},
+    )
+    assert resp_deleted.status_code == 404
+    assert resp_deleted.text == "<p>404 file</p>"

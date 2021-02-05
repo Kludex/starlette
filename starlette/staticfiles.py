@@ -134,8 +134,11 @@ class StaticFiles:
             # Check for '404.html' if we're in HTML mode.
             full_path, stat_result = await self.lookup_path("404.html")
             if stat_result is not None and stat.S_ISREG(stat_result.st_mode):
-                return self.file_response(
-                    full_path, stat_result, scope, status_code=404
+                return FileResponse(
+                    full_path,
+                    stat_result=stat_result,
+                    method=scope["method"],
+                    status_code=404,
                 )
 
         return PlainTextResponse("Not Found", status_code=404)

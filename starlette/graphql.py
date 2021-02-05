@@ -1,5 +1,6 @@
 import json
 import typing
+import warnings
 
 from starlette import status
 from starlette.background import BackgroundTasks
@@ -7,6 +8,13 @@ from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.types import Receive, Scope, Send
+
+warnings.warn(
+    "GraphQLApp is deprecated and will be removed in a future release. "
+    "Consider using a third-party GraphQL implementation. "
+    "See https://github.com/encode/starlette/issues/619.",
+    DeprecationWarning,
+)
 
 try:
     import graphene

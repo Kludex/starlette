@@ -1,4 +1,17 @@
 
+!!! Warning
+
+    GraphQL support in Starlette is **deprecated** as of version 0.15 and will
+    be removed in a future release. Please consider using a third-party library
+    to provide GraphQL support. This is usually done by mounting a GraphQL ASGI
+    application. See [#619](https://github.com/encode/starlette/issues/619).
+    Some example libraries are:
+
+    * [Ariadne](https://ariadnegraphql.org/docs/asgi)
+    * [`tartiflette-asgi`](https://tartiflette.github.io/tartiflette-asgi/)
+    * [Strawberry](https://strawberry.rocks/docs/integrations/asgi)
+    * [`starlette-graphene3`](https://github.com/ciscorn/starlette-graphene3)
+
 Starlette includes optional support for GraphQL, using the `graphene` library.
 
 Here's an example of integrating the support into your application.

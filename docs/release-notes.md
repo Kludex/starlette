@@ -1,3 +1,12 @@
+## 0.15.0
+
+Unreleased
+
+### Deprecated
+
+* Built-in GraphQL support via the `GraphQLApp` class has been deprecated and will be removed in a
+  future release. Please see [#619](https://github.com/encode/starlette/issues/619).
+
 ## 0.14.2
 
 February 2, 2021

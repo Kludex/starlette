@@ -25,7 +25,6 @@ It is production-ready, and gives you the following:
 
 * Seriously impressive performance.
 * WebSocket support.
-* GraphQL support.
 * In-process background tasks.
 * Startup and shutdown events.
 * Test client built on `requests`.
@@ -88,7 +87,6 @@ Starlette does not have any hard dependencies, but the following are optional:
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
-* [`graphene`][graphene] - Required for `GraphQLApp` support.
 
 You can install all of these with `pip3 install starlette[full]`.
 

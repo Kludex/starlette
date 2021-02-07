@@ -2,41 +2,41 @@ site_name: Starlette
 site_description: The little ASGI library that shines.
 
 theme:
-    name: 'material'
+  name: 'material'
 
 repo_name: encode/starlette
 repo_url: https://github.com/encode/starlette
 edit_uri: ""
 
 nav:
-    - Introduction: 'index.md'
-    - Applications: 'applications.md'
-    - Requests: 'requests.md'
-    - Responses: 'responses.md'
-    - WebSockets: 'websockets.md'
-    - Routing: 'routing.md'
-    - Endpoints: 'endpoints.md'
-    - Middleware: 'middleware.md'
-    - Static Files: 'staticfiles.md'
-    - Templates: 'templates.md'
-    - Database: 'database.md'
-    - GraphQL: 'graphql.md'
-    - Authentication: 'authentication.md'
-    - API Schemas: 'schemas.md'
-    - Events: 'events.md'
-    - Background Tasks: 'background.md'
-    - Server Push: 'server-push.md'
-    - Exceptions: 'exceptions.md'
-    - Configuration: 'config.md'
-    - Test Client: 'testclient.md'
-    - Third Party Packages: 'third-party-packages.md'
-    - Release Notes: 'release-notes.md'
+  - Introduction: 'index.md'
+  - Applications: 'applications.md'
+  - Requests: 'requests.md'
+  - Responses: 'responses.md'
+  - WebSockets: 'websockets.md'
+  - Routing: 'routing.md'
+  - Endpoints: 'endpoints.md'
+  - Middleware: 'middleware.md'
+  - Static Files: 'staticfiles.md'
+  - Templates: 'templates.md'
+  - Database: 'database.md'
+  - GraphQL: 'graphql.md'
+  - Authentication: 'authentication.md'
+  - API Schemas: 'schemas.md'
+  - Events: 'events.md'
+  - Background Tasks: 'background.md'
+  - Server Push: 'server-push.md'
+  - Exceptions: 'exceptions.md'
+  - Configuration: 'config.md'
+  - Test Client: 'testclient.md'
+  - Third Party Packages: 'third-party-packages.md'
+  - Release Notes: 'release-notes.md'
 
 markdown_extensions:
-  - markdown.extensions.codehilite:
-      guess_lang: false
   - mkautodoc
   - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
 
 extra_javascript:
   - 'js/chat.js'

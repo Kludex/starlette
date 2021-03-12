@@ -101,3 +101,15 @@ def test_secure_session():
 
     response = secure_client.get("/view_session")
     assert response.json() == {"session": {}}
+
+
+def test_session_cookie_subpath():
+    app = create_app()
+    second_app = create_app()
+    second_app.add_middleware(SessionMiddleware, secret_key="example")
+    app.mount("/second_app", second_app)
+    client = TestClient(app, base_url="http://testserver/second_app")
+    response = client.post("second_app/update_session", json={"some": "data"})
+    cookie = response.headers["set-cookie"]
+    cookie_path = re.search(r"; path=(\S+);", cookie).groups()[0]
+    assert cookie_path == "/second_app"

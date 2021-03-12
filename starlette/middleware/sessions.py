@@ -49,14 +49,16 @@ class SessionMiddleware:
 
         async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
+                path = scope.get("root_path", "") or "/"
                 if scope["session"]:
                     # We have session data to persist.
                     data = b64encode(json.dumps(scope["session"]).encode("utf-8"))
                     data = self.signer.sign(data)
                     headers = MutableHeaders(scope=message)
-                    header_value = "%s=%s; path=/; Max-Age=%d; %s" % (
+                    header_value = "%s=%s; path=%s; Max-Age=%d; %s" % (
                         self.session_cookie,
                         data.decode("utf-8"),
+                        path,
                         self.max_age,
                         self.security_flags,
                     )
@@ -66,7 +68,7 @@ class SessionMiddleware:
                     headers = MutableHeaders(scope=message)
                     header_value = "{}={}; {}".format(
                         self.session_cookie,
-                        "null; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;",
+                        f"null; path={path}; expires=Thu, 01 Jan 1970 00:00:00 GMT;",
                         self.security_flags,
                     )
                     headers.append("Set-Cookie", header_value)

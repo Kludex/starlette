@@ -178,7 +178,7 @@ class ServerErrorMiddleware:
             # We always continue to raise the exception.
             # This allows servers to log the error, or allows test clients
             # to optionally raise the error within the test case.
-            raise exc from None
+            raise exc
 
     def format_line(
         self, index: int, line: str, frame_lineno: int, frame_index: int

@@ -71,7 +71,7 @@ class WebSocketEndpoint:
                     break
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR
-            raise exc from None
+            raise exc
         finally:
             await self.on_disconnect(websocket, close_code)
 

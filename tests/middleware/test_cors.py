@@ -118,6 +118,56 @@ def test_cors_disallowed_preflight():
     assert response.text == "Disallowed CORS origin, method, headers"
 
 
+def test_cors_preflight_allow_all_methods():
+    app = Starlette()
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+    )
+
+    @app.route("/")
+    def homepage(request):
+        pass  # pragma: no cover
+
+    client = TestClient(app)
+
+    headers = {
+        "Origin": "https://example.org",
+        "Access-Control-Request-Method": "POST",
+    }
+
+    for method in ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"):
+        response = client.options("/", headers=headers)
+        assert response.status_code == 200
+        assert method in response.headers["access-control-allow-methods"]
+
+
+def test_cors_allow_all_methods():
+    app = Starlette()
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+    )
+
+    @app.route(
+        "/", methods=("delete", "get", "head", "options", "patch", "post", "put")
+    )
+    def homepage(request):
+        return PlainTextResponse("Homepage", status_code=200)
+
+    client = TestClient(app)
+
+    headers = {"Origin": "https://example.org"}
+
+    for method in ("delete", "get", "head", "options", "patch", "post", "put"):
+        response = getattr(client, method)("/", headers=headers, json={})
+        assert response.status_code == 200
+
+
 def test_cors_allow_origin_regex():
     app = Starlette()
 

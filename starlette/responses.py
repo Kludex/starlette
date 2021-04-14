@@ -7,7 +7,7 @@ import sys
 import typing
 from email.utils import formatdate
 from mimetypes import guess_type as mimetypes_guess_type
-from urllib.parse import quote, quote_plus
+from urllib.parse import quote
 
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool, run_until_first_complete
@@ -178,7 +178,7 @@ class RedirectResponse(Response):
         super().__init__(
             content=b"", status_code=status_code, headers=headers, background=background
         )
-        self.headers["location"] = quote_plus(str(url), safe=":/%#?&=@[]!$&'()*+,;")
+        self.headers["location"] = quote(str(url), safe=":/%#?=@[]!$&'()*+,;")
 
 
 class StreamingResponse(Response):

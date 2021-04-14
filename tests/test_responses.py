@@ -60,6 +60,20 @@ def test_redirect_response():
     assert response.url == "http://testserver/"
 
 
+def test_quoting_redirect_response():
+    async def app(scope, receive, send):
+        if scope["path"] == "/I ♥ Starlette/":
+            response = Response("hello, world", media_type="text/plain")
+        else:
+            response = RedirectResponse("/I ♥ Starlette/")
+        await response(scope, receive, send)
+
+    client = TestClient(app)
+    response = client.get("/redirect")
+    assert response.text == "hello, world"
+    assert response.url == "http://testserver/I%20%E2%99%A5%20Starlette/"
+
+
 def test_streaming_response():
     filled_by_bg_task = ""
 

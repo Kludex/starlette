@@ -24,18 +24,17 @@ def requires(
     scopes_list = [scopes] if isinstance(scopes, str) else list(scopes)
 
     def decorator(func: typing.Callable) -> typing.Callable:
-        type = None
         sig = inspect.signature(func)
         for idx, parameter in enumerate(sig.parameters.values()):
             if parameter.name == "request" or parameter.name == "websocket":
-                type = parameter.name
+                type_ = parameter.name
                 break
         else:
             raise Exception(
                 f'No "request" or "websocket" argument on function "{func}"'
             )
 
-        if type == "websocket":
+        if type_ == "websocket":
             # Handle websocket functions. (Always async)
             @functools.wraps(func)
             async def websocket_wrapper(

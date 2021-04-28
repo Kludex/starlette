@@ -155,10 +155,10 @@ class StaticFiles:
                 continue
             try:
                 stat_result = await aio_stat(full_path)
-                return (full_path, stat_result)
+                return full_path, stat_result
             except FileNotFoundError:
                 pass
-        return ("", None)
+        return "", None
 
     def file_response(
         self,

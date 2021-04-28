@@ -21,8 +21,8 @@ class BackgroundTask:
 
 
 class BackgroundTasks(BackgroundTask):
-    def __init__(self, tasks: typing.Sequence[BackgroundTask] = []):
-        self.tasks = list(tasks)
+    def __init__(self, tasks: typing.Sequence[BackgroundTask] = None):
+        self.tasks = list(tasks) if tasks else []
 
     def add_task(
         self, func: typing.Callable, *args: typing.Any, **kwargs: typing.Any

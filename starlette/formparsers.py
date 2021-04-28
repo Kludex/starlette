@@ -108,8 +108,6 @@ class FormParser:
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))
                     items.append((name, value))
-                elif message_type == FormMessage.END:
-                    pass
 
         return FormData(items)
 
@@ -235,8 +233,6 @@ class MultiPartParser:
                     else:
                         await file.seek(0)
                         items.append((field_name, file))
-                elif message_type == MultiPartMessage.END:
-                    pass
 
         parser.finalize()
         return FormData(items)

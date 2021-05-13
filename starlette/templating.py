@@ -6,6 +6,12 @@ from starlette.types import Receive, Scope, Send
 
 try:
     import jinja2
+
+    # @contextfunction renamed to @pass_context in Jinja 3.0, to be removed in 3.1
+    if hasattr(jinja2, "pass_context"):
+        pass_context = jinja2.pass_context
+    else:  # pragma: nocover
+        pass_context = jinja2.contextfunction
 except ImportError:  # pragma: nocover
     jinja2 = None  # type: ignore
 
@@ -53,7 +59,7 @@ class Jinja2Templates:
         self.env = self.get_env(directory)
 
     def get_env(self, directory: str) -> "jinja2.Environment":
-        @jinja2.contextfunction
+        @pass_context
         def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
             request = context["request"]
             return request.url_for(name, **path_params)

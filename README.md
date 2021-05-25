@@ -17,8 +17,6 @@
 
 **Documentation**: [https://www.starlette.io/](https://www.starlette.io/)
 
-**Community**: [https://discuss.encode.io/c/starlette](https://discuss.encode.io/c/starlette)
-
 ---
 
 # Starlette

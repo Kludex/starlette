@@ -50,10 +50,11 @@ class TrustedHostMiddleware:
         if is_valid_host:
             await self.app(scope, receive, send)
         else:
+            response: Response
             if found_www_redirect and self.www_redirect:
                 url = URL(scope=scope)
                 redirect_url = url.replace(netloc="www." + url.netloc)
-                response = RedirectResponse(url=str(redirect_url))  # type: Response
+                response = RedirectResponse(url=str(redirect_url))
             else:
                 response = PlainTextResponse("Invalid host header", status_code=400)
             await response(scope, receive, send)

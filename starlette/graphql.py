@@ -69,7 +69,7 @@ class GraphQLApp:
                     )
                 return await self.handle_graphiql(request)
 
-            data = request.query_params  # type: typing.Mapping[str, typing.Any]
+            data: typing.Mapping[str, typing.Any] = request.query_params
 
         elif request.method == "POST":
             content_type = request.headers.get("Content-Type", "")

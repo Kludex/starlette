@@ -141,5 +141,5 @@ def test_build_environ_encoding() -> None:
         "headers": [],
     }
     environ = build_environ(scope, b"")
-    assert environ["SCRIPT_NAME"] == "/中国".encode("utf8").decode("latin-1")
-    assert environ["PATH_INFO"] == "/小星".encode("utf8").decode("latin-1")
+    assert environ["SCRIPT_NAME"] == "/中国".encode().decode("latin-1")
+    assert environ["PATH_INFO"] == "/小星".encode().decode("latin-1")

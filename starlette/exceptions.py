@@ -26,10 +26,10 @@ class ExceptionMiddleware:
     ) -> None:
         self.app = app
         self.debug = debug  # TODO: We ought to handle 404 cases if debug is set.
-        self._status_handlers = {}  # type: typing.Dict[int, typing.Callable]
-        self._exception_handlers = {
-            HTTPException: self.http_exception
-        }  # type: typing.Dict[typing.Type[Exception], typing.Callable]
+        self._status_handlers: typing.Dict[int, typing.Callable] = {}
+        self._exception_handlers: typing.Dict[
+            typing.Type[Exception], typing.Callable
+        ] = {HTTPException: self.http_exception}
         if handlers is not None:
             for key, value in handlers.items():
                 self.add_exception_handler(key, value)

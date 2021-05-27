@@ -113,7 +113,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
 
         # Include the 'host' header.
         if "host" in request.headers:
-            headers = []  # type: typing.List[typing.Tuple[bytes, bytes]]
+            headers: typing.List[typing.Tuple[bytes, bytes]] = []
         elif port == default_port:
             headers = [(b"host", host.encode())]
         else:
@@ -128,7 +128,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
         if scheme in {"ws", "wss"}:
             subprotocol = request.headers.get("sec-websocket-protocol", None)
             if subprotocol is None:
-                subprotocols = []  # type: typing.Sequence[str]
+                subprotocols: typing.Sequence[str] = []
             else:
                 subprotocols = [value.strip() for value in subprotocol.split(",")]
             scope = {
@@ -162,7 +162,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
         request_complete = False
         response_started = False
         response_complete = False
-        raw_kwargs = {"body": io.BytesIO()}  # type: typing.Dict[str, typing.Any]
+        raw_kwargs: typing.Dict[str, typing.Any] = {"body": io.BytesIO()}
         template = None
         context = None
 
@@ -176,7 +176,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
 
             body = request.body
             if isinstance(body, str):
-                body_bytes = body.encode("utf-8")  # type: bytes
+                body_bytes: bytes = body.encode("utf-8")
             elif body is None:
                 body_bytes = b""
             elif isinstance(body, types.GeneratorType):
@@ -268,8 +268,8 @@ class WebSocketTestSession:
         self.app = app
         self.scope = scope
         self.accepted_subprotocol = None
-        self._receive_queue = queue.Queue()  # type: queue.Queue
-        self._send_queue = queue.Queue()  # type: queue.Queue
+        self._receive_queue: "queue.Queue[typing.Any]" = queue.Queue()
+        self._send_queue: "queue.Queue[typing.Any]" = queue.Queue()
         self._thread = threading.Thread(target=self._run)
         self.send({"type": "websocket.connect"})
         self._thread.start()
@@ -372,7 +372,7 @@ class TestClient(requests.Session):
         raise_server_exceptions: bool = True,
         root_path: str = "",
     ) -> None:
-        super(TestClient, self).__init__()
+        super().__init__()
         if _is_asgi3(app):
             app = typing.cast(ASGI3App, app)
             asgi_app = app
@@ -453,8 +453,8 @@ class TestClient(requests.Session):
 
     def __enter__(self) -> "TestClient":
         loop = asyncio.get_event_loop()
-        self.send_queue = asyncio.Queue()  # type: asyncio.Queue
-        self.receive_queue = asyncio.Queue()  # type: asyncio.Queue
+        self.send_queue: "asyncio.Queue[typing.Any]" = asyncio.Queue()
+        self.receive_queue: "asyncio.Queue[typing.Any]" = asyncio.Queue()
         self.task = loop.create_task(self.lifespan())
         loop.run_until_complete(self.wait_startup())
         return self

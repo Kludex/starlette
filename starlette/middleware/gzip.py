@@ -24,8 +24,8 @@ class GZipResponder:
     def __init__(self, app: ASGIApp, minimum_size: int) -> None:
         self.app = app
         self.minimum_size = minimum_size
-        self.send = unattached_send  # type: Send
-        self.initial_message = {}  # type: Message
+        self.send: Send = unattached_send
+        self.initial_message: Message = {}
         self.started = False
         self.gzip_buffer = io.BytesIO()
         self.gzip_file = gzip.GzipFile(mode="wb", fileobj=self.gzip_buffer)

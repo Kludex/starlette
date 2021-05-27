@@ -22,9 +22,9 @@ class AuthenticationMiddleware:
     ) -> None:
         self.app = app
         self.backend = backend
-        self.on_error = (
-            on_error if on_error is not None else self.default_on_error
-        )  # type: typing.Callable[[HTTPConnection, AuthenticationError], Response]
+        self.on_error: typing.Callable[
+            [HTTPConnection, AuthenticationError], Response
+        ] = (on_error if on_error is not None else self.default_on_error)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ["http", "websocket"]:

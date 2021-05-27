@@ -327,7 +327,7 @@ class Mount(BaseRoute):
         ), "Either 'app=...', or 'routes=' must be specified"
         self.path = path.rstrip("/")
         if app is not None:
-            self.app = app  # type: ASGIApp
+            self.app: ASGIApp = app
         else:
             self.app = Router(routes=routes)
         self.name = name

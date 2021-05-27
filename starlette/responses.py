@@ -62,7 +62,7 @@ class Response:
 
     def init_headers(self, headers: typing.Mapping[str, str] = None) -> None:
         if headers is None:
-            raw_headers = []  # type: typing.List[typing.Tuple[bytes, bytes]]
+            raw_headers: typing.List[typing.Tuple[bytes, bytes]] = []
             populate_content_length = True
             populate_content_type = True
         else:
@@ -105,7 +105,7 @@ class Response:
         httponly: bool = False,
         samesite: str = "lax",
     ) -> None:
-        cookie = http.cookies.SimpleCookie()  # type: http.cookies.BaseCookie
+        cookie: http.cookies.BaseCookie = http.cookies.SimpleCookie()
         cookie[key] = value
         if max_age is not None:
             cookie[key]["max-age"] = max_age
@@ -261,7 +261,7 @@ class FileResponse(Response):
                     content_disposition_filename
                 )
             else:
-                content_disposition = 'attachment; filename="{}"'.format(self.filename)
+                content_disposition = f'attachment; filename="{self.filename}"'
             self.headers.setdefault("content-disposition", content_disposition)
         self.stat_result = stat_result
         if stat_result is not None:

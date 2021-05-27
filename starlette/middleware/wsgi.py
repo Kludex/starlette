@@ -70,10 +70,10 @@ class WSGIResponder:
         self.status = None
         self.response_headers = None
         self.send_event = asyncio.Event()
-        self.send_queue = []  # type: typing.List[typing.Optional[Message]]
+        self.send_queue: typing.List[typing.Optional[Message]] = []
         self.loop = asyncio.get_event_loop()
         self.response_started = False
-        self.exc_info = None  # type: typing.Any
+        self.exc_info: typing.Any = None
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         body = b""

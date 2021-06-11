@@ -14,6 +14,10 @@ databases[sqlite]
 flake8
 isort==5.*
 mypy
+types-requests
+types-contextvars
+types-aiofiles
+types-PyYAML
 pytest
 pytest-cov
 pytest-asyncio

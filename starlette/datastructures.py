@@ -180,11 +180,7 @@ class URLPath(str):
         else:
             scheme = base_url.scheme
 
-        if self.host:
-            netloc = self.host
-        else:
-            netloc = base_url.netloc
-
+        netloc = self.host or base_url.netloc
         path = base_url.path.rstrip("/") + str(self)
         return str(URL(scheme=scheme, netloc=netloc, path=path))
 
@@ -246,11 +242,7 @@ class ImmutableMultiDict(typing.Mapping):
     ) -> None:
         assert len(args) < 2, "Too many arguments."
 
-        if args:
-            value = args[0]
-        else:
-            value = []
-
+        value = args[0] if args else []
         if kwargs:
             value = (
                 ImmutableMultiDict(value).multi_items()

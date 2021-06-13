@@ -179,6 +179,16 @@ def test_cors_disallowed_preflight():
     assert response.text == "Disallowed CORS origin, method, headers"
     assert "access-control-allow-origin" not in response.headers
 
+    # Bug specific test, https://github.com/encode/starlette/pull/1199
+    # Test preflight response text with multiple disallowed headers
+    headers = {
+        "Origin": "https://example.org",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "X-Nope-1, X-Nope-2",
+    }
+    response = client.options("/", headers=headers)
+    assert response.text == "Disallowed CORS headers"
+
 
 def test_preflight_allows_request_origin_if_origins_wildcard_and_credentials_allowed():
     app = Starlette()

@@ -129,6 +129,7 @@ class CORSMiddleware:
             for header in [h.lower() for h in requested_headers.split(",")]:
                 if header.strip() not in self.allow_headers:
                     failures.append("headers")
+                    break
 
         # We don't strictly need to use 400 responses here, since its up to
         # the browser to enforce the CORS policy, but its more informative

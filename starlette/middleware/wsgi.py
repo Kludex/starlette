@@ -54,7 +54,7 @@ def build_environ(scope: Scope, body: bytes) -> dict:
 
 
 class WSGIMiddleware:
-    def __init__(self, app: typing.Callable, workers: int = 10) -> None:
+    def __init__(self, app: typing.Callable) -> None:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

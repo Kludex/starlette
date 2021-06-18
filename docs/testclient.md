@@ -31,6 +31,22 @@ application. Occasionally you might want to test the content of 500 error
 responses, rather than allowing client to raise the server exception. In this
 case you should use `client = TestClient(app, raise_server_exceptions=False)`.
 
+### Selecting the Async backend
+
+`TestClient.async_backend` is a dictionary which allows you to set the options
+for the backend used to run tests.  These options are passed to
+`anyio.start_blocking_portal()`. See the [anyio documentation](https://anyio.readthedocs.io/en/stable/basics.html#backend-options)
+for more information about backend options.  By default, `asyncio` is used.
+
+To run `Trio`, set `async_backend["backend"] = "trio"`, for example:
+
+```python
+def test_app()
+    client = TestClient(app)
+    client.async_backend["backend"] = "trio"
+    ...
+```
+
 ### Testing WebSocket sessions
 
 You can also test websocket sessions with the test client.
@@ -71,6 +87,8 @@ always raised by the test client.
 * `.websocket_connect(url, subprotocols=None, **options)` - Takes the same set of arguments as `requests.get()`.
 
 May raise `starlette.websockets.WebSocketDisconnect` if the application does not accept the websocket connection.
+
+`websocket_connect()` must be used as a context manager (in a `with` block).
 
 #### Sending data
 

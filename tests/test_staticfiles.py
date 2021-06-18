@@ -1,8 +1,8 @@
-import asyncio
 import os
 import pathlib
 import time
 
+import anyio
 import pytest
 
 from starlette.applications import Starlette
@@ -153,8 +153,7 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
     # We can't test this with 'requests', so we test the app directly here.
     path = app.get_path({"path": "/../example.txt"})
     scope = {"method": "GET"}
-    loop = asyncio.get_event_loop()
-    response = loop.run_until_complete(app.get_response(path, scope))
+    response = anyio.run(app.get_response, path, scope)
     assert response.status_code == 404
     assert response.body == b"Not Found"
 

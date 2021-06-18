@@ -18,9 +18,10 @@ types-requests
 types-contextvars
 types-aiofiles
 types-PyYAML
+types-dataclasses
 pytest
 pytest-cov
-pytest-asyncio
+trio
 
 # Documentation
 mkdocs

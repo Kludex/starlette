@@ -19,6 +19,9 @@ notes = sqlalchemy.Table(
 )
 
 
+pytestmark = pytest.mark.usefixtures("no_trio_support")
+
+
 @pytest.fixture(autouse=True, scope="module")
 def create_test_database():
     engine = sqlalchemy.create_engine(DATABASE_URL)

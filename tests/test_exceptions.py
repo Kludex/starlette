@@ -54,7 +54,8 @@ def test_not_modified():
 
 def test_websockets_should_raise():
     with pytest.raises(RuntimeError):
-        client.websocket_connect("/runtime_error")
+        with client.websocket_connect("/runtime_error"):
+            pass  # pragma: nocover
 
 
 def test_handled_exc_after_response():

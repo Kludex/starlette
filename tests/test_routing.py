@@ -286,7 +286,8 @@ def test_protocol_switch():
         assert session.receive_json() == {"URL": "ws://testserver/"}
 
     with pytest.raises(WebSocketDisconnect):
-        client.websocket_connect("/404")
+        with client.websocket_connect("/404"):
+            pass  # pragma: nocover
 
 
 ok = PlainTextResponse("OK")
@@ -492,7 +493,8 @@ def test_standalone_ws_route_does_not_match():
     app = WebSocketRoute("/", ws_helloworld)
     client = TestClient(app)
     with pytest.raises(WebSocketDisconnect):
-        client.websocket_connect("/invalid")
+        with client.websocket_connect("/invalid"):
+            pass  # pragma: nocover
 
 
 def test_lifespan_async():

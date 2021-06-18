@@ -1,6 +1,6 @@
-import asyncio
 import os
 
+import anyio
 import pytest
 
 from starlette import status
@@ -83,7 +83,7 @@ def test_streaming_response():
                 yield str(i)
                 if i != maximum:
                     yield ", "
-                await asyncio.sleep(0)
+                await anyio.sleep(0)
 
         async def numbers_for_cleanup(start=1, stop=5):
             nonlocal filled_by_bg_task
@@ -197,7 +197,7 @@ def test_file_response(tmpdir):
             yield str(i)
             if i != maximum:
                 yield ", "
-            await asyncio.sleep(0)
+            await anyio.sleep(0)
 
     async def numbers_for_cleanup(start=1, stop=5):
         nonlocal filled_by_bg_task

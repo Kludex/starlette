@@ -67,4 +67,5 @@ def test_debug_not_http():
 
     with pytest.raises(RuntimeError):
         client = TestClient(app)
-        client.websocket_connect("/")
+        with client.websocket_connect("/"):
+            pass  # pragma: nocover

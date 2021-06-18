@@ -217,7 +217,7 @@ class BigUploadFile(UploadFile):
     spool_max_size = 1024
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_upload_file():
     big_file = BigUploadFile("big-file")
     await big_file.write(b"big-data" * 512)

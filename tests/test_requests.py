@@ -1,5 +1,4 @@
-import asyncio
-
+import anyio
 import pytest
 
 from starlette.requests import ClientDisconnect, Request, State
@@ -212,9 +211,8 @@ def test_request_disconnect():
         return {"type": "http.disconnect"}
 
     scope = {"type": "http", "method": "POST", "path": "/"}
-    loop = asyncio.get_event_loop()
     with pytest.raises(ClientDisconnect):
-        loop.run_until_complete(app(scope, receiver, None))
+        anyio.run(app, scope, receiver, None)
 
 
 def test_request_is_disconnected():

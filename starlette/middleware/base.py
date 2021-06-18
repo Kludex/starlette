@@ -1,9 +1,10 @@
-import asyncio
 import typing
+
+import anyio
 
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
 DispatchFunction = typing.Callable[
@@ -21,45 +22,39 @@ class BaseHTTPMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request = Request(scope, receive=receive)
-        response = await self.dispatch_func(request, self.call_next)
-        await response(scope, receive, send)
+        async def call_next(request: Request) -> Response:
+            send_stream, recv_stream = anyio.create_memory_object_stream()
 
-    async def call_next(self, request: Request) -> Response:
-        loop = asyncio.get_event_loop()
-        queue: "asyncio.Queue[typing.Optional[Message]]" = asyncio.Queue()
+            async def coro() -> None:
+                async with send_stream:
+                    await self.app(scope, request.receive, send_stream.send)
 
-        scope = request.scope
-        receive = request.receive
-        send = queue.put
+            task_group.start_soon(coro)
 
-        async def coro() -> None:
             try:
-                await self.app(scope, receive, send)
-            finally:
-                await queue.put(None)
+                message = await recv_stream.receive()
+            except anyio.EndOfStream:
+                raise RuntimeError("No response returned.")
 
-        task = loop.create_task(coro())
-        message = await queue.get()
-        if message is None:
-            task.result()
-            raise RuntimeError("No response returned.")
-        assert message["type"] == "http.response.start"
+            assert message["type"] == "http.response.start"
 
-        async def body_stream() -> typing.AsyncGenerator[bytes, None]:
-            while True:
-                message = await queue.get()
-                if message is None:
-                    break
-                assert message["type"] == "http.response.body"
-                yield message.get("body", b"")
-            task.result()
+            async def body_stream() -> typing.AsyncGenerator[bytes, None]:
+                async with recv_stream:
+                    async for message in recv_stream:
+                        assert message["type"] == "http.response.body"
+                        yield message.get("body", b"")
 
-        response = StreamingResponse(
-            status_code=message["status"], content=body_stream()
-        )
-        response.raw_headers = message["headers"]
-        return response
+            response = StreamingResponse(
+                status_code=message["status"], content=body_stream()
+            )
+            response.raw_headers = message["headers"]
+            return response
+
+        async with anyio.create_task_group() as task_group:
+            request = Request(scope, receive=receive)
+            response = await self.dispatch_func(request, call_next)
+            await response(scope, receive, send)
+            task_group.cancel_scope.cancel()
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint

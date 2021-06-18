@@ -4,7 +4,7 @@ import stat
 import typing
 from email.utils import parsedate
 
-from aiofiles.os import stat as aio_stat
+import anyio
 
 from starlette.datastructures import URL, Headers
 from starlette.responses import (
@@ -154,7 +154,7 @@ class StaticFiles:
                 # directory.
                 continue
             try:
-                stat_result = await aio_stat(full_path)
+                stat_result = await anyio.to_thread.run_sync(os.stat, full_path)
                 return full_path, stat_result
             except FileNotFoundError:
                 pass
@@ -187,7 +187,7 @@ class StaticFiles:
             return
 
         try:
-            stat_result = await aio_stat(self.directory)
+            stat_result = await anyio.to_thread.run_sync(os.stat, self.directory)
         except FileNotFoundError:
             raise RuntimeError(
                 f"StaticFiles directory '{self.directory}' does not exist."

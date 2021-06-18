@@ -31,29 +31,18 @@ class GraphQLApp:
     def __init__(
         self,
         schema: "graphene.Schema",
-        executor: typing.Any = None,
         executor_class: type = None,
         graphiql: bool = True,
     ) -> None:
         self.schema = schema
         self.graphiql = graphiql
-        if executor is None:
-            # New style in 0.10.0. Use 'executor_class'.
-            # See issue https://github.com/encode/starlette/issues/242
-            self.executor = executor
-            self.executor_class = executor_class
-            self.is_async = executor_class is not None and issubclass(
-                executor_class, AsyncioExecutor
-            )
-        else:
-            # Old style. Use 'executor'.
-            # We should remove this in the next median/major version bump.
-            self.executor = executor
-            self.executor_class = None
-            self.is_async = isinstance(executor, AsyncioExecutor)
+        self.executor_class = executor_class
+        self.is_async = executor_class is not None and issubclass(
+            executor_class, AsyncioExecutor
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if self.executor is None and self.executor_class is not None:
+        if self.executor_class is not None:
             self.executor = self.executor_class()
 
         request = Request(scope, receive=receive)

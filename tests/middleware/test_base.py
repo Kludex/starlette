@@ -143,3 +143,18 @@ def test_app_middleware_argument():
 def test_middleware_repr():
     middleware = Middleware(CustomMiddleware)
     assert repr(middleware) == "Middleware(CustomMiddleware)"
+
+
+def test_fully_evaluated_response():
+    # Test for https://github.com/encode/starlette/issues/1022
+    class CustomMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            await call_next(request)
+            return PlainTextResponse("Custom")
+
+    app = Starlette()
+    app.add_middleware(CustomMiddleware)
+
+    client = TestClient(app)
+    response = client.get("/does_not_exist")
+    assert response.text == "Custom"

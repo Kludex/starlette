@@ -1,9 +1,7 @@
-import asyncio
-
+import anyio
 import pytest
 
 from starlette import status
-from starlette.concurrency import run_until_first_complete
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
@@ -208,23 +206,24 @@ def test_websocket_iter_json():
 
 def test_websocket_concurrency_pattern():
     def app(scope):
-        async def reader(websocket, queue):
-            async for data in websocket.iter_json():
-                await queue.put(data)
+        stream_send, stream_receive = anyio.create_memory_object_stream()
 
-        async def writer(websocket, queue):
-            while True:
-                message = await queue.get()
-                await websocket.send_json(message)
+        async def reader(websocket):
+            async with stream_send:
+                async for data in websocket.iter_json():
+                    await stream_send.send(data)
+
+        async def writer(websocket):
+            async with stream_receive:
+                async for message in stream_receive:
+                    await websocket.send_json(message)
 
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
-            queue = asyncio.Queue()
             await websocket.accept()
-            await run_until_first_complete(
-                (reader, {"websocket": websocket, "queue": queue}),
-                (writer, {"websocket": websocket, "queue": queue}),
-            )
+            async with anyio.create_task_group() as task_group:
+                task_group.start_soon(reader, websocket)
+                await writer(websocket)
             await websocket.close()
 
         return asgi
@@ -283,7 +282,8 @@ def test_rejected_connection():
 
     client = TestClient(app)
     with pytest.raises(WebSocketDisconnect) as exc:
-        client.websocket_connect("/")
+        with client.websocket_connect("/"):
+            pass  # pragma: nocover
     assert exc.value.code == status.WS_1001_GOING_AWAY
 
 
@@ -311,7 +311,8 @@ def test_websocket_exception():
 
     client = TestClient(app)
     with pytest.raises(AssertionError):
-        client.websocket_connect("/123?a=abc")
+        with client.websocket_connect("/123?a=abc"):
+            pass  # pragma: nocover
 
 
 def test_duplicate_close():
@@ -327,7 +328,7 @@ def test_duplicate_close():
     client = TestClient(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
-            pass
+            pass  # pragma: nocover
 
 
 def test_duplicate_disconnect():

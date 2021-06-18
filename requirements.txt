@@ -1,5 +1,4 @@
 # Optionals
-aiofiles
 graphene
 itsdangerous
 jinja2
@@ -16,7 +15,6 @@ isort==5.*
 mypy
 types-requests
 types-contextvars
-types-aiofiles
 types-PyYAML
 types-dataclasses
 pytest

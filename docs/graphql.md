@@ -2,9 +2,10 @@
 !!! Warning
 
     GraphQL support in Starlette is **deprecated** as of version 0.15 and will
-    be removed in a future release. Please consider using a third-party library
-    to provide GraphQL support. This is usually done by mounting a GraphQL ASGI
-    application. See [#619](https://github.com/encode/starlette/issues/619).
+    be removed in a future release. It is also incompatible with Python 3.10+.
+    Please consider using a third-party library to provide GraphQL support. This
+    is usually done by mounting a GraphQL ASGI application.
+    See [#619](https://github.com/encode/starlette/issues/619).
     Some example libraries are:
 
     * [Ariadne](https://ariadnegraphql.org/docs/asgi)

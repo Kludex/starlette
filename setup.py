@@ -40,7 +40,7 @@ setup(
     install_requires=["anyio>=3.0.0,<4"],
     extras_require={
         "full": [
-            "graphene",
+            "graphene; python_version<'3.10'",
             "itsdangerous",
             "jinja2",
             "python-multipart",
@@ -60,6 +60,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     zip_safe=False,
 )

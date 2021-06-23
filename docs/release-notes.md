@@ -1,11 +1,47 @@
 ## 0.15.0
 
-Unreleased
+June 23, 2021
 
-### Deprecated
+This release includes major changes to the low-level asynchronous parts of Starlette. As a result,
+**Starlette now depends on [AnyIO](https://anyio.readthedocs.io/en/stable/)** and some minor API
+changes have occurred. Another significant change with this release is the
+**deprecation of built-in GraphQL support**.
+
+### Added
+* Starlette now supports [Trio](https://trio.readthedocs.io/en/stable/) as an async runtime via
+  AnyIO - [#1157](https://github.com/encode/starlette/pull/1157).
+* `TestClient.websocket_connect()` now must be used as a context manager.
+* Initial support for Python 3.10 - [#1201](https://github.com/encode/starlette/pull/1201).
+* The compression level used in `GZipMiddleware` is now adjustable -
+  [#1128](https://github.com/encode/starlette/pull/1128).
+
+### Fixed
+* Several fixes to `CORSMiddleware`. See [#1111](https://github.com/encode/starlette/pull/1111),
+  [#1112](https://github.com/encode/starlette/pull/1112),
+  [#1113](https://github.com/encode/starlette/pull/1113),
+  [#1199](https://github.com/encode/starlette/pull/1199).
+* Improved exception messages in the case of duplicated path parameter names -
+  [#1177](https://github.com/encode/starlette/pull/1177).
+* `RedirectResponse` now uses `quote` instead of `quote_plus` encoding for the `Location` header
+  to better match the behaviour in other frameworks such as Django -
+  [#1164](https://github.com/encode/starlette/pull/1164).
+* Exception causes are now preserved in more cases -
+  [#1158](https://github.com/encode/starlette/pull/1158).
+* Session cookies now use the ASGI root path in the case of mounted applications -
+  [#1147](https://github.com/encode/starlette/pull/1147).
+* Fixed a cache invalidation bug when static files were deleted in certain circumstances -
+  [#1023](https://github.com/encode/starlette/pull/1023).
+* Improved memory usage of `BaseHTTPMiddleware` when handling large responses -
+  [#1012](https://github.com/encode/starlette/issues/1012) fixed via #1157
+
+### Deprecated/removed
 
 * Built-in GraphQL support via the `GraphQLApp` class has been deprecated and will be removed in a
-  future release. Please see [#619](https://github.com/encode/starlette/issues/619).
+  future release. Please see [#619](https://github.com/encode/starlette/issues/619). GraphQL is not
+  supported on Python 3.10.
+* The `executor` parameter to `GraphQLApp` was removed. Use `executor_class` instead.
+* The `workers` parameter to `WSGIMiddleware` was removed. This hasn't had any effect since
+  Starlette v0.6.3.
 
 ## 0.14.2
 

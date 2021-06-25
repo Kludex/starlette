@@ -1,5 +1,6 @@
 site_name: Starlette
 site_description: The little ASGI library that shines.
+site_url: https://www.starlette.io
 
 theme:
   name: 'material'

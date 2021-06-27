@@ -56,9 +56,9 @@ class Jinja2Templates:
 
     def __init__(self, directory: str) -> None:
         assert jinja2 is not None, "jinja2 must be installed to use Jinja2Templates"
-        self.env = self.get_env(directory)
+        self.env = self._create_env(directory)
 
-    def get_env(self, directory: str) -> "jinja2.Environment":
+    def _create_env(self, directory: str) -> "jinja2.Environment":
         @pass_context
         def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
             request = context["request"]

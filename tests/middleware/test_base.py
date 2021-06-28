@@ -5,7 +5,6 @@ from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
-from starlette.testclient import TestClient
 
 
 class CustomMiddleware(BaseHTTPMiddleware):
@@ -48,8 +47,8 @@ async def websocket_endpoint(session):
     await session.close()
 
 
-def test_custom_middleware():
-    client = TestClient(app)
+def test_custom_middleware(test_client_factory):
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.headers["Custom-Header"] == "Example"
 
@@ -64,7 +63,7 @@ def test_custom_middleware():
         assert text == "Hello, world!"
 
 
-def test_middleware_decorator():
+def test_middleware_decorator(test_client_factory):
     app = Starlette()
 
     @app.route("/homepage")
@@ -79,7 +78,7 @@ def test_middleware_decorator():
         response.headers["Custom"] = "Example"
         return response
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "OK"
 
@@ -88,7 +87,7 @@ def test_middleware_decorator():
     assert response.headers["Custom"] == "Example"
 
 
-def test_state_data_across_multiple_middlewares():
+def test_state_data_across_multiple_middlewares(test_client_factory):
     expected_value1 = "foo"
     expected_value2 = "bar"
 
@@ -120,14 +119,14 @@ def test_state_data_across_multiple_middlewares():
     def homepage(request):
         return PlainTextResponse("OK")
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "OK"
     assert response.headers["X-State-Foo"] == expected_value1
     assert response.headers["X-State-Bar"] == expected_value2
 
 
-def test_app_middleware_argument():
+def test_app_middleware_argument(test_client_factory):
     def homepage(request):
         return PlainTextResponse("Homepage")
 
@@ -135,7 +134,7 @@ def test_app_middleware_argument():
         routes=[Route("/", homepage)], middleware=[Middleware(CustomMiddleware)]
     )
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.headers["Custom-Header"] == "Example"
 
@@ -145,7 +144,7 @@ def test_middleware_repr():
     assert repr(middleware) == "Middleware(CustomMiddleware)"
 
 
-def test_fully_evaluated_response():
+def test_fully_evaluated_response(test_client_factory):
     # Test for https://github.com/encode/starlette/issues/1022
     class CustomMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
@@ -155,6 +154,6 @@ def test_fully_evaluated_response():
     app = Starlette()
     app.add_middleware(CustomMiddleware)
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/does_not_exist")
     assert response.text == "Custom"

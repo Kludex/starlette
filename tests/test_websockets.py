@@ -2,11 +2,10 @@ import anyio
 import pytest
 
 from starlette import status
-from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 
-def test_websocket_url():
+def test_websocket_url(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -16,13 +15,13 @@ def test_websocket_url():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/123?a=abc") as websocket:
         data = websocket.receive_json()
         assert data == {"url": "ws://testserver/123?a=abc"}
 
 
-def test_websocket_binary_json():
+def test_websocket_binary_json(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -33,14 +32,14 @@ def test_websocket_binary_json():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/123?a=abc") as websocket:
         websocket.send_json({"test": "data"}, mode="binary")
         data = websocket.receive_json(mode="binary")
         assert data == {"test": "data"}
 
 
-def test_websocket_query_params():
+def test_websocket_query_params(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -51,13 +50,13 @@ def test_websocket_query_params():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/?a=abc&b=456") as websocket:
         data = websocket.receive_json()
         assert data == {"params": {"a": "abc", "b": "456"}}
 
 
-def test_websocket_headers():
+def test_websocket_headers(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -68,7 +67,7 @@ def test_websocket_headers():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         expected_headers = {
             "accept": "*/*",
@@ -83,7 +82,7 @@ def test_websocket_headers():
         assert data == {"headers": expected_headers}
 
 
-def test_websocket_port():
+def test_websocket_port(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -93,13 +92,13 @@ def test_websocket_port():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("ws://example.com:123/123?a=abc") as websocket:
         data = websocket.receive_json()
         assert data == {"port": 123}
 
 
-def test_websocket_send_and_receive_text():
+def test_websocket_send_and_receive_text(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -110,14 +109,14 @@ def test_websocket_send_and_receive_text():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.send_text("Hello, world!")
         data = websocket.receive_text()
         assert data == "Message was: Hello, world!"
 
 
-def test_websocket_send_and_receive_bytes():
+def test_websocket_send_and_receive_bytes(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -128,14 +127,14 @@ def test_websocket_send_and_receive_bytes():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.send_bytes(b"Hello, world!")
         data = websocket.receive_bytes()
         assert data == b"Message was: Hello, world!"
 
 
-def test_websocket_send_and_receive_json():
+def test_websocket_send_and_receive_json(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -146,14 +145,14 @@ def test_websocket_send_and_receive_json():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.send_json({"hello": "world"})
         data = websocket.receive_json()
         assert data == {"message": {"hello": "world"}}
 
 
-def test_websocket_iter_text():
+def test_websocket_iter_text(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -163,14 +162,14 @@ def test_websocket_iter_text():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.send_text("Hello, world!")
         data = websocket.receive_text()
         assert data == "Message was: Hello, world!"
 
 
-def test_websocket_iter_bytes():
+def test_websocket_iter_bytes(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -180,14 +179,14 @@ def test_websocket_iter_bytes():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.send_bytes(b"Hello, world!")
         data = websocket.receive_bytes()
         assert data == b"Message was: Hello, world!"
 
 
-def test_websocket_iter_json():
+def test_websocket_iter_json(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -197,14 +196,14 @@ def test_websocket_iter_json():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.send_json({"hello": "world"})
         data = websocket.receive_json()
         assert data == {"message": {"hello": "world"}}
 
 
-def test_websocket_concurrency_pattern():
+def test_websocket_concurrency_pattern(test_client_factory):
     def app(scope):
         stream_send, stream_receive = anyio.create_memory_object_stream()
 
@@ -228,14 +227,14 @@ def test_websocket_concurrency_pattern():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.send_json({"hello": "world"})
         data = websocket.receive_json()
         assert data == {"hello": "world"}
 
 
-def test_client_close():
+def test_client_close(test_client_factory):
     close_code = None
 
     def app(scope):
@@ -250,13 +249,13 @@ def test_client_close():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         websocket.close(code=status.WS_1001_GOING_AWAY)
     assert close_code == status.WS_1001_GOING_AWAY
 
 
-def test_application_close():
+def test_application_close(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -265,14 +264,14 @@ def test_application_close():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         with pytest.raises(WebSocketDisconnect) as exc:
             websocket.receive_text()
         assert exc.value.code == status.WS_1001_GOING_AWAY
 
 
-def test_rejected_connection():
+def test_rejected_connection(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -280,14 +279,14 @@ def test_rejected_connection():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with pytest.raises(WebSocketDisconnect) as exc:
         with client.websocket_connect("/"):
             pass  # pragma: nocover
     assert exc.value.code == status.WS_1001_GOING_AWAY
 
 
-def test_subprotocol():
+def test_subprotocol(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -297,25 +296,25 @@ def test_subprotocol():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/", subprotocols=["soap", "wamp"]) as websocket:
         assert websocket.accepted_subprotocol == "wamp"
 
 
-def test_websocket_exception():
+def test_websocket_exception(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             assert False
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with pytest.raises(AssertionError):
         with client.websocket_connect("/123?a=abc"):
             pass  # pragma: nocover
 
 
-def test_duplicate_close():
+def test_duplicate_close(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -325,13 +324,13 @@ def test_duplicate_close():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
             pass  # pragma: nocover
 
 
-def test_duplicate_disconnect():
+def test_duplicate_disconnect(test_client_factory):
     def app(scope):
         async def asgi(receive, send):
             websocket = WebSocket(scope, receive=receive, send=send)
@@ -342,7 +341,7 @@ def test_duplicate_disconnect():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/") as websocket:
             websocket.close()

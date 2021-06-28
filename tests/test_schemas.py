@@ -1,7 +1,6 @@
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
 from starlette.schemas import SchemaGenerator
-from starlette.testclient import TestClient
 
 schemas = SchemaGenerator(
     {"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}}
@@ -213,8 +212,8 @@ paths:
 """
 
 
-def test_schema_endpoint():
-    client = TestClient(app)
+def test_schema_endpoint(test_client_factory):
+    client = test_client_factory(app)
     response = client.get("/schema")
     assert response.headers["Content-Type"] == "application/vnd.oai.openapi"
     assert response.text.strip() == EXPECTED_SCHEMA.strip()

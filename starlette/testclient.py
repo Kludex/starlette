@@ -6,6 +6,7 @@ import io
 import json
 import math
 import queue
+import sys
 import types
 import typing
 from concurrent.futures import Future
@@ -17,6 +18,11 @@ from anyio.streams.stapled import StapledObjectStream
 
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
+
+if sys.version_info >= (3, 8):  # pragma: no cover
+    from typing import TypedDict
+else:  # pragma: no cover
+    from typing_extensions import TypedDict
 
 # Annotations for `Session.request()`
 Cookies = typing.Union[
@@ -91,11 +97,16 @@ class _WrapASGI2:
         await instance(receive, send)
 
 
+class _AsyncBackend(TypedDict):
+    backend: str
+    backend_options: typing.Dict[str, typing.Any]
+
+
 class _ASGIAdapter(requests.adapters.HTTPAdapter):
     def __init__(
         self,
         app: ASGI3App,
-        async_backend: typing.Dict[str, typing.Any],
+        async_backend: _AsyncBackend,
         raise_server_exceptions: bool = True,
         root_path: str = "",
     ) -> None:
@@ -271,7 +282,10 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
 
 class WebSocketTestSession:
     def __init__(
-        self, app: ASGI3App, scope: Scope, async_backend: typing.Dict[str, typing.Any]
+        self,
+        app: ASGI3App,
+        scope: Scope,
+        async_backend: _AsyncBackend,
     ) -> None:
         self.app = app
         self.scope = scope
@@ -381,13 +395,6 @@ class WebSocketTestSession:
 
 class TestClient(requests.Session):
     __test__ = False  # For pytest to not discover this up.
-
-    #: These options are passed to `anyio.start_blocking_portal()`
-    async_backend: typing.Dict[str, typing.Any] = {
-        "backend": "asyncio",
-        "backend_options": {},
-    }
-
     task: "Future[None]"
 
     def __init__(
@@ -396,8 +403,13 @@ class TestClient(requests.Session):
         base_url: str = "http://testserver",
         raise_server_exceptions: bool = True,
         root_path: str = "",
+        backend: str = "asyncio",
+        backend_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> None:
         super().__init__()
+        self.async_backend = _AsyncBackend(
+            backend=backend, backend_options=backend_options or {}
+        )
         if _is_asgi3(app):
             app = typing.cast(ASGI3App, app)
             asgi_app = app

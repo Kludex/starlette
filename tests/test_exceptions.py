@@ -3,7 +3,6 @@ import pytest
 from starlette.exceptions import ExceptionMiddleware, HTTPException
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router, WebSocketRoute
-from starlette.testclient import TestClient
 
 
 def raise_runtime_error(request):
@@ -37,28 +36,33 @@ router = Router(
 
 
 app = ExceptionMiddleware(router)
-client = TestClient(app)
 
 
-def test_not_acceptable():
+@pytest.fixture
+def client(test_client_factory):
+    with test_client_factory(app) as client:
+        yield client
+
+
+def test_not_acceptable(client):
     response = client.get("/not_acceptable")
     assert response.status_code == 406
     assert response.text == "Not Acceptable"
 
 
-def test_not_modified():
+def test_not_modified(client):
     response = client.get("/not_modified")
     assert response.status_code == 304
     assert response.text == ""
 
 
-def test_websockets_should_raise():
+def test_websockets_should_raise(client):
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/runtime_error"):
             pass  # pragma: nocover
 
 
-def test_handled_exc_after_response():
+def test_handled_exc_after_response(test_client_factory, client):
     # A 406 HttpException is raised *after* the response has already been sent.
     # The exception middleware should raise a RuntimeError.
     with pytest.raises(RuntimeError):
@@ -66,17 +70,17 @@ def test_handled_exc_after_response():
 
     # If `raise_server_exceptions=False` then the test client will still allow
     # us to see the response as it will have been seen by the client.
-    allow_200_client = TestClient(app, raise_server_exceptions=False)
+    allow_200_client = test_client_factory(app, raise_server_exceptions=False)
     response = allow_200_client.get("/handled_exc_after_response")
     assert response.status_code == 200
     assert response.text == "OK"
 
 
-def test_force_500_response():
+def test_force_500_response(test_client_factory):
     def app(scope):
         raise RuntimeError()
 
-    force_500_client = TestClient(app, raise_server_exceptions=False)
+    force_500_client = test_client_factory(app, raise_server_exceptions=False)
     response = force_500_client.get("/")
     assert response.status_code == 500
     assert response.text == ""

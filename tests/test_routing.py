@@ -6,7 +6,6 @@ import pytest
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
-from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 
@@ -105,10 +104,13 @@ async def websocket_params(session):
     await session.close()
 
 
-client = TestClient(app)
+@pytest.fixture
+def client(test_client_factory):
+    with test_client_factory(app) as client:
+        yield client
 
 
-def test_router():
+def test_router(client):
     response = client.get("/")
     assert response.status_code == 200
     assert response.text == "Hello, world"
@@ -147,7 +149,7 @@ def test_router():
     assert response.text == "xxxxx"
 
 
-def test_route_converters():
+def test_route_converters(client):
     # Test integer conversion
     response = client.get("/int/5")
     assert response.status_code == 200
@@ -232,19 +234,19 @@ def test_url_for():
     )
 
 
-def test_router_add_route():
+def test_router_add_route(client):
     response = client.get("/func")
     assert response.status_code == 200
     assert response.text == "Hello, world!"
 
 
-def test_router_duplicate_path():
+def test_router_duplicate_path(client):
     response = client.post("/func")
     assert response.status_code == 200
     assert response.text == "Hello, POST!"
 
 
-def test_router_add_websocket_route():
+def test_router_add_websocket_route(client):
     with client.websocket_connect("/ws") as session:
         text = session.receive_text()
         assert text == "Hello, world!"
@@ -275,8 +277,8 @@ mixed_protocol_app = Router(
 )
 
 
-def test_protocol_switch():
-    client = TestClient(mixed_protocol_app)
+def test_protocol_switch(test_client_factory):
+    client = test_client_factory(mixed_protocol_app)
 
     response = client.get("/")
     assert response.status_code == 200
@@ -293,9 +295,9 @@ def test_protocol_switch():
 ok = PlainTextResponse("OK")
 
 
-def test_mount_urls():
+def test_mount_urls(test_client_factory):
     mounted = Router([Mount("/users", ok, name="users")])
-    client = TestClient(mounted)
+    client = test_client_factory(mounted)
     assert client.get("/users").status_code == 200
     assert client.get("/users").url == "http://testserver/users/"
     assert client.get("/users/").status_code == 200
@@ -318,9 +320,9 @@ def test_reverse_mount_urls():
     )
 
 
-def test_mount_at_root():
+def test_mount_at_root(test_client_factory):
     mounted = Router([Mount("/", ok, name="users")])
-    client = TestClient(mounted)
+    client = test_client_factory(mounted)
     assert client.get("/").status_code == 200
 
 
@@ -348,8 +350,8 @@ mixed_hosts_app = Router(
 )
 
 
-def test_host_routing():
-    client = TestClient(mixed_hosts_app, base_url="https://api.example.org/")
+def test_host_routing(test_client_factory):
+    client = test_client_factory(mixed_hosts_app, base_url="https://api.example.org/")
 
     response = client.get("/users")
     assert response.status_code == 200
@@ -358,7 +360,7 @@ def test_host_routing():
     response = client.get("/")
     assert response.status_code == 404
 
-    client = TestClient(mixed_hosts_app, base_url="https://www.example.org/")
+    client = test_client_factory(mixed_hosts_app, base_url="https://www.example.org/")
 
     response = client.get("/users")
     assert response.status_code == 200
@@ -393,8 +395,8 @@ subdomain_app = Router(
 )
 
 
-def test_subdomain_routing():
-    client = TestClient(subdomain_app, base_url="https://foo.example.org/")
+def test_subdomain_routing(test_client_factory):
+    client = test_client_factory(subdomain_app, base_url="https://foo.example.org/")
 
     response = client.get("/")
     assert response.status_code == 200
@@ -429,9 +431,11 @@ echo_url_routes = [
 ]
 
 
-def test_url_for_with_root_path():
+def test_url_for_with_root_path(test_client_factory):
     app = Starlette(routes=echo_url_routes)
-    client = TestClient(app, base_url="https://www.example.org/", root_path="/sub_path")
+    client = test_client_factory(
+        app, base_url="https://www.example.org/", root_path="/sub_path"
+    )
     response = client.get("/")
     assert response.json() == {
         "index": "https://www.example.org/sub_path/",
@@ -459,17 +463,17 @@ def test_url_for_with_double_mount():
     assert url == "/mount/static/123"
 
 
-def test_standalone_route_matches():
+def test_standalone_route_matches(test_client_factory):
     app = Route("/", PlainTextResponse("Hello, World!"))
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.status_code == 200
     assert response.text == "Hello, World!"
 
 
-def test_standalone_route_does_not_match():
+def test_standalone_route_does_not_match(test_client_factory):
     app = Route("/", PlainTextResponse("Hello, World!"))
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/invalid")
     assert response.status_code == 404
     assert response.text == "Not Found"
@@ -481,23 +485,23 @@ async def ws_helloworld(websocket):
     await websocket.close()
 
 
-def test_standalone_ws_route_matches():
+def test_standalone_ws_route_matches(test_client_factory):
     app = WebSocketRoute("/", ws_helloworld)
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         text = websocket.receive_text()
         assert text == "Hello, world!"
 
 
-def test_standalone_ws_route_does_not_match():
+def test_standalone_ws_route_does_not_match(test_client_factory):
     app = WebSocketRoute("/", ws_helloworld)
-    client = TestClient(app)
+    client = test_client_factory(app)
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/invalid"):
             pass  # pragma: nocover
 
 
-def test_lifespan_async():
+def test_lifespan_async(test_client_factory):
     startup_complete = False
     shutdown_complete = False
 
@@ -520,7 +524,7 @@ def test_lifespan_async():
 
     assert not startup_complete
     assert not shutdown_complete
-    with TestClient(app) as client:
+    with test_client_factory(app) as client:
         assert startup_complete
         assert not shutdown_complete
         client.get("/")
@@ -528,7 +532,7 @@ def test_lifespan_async():
     assert shutdown_complete
 
 
-def test_lifespan_sync():
+def test_lifespan_sync(test_client_factory):
     startup_complete = False
     shutdown_complete = False
 
@@ -551,7 +555,7 @@ def test_lifespan_sync():
 
     assert not startup_complete
     assert not shutdown_complete
-    with TestClient(app) as client:
+    with test_client_factory(app) as client:
         assert startup_complete
         assert not shutdown_complete
         client.get("/")
@@ -559,7 +563,7 @@ def test_lifespan_sync():
     assert shutdown_complete
 
 
-def test_raise_on_startup():
+def test_raise_on_startup(test_client_factory):
     def run_startup():
         raise RuntimeError()
 
@@ -576,19 +580,19 @@ def test_raise_on_startup():
 
     startup_failed = False
     with pytest.raises(RuntimeError):
-        with TestClient(app):
+        with test_client_factory(app):
             pass  # pragma: nocover
     assert startup_failed
 
 
-def test_raise_on_shutdown():
+def test_raise_on_shutdown(test_client_factory):
     def run_shutdown():
         raise RuntimeError()
 
     app = Router(on_shutdown=[run_shutdown])
 
     with pytest.raises(RuntimeError):
-        with TestClient(app):
+        with test_client_factory(app):
             pass  # pragma: nocover
 
 
@@ -615,8 +619,8 @@ partial_async_app = Router(
 )
 
 
-def test_partial_async_endpoint():
-    test_client = TestClient(partial_async_app)
+def test_partial_async_endpoint(test_client_factory):
+    test_client = test_client_factory(partial_async_app)
     response = test_client.get("/")
     assert response.status_code == 200
     assert response.json() == {"arg": "foo"}

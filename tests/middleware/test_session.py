@@ -3,7 +3,6 @@ import re
 from starlette.applications import Starlette
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
-from starlette.testclient import TestClient
 
 
 def view_session(request):
@@ -29,10 +28,10 @@ def create_app():
     return app
 
 
-def test_session():
+def test_session(test_client_factory):
     app = create_app()
     app.add_middleware(SessionMiddleware, secret_key="example")
-    client = TestClient(app)
+    client = test_client_factory(app)
 
     response = client.get("/view_session")
     assert response.json() == {"session": {}}
@@ -56,10 +55,10 @@ def test_session():
     assert response.json() == {"session": {}}
 
 
-def test_session_expires():
+def test_session_expires(test_client_factory):
     app = create_app()
     app.add_middleware(SessionMiddleware, secret_key="example", max_age=-1)
-    client = TestClient(app)
+    client = test_client_factory(app)
 
     response = client.post("/update_session", json={"some": "data"})
     assert response.json() == {"session": {"some": "data"}}
@@ -72,11 +71,11 @@ def test_session_expires():
     assert response.json() == {"session": {}}
 
 
-def test_secure_session():
+def test_secure_session(test_client_factory):
     app = create_app()
     app.add_middleware(SessionMiddleware, secret_key="example", https_only=True)
-    secure_client = TestClient(app, base_url="https://testserver")
-    unsecure_client = TestClient(app, base_url="http://testserver")
+    secure_client = test_client_factory(app, base_url="https://testserver")
+    unsecure_client = test_client_factory(app, base_url="http://testserver")
 
     response = unsecure_client.get("/view_session")
     assert response.json() == {"session": {}}
@@ -103,12 +102,12 @@ def test_secure_session():
     assert response.json() == {"session": {}}
 
 
-def test_session_cookie_subpath():
+def test_session_cookie_subpath(test_client_factory):
     app = create_app()
     second_app = create_app()
     second_app.add_middleware(SessionMiddleware, secret_key="example")
     app.mount("/second_app", second_app)
-    client = TestClient(app, base_url="http://testserver/second_app")
+    client = test_client_factory(app, base_url="http://testserver/second_app")
     response = client.post("second_app/update_session", json={"some": "data"})
     cookie = response.headers["set-cookie"]
     cookie_path = re.search(r"; path=(\S+);", cookie).groups()[0]

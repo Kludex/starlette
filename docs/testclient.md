@@ -33,18 +33,25 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
 
 ### Selecting the Async backend
 
-`TestClient.async_backend` is a dictionary which allows you to set the options
-for the backend used to run tests.  These options are passed to
-`anyio.start_blocking_portal()`. See the [anyio documentation](https://anyio.readthedocs.io/en/stable/basics.html#backend-options)
-for more information about backend options.  By default, `asyncio` is used.
+`TestClient` takes arguments `backend` (a string) and `backend_options` (a dictionary).
+These options are passed to `anyio.start_blocking_portal()`. See the [anyio documentation](https://anyio.readthedocs.io/en/stable/basics.html#backend-options)
+for more information about the accepted backend options.
+By default, `asyncio` is used with default options.
 
-To run `Trio`, set `async_backend["backend"] = "trio"`, for example:
+To run `Trio`, pass `backend="trio"`. For example:
 
 ```python
 def test_app()
-    client = TestClient(app)
-    client.async_backend["backend"] = "trio"
-    ...
+    with TestClient(app, backend="trio") as client:
+       ...
+```
+
+To run `asyncio` with `uvloop`, pass `backend_options={"use_uvloop": True}`.  For example:
+
+```python
+def test_app()
+    with TestClient(app, backend_options={"use_uvloop": True}) as client:
+       ...
 ```
 
 ### Testing WebSocket sessions

@@ -4,7 +4,6 @@ import sqlalchemy
 
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
-from starlette.testclient import TestClient
 
 DATABASE_URL = "sqlite:///test.db"
 
@@ -90,8 +89,8 @@ async def read_note_text(request):
     return JSONResponse(result[0])
 
 
-def test_database():
-    with TestClient(app) as client:
+def test_database(test_client_factory):
+    with test_client_factory(app) as client:
         response = client.post(
             "/notes", json={"text": "buy the milk", "completed": True}
         )
@@ -125,8 +124,8 @@ def test_database():
         assert response.json() == "buy the milk"
 
 
-def test_database_execute_many():
-    with TestClient(app) as client:
+def test_database_execute_many(test_client_factory):
+    with test_client_factory(app) as client:
         response = client.get("/notes")
 
         data = [
@@ -144,11 +143,11 @@ def test_database_execute_many():
         ]
 
 
-def test_database_isolated_during_test_cases():
+def test_database_isolated_during_test_cases(test_client_factory):
     """
     Using `TestClient` as a context manager
     """
-    with TestClient(app) as client:
+    with test_client_factory(app) as client:
         response = client.post(
             "/notes", json={"text": "just one note", "completed": True}
         )
@@ -158,7 +157,7 @@ def test_database_isolated_during_test_cases():
         assert response.status_code == 200
         assert response.json() == [{"text": "just one note", "completed": True}]
 
-    with TestClient(app) as client:
+    with test_client_factory(app) as client:
         response = client.post(
             "/notes", json={"text": "just one note", "completed": True}
         )

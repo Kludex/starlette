@@ -1,10 +1,9 @@
 from starlette.applications import Starlette
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import PlainTextResponse
-from starlette.testclient import TestClient
 
 
-def test_trusted_host_middleware():
+def test_trusted_host_middleware(test_client_factory):
     app = Starlette()
 
     app.add_middleware(
@@ -15,15 +14,15 @@ def test_trusted_host_middleware():
     def homepage(request):
         return PlainTextResponse("OK", status_code=200)
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.status_code == 200
 
-    client = TestClient(app, base_url="http://subdomain.testserver")
+    client = test_client_factory(app, base_url="http://subdomain.testserver")
     response = client.get("/")
     assert response.status_code == 200
 
-    client = TestClient(app, base_url="http://invalidhost")
+    client = test_client_factory(app, base_url="http://invalidhost")
     response = client.get("/")
     assert response.status_code == 400
 
@@ -34,7 +33,7 @@ def test_default_allowed_hosts():
     assert middleware.allowed_hosts == ["*"]
 
 
-def test_www_redirect():
+def test_www_redirect(test_client_factory):
     app = Starlette()
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["www.example.com"])
@@ -43,7 +42,7 @@ def test_www_redirect():
     def homepage(request):
         return PlainTextResponse("OK", status_code=200)
 
-    client = TestClient(app, base_url="https://example.com")
+    client = test_client_factory(app, base_url="https://example.com")
     response = client.get("/")
     assert response.status_code == 200
     assert response.url == "https://www.example.com/"

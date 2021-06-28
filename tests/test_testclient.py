@@ -4,7 +4,6 @@ import pytest
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
-from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 mock_service = Starlette()
@@ -15,14 +14,16 @@ def mock_service_endpoint(request):
     return JSONResponse({"mock": "example"})
 
 
-app = Starlette()
+def create_app(test_client_factory):
+    app = Starlette()
 
+    @app.route("/")
+    def homepage(request):
+        client = test_client_factory(mock_service)
+        response = client.get("/")
+        return JSONResponse(response.json())
 
-@app.route("/")
-def homepage(request):
-    client = TestClient(mock_service)
-    response = client.get("/")
-    return JSONResponse(response.json())
+    return app
 
 
 startup_error_app = Starlette()
@@ -33,30 +34,30 @@ def startup():
     raise RuntimeError()
 
 
-def test_use_testclient_in_endpoint():
+def test_use_testclient_in_endpoint(test_client_factory):
     """
     We should be able to use the test client within applications.
 
     This is useful if we need to mock out other services,
     during tests or in development.
     """
-    client = TestClient(app)
+    client = test_client_factory(create_app(test_client_factory))
     response = client.get("/")
     assert response.json() == {"mock": "example"}
 
 
-def test_use_testclient_as_contextmanager():
-    with TestClient(app):
+def test_use_testclient_as_contextmanager(test_client_factory):
+    with test_client_factory(create_app(test_client_factory)):
         pass
 
 
-def test_error_on_startup():
+def test_error_on_startup(test_client_factory):
     with pytest.raises(RuntimeError):
-        with TestClient(startup_error_app):
+        with test_client_factory(startup_error_app):
             pass  # pragma: no cover
 
 
-def test_exception_in_middleware():
+def test_exception_in_middleware(test_client_factory):
     class MiddlewareException(Exception):
         pass
 
@@ -70,11 +71,11 @@ def test_exception_in_middleware():
     broken_middleware = Starlette(middleware=[Middleware(BrokenMiddleware)])
 
     with pytest.raises(MiddlewareException):
-        with TestClient(broken_middleware):
+        with test_client_factory(broken_middleware):
             pass  # pragma: no cover
 
 
-def test_testclient_asgi2():
+def test_testclient_asgi2(test_client_factory):
     def app(scope):
         async def inner(receive, send):
             await send(
@@ -88,12 +89,12 @@ def test_testclient_asgi2():
 
         return inner
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
 
 
-def test_testclient_asgi3():
+def test_testclient_asgi3(test_client_factory):
     async def app(scope, receive, send):
         await send(
             {
@@ -104,12 +105,12 @@ def test_testclient_asgi3():
         )
         await send({"type": "http.response.body", "body": b"Hello, world!"})
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
 
 
-def test_websocket_blocking_receive():
+def test_websocket_blocking_receive(test_client_factory):
     def app(scope):
         async def respond(websocket):
             await websocket.send_json({"message": "test"})
@@ -128,7 +129,7 @@ def test_websocket_blocking_receive():
 
         return asgi
 
-    client = TestClient(app)
+    client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
         data = websocket.receive_json()
         assert data == {"message": "test"}

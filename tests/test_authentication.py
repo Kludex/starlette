@@ -15,7 +15,6 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 
@@ -195,8 +194,8 @@ def test_invalid_decorator_usage():
             pass  # pragma: nocover
 
 
-def test_user_interface():
-    with TestClient(app) as client:
+def test_user_interface(test_client_factory):
+    with test_client_factory(app) as client:
         response = client.get("/")
         assert response.status_code == 200
         assert response.json() == {"authenticated": False, "user": ""}
@@ -206,8 +205,8 @@ def test_user_interface():
         assert response.json() == {"authenticated": True, "user": "tomchristie"}
 
 
-def test_authentication_required():
-    with TestClient(app) as client:
+def test_authentication_required(test_client_factory):
+    with test_client_factory(app) as client:
         response = client.get("/dashboard")
         assert response.status_code == 403
 
@@ -258,8 +257,8 @@ def test_authentication_required():
         assert response.text == "Invalid basic auth credentials"
 
 
-def test_websocket_authentication_required():
-    with TestClient(app) as client:
+def test_websocket_authentication_required(test_client_factory):
+    with test_client_factory(app) as client:
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws"):
                 pass  # pragma: nocover
@@ -297,8 +296,8 @@ def test_websocket_authentication_required():
             }
 
 
-def test_authentication_redirect():
-    with TestClient(app) as client:
+def test_authentication_redirect(test_client_factory):
+    with test_client_factory(app) as client:
         response = client.get("/admin")
         assert response.status_code == 200
         assert response.url == "http://testserver/"
@@ -337,8 +336,8 @@ def control_panel(request):
     )
 
 
-def test_custom_on_error():
-    with TestClient(other_app) as client:
+def test_custom_on_error(test_client_factory):
+    with test_client_factory(other_app) as client:
         response = client.get("/control-panel", auth=("tomchristie", "example"))
         assert response.status_code == 200
         assert response.json() == {"authenticated": True, "user": "tomchristie"}

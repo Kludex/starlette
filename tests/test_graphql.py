@@ -1,10 +1,10 @@
 import graphene
+import pytest
 from graphql.execution.executors.asyncio import AsyncioExecutor
 
 from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.graphql import GraphQLApp
-from starlette.testclient import TestClient
 
 
 class FakeAuthMiddleware:
@@ -33,29 +33,33 @@ class Query(graphene.ObjectType):
 
 
 schema = graphene.Schema(query=Query)
-app = GraphQLApp(schema=schema, graphiql=True)
-client = TestClient(app)
 
 
-def test_graphql_get():
+@pytest.fixture
+def client(test_client_factory):
+    app = GraphQLApp(schema=schema, graphiql=True)
+    return test_client_factory(app)
+
+
+def test_graphql_get(client):
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
     assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
-def test_graphql_post():
+def test_graphql_post(client):
     response = client.post("/?query={ hello }")
     assert response.status_code == 200
     assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
-def test_graphql_post_json():
+def test_graphql_post_json(client):
     response = client.post("/", json={"query": "{ hello }"})
     assert response.status_code == 200
     assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
-def test_graphql_post_graphql():
+def test_graphql_post_graphql(client):
     response = client.post(
         "/", data="{ hello }", headers={"content-type": "application/graphql"}
     )
@@ -63,25 +67,25 @@ def test_graphql_post_graphql():
     assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
-def test_graphql_post_invalid_media_type():
+def test_graphql_post_invalid_media_type(client):
     response = client.post("/", data="{ hello }", headers={"content-type": "dummy"})
     assert response.status_code == 415
     assert response.text == "Unsupported Media Type"
 
 
-def test_graphql_put():
+def test_graphql_put(client):
     response = client.put("/", json={"query": "{ hello }"})
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
 
 
-def test_graphql_no_query():
+def test_graphql_no_query(client):
     response = client.get("/")
     assert response.status_code == 400
     assert response.text == "No GraphQL query found in the request"
 
 
-def test_graphql_invalid_field():
+def test_graphql_invalid_field(client):
     response = client.post("/", json={"query": "{ dummy }"})
     assert response.status_code == 400
     assert response.json() == {
@@ -95,34 +99,34 @@ def test_graphql_invalid_field():
     }
 
 
-def test_graphiql_get():
+def test_graphiql_get(client):
     response = client.get("/", headers={"accept": "text/html"})
     assert response.status_code == 200
     assert "<!DOCTYPE html>" in response.text
 
 
-def test_graphiql_not_found():
+def test_graphiql_not_found(test_client_factory):
     app = GraphQLApp(schema=schema, graphiql=False)
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/", headers={"accept": "text/html"})
     assert response.status_code == 404
     assert response.text == "Not Found"
 
 
-def test_add_graphql_route():
+def test_add_graphql_route(test_client_factory):
     app = Starlette()
     app.add_route("/", GraphQLApp(schema=schema))
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
     assert response.json() == {"data": {"hello": "Hello stranger"}}
 
 
-def test_graphql_context():
+def test_graphql_context(test_client_factory):
     app = Starlette()
     app.add_middleware(FakeAuthMiddleware)
     app.add_route("/", GraphQLApp(schema=schema))
-    client = TestClient(app)
+    client = test_client_factory(app)
     response = client.post(
         "/", json={"query": "{ whoami }"}, headers={"Authorization": "Bearer 123"}
     )
@@ -141,8 +145,8 @@ async_schema = graphene.Schema(query=ASyncQuery)
 async_app = GraphQLApp(schema=async_schema, executor_class=AsyncioExecutor)
 
 
-def test_graphql_async(no_trio_support):
-    client = TestClient(async_app)
+def test_graphql_async(no_trio_support, test_client_factory):
+    client = test_client_factory(async_app)
     response = client.get("/?query={ hello }")
     assert response.status_code == 200
     assert response.json() == {"data": {"hello": "Hello stranger"}}

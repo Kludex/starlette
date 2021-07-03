@@ -1,4 +1,5 @@
 import os
+import sys
 
 import pytest
 
@@ -9,6 +10,11 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
+
+if sys.version_info >= (3, 7):
+    from contextlib import asynccontextmanager  # pragma: no cover
+else:
+    from contextlib2 import asynccontextmanager  # pragma: no cover
 
 app = Starlette()
 
@@ -286,7 +292,39 @@ def test_app_add_event_handler(test_client_factory):
     assert cleanup_complete
 
 
-def test_app_async_lifespan(test_client_factory):
+def test_app_async_cm_lifespan(test_client_factory):
+    startup_complete = False
+    cleanup_complete = False
+
+    @asynccontextmanager
+    async def lifespan(app):
+        nonlocal startup_complete, cleanup_complete
+        startup_complete = True
+        yield
+        cleanup_complete = True
+
+    app = Starlette(lifespan=lifespan)
+
+    assert not startup_complete
+    assert not cleanup_complete
+    with test_client_factory(app):
+        assert startup_complete
+        assert not cleanup_complete
+    assert startup_complete
+    assert cleanup_complete
+
+
+deprecated_lifespan = pytest.mark.filterwarnings(
+    r"ignore"
+    r":(async )?generator function lifespans are deprecated, use an "
+    r"@contextlib\.asynccontextmanager function instead"
+    r":DeprecationWarning"
+    r":starlette.routing"
+)
+
+
+@deprecated_lifespan
+def test_app_async_gen_lifespan(test_client_factory):
     startup_complete = False
     cleanup_complete = False
 
@@ -307,7 +345,8 @@ def test_app_async_lifespan(test_client_factory):
     assert cleanup_complete
 
 
-def test_app_sync_lifespan(test_client_factory):
+@deprecated_lifespan
+def test_app_sync_gen_lifespan(test_client_factory):
     startup_complete = False
     cleanup_complete = False
 

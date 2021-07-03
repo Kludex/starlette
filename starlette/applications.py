@@ -46,7 +46,7 @@ class Starlette:
         ] = None,
         on_startup: typing.Sequence[typing.Callable] = None,
         on_shutdown: typing.Sequence[typing.Callable] = None,
-        lifespan: typing.Callable[["Starlette"], typing.AsyncGenerator] = None,
+        lifespan: typing.Callable[["Starlette"], typing.AsyncContextManager] = None,
     ) -> None:
         # The lifespan context function is a newer style that replaces
         # on_startup / on_shutdown handlers. Use one or the other, not both.

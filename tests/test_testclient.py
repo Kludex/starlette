@@ -12,10 +12,12 @@ from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-if sys.version_info >= (3, 7):
-    from asyncio import current_task as asyncio_current_task  # pragma: no cover
-else:
-    asyncio_current_task = asyncio.Task.current_task  # pragma: no cover
+if sys.version_info >= (3, 7):  # pragma: no cover
+    from asyncio import current_task as asyncio_current_task
+    from contextlib import asynccontextmanager
+else:  # pragma: no cover
+    asyncio_current_task = asyncio.Task.current_task
+    from contextlib2 import asynccontextmanager
 
 mock_service = Starlette()
 
@@ -90,6 +92,7 @@ def test_use_testclient_as_contextmanager(test_client_factory, anyio_backend_nam
     shutdown_task = object()
     shutdown_loop = None
 
+    @asynccontextmanager
     async def lifespan_context(app):
         nonlocal startup_task, startup_loop, shutdown_task, shutdown_loop
 

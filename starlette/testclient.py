@@ -543,22 +543,34 @@ class TestClient(requests.Session):
 
     async def wait_startup(self) -> None:
         await self.stream_receive.send({"type": "lifespan.startup"})
-        message = await self.stream_send.receive()
-        if message is None:
-            self.task.result()
+
+        async def receive() -> typing.Any:
+            message = await self.stream_send.receive()
+            if message is None:
+                self.task.result()
+            return message
+
+        message = await receive()
         assert message["type"] in (
             "lifespan.startup.complete",
             "lifespan.startup.failed",
         )
         if message["type"] == "lifespan.startup.failed":
-            message = await self.stream_send.receive()
-            if message is None:
-                self.task.result()
+            await receive()
 
     async def wait_shutdown(self) -> None:
-        async with self.stream_send:
-            await self.stream_receive.send({"type": "lifespan.shutdown"})
+        async def receive() -> typing.Any:
             message = await self.stream_send.receive()
             if message is None:
                 self.task.result()
-            assert message["type"] == "lifespan.shutdown.complete"
+            return message
+
+        async with self.stream_send:
+            await self.stream_receive.send({"type": "lifespan.shutdown"})
+            message = await receive()
+            assert message["type"] in (
+                "lifespan.shutdown.complete",
+                "lifespan.shutdown.failed",
+            )
+            if message["type"] == "lifespan.shutdown.failed":
+                await receive()

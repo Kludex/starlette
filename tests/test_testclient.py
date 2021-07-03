@@ -1,10 +1,21 @@
+import asyncio
+import itertools
+import sys
+
 import anyio
 import pytest
+import sniffio
+import trio.lowlevel
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
 from starlette.websockets import WebSocket, WebSocketDisconnect
+
+if sys.version_info >= (3, 7):
+    from asyncio import current_task as asyncio_current_task  # pragma: no cover
+else:
+    asyncio_current_task = asyncio.Task.current_task  # pragma: no cover
 
 mock_service = Starlette()
 
@@ -14,16 +25,19 @@ def mock_service_endpoint(request):
     return JSONResponse({"mock": "example"})
 
 
-def create_app(test_client_factory):
-    app = Starlette()
+def current_task():
+    # anyio's TaskInfo comparisons are invalid after their associated native
+    # task object is GC'd https://github.com/agronholm/anyio/issues/324
+    asynclib_name = sniffio.current_async_library()
+    if asynclib_name == "trio":
+        return trio.lowlevel.current_task()
 
-    @app.route("/")
-    def homepage(request):
-        client = test_client_factory(mock_service)
-        response = client.get("/")
-        return JSONResponse(response.json())
-
-    return app
+    if asynclib_name == "asyncio":
+        task = asyncio_current_task()
+        if task is None:
+            raise RuntimeError("must be called from a running task")  # pragma: no cover
+        return task
+    raise RuntimeError(f"unsupported asynclib={asynclib_name}")  # pragma: no cover
 
 
 startup_error_app = Starlette()
@@ -41,14 +55,93 @@ def test_use_testclient_in_endpoint(test_client_factory):
     This is useful if we need to mock out other services,
     during tests or in development.
     """
-    client = test_client_factory(create_app(test_client_factory))
+
+    app = Starlette()
+
+    @app.route("/")
+    def homepage(request):
+        client = test_client_factory(mock_service)
+        response = client.get("/")
+        return JSONResponse(response.json())
+
+    client = test_client_factory(app)
     response = client.get("/")
     assert response.json() == {"mock": "example"}
 
 
-def test_use_testclient_as_contextmanager(test_client_factory):
-    with test_client_factory(create_app(test_client_factory)):
-        pass
+def test_use_testclient_as_contextmanager(test_client_factory, anyio_backend_name):
+    """
+    This test asserts a number of properties that are important for an
+    app level task_group
+    """
+    counter = itertools.count()
+    identity_runvar = anyio.lowlevel.RunVar[int]("identity_runvar")
+
+    def get_identity():
+        try:
+            return identity_runvar.get()
+        except LookupError:
+            token = next(counter)
+            identity_runvar.set(token)
+            return token
+
+    startup_task = object()
+    startup_loop = None
+    shutdown_task = object()
+    shutdown_loop = None
+
+    async def lifespan_context(app):
+        nonlocal startup_task, startup_loop, shutdown_task, shutdown_loop
+
+        startup_task = current_task()
+        startup_loop = get_identity()
+        async with anyio.create_task_group() as app.task_group:
+            yield
+        shutdown_task = current_task()
+        shutdown_loop = get_identity()
+
+    app = Starlette(lifespan=lifespan_context)
+
+    @app.route("/loop_id")
+    async def loop_id(request):
+        return JSONResponse(get_identity())
+
+    client = test_client_factory(app)
+
+    with client:
+        # within a TestClient context every async request runs in the same thread
+        assert client.get("/loop_id").json() == 0
+        assert client.get("/loop_id").json() == 0
+
+    # that thread is also the same as the lifespan thread
+    assert startup_loop == 0
+    assert shutdown_loop == 0
+
+    # lifespan events run in the same task, this is important because a task
+    # group must be entered and exited in the same task.
+    assert startup_task is shutdown_task
+
+    # outside the TestClient context, new requests continue to spawn in new
+    # eventloops in new threads
+    assert client.get("/loop_id").json() == 1
+    assert client.get("/loop_id").json() == 2
+
+    first_task = startup_task
+
+    with client:
+        # the TestClient context can be re-used, starting a new lifespan task
+        # in a new thread
+        assert client.get("/loop_id").json() == 3
+        assert client.get("/loop_id").json() == 3
+
+    assert startup_loop == 3
+    assert shutdown_loop == 3
+
+    # lifespan events still run in the same task, with the context but...
+    assert startup_task is shutdown_task
+
+    # ... the second TestClient context creates a new lifespan task.
+    assert first_task is not startup_task
 
 
 def test_error_on_startup(test_client_factory):

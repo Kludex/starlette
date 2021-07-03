@@ -12,7 +12,7 @@ import typing
 from concurrent.futures import Future
 from urllib.parse import unquote, urljoin, urlsplit
 
-import anyio
+import anyio.abc
 import requests
 from anyio.streams.stapled import StapledObjectStream
 
@@ -23,6 +23,12 @@ if sys.version_info >= (3, 8):  # pragma: no cover
     from typing import TypedDict
 else:  # pragma: no cover
     from typing_extensions import TypedDict
+
+
+_PortalFactoryType = typing.Callable[
+    [], typing.ContextManager[anyio.abc.BlockingPortal]
+]
+
 
 # Annotations for `Session.request()`
 Cookies = typing.Union[
@@ -106,14 +112,14 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
     def __init__(
         self,
         app: ASGI3App,
-        async_backend: _AsyncBackend,
+        portal_factory: _PortalFactoryType,
         raise_server_exceptions: bool = True,
         root_path: str = "",
     ) -> None:
         self.app = app
         self.raise_server_exceptions = raise_server_exceptions
         self.root_path = root_path
-        self.async_backend = async_backend
+        self.portal_factory = portal_factory
 
     def send(
         self, request: requests.PreparedRequest, *args: typing.Any, **kwargs: typing.Any
@@ -162,7 +168,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                 "server": [host, port],
                 "subprotocols": subprotocols,
             }
-            session = WebSocketTestSession(self.app, scope, self.async_backend)
+            session = WebSocketTestSession(self.app, scope, self.portal_factory)
             raise _Upgrade(session)
 
         scope = {
@@ -252,7 +258,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
                 context = message["context"]
 
         try:
-            with anyio.start_blocking_portal(**self.async_backend) as portal:
+            with self.portal_factory() as portal:
                 response_complete = portal.call(anyio.Event)
                 portal.call(self.app, scope, receive, send)
         except BaseException as exc:
@@ -285,20 +291,18 @@ class WebSocketTestSession:
         self,
         app: ASGI3App,
         scope: Scope,
-        async_backend: _AsyncBackend,
+        portal_factory: _PortalFactoryType,
     ) -> None:
         self.app = app
         self.scope = scope
         self.accepted_subprotocol = None
-        self.async_backend = async_backend
+        self.portal_factory = portal_factory
         self._receive_queue: "queue.Queue[typing.Any]" = queue.Queue()
         self._send_queue: "queue.Queue[typing.Any]" = queue.Queue()
 
     def __enter__(self) -> "WebSocketTestSession":
         self.exit_stack = contextlib.ExitStack()
-        self.portal = self.exit_stack.enter_context(
-            anyio.start_blocking_portal(**self.async_backend)
-        )
+        self.portal = self.exit_stack.enter_context(self.portal_factory())
 
         try:
             _: "Future[None]" = self.portal.start_task_soon(self._run)
@@ -396,6 +400,7 @@ class WebSocketTestSession:
 class TestClient(requests.Session):
     __test__ = False  # For pytest to not discover this up.
     task: "Future[None]"
+    portal: typing.Optional[anyio.abc.BlockingPortal] = None
 
     def __init__(
         self,
@@ -418,7 +423,7 @@ class TestClient(requests.Session):
             asgi_app = _WrapASGI2(app)  #  type: ignore
         adapter = _ASGIAdapter(
             asgi_app,
-            self.async_backend,
+            portal_factory=self._portal_factory,
             raise_server_exceptions=raise_server_exceptions,
             root_path=root_path,
         )
@@ -429,6 +434,16 @@ class TestClient(requests.Session):
         self.headers.update({"user-agent": "testclient"})
         self.app = asgi_app
         self.base_url = base_url
+
+    @contextlib.contextmanager
+    def _portal_factory(
+        self,
+    ) -> typing.Generator[anyio.abc.BlockingPortal, None, None]:
+        if self.portal is not None:
+            yield self.portal
+        else:
+            with anyio.start_blocking_portal(**self.async_backend) as portal:
+                yield portal
 
     def request(  # type: ignore
         self,
@@ -490,29 +505,34 @@ class TestClient(requests.Session):
         return session
 
     def __enter__(self) -> "TestClient":
-        self.exit_stack = contextlib.ExitStack()
-        self.portal = self.exit_stack.enter_context(
-            anyio.start_blocking_portal(**self.async_backend)
-        )
-        self.stream_send = StapledObjectStream(
-            *anyio.create_memory_object_stream(math.inf)
-        )
-        self.stream_receive = StapledObjectStream(
-            *anyio.create_memory_object_stream(math.inf)
-        )
-        try:
-            self.task = self.portal.start_task_soon(self.lifespan)
-            self.portal.call(self.wait_startup)
-        except Exception:
-            self.exit_stack.close()
-            raise
+        with contextlib.ExitStack() as stack:
+            self.portal = portal = stack.enter_context(
+                anyio.start_blocking_portal(**self.async_backend)
+            )
+
+            @stack.callback
+            def reset_portal() -> None:
+                self.portal = None
+
+            self.stream_send = StapledObjectStream(
+                *anyio.create_memory_object_stream(math.inf)
+            )
+            self.stream_receive = StapledObjectStream(
+                *anyio.create_memory_object_stream(math.inf)
+            )
+            self.task = portal.start_task_soon(self.lifespan)
+            portal.call(self.wait_startup)
+
+            @stack.callback
+            def wait_shutdown() -> None:
+                portal.call(self.wait_shutdown)
+
+            self.exit_stack = stack.pop_all()
+
         return self
 
     def __exit__(self, *args: typing.Any) -> None:
-        try:
-            self.portal.call(self.wait_shutdown)
-        finally:
-            self.exit_stack.close()
+        self.exit_stack.close()
 
     async def lifespan(self) -> None:
         scope = {"type": "lifespan"}

@@ -37,6 +37,31 @@ registered startup handlers have completed.
 The shutdown handlers will run once all connections have been closed, and
 any in-process background tasks have completed.
 
+A single lifespan asynccontextmanager handler can be used instead of
+separate startup and shutdown handlers:
+
+```python
+import contextlib
+import anyio
+from starlette.applications import Starlette
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    async with some_async_resource():
+        yield
+
+
+routes = [
+    ...
+]
+
+app = Starlette(routes=routes, lifespan=lifespan)
+```
+
+Consider using [`anyio.create_task_group()`](https://anyio.readthedocs.io/en/stable/tasks.html)
+for managing asynchronious tasks.
+
 ## Running event handlers in tests
 
 You might want to explicitly call into your event handlers in any test setup

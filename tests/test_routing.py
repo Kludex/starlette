@@ -110,6 +110,12 @@ def client(test_client_factory):
         yield client
 
 
+@pytest.mark.filterwarnings(
+    r"ignore"
+    r":Trying to detect encoding from a tiny portion of \(5\) byte\(s\)\."
+    r":UserWarning"
+    r":charset_normalizer.api"
+)
 def test_router(client):
     response = client.get("/")
     assert response.status_code == 200

@@ -1,3 +1,28 @@
+## 0.16.0
+
+July 19, 2021
+
+### Added
+ * Added [Encode](https://github.com/sponsors/encode) funding option
+   [#1219](https://github.com/encode/starlette/pull/1219)
+
+### Fixed
+ * `starlette.websockets.WebSocket` instances are now hashable and compare by identity
+    [#1039](https://github.com/encode/starlette/pull/1039)
+ * A number of fixes related to running task groups in lifespan
+   [#1213](https://github.com/encode/starlette/pull/1213),
+   [#1227](https://github.com/encode/starlette/pull/1227)
+
+### Deprecated/removed
+ * The method `starlette.templates.Jinja2Templates.get_env` was removed
+   [#1218](https://github.com/encode/starlette/pull/1218)
+ * The ClassVar `starlette.testclient.TestClient.async_backend` was removed,
+   the backend is now configured using constructor kwargs
+   [#1211](https://github.com/encode/starlette/pull/1211)
+ * Passing an Async Generator Function or a Generator Function to `starlette.router.Router(lifespan_context=)` is deprecated. You should wrap your lifespan in `@contextlib.asynccontextmanager`.
+   [#1227](https://github.com/encode/starlette/pull/1227)
+   [#1110](https://github.com/encode/starlette/pull/1110)
+
 ## 0.15.0
 
 June 23, 2021

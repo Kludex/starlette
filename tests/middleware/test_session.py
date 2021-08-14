@@ -112,3 +112,16 @@ def test_session_cookie_subpath(test_client_factory):
     cookie = response.headers["set-cookie"]
     cookie_path = re.search(r"; path=(\S+);", cookie).groups()[0]
     assert cookie_path == "/second_app"
+
+
+def test_invalid_session_cookie(test_client_factory):
+    app = create_app()
+    app.add_middleware(SessionMiddleware, secret_key="example")
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+
+    # we expect it to not raise an exception if we provide a bogus session cookie
+    response = client.get("/view_session", cookies={"session": "invalid"})
+    assert response.json() == {"session": {}}

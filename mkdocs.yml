@@ -4,6 +4,7 @@ site_url: https://www.starlette.io
 
 theme:
   name: 'material'
+  custom_dir: docs/overrides
 
 repo_name: encode/starlette
 repo_url: https://github.com/encode/starlette

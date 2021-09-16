@@ -142,10 +142,10 @@ async def populate_note(request):
         await database.execute(query)
         raise RuntimeError()
     except:
-        transaction.rollback()
+        await transaction.rollback()
         raise
     else:
-        transaction.commit()
+        await transaction.commit()
 ```
 
 ## Test isolation

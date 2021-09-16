@@ -90,6 +90,12 @@ It relies solely on an auth provider to issue access and/or id tokens to clients
 Middleware for Starlette that allows you to store and access the context data of a request.
 Can be used with logging so logs automatically use request headers such as x-request-id or x-correlation-id.
 
+### Starlette Cramjam
+
+<a href="https://github.com/developmentseed/starlette-cramjam" target="_blank">GitHub</a>
+
+A Starlette middleware that allows **brotli**, **gzip** and **deflate** compression algorithm with a minimal requirements.
+
 ## Frameworks
 
 ### Responder

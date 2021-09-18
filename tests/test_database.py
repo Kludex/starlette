@@ -126,8 +126,6 @@ def test_database(test_client_factory):
 
 def test_database_execute_many(test_client_factory):
     with test_client_factory(app) as client:
-        response = client.get("/notes")
-
         data = [
             {"text": "buy the milk", "completed": True},
             {"text": "walk the dog", "completed": False},

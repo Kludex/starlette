@@ -51,7 +51,7 @@ routes = [
     Route("/schema", endpoint=openapi_schema, include_in_schema=False)
 ]
 
-app = Starlette()
+app = Starlette(routes=routes)
 ```
 
 We can now access an OpenAPI schema at the "/schema" endpoint.

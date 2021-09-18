@@ -258,7 +258,7 @@ when proxy servers are being used, based on the `X-Forwarded-Proto` and `X-Forwa
 A middleware class to emit timing information (cpu and wall time) for each request which
 passes through it.  Includes examples for how to emit these timings as statsd metrics.
 
-#### [datasette-auth-github](https://github.com/simonw/datasette-auth-github)
+#### [asgi-auth-github](https://github.com/simonw/asgi-auth-github)
 
 This middleware adds authentication to any ASGI application, requiring users to sign in
 using their GitHub account (via [OAuth](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/)).

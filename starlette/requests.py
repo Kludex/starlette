@@ -65,7 +65,7 @@ class HTTPConnection(Mapping):
         assert scope["type"] in ("http", "websocket")
         self.scope = scope
 
-    def __getitem__(self, key: str) -> str:
+    def __getitem__(self, key: str) -> typing.Any:
         return self.scope[key]
 
     def __iter__(self) -> typing.Iterator[str]:

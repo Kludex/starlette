@@ -182,9 +182,8 @@ async def app(scope, receive, send):
     await response(scope, receive, send)
 ```
 
-## Third party middleware
+## Third party responses
 
-### [SSEResponse(EventSourceResponse)](https://github.com/sysid/sse-starlette)
+#### [EventSourceResponse](https://github.com/sysid/sse-starlette)
 
-Server Sent Response implements the ServerSentEvent Protocol: https://www.w3.org/TR/2009/WD-eventsource-20090421.  
-It enables event streaming from the server to the client without the complexity of websockets.
+A response class that implements [Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html). It enables event streaming from the server to the client without the complexity of websockets.

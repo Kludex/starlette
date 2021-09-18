@@ -160,7 +160,7 @@ organisations = sqlalchemy.Table(
 ```python
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.session import SessionMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Route
 from myproject import settings
 
@@ -192,7 +192,7 @@ and drop it once the tests complete. We'd also like to ensure
 from starlette.config import environ
 from starlette.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy_utils import create_database, database_exists, drop_database
 
 # This line would raise an error if we use it after 'settings' has been imported.
 environ['TESTING'] = 'TRUE'

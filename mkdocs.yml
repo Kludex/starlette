@@ -5,6 +5,18 @@ site_url: https://www.starlette.io
 theme:
   name: 'material'
   custom_dir: docs/overrides
+  palette:
+    - scheme: 'default'
+      media: '(prefers-color-scheme: light)'
+      toggle:
+        icon: 'material/lightbulb'
+        name: "Switch to dark mode"
+    - scheme: 'slate'
+      media: '(prefers-color-scheme: dark)'
+      primary: 'blue'
+      toggle:
+        icon: 'material/lightbulb-outline'
+        name: 'Switch to light mode'
 
 repo_name: encode/starlette
 repo_url: https://github.com/encode/starlette

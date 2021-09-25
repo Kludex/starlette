@@ -2,9 +2,10 @@ import typing
 
 import anyio
 
-from starlette.requests import Request
+from starlette.requests import HTTPConnection, Request
 from starlette.responses import Response, StreamingResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.websockets import WebSocket
 
 RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
 DispatchFunction = typing.Callable[
@@ -60,3 +61,86 @@ class BaseHTTPMiddleware:
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         raise NotImplementedError()  # pragma: no cover
+
+
+class BaseConnectionMiddleware:
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction = None) -> None:
+        self.app = app
+        self.dispatch_func = self.dispatch if dispatch is None else dispatch
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "websocket":
+            return await self.app(scope, receive, send)
+
+        async def call_next(websocket: WebSocket) -> Response:
+            send_stream, recv_stream = anyio.create_memory_object_stream()
+
+            async def coro() -> None:
+                async with send_stream:
+                    await self.app(scope, conn.receive, send_stream.send)
+
+            task_group.start_soon(coro)
+
+            try:
+                message = await recv_stream.receive()
+            except anyio.EndOfStream:
+                raise RuntimeError("No response returned.")
+            assert message["type"] in "websocket.accept"
+
+            async def body_stream() -> typing.AsyncGenerator[bytes, None]:
+                async with recv_stream:
+                    async for message in recv_stream:
+                        print(message)
+                        assert message["type"] == "websocket.send"
+                        yield message.get("bytes", b"")
+                        yield message.get("text", "")
+
+            print(message)
+            response = StreamingResponse(content=body_stream())
+            # response.raw_headers = message["headers"]
+            return response
+
+        async with anyio.create_task_group() as task_group:
+            conn = WebSocket(scope, receive=receive, send=send)
+            response = await self.dispatch_func(conn, call_next)
+            await response(scope, receive, send)
+            task_group.cancel_scope.cancel()
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        raise NotImplementedError()  # pragma: no cover
+
+
+class CustomMiddleware(BaseConnectionMiddleware):
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        print("ho there!")
+        response = await call_next(request)
+        print("hi there!")
+        return response
+
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route, WebSocketRoute
+
+
+def homepage(request):
+    return PlainTextResponse("Hello, world!")
+
+
+async def websocket_endpoint(websocket):
+    await websocket.accept()
+    await websocket.send_text("Hello, websocket!")
+    await websocket.close()
+
+
+middleware = [Middleware(CustomMiddleware)]
+
+app = Starlette(
+    routes=[Route("/", homepage), WebSocketRoute("/ws", websocket_endpoint)],
+    middleware=middleware,
+)

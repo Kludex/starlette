@@ -162,7 +162,6 @@ gunicorn -k uvicorn.workers.UvicornH11Worker ...
 [requests]: http://docs.python-requests.org/en/master/
 [jinja2]: http://jinja.pocoo.org/
 [python-multipart]: https://andrew-d.github.io/python-multipart/
-[graphene]: https://graphene-python.org/
 [itsdangerous]: https://pythonhosted.org/itsdangerous/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation

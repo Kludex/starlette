@@ -44,7 +44,6 @@ setup(
     ],
     extras_require={
         "full": [
-            "graphene; python_version<'3.10'",
             "itsdangerous",
             "jinja2",
             "python-multipart",

@@ -28,7 +28,6 @@ It is production-ready, and gives you the following:
 
 * Seriously impressive performance.
 * WebSocket support.
-* GraphQL support.
 * In-process background tasks.
 * Startup and shutdown events.
 * Test client built on `requests`.
@@ -92,7 +91,6 @@ Starlette only requires `anyio`, and the following are optional:
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
-* [`graphene`][graphene] - Required for `GraphQLApp` support.
 
 You can install all of these with `pip3 install starlette[full]`.
 
@@ -169,7 +167,6 @@ gunicorn -k uvicorn.workers.UvicornH11Worker ...
 [requests]: http://docs.python-requests.org/en/master/
 [jinja2]: http://jinja.pocoo.org/
 [python-multipart]: https://andrew-d.github.io/python-multipart/
-[graphene]: https://graphene-python.org/
 [itsdangerous]: https://pythonhosted.org/itsdangerous/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation

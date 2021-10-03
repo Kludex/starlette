@@ -1,11 +1,8 @@
 import functools
-import sys
 
 import pytest
 
 from starlette.testclient import TestClient
-
-collect_ignore = ["test_graphql.py"] if sys.version_info >= (3, 10) else []
 
 
 @pytest.fixture

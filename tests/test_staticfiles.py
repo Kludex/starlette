@@ -1,11 +1,13 @@
 import os
 import pathlib
+import stat
 import time
 
 import anyio
 import pytest
 
 from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
@@ -71,8 +73,10 @@ def test_staticfiles_post(tmpdir, test_client_factory):
     with open(path, "w") as file:
         file.write("<file content>")
 
-    app = StaticFiles(directory=tmpdir)
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
     client = test_client_factory(app)
+
     response = client.post("/example.txt")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
@@ -83,8 +87,10 @@ def test_staticfiles_with_directory_returns_404(tmpdir, test_client_factory):
     with open(path, "w") as file:
         file.write("<file content>")
 
-    app = StaticFiles(directory=tmpdir)
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
     client = test_client_factory(app)
+
     response = client.get("/")
     assert response.status_code == 404
     assert response.text == "Not Found"
@@ -95,8 +101,10 @@ def test_staticfiles_with_missing_file_returns_404(tmpdir, test_client_factory):
     with open(path, "w") as file:
         file.write("<file content>")
 
-    app = StaticFiles(directory=tmpdir)
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
     client = test_client_factory(app)
+
     response = client.get("/404.txt")
     assert response.status_code == 404
     assert response.text == "Not Found"
@@ -136,10 +144,14 @@ def test_staticfiles_config_check_occurs_only_once(tmpdir, test_client_factory):
     app = StaticFiles(directory=tmpdir)
     client = test_client_factory(app)
     assert not app.config_checked
-    client.get("/")
+
+    with pytest.raises(HTTPException):
+        client.get("/")
+
     assert app.config_checked
-    client.get("/")
-    assert app.config_checked
+
+    with pytest.raises(HTTPException):
+        client.get("/")
 
 
 def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
@@ -154,9 +166,12 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
     # We can't test this with 'requests', so we test the app directly here.
     path = app.get_path({"path": "/../example.txt"})
     scope = {"method": "GET"}
-    response = anyio.run(app.get_response, path, scope)
-    assert response.status_code == 404
-    assert response.body == b"Not Found"
+
+    with pytest.raises(HTTPException) as exc_info:
+        anyio.run(app.get_response, path, scope)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Not Found"
 
 
 def test_staticfiles_never_read_file_for_head_method(tmpdir, test_client_factory):
@@ -284,3 +299,70 @@ def test_staticfiles_cache_invalidation_for_deleted_file_html_mode(
     )
     assert resp_deleted.status_code == 404
     assert resp_deleted.text == "<p>404 file</p>"
+
+
+def test_staticfiles_with_invalid_dir_permissions_returns_401(
+    tmpdir, test_client_factory
+):
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    os.chmod(tmpdir, stat.S_IRWXO)
+
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
+    client = test_client_factory(app)
+
+    response = client.get("/example.txt")
+    assert response.status_code == 401
+    assert response.text == "Unauthorized"
+
+
+def test_staticfiles_with_missing_dir_returns_404(tmpdir, test_client_factory):
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
+    client = test_client_factory(app)
+
+    response = client.get("/foo/example.txt")
+    assert response.status_code == 404
+    assert response.text == "Not Found"
+
+
+def test_staticfiles_access_file_as_dir_returns_404(tmpdir, test_client_factory):
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
+    client = test_client_factory(app)
+
+    response = client.get("/example.txt/foo")
+    assert response.status_code == 404
+    assert response.text == "Not Found"
+
+
+def test_staticfiles_unhandled_os_error_returns_500(
+    tmpdir, test_client_factory, monkeypatch
+):
+    def mock_timeout(*args, **kwargs):
+        raise TimeoutError
+
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
+    client = test_client_factory(app, raise_server_exceptions=False)
+
+    monkeypatch.setattr("starlette.staticfiles.StaticFiles.lookup_path", mock_timeout)
+
+    response = client.get("/example.txt")
+    assert response.status_code == 500
+    assert response.text == "Internal Server Error"

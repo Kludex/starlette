@@ -105,6 +105,13 @@ An alternate session support implementation with customizable storage backends.
 A Starlette middleware that allows **brotli**, **gzip** and **deflate** compression algorithm with a minimal requirements.
 
 
+### Imia
+    
+<a href="https://github.com/alex-oleshkevich/imia" target="_blank">GitHub</a>
+
+An authentication framework for Starlette with pluggable authenticators and login/logout flow.
+
+
 ## Frameworks
 
 ### Responder

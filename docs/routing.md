@@ -178,6 +178,50 @@ against the application, although these will only return the URL path.
 url = app.url_path_for("user_detail", username=...)
 ```
 
+## Host-based routing
+
+If you want to use different routes for the same path based on the `Host` header.
+
+Note that port is removed from the `Host` header when matching.
+For example, `Host (host='example.org:3600', ...)` will not be processed 
+even if the `Host` header is `example.org:3600`. 
+Therefore, specify only the domain or IP address
+
+There are several ways to connect host-based routes to your application
+
+```python
+site = Router()  # Use eg. `@site.route()` to configure this.
+api = Router()  # Use eg. `@api.route()` to configure this.
+news = Router()  # Use eg. `@news.route()` to configure this.
+
+routes = [
+    Host('api.example.org', api, name="site_api")
+]
+
+app = Starlette(routes=routes)
+
+app.host('www.example.org', site, name="main_site")
+
+news_host = Host('news.example.org', news)
+app.router.routes.append(news_host)
+```
+
+URL lookups can include host parameters just like path parameters
+
+```python
+routes = [
+    Host("{subdomain}.example.org", name="sub", app=Router(routes=[
+        Mount("/users", name="users", routes=[
+            Route("/", user, name="user_list"),
+            Route("/{username}", user, name="user_detail")
+        ])
+    ]))
+]
+...
+url = request.url_for("sub:users:user_detail", username=..., subdomain=...)
+url = request.url_for("sub:users:user_list", subdomain=...)
+```
+
 ## Route priority
 
 Incoming paths are matched against each `Route` in order.

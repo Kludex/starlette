@@ -25,7 +25,7 @@ def homepage(request):
 
 @app.route("/exc")
 def exc(request):
-    raise Exception()
+    raise Exception("Exc")
 
 
 @app.route("/no-response")
@@ -52,8 +52,9 @@ def test_custom_middleware(test_client_factory):
     response = client.get("/")
     assert response.headers["Custom-Header"] == "Example"
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as ctx:
         response = client.get("/exc")
+    assert str(ctx.value) == "Exc"
 
     with pytest.raises(RuntimeError):
         response = client.get("/no-response")

@@ -1,3 +1,22 @@
+## 0.17.0
+
+October 28, 2021
+
+### Added
+* `Response.delete_cookie` now accepts the same parameters as `Response.set_cookie` [#1228](https://github.com/encode/starlette/pull/1228).
+* Update the `Jinja2Templates` constructor to allow `PathLike` [#1292](https://github.com/encode/starlette/pull/1292).
+
+### Fixed
+* Fix BadSignature exception handling in SessionMiddleware [#1264](https://github.com/encode/starlette/pull/1264).
+* Change `HTTPConnection.__getitem__` return type from `str` to `typing.Any` [#1118](https://github.com/encode/starlette/pull/1118).
+* Change `ImmutableMultiDict.getlist` return type from `typing.List[str]` to `typing.List[typing.Any]` [#1235](https://github.com/encode/starlette/pull/1235).
+* Handle `OSError` exceptions on `StaticFiles` [#1220](https://github.com/encode/starlette/pull/1220).
+* Fix `StaticFiles` 404.html in HTML mode [#1314](https://github.com/encode/starlette/pull/1314).
+* Prevent anyio.ExceptionGroup in error views under a BaseHTTPMiddleware [#1262](https://github.com/encode/starlette/pull/1262).
+
+### Removed
+* Remove GraphQL support [#1198](https://github.com/encode/starlette/pull/1198).
+
 ## 0.16.0
 
 July 19, 2021

@@ -1,6 +1,6 @@
 ## 0.17.0
 
-October 28, 2021
+November 4, 2021
 
 ### Added
 * `Response.delete_cookie` now accepts the same parameters as `Response.set_cookie` [#1228](https://github.com/encode/starlette/pull/1228).

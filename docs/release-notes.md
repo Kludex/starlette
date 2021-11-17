@@ -1,3 +1,10 @@
+## 0.17.1
+
+November 17, 2021
+
+### Fixed
+* Fix `IndexError` in authentication `requires` when wrapped function arguments are distributed between `*args` and `**kwargs` [#1335](https://github.com/encode/starlette/pull/1335).
+
 ## 0.17.0
 
 November 4, 2021

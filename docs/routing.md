@@ -183,9 +183,10 @@ url = app.url_path_for("user_detail", username=...)
 If you want to use different routes for the same path based on the `Host` header.
 
 Note that port is removed from the `Host` header when matching.
-For example, `Host (host='example.org:3600', ...)` will not be processed 
-even if the `Host` header is `example.org:3600`. 
-Therefore, specify only the domain or IP address
+For example, `Host (host='example.org:3600', ...)` will be processed 
+even if the `Host` header contains or does not contain a port other than `3600`
+(`example.org:5600`, `example.org`). 
+Therefore, you can specify the port if you need it for use in `url_for`.
 
 There are several ways to connect host-based routes to your application
 

@@ -146,7 +146,7 @@ def compile_path(
         ending = "s" if len(duplicated_params) > 1 else ""
         raise ValueError(f"Duplicated param name{ending} {names} at path {path}")
 
-    path_regex += re.escape(path[idx:]) + "$"
+    path_regex += re.escape(path[idx:].split(":")[0]) + "$"
     path_format += path[idx:]
 
     return re.compile(path_regex), path_format, param_convertors

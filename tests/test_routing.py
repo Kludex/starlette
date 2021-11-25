@@ -352,6 +352,11 @@ mixed_hosts_app = Router(
             name="api",
             app=Router([Route("/users", users_api, name="users")]),
         ),
+        Host(
+            "port.example.org:3600",
+            name="port",
+            app=Router([Route("/", homepage, name="homepage")]),
+        ),
     ]
 )
 
@@ -375,6 +380,21 @@ def test_host_routing(test_client_factory):
     response = client.get("/")
     assert response.status_code == 200
 
+    client = test_client_factory(mixed_hosts_app, base_url="https://port.example.org/")
+
+    response = client.get("/users")
+    assert response.status_code == 404
+
+    response = client.get("/")
+    assert response.status_code == 200
+
+    client = test_client_factory(
+        mixed_hosts_app, base_url="https://port.example.org:5600/"
+    )
+
+    response = client.get("/")
+    assert response.status_code == 200
+
 
 def test_host_reverse_urls():
     assert (
@@ -388,6 +408,12 @@ def test_host_reverse_urls():
     assert (
         mixed_hosts_app.url_path_for("api:users").make_absolute_url("https://whatever")
         == "https://api.example.org/users"
+    )
+    assert (
+        mixed_hosts_app.url_path_for("port:homepage").make_absolute_url(
+            "https://whatever"
+        )
+        == "https://port.example.org:3600/"
     )
 
 

@@ -144,3 +144,13 @@ Flama aims to bring a layer on top of Starlette to provide an **easy to learn** 
 Roll your own framework with a simple app system, like [Django-GDAPS](https://gdaps.readthedocs.io/en/latest/) or [CakePHP](https://cakephp.org/).
 
 <a href="https://github.com/yourlabs/starlette-apps" target="_blank">GitHub</a>
+
+### Greppo
+
+<a href="https://github.com/greppo-io/greppo" target="_blank">GitHub</a> |
+<a href="https://docs.greppo.io/" target="_blank">Documentation</a>
+
+A Python framework for building geospatial dashboards and web-applications.
+
+Greppo is an open-source Python framework that makes it easy to build geospatial dashboards and web-applications. It provides a toolkit to quickly integrate data, algorithms, visualizations and UI for interactivity. It provides APIs to the update the variables in the backend, recompute the logic, and reflect the changes in the frontend (data mutation hook).
+

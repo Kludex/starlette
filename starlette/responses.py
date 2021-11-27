@@ -293,17 +293,14 @@ class FileResponse(Response):
         self.headers.setdefault("last-modified", last_modified)
         self.headers.setdefault("etag", etag)
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if self.stat_result is None:
-            try:
-                stat_result = await anyio.to_thread.run_sync(os.stat, self.path)
-                self.set_stat_headers(stat_result)
-            except FileNotFoundError:
-                raise RuntimeError(f"File at path {self.path} does not exist.")
-            else:
-                mode = stat_result.st_mode
-                if not stat.S_ISREG(mode):
-                    raise RuntimeError(f"File at path {self.path} is not a file.")
+    async def listen_for_disconnect(self, receive: Receive) -> None:
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                print("Here")
+                break
+
+    async def stream_response(self, send: Send) -> None:
         await send(
             {
                 "type": "http.response.start",
@@ -316,7 +313,10 @@ class FileResponse(Response):
         else:
             async with await anyio.open_file(self.path, mode="rb") as file:
                 more_body = True
+                count = 0
                 while more_body:
+                    count += 1
+                    print(count)
                     chunk = await file.read(self.chunk_size)
                     more_body = len(chunk) == self.chunk_size
                     await send(
@@ -326,5 +326,29 @@ class FileResponse(Response):
                             "more_body": more_body,
                         }
                     )
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.stat_result is None:
+            try:
+                stat_result = await anyio.to_thread.run_sync(os.stat, self.path)
+                self.set_stat_headers(stat_result)
+            except FileNotFoundError:
+                raise RuntimeError(f"File at path {self.path} does not exist.")
+            else:
+                mode = stat_result.st_mode
+                if not stat.S_ISREG(mode):
+                    raise RuntimeError(f"File at path {self.path} is not a file.")
+
+        async with anyio.create_task_group() as task_group:
+
+            async def wrap(func: typing.Callable[[], typing.Coroutine]) -> None:
+                print(f"running {func}")
+                await func()
+                print(f"Finish! {func}")
+                task_group.cancel_scope.cancel()
+
+            task_group.start_soon(wrap, partial(self.stream_response, send))
+            await wrap(partial(self.listen_for_disconnect, receive))
+
         if self.background is not None:
             await self.background()

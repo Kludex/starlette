@@ -289,3 +289,7 @@ can be used to profile and monitor distributed applications.
 #### [RateLimitMiddleware](https://github.com/abersheeran/asgi-ratelimit)
 
 A rate limit middleware. Regular expression matches url; flexible rules; highly customizable. Very easy to use.
+
+#### [RollbarMiddleware](https://docs.rollbar.com/docs/starlette)
+
+A middleware class for logging exceptions, errors, and log messages to [Rollbar](https://www.rollbar.com).

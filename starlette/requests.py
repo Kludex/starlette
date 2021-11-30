@@ -15,6 +15,10 @@ except ImportError:  # pragma: nocover
     parse_options_header = None
 
 
+if typing.TYPE_CHECKING:
+    from starlette.routing import Router
+
+
 SERVER_PUSH_HEADERS_TO_COPY = {
     "accept",
     "accept-encoding",
@@ -166,7 +170,7 @@ class HTTPConnection(Mapping):
         return self._state
 
     def url_for(self, name: str, **path_params: typing.Any) -> str:
-        router = self.scope["router"]
+        router: Router = self.scope["router"]
         url_path = router.url_path_for(name, **path_params)
         return url_path.make_absolute_url(base_url=self.base_url)
 

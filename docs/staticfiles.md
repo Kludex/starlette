@@ -6,7 +6,7 @@ Starlette also includes a `StaticFiles` class for serving files in a given direc
 Signature: `StaticFiles(directory=None, packages=None, check_dir=True)`
 
 * `directory` - A string or [os.Pathlike][pathlike] denoting a directory path.
-* `packages` - A list of strings of python packages.
+* `packages` - A list of strings or list of tuples of strings of python packages.
 * `html` - Run in HTML mode. Automatically loads `index.html` for directories if such file exist.
 * `check_dir` - Ensure that the directory exists upon instantiation. Defaults to `True`.
 
@@ -46,6 +46,16 @@ routes=[
 ]
 
 app = Starlette(routes=routes)
+```
+
+By default `StaticFiles` will look for `statics` directory in each package,
+you can change the default directory by specifying a tuple of strings.
+
+```python
+routes=[
+    ...
+    Mount('/static', app=StaticFiles(packages=[('bootstrap4', 'static')]), name="static"),
+]
 ```
 
 You may prefer to include static files directly inside the "static" directory

@@ -40,7 +40,7 @@ class StaticFiles:
         self,
         *,
         directory: PathLike = None,
-        packages: typing.List[str] = None,
+        packages: typing.List[typing.Union[str, typing.Tuple[str, str]]] = None,
         html: bool = False,
         check_dir: bool = True,
     ) -> None:
@@ -53,7 +53,9 @@ class StaticFiles:
             raise RuntimeError(f"Directory '{directory}' does not exist")
 
     def get_directories(
-        self, directory: PathLike = None, packages: typing.List[str] = None
+        self,
+        directory: PathLike = None,
+        packages: typing.List[typing.Union[str, typing.Tuple[str, str]]] = None,
     ) -> typing.List[PathLike]:
         """
         Given `directory` and `packages` arguments, return a list of all the
@@ -64,17 +66,19 @@ class StaticFiles:
             directories.append(directory)
 
         for package in packages or []:
+            if isinstance(package, tuple):
+                package, statics_dir = package
+            else:
+                statics_dir = "statics"
             spec = importlib.util.find_spec(package)
             assert spec is not None, f"Package {package!r} could not be found."
-            assert (
-                spec.origin is not None
-            ), f"Directory 'statics' in package {package!r} could not be found."
+            assert spec.origin is not None, f"Package {package!r} could not be found."
             package_directory = os.path.normpath(
-                os.path.join(spec.origin, "..", "statics")
+                os.path.join(spec.origin, "..", statics_dir)
             )
             assert os.path.isdir(
                 package_directory
-            ), f"Directory 'statics' in package {package!r} could not be found."
+            ), f"Directory '{statics_dir!r}' in package {package!r} could not be found."
             directories.append(package_directory)
 
         return directories

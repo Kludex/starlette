@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a bug to help improve this project
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      description: Please make sure you check all these items before submitting your bug report.
+      options:
+        - label: The bug is reproducible against the latest release or `master`.
+          required: true
+        - label: There are no similar issues or pull requests to fix it yet.
+          required: true
+  - type: textarea
+    id: describe
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce the bug
+      description: |
+        Provide a *minimal* example with steps to reproduce the bug locally.
+        NOTE: try to keep any external dependencies *at an absolute minimum*.
+        In other words, remove anything that doesn't make the bug go away.
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: false
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: A clear and concise description of what actually happened.
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Debugging material
+      description: |
+        Any tracebacks, screenshots, etc. that can help understanding the problem.
+        NOTE:
+        - Please list tracebacks in full (don't truncate them).
+        - Consider using `<details>` to make tracebacks/logs collapsible if they're very large (see https://gist.github.com/ericclemmons/b146fe5da72ca1f706b2ef72a20ac39d).
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Describe your environment.
+      placeholder: |
+        - OS / Python / Starlette version.
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: |
+        Any additional information that can help understanding the problem.
+        Eg. linked issues, or a description of what you were trying to achieve.
+    validations:
+      required: false

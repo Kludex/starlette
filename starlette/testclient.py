@@ -151,6 +151,8 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
             for key, value in request.headers.items()
         ]
 
+        scope: typing.Dict[str, typing.Any]
+
         if scheme in {"ws", "wss"}:
             subprotocol = request.headers.get("sec-websocket-protocol", None)
             if subprotocol is None:

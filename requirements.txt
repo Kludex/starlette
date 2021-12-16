@@ -1,30 +1,26 @@
 # Optionals
-itsdangerous
-jinja2
-python-multipart
-pyyaml
-requests
+-e .[full]
 
 # Testing
-autoflake
-black==20.8b1
-coverage>=5.3
-databases[sqlite]
-flake8
-isort==5.*
-mypy
-types-requests
-types-contextvars
-types-PyYAML
-types-dataclasses
-pytest
-trio
+autoflake==1.4
+black==21.12b0
+coverage==6.2
+databases[sqlite]==0.5.3
+flake8==4.0.1
+isort==5.10.1
+mypy==0.920
+types-requests==2.26.1
+types-contextvars==2.4.0
+types-PyYAML==6.0.1
+types-dataclasses==0.6.1
+pytest==6.2.5
+trio==0.19.0
 
 # Documentation
-mkdocs
-mkdocs-material
-mkautodoc
+mkdocs==1.2.3
+mkdocs-material==8.1.2
+mkautodoc==0.1.0
 
 # Packaging
-twine
-wheel
+twine==3.7.1
+wheel==0.37.0

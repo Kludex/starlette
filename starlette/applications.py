@@ -5,6 +5,8 @@ from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 from starlette.routing import BaseRoute, Router
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -23,7 +25,7 @@ class Starlette:
     any uncaught errors occurring anywhere in the entire stack.
     `ExceptionMiddleware` is added as the very innermost middleware, to deal
     with handled exception cases occurring in the routing or endpoints.
-    * **exception_handlers** - A dictionary mapping either integer status codes,
+    * **exception_handlers** - A mapping of either integer status codes,
     or exception class types onto callables which handle the exceptions.
     Exception handler callables should be of the form
     `handler(request, exc) -> response` and may be be either standard functions, or
@@ -41,8 +43,8 @@ class Starlette:
         debug: bool = False,
         routes: typing.Sequence[BaseRoute] = None,
         middleware: typing.Sequence[Middleware] = None,
-        exception_handlers: typing.Dict[
-            typing.Union[int, typing.Type[Exception]], typing.Callable
+        exception_handlers: typing.Mapping[
+            typing.Any, typing.Callable[[Request, Exception], Response]
         ] = None,
         on_startup: typing.Sequence[typing.Callable] = None,
         on_shutdown: typing.Sequence[typing.Callable] = None,
@@ -68,7 +70,9 @@ class Starlette:
     def build_middleware_stack(self) -> ASGIApp:
         debug = self.debug
         error_handler = None
-        exception_handlers = {}
+        exception_handlers: typing.Dict[
+            typing.Any, typing.Callable[[Request, Exception], Response]
+        ] = {}
 
         for key, value in self.exception_handlers.items():
             if key in (500, Exception):

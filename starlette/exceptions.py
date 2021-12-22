@@ -22,7 +22,12 @@ class HTTPException(Exception):
 
 class ExceptionMiddleware:
     def __init__(
-        self, app: ASGIApp, handlers: dict = None, debug: bool = False
+        self,
+        app: ASGIApp,
+        handlers: typing.Mapping[
+            typing.Any, typing.Callable[[Request, Exception], Response]
+        ] = None,
+        debug: bool = False,
     ) -> None:
         self.app = app
         self.debug = debug  # TODO: We ought to handle 404 cases if debug is set.
@@ -37,7 +42,7 @@ class ExceptionMiddleware:
     def add_exception_handler(
         self,
         exc_class_or_status_code: typing.Union[int, typing.Type[Exception]],
-        handler: typing.Callable,
+        handler: typing.Callable[[Request, Exception], Response],
     ) -> None:
         if isinstance(exc_class_or_status_code, int):
             self._status_handlers[exc_class_or_status_code] = handler

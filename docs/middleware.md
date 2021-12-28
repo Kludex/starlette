@@ -244,29 +244,16 @@ to use the `middleware=<List of Middleware instances>` style, as it will:
 
 ## Third party middleware
 
-#### [SentryMiddleware](https://github.com/encode/sentry-asgi)
-
-A middleware class for logging exceptions to [Sentry](https://sentry.io/).
-
-#### [ProxyHeadersMiddleware](https://github.com/encode/uvicorn/blob/master/uvicorn/middleware/proxy_headers.py)
-
-Uvicorn includes a middleware class for determining the client IP address,
-when proxy servers are being used, based on the `X-Forwarded-Proto` and `X-Forwarded-For` headers. For more complex proxy configurations, you might want to adapt this middleware.
-
-#### [TimingMiddleware](https://github.com/steinnes/timing-asgi)
-
-A middleware class to emit timing information (cpu and wall time) for each request which
-passes through it.  Includes examples for how to emit these timings as statsd metrics.
-
 #### [asgi-auth-github](https://github.com/simonw/asgi-auth-github)
 
 This middleware adds authentication to any ASGI application, requiring users to sign in
 using their GitHub account (via [OAuth](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/)).
 Access can be restricted to specific users or to members of specific GitHub organizations or teams.
 
-#### [PrometheusMiddleware](https://github.com/perdy/starlette-prometheus)
+#### [AuthlibMiddleware](https://github.com/aogier/starlette-authlib)
 
-A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...
+A drop-in replacement for Starlette session middleware, using [authlib's jwt](https://docs.authlib.org/en/latest/jose/jwt.html)
+module.
 
 #### [BugsnagMiddleware](https://github.com/ashinabraham/starlette-bugsnag)
 
@@ -276,20 +263,37 @@ A middleware class for logging exceptions to [Bugsnag](https://www.bugsnag.com/)
 
 Middleware and decorator for detecting and denying [TLSv1.3 early data](https://tools.ietf.org/html/rfc8470) requests.
 
-#### [AuthlibMiddleware](https://github.com/aogier/starlette-authlib)
+#### [PrometheusMiddleware](https://github.com/perdy/starlette-prometheus)
 
-A drop-in replacement for Starlette session middleware, using [authlib's jwt](https://docs.authlib.org/en/latest/jose/jwt.html)
-module.
+A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...
+
+#### [ProxyHeadersMiddleware](https://github.com/encode/uvicorn/blob/master/uvicorn/middleware/proxy_headers.py)
+
+Uvicorn includes a middleware class for determining the client IP address,
+when proxy servers are being used, based on the `X-Forwarded-Proto` and `X-Forwarded-For` headers. For more complex proxy configurations, you might want to adapt this middleware.
+
+#### [RateLimitMiddleware](https://github.com/abersheeran/asgi-ratelimit)
+
+A rate limit middleware. Regular expression matches url; flexible rules; highly customizable. Very easy to use.
+
+#### [RequestIdMiddleware](https://github.com/snok/asgi-correlation-id)
+
+A middleware class for reading/generating request IDs and attaching them to application logs.
+
+#### [RollbarMiddleware](https://docs.rollbar.com/docs/starlette)
+
+A middleware class for logging exceptions, errors, and log messages to [Rollbar](https://www.rollbar.com).
+
+#### [SentryMiddleware](https://github.com/encode/sentry-asgi)
+
+A middleware class for logging exceptions to [Sentry](https://sentry.io/).
 
 #### [StarletteOpentracing](https://github.com/acidjunk/starlette-opentracing)
 
 A middleware class that emits tracing info to [OpenTracing.io](https://opentracing.io/) compatible tracers and
 can be used to profile and monitor distributed applications.
 
-#### [RateLimitMiddleware](https://github.com/abersheeran/asgi-ratelimit)
+#### [TimingMiddleware](https://github.com/steinnes/timing-asgi)
 
-A rate limit middleware. Regular expression matches url; flexible rules; highly customizable. Very easy to use.
-
-#### [RollbarMiddleware](https://docs.rollbar.com/docs/starlette)
-
-A middleware class for logging exceptions, errors, and log messages to [Rollbar](https://www.rollbar.com).
+A middleware class to emit timing information (cpu and wall time) for each request which
+passes through it.  Includes examples for how to emit these timings as statsd metrics.

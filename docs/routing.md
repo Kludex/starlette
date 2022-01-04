@@ -1,3 +1,5 @@
+## HTTP Routing
+
 Starlette has a simple but capable request routing system. A routing table
 is defined as a list of routes, and passed when instantiating the application.
 
@@ -26,8 +28,7 @@ The `endpoint` argument can be one of:
 
 * A regular function or async function, which accepts a single `request`
 argument and which should return a response.
-* A class that implements the ASGI interface, such as Starlette's [class based
-views](endpoints.md).
+* A class that implements the ASGI interface, such as Starlette's [HTTPEndpoint](endpoints.md#httpendpoint).
 
 ## Path Parameters
 
@@ -262,3 +263,42 @@ app = Router(routes=[
     ])
 ])
 ```
+
+## WebSocket Routing
+
+When working with WebSocket endpoints, you should use `WebSocketRoute`
+instead of the usual `Route`.
+
+Path parameters, and reverse URL lookups for `WebSocketRoute` work the the same
+as HTTP `Route`, which can be found in the HTTP [Route](#http-routing) section above.
+
+```python
+from starlette.applications import Starlette
+from starlette.routing import WebSocketRoute
+
+
+async def websocket_index(websocket):
+    await websocket.accept()
+    await websocket.send_text("Hello, websocket!")
+    await websocket.close()
+
+
+async def websocket_user(websocket):
+    name = websocket.path_params["name"]
+    await websocket.accept()
+    await websocket.send_text(f"Hello, {name}")
+    await websocket.close()
+
+
+routes = [
+    WebSocketRoute("/", endpoint=websocket_index),
+    WebSocketRoute("/{name}", endpoint=websocket_user),
+]
+
+app = Starlette(routes=routes)
+```
+
+The `endpoint` argument can be one of:
+
+* An async function, which accepts a single `websocket` argument.
+* A class that implements the ASGI interface, such as Starlette's [WebSocketEndpoint](endpoints.md#websocketendpoint).

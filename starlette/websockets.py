@@ -69,11 +69,17 @@ class WebSocket(HTTPConnection):
         else:
             raise RuntimeError('Cannot call "send" once a close message has been sent.')
 
-    async def accept(self, subprotocol: str = None) -> None:
+    async def accept(
+        self,
+        subprotocol: str = None,
+        headers: typing.Iterable[typing.Tuple[bytes, bytes]] = None,
+    ) -> None:
         if self.client_state == WebSocketState.CONNECTING:
             # If we haven't yet seen the 'connect' message, then wait for it first.
             await self.receive()
-        await self.send({"type": "websocket.accept", "subprotocol": subprotocol})
+        await self.send(
+            {"type": "websocket.accept", "subprotocol": subprotocol, "headers": headers}
+        )
 
     def _raise_on_disconnect(self, message: Message) -> None:
         if message["type"] == "websocket.disconnect":

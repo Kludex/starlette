@@ -51,7 +51,7 @@ For example: `websocket.path_params['username']`
 
 ### Accepting the connection
 
-* `await websocket.accept(subprotocol=None)`
+* `await websocket.accept(subprotocol=None, headers=None)`
 
 ### Sending data
 

@@ -100,7 +100,7 @@ class StaticFiles:
     def get_path(self, scope: Scope) -> str:
         """
         Given the ASGI scope, return the `path` string to serve up,
-        with OS specific path seperators, and any '..', '.' components removed.
+        with OS specific path separators, and any '..', '.' components removed.
         """
         return os.path.normpath(os.path.join(*scope["path"].split("/")))
 

@@ -1,12 +1,20 @@
 import asyncio
+import sys
 import typing
 
+if sys.version_info >= (3, 10):  # pragma: no cover
+    from typing import ParamSpec
+else:  # pragma: no cover
+    from typing_extensions import ParamSpec
+
 from starlette.concurrency import run_in_threadpool
+
+P = ParamSpec("P")
 
 
 class BackgroundTask:
     def __init__(
-        self, func: typing.Callable, *args: typing.Any, **kwargs: typing.Any
+        self, func: typing.Callable[P, typing.Any], *args: P.args, **kwargs: P.kwargs
     ) -> None:
         self.func = func
         self.args = args
@@ -25,7 +33,7 @@ class BackgroundTasks(BackgroundTask):
         self.tasks = list(tasks) if tasks else []
 
     def add_task(
-        self, func: typing.Callable, *args: typing.Any, **kwargs: typing.Any
+        self, func: typing.Callable[P, typing.Any], *args: P.args, **kwargs: P.kwargs
     ) -> None:
         task = BackgroundTask(func, *args, **kwargs)
         self.tasks.append(task)

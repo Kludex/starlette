@@ -39,7 +39,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "anyio>=3.0.0,<4",
-        "typing_extensions; python_version < '3.8'",
+        "typing_extensions; python_version < '3.10'",
         "contextlib2 >= 21.6.0; python_version < '3.7'",
     ],
     extras_require={

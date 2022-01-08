@@ -29,7 +29,9 @@ class HTTPEndpoint:
             else request.method.lower()
         )
 
-        handler = getattr(self, handler_name, self.method_not_allowed)
+        handler: typing.Callable[[Request], typing.Any] = getattr(
+            self, handler_name, self.method_not_allowed
+        )
         is_async = asyncio.iscoroutinefunction(handler)
         if is_async:
             response = await handler(request)

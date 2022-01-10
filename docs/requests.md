@@ -126,8 +126,8 @@ multidict, containing both file uploads and text input. File upload items are re
 
 `UploadFile` has the following `async` methods. They all call the corresponding file methods underneath (using the internal `SpooledTemporaryFile`).
 
-* `async write(data)`: Writes `data` (`str` or `bytes`) to the file.
-* `async read(size)`: Reads `size` (`int`) bytes/characters of the file.
+* `async write(data)`: Writes `data` (`bytes`) to the file.
+* `async read(size)`: Reads `size` (`int`) bytes of the file.
 * `async seek(offset)`: Goes to the byte position `offset` (`int`) in the file.
     * E.g., `await myfile.seek(0)` would go to the start of the file.
 * `async close()`: Closes the file.

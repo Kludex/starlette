@@ -227,6 +227,18 @@ async def test_upload_file():
     await big_file.close()
 
 
+@pytest.mark.anyio
+async def test_upload_file_file_input():
+    """Test passing file/stream into the UploadFile constructor"""
+    stream = io.BytesIO(b"data")
+    file = UploadFile(filename="file", file=stream)
+    assert await file.read() == b"data"
+    await file.write(b" and more data!")
+    assert await file.read() == b""
+    await file.seek(0)
+    assert await file.read() == b"data and more data!"
+
+
 def test_formdata():
     upload = io.BytesIO(b"test")
     form = FormData([("a", "123"), ("a", "456"), ("b", upload)])

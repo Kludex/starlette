@@ -71,7 +71,11 @@ class Response:
             populate_content_type = b"content-type" not in keys
 
         body = getattr(self, "body", None)
-        if body is not None and populate_content_length:
+        if (
+            body is not None
+            and populate_content_length
+            and not (self.status_code < 200 or self.status_code in (204, 304))
+        ):
             content_length = str(len(body))
             raw_headers.append((b"content-length", content_length.encode("latin-1")))
 

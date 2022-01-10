@@ -333,6 +333,13 @@ def test_empty_response(test_client_factory):
     assert response.headers["content-length"] == "0"
 
 
+def test_empty_204_response(test_client_factory):
+    app = Response(status_code=204)
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert "content-length" not in response.headers
+
+
 def test_non_empty_response(test_client_factory):
     app = Response(content="hi")
     client: TestClient = test_client_factory(app)

@@ -66,7 +66,9 @@ def test_session_expires(test_client_factory):
     # requests removes expired cookies from response.cookies, we need to
     # fetch session id from the headers and pass it explicitly
     expired_cookie_header = response.headers["set-cookie"]
-    expired_session_value = re.search(r"session=([^;]*);", expired_cookie_header)[1]
+    expired_session_match = re.search(r"session=([^;]*);", expired_cookie_header)
+    assert expired_session_match is not None
+    expired_session_value = expired_session_match[1]
     response = client.get("/view_session", cookies={"session": expired_session_value})
     assert response.json() == {"session": {}}
 
@@ -110,7 +112,9 @@ def test_session_cookie_subpath(test_client_factory):
     client = test_client_factory(app, base_url="http://testserver/second_app")
     response = client.post("second_app/update_session", json={"some": "data"})
     cookie = response.headers["set-cookie"]
-    cookie_path = re.search(r"; path=(\S+);", cookie).groups()[0]
+    cookie_path_match = re.search(r"; path=(\S+);", cookie)
+    assert cookie_path_match is not None
+    cookie_path = cookie_path_match.groups()[0]
     assert cookie_path == "/second_app"
 
 

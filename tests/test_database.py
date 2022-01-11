@@ -77,6 +77,7 @@ async def read_note(request):
     note_id = request.path_params["note_id"]
     query = notes.select().where(notes.c.id == note_id)
     result = await database.fetch_one(query)
+    assert result is not None
     content = {"text": result["text"], "completed": result["completed"]}
     return JSONResponse(content)
 
@@ -86,6 +87,7 @@ async def read_note_text(request):
     note_id = request.path_params["note_id"]
     query = sqlalchemy.select([notes.c.text]).where(notes.c.id == note_id)
     result = await database.fetch_one(query)
+    assert result is not None
     return JSONResponse(result[0])
 
 

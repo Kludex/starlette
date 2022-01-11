@@ -240,7 +240,8 @@ async def test_upload_file_file_input():
 
 
 def test_formdata():
-    upload = io.BytesIO(b"test")
+    stream = io.BytesIO(b"data")
+    upload = UploadFile(filename="file", file=stream)
     form = FormData([("a", "123"), ("a", "456"), ("b", upload)])
     assert "a" in form
     assert "A" not in form
@@ -348,10 +349,6 @@ def test_multidict():
 
     q = MultiDict([("a", "123"), ("b", "456")])
     q.update(q)
-    assert repr(q) == "MultiDict([('a', '123'), ('b', '456')])"
-
-    q = MultiDict([("a", "123"), ("b", "456")])
-    q.update(None)
     assert repr(q) == "MultiDict([('a', '123'), ('b', '456')])"
 
     q = MultiDict([("a", "123"), ("a", "456")])

@@ -459,13 +459,13 @@ async def subdomain_app(scope, receive, send):
     await response(scope, receive, send)
 
 
-subdomain_app = Router(
+subdomain_router = Router(
     routes=[Host("{subdomain}.example.org", app=subdomain_app, name="subdomains")]
 )
 
 
 def test_subdomain_routing(test_client_factory):
-    client = test_client_factory(subdomain_app, base_url="https://foo.example.org/")
+    client = test_client_factory(subdomain_router, base_url="https://foo.example.org/")
 
     response = client.get("/")
     assert response.status_code == 200
@@ -474,7 +474,7 @@ def test_subdomain_routing(test_client_factory):
 
 def test_subdomain_reverse_urls():
     assert (
-        subdomain_app.url_path_for(
+        subdomain_router.url_path_for(
             "subdomains", subdomain="foo", path="/homepage"
         ).make_absolute_url("https://whatever")
         == "https://foo.example.org/homepage"
@@ -637,6 +637,7 @@ def test_raise_on_startup(test_client_factory):
         raise RuntimeError()
 
     router = Router(on_startup=[run_startup])
+    startup_failed = False
 
     async def app(scope, receive, send):
         async def _send(message):
@@ -647,7 +648,6 @@ def test_raise_on_startup(test_client_factory):
 
         await router(scope, receive, _send)
 
-    startup_failed = False
     with pytest.raises(RuntimeError):
         with test_client_factory(app):
             pass  # pragma: nocover

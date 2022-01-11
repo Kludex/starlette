@@ -258,7 +258,7 @@ def test_cors_allow_all_methods(test_client_factory):
     )
 
     @app.route(
-        "/", methods=("delete", "get", "head", "options", "patch", "post", "put")
+        "/", methods=["delete", "get", "head", "options", "patch", "post", "put"]
     )
     def homepage(request):
         return PlainTextResponse("Homepage", status_code=200)

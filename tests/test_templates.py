@@ -28,4 +28,4 @@ def test_templates(tmpdir, test_client_factory):
 def test_template_response_requires_request(tmpdir):
     templates = Jinja2Templates(str(tmpdir))
     with pytest.raises(ValueError):
-        templates.TemplateResponse(None, {})
+        templates.TemplateResponse("", {})

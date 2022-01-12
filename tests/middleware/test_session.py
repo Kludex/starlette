@@ -129,3 +129,20 @@ def test_invalid_session_cookie(test_client_factory):
     # we expect it to not raise an exception if we provide a bogus session cookie
     response = client.get("/view_session", cookies={"session": "invalid"})
     assert response.json() == {"session": {}}
+
+
+def test_session_cookie(test_client_factory):
+    app = create_app()
+    app.add_middleware(SessionMiddleware, secret_key="example", max_age=None)
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+
+    # check cookie max-age
+    set_cookie = response.headers["set-cookie"]
+    assert "Max-Age" not in set_cookie
+
+    client.cookies.clear_session_cookies()
+    response = client.get("/view_session")
+    assert response.json() == {"session": {}}

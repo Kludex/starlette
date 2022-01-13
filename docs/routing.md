@@ -39,7 +39,7 @@ Route('/users/{username}', user)
 ```
 By default this will capture characters up to the end of the path or the next `/`.
 
-You can use convertors to modify what is captured. Four convertors are available:
+You can use convertors to modify what is captured. The available convertors are:
 
 * `str` returns a string, and is the default.
 * `int` returns a Python integer.

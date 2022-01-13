@@ -60,7 +60,7 @@ app = Starlette(routes=routes, lifespan=lifespan)
 ```
 
 Consider using [`anyio.create_task_group()`](https://anyio.readthedocs.io/en/stable/tasks.html)
-for managing asynchronious tasks.
+for managing asynchronous tasks.
 
 ## Running event handlers in tests
 

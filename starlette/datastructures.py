@@ -163,7 +163,7 @@ class URLPath(str):
 
     def __new__(cls, path: str, protocol: str = "", host: str = "") -> "URLPath":
         assert protocol in ("http", "websocket", "")
-        return str.__new__(cls, path)  # type: ignore
+        return str.__new__(cls, path)
 
     def __init__(self, path: str, protocol: str = "", host: str = "") -> None:
         self.protocol = protocol
@@ -441,7 +441,7 @@ class UploadFile:
 
     async def write(self, data: bytes) -> None:
         if self._in_memory:
-            self.file.write(data)  # type: ignore
+            self.file.write(data)
         else:
             await run_in_threadpool(self.file.write, data)
 

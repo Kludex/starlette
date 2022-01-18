@@ -250,6 +250,10 @@ This middleware adds authentication to any ASGI application, requiring users to 
 using their GitHub account (via [OAuth](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/)).
 Access can be restricted to specific users or to members of specific GitHub organizations or teams.
 
+#### [asgi-csrf](https://github.com/simonw/asgi-csrf)
+
+Middleware for protecting against CSRF attacks. This middleware implements the Double Submit Cookie pattern, where a cookie is set, then it is compared to a csrftoken hidden form field or an `x-csrftoken` HTTP header.
+
 #### [AuthlibMiddleware](https://github.com/aogier/starlette-authlib)
 
 A drop-in replacement for Starlette session middleware, using [authlib's jwt](https://docs.authlib.org/en/latest/jose/jwt.html)
@@ -258,6 +262,10 @@ module.
 #### [BugsnagMiddleware](https://github.com/ashinabraham/starlette-bugsnag)
 
 A middleware class for logging exceptions to [Bugsnag](https://www.bugsnag.com/).
+
+#### [CSRFMiddleware](https://github.com/frankie567/starlette-csrf)
+
+Middleware for protecting against CSRF attacks. This middleware implements the Double Submit Cookie pattern, where a cookie is set, then it is compared to an `x-csrftoken` HTTP header.
 
 #### [EarlyDataMiddleware](https://github.com/HarrySky/starlette-early-data)
 

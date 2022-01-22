@@ -405,3 +405,20 @@ def test_websocket_scope_interface():
     assert websocket == websocket
     assert websocket in {websocket}
     assert {websocket} == {websocket}
+
+
+def test_websocket_close_reason(test_client_factory) -> None:
+    def app(scope):
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            await websocket.close(code=status.WS_1001_GOING_AWAY, reason="Going Away")
+
+        return asgi
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/") as websocket:
+        with pytest.raises(WebSocketDisconnect) as exc:
+            websocket.receive_text()
+        assert exc.value.code == status.WS_1001_GOING_AWAY
+        assert exc.value.reason == "Going Away"

@@ -315,6 +315,20 @@ def test_additional_headers(test_client_factory):
         assert websocket.extra_headers == [(b"additional", b"header")]
 
 
+def test_no_additional_headers(test_client_factory):
+    def app(scope):
+        async def asgi(receive, send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            await websocket.close()
+
+        return asgi
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/") as websocket:
+        assert websocket.extra_headers == []
+
+
 def test_websocket_exception(test_client_factory):
     def app(scope):
         async def asgi(receive, send):

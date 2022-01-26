@@ -40,6 +40,7 @@ def test_http_endpoint_route_method(client):
     response = client.post("/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "GET"
 
 
 def test_websocket_endpoint_on_connect(test_client_factory):

@@ -161,6 +161,7 @@ def test_router(client):
     response = client.post("/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
+    assert set(response.headers["allow"].split(", ")) == {"HEAD", "GET"}
 
     response = client.get("/foo")
     assert response.status_code == 404

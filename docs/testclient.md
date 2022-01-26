@@ -107,7 +107,7 @@ May raise `starlette.websockets.WebSocketDisconnect` if the application does not
 
 * `.receive_text()` - Wait for incoming text sent by the application and return it.
 * `.receive_bytes()` - Wait for incoming bytestring sent by the application and return it.
-* `.receive_json(mode="text")` - Wait for incoming json data sent by the application and return it. Use `mode="binary"` to send JSON over binary data frames.
+* `.receive_json(mode="text")` - Wait for incoming json data sent by the application and return it. Use `mode="binary"` to receive JSON over binary data frames.
 
 May raise `starlette.websockets.WebSocketDisconnect`.
 

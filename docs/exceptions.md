@@ -4,6 +4,8 @@ how you return responses when errors or handled exceptions occur.
 
 ```python
 from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 
@@ -11,10 +13,10 @@ HTML_404_PAGE = ...
 HTML_500_PAGE = ...
 
 
-async def not_found(request, exc):
+async def not_found(request: Request, exc: HTTPException):
     return HTMLResponse(content=HTML_404_PAGE, status_code=exc.status_code)
 
-async def server_error(request, exc):
+async def server_error(request: Request, exc: HTTPException):
     return HTMLResponse(content=HTML_500_PAGE, status_code=exc.status_code)
 
 
@@ -40,12 +42,24 @@ In particular you might want to override how the built-in `HTTPException` class
 is handled. For example, to use JSON style responses:
 
 ```python
-async def http_exception(request, exc):
+async def http_exception(request: Request, exc: HTTPException):
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 exception_handlers = {
     HTTPException: http_exception
 }
+```
+
+The `HTTPException` is also equipped with the `headers` argument. Which allows the propagation
+of the headers to the response class:
+
+```python
+async def http_exception(request: Request, exc: HTTPException):
+    return JSONResponse(
+        {"detail": exc.detail},
+        status_code=exc.status_code,
+        headers=exc.headers
+    )
 ```
 
 ## Errors and handled exceptions
@@ -76,7 +90,7 @@ The `HTTPException` class provides a base class that you can use for any
 handled exceptions. The `ExceptionMiddleware` implementation defaults to
 returning plain-text HTTP responses for any `HTTPException`.
 
-* `HTTPException(status_code, detail=None)`
+* `HTTPException(status_code, detail=None, headers=None)`
 
 You should only raise `HTTPException` inside routing or endpoints. Middleware
 classes should instead just return appropriate responses directly.

@@ -21,6 +21,10 @@ def not_modified(request):
     raise HTTPException(status_code=304)
 
 
+def with_headers(request):
+    raise HTTPException(status_code=200, headers={"x-potato": "always"})
+
+
 class HandledExcAfterResponse:
     async def __call__(self, scope, receive, send):
         response = PlainTextResponse("OK", status_code=200)
@@ -34,6 +38,7 @@ router = Router(
         Route("/not_acceptable", endpoint=not_acceptable),
         Route("/no_content", endpoint=no_content),
         Route("/not_modified", endpoint=not_modified),
+        Route("/with_headers", endpoint=with_headers),
         Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse()),
         WebSocketRoute("/runtime_error", endpoint=raise_runtime_error),
     ]
@@ -65,6 +70,12 @@ def test_not_modified(client):
     response = client.get("/not_modified")
     assert response.status_code == 304
     assert response.text == ""
+
+
+def test_with_headers(client):
+    response = client.get("/with_headers")
+    assert response.status_code == 200
+    assert response.headers["x-potato"] == "always"
 
 
 def test_websockets_should_raise(client):

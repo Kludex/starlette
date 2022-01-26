@@ -44,6 +44,7 @@ def test_json_none_response(test_client_factory):
     client = test_client_factory(app)
     response = client.get("/")
     assert response.json() is None
+    assert response.content == b"null"
 
 
 def test_redirect_response(test_client_factory):
@@ -330,7 +331,9 @@ def test_empty_response(test_client_factory):
     app = Response()
     client: TestClient = test_client_factory(app)
     response = client.get("/")
+    assert response.content == b""
     assert response.headers["content-length"] == "0"
+    assert "content-type" not in response.headers
 
 
 def test_empty_204_response(test_client_factory):

@@ -99,5 +99,5 @@ class ExceptionMiddleware:
 
     def http_exception(self, request: Request, exc: HTTPException) -> Response:
         if exc.status_code in {204, 304}:
-            return Response(b"", status_code=exc.status_code)
+            return Response(status_code=exc.status_code)
         return PlainTextResponse(exc.detail, status_code=exc.status_code)

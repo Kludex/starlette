@@ -13,6 +13,10 @@ def not_acceptable(request):
     raise HTTPException(status_code=406)
 
 
+def no_content(request):
+    raise HTTPException(status_code=204)
+
+
 def not_modified(request):
     raise HTTPException(status_code=304)
 
@@ -28,6 +32,7 @@ router = Router(
     routes=[
         Route("/runtime_error", endpoint=raise_runtime_error),
         Route("/not_acceptable", endpoint=not_acceptable),
+        Route("/no_content", endpoint=no_content),
         Route("/not_modified", endpoint=not_modified),
         Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse()),
         WebSocketRoute("/runtime_error", endpoint=raise_runtime_error),
@@ -48,6 +53,12 @@ def test_not_acceptable(client):
     response = client.get("/not_acceptable")
     assert response.status_code == 406
     assert response.text == "Not Acceptable"
+
+
+def test_no_content(client):
+    response = client.get("/no_content")
+    assert response.status_code == 204
+    assert "content-length" not in response.headers
 
 
 def test_not_modified(client):

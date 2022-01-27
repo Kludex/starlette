@@ -38,7 +38,7 @@ class Response:
         self,
         content: typing.Any = None,
         status_code: int = 200,
-        headers: dict = None,
+        headers: typing.Mapping[str, str] = None,
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> None:
@@ -199,7 +199,7 @@ class RedirectResponse(Response):
         self,
         url: typing.Union[str, URL],
         status_code: int = 307,
-        headers: dict = None,
+        headers: typing.Mapping[str, str] = None,
         background: BackgroundTask = None,
     ) -> None:
         super().__init__(
@@ -213,7 +213,7 @@ class StreamingResponse(Response):
         self,
         content: typing.Any,
         status_code: int = 200,
-        headers: dict = None,
+        headers: typing.Mapping[str, str] = None,
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> None:
@@ -268,7 +268,7 @@ class FileResponse(Response):
         self,
         path: typing.Union[str, "os.PathLike[str]"],
         status_code: int = 200,
-        headers: dict = None,
+        headers: typing.Mapping[str, str] = None,
         media_type: str = None,
         background: BackgroundTask = None,
         filename: str = None,

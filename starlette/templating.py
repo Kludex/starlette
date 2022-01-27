@@ -25,7 +25,7 @@ class _TemplateResponse(Response):
         template: typing.Any,
         context: dict,
         status_code: int = 200,
-        headers: dict = None,
+        headers: typing.Mapping[str, str] = None,
         media_type: str = None,
         background: BackgroundTask = None,
     ):
@@ -85,7 +85,7 @@ class Jinja2Templates:
         name: str,
         context: dict,
         status_code: int = 200,
-        headers: dict = None,
+        headers: typing.Mapping[str, str] = None,
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> _TemplateResponse:

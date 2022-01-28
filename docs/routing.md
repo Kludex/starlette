@@ -55,6 +55,33 @@ Route('/floating-point/{number:float}', floating_point)
 Route('/uploaded/{rest_of_path:path}', uploaded)
 ```
 
+If you need a different converter that is not defined, you can create your own.
+See below an example on how to create a `datetime` convertor, and how to register it:
+
+```python
+from datetime import datetime
+
+from starlette.convertors import Convertor, register_url_convertor
+
+
+class DateTimeConvertor(Convertor):
+    regex = "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?"
+
+    def convert(self, value: str) -> datetime:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+
+    def to_string(self, value: datetime) -> str:
+        return value.strftime("%Y-%m-%dT%H:%M:%S")
+
+register_url_convertor("datetime", DateTimeConvertor())
+```
+
+After registering it, you'll be able to use it as:
+
+```python
+Route('/history/{date:datetime}', history)
+```
+
 Path parameters are made available in the request, as the `request.path_params`
 dictionary.
 
@@ -184,9 +211,9 @@ url = app.url_path_for("user_detail", username=...)
 If you want to use different routes for the same path based on the `Host` header.
 
 Note that port is removed from the `Host` header when matching.
-For example, `Host (host='example.org:3600', ...)` will be processed 
+For example, `Host (host='example.org:3600', ...)` will be processed
 even if the `Host` header contains or does not contain a port other than `3600`
-(`example.org:5600`, `example.org`). 
+(`example.org:5600`, `example.org`).
 Therefore, you can specify the port if you need it for use in `url_for`.
 
 There are several ways to connect host-based routes to your application

@@ -79,3 +79,7 @@ CONVERTOR_TYPES = {
     "float": FloatConvertor(),
     "uuid": UUIDConvertor(),
 }
+
+
+def register_url_convertor(key: str, convertor: Convertor) -> None:
+    CONVERTOR_TYPES[key] = convertor

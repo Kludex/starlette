@@ -1,6 +1,5 @@
 import tempfile
 import typing
-from collections import namedtuple
 from collections.abc import Sequence
 from shlex import shlex
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
@@ -8,7 +7,10 @@ from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 from starlette.concurrency import run_in_threadpool
 from starlette.types import Scope
 
-Address = namedtuple("Address", ["host", "port"])
+
+class Address(typing.NamedTuple):
+    host: typing.Optional[str]
+    port: typing.Optional[int]
 
 
 class URL:

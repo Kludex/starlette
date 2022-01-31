@@ -52,6 +52,9 @@ class BaseHTTPMiddleware:
                         assert message["type"] == "http.response.body"
                         yield message.get("body", b"")
 
+                if app_exc is not None:
+                    raise app_exc
+
             response = StreamingResponse(
                 status_code=message["status"], content=body_stream()
             )

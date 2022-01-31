@@ -3,7 +3,7 @@ import pytest
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, StreamingResponse
 from starlette.routing import Route
 
 
@@ -26,6 +26,16 @@ def homepage(request):
 @app.route("/exc")
 def exc(request):
     raise Exception("Exc")
+
+
+@app.route("/exc-stream")
+def exc_stream(request):
+    return StreamingResponse(_generate_faulty_stream())
+
+
+def _generate_faulty_stream():
+    yield b"Ok"
+    raise Exception("Faulty Stream")
 
 
 @app.route("/no-response")
@@ -55,6 +65,10 @@ def test_custom_middleware(test_client_factory):
     with pytest.raises(Exception) as ctx:
         response = client.get("/exc")
     assert str(ctx.value) == "Exc"
+
+    with pytest.raises(Exception) as ctx:
+        response = client.get("/exc-stream")
+    assert str(ctx.value) == "Faulty Stream"
 
     with pytest.raises(RuntimeError):
         response = client.get("/no-response")
@@ -158,3 +172,13 @@ def test_fully_evaluated_response(test_client_factory):
     client = test_client_factory(app)
     response = client.get("/does_not_exist")
     assert response.text == "Custom"
+
+
+def test_exception_on_mounted_apps(test_client_factory):
+    sub_app = Starlette(routes=[Route("/", exc)])
+    app.mount("/sub", sub_app)
+
+    client = test_client_factory(app)
+    with pytest.raises(Exception) as ctx:
+        client.get("/sub/")
+    assert str(ctx.value) == "Exc"

@@ -9,11 +9,6 @@ if sys.version_info >= (3, 10):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import ParamSpec
 
-try:
-    import contextvars  # Python 3.7+ only or via contextvars backport.
-except ImportError:  # pragma: no cover
-    contextvars = None  # type: ignore
-
 
 T = typing.TypeVar("T")
 P = ParamSpec("P")
@@ -33,13 +28,7 @@ async def run_until_first_complete(*args: typing.Tuple[typing.Callable, dict]) -
 async def run_in_threadpool(
     func: typing.Callable[P, T], *args: P.args, **kwargs: P.kwargs
 ) -> T:
-    if contextvars is not None:  # pragma: no cover
-        # Ensure we run in the same context
-        child = functools.partial(func, *args, **kwargs)
-        context = contextvars.copy_context()
-        func = context.run  # type: ignore[assignment]
-        args = (child,)  # type: ignore[assignment]
-    elif kwargs:  # pragma: no cover
+    if kwargs:  # pragma: no cover
         # run_sync doesn't accept 'kwargs', so bind them in here
         func = functools.partial(func, **kwargs)
     return await anyio.to_thread.run_sync(func, *args)

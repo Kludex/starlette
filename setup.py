@@ -38,7 +38,7 @@ setup(
     package_data={"starlette": ["py.typed"]},
     include_package_data=True,
     install_requires=[
-        "anyio>=3.0.0,<4",
+        "anyio>=3.4.0,<4",
         "typing_extensions; python_version < '3.10'",
         "contextlib2 >= 21.6.0; python_version < '3.7'",
     ],

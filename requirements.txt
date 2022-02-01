@@ -3,7 +3,7 @@
 
 # Testing
 autoflake==1.4
-black==21.12b0
+black==22.1.0
 coverage==6.2
 databases[sqlite]==0.5.3
 flake8==4.0.1

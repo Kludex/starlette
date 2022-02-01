@@ -75,6 +75,24 @@ should bubble through the entire middleware stack as exceptions. Any error
 logging middleware should ensure that it re-raises the exception all the
 way up to the server.
 
+In practical terms, the error handled used is `exception_handler[500]` or `exception_handler[Exception]`.
+Both keys `500` and `Exception` can be used. See below:
+
+```python
+async def handle_error(request: Request, exc: HTTPException):
+    # Perform some logic
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+exception_handlers = {
+    Exception: handle_error  # or "500: handle_error"
+}
+```
+
+It's important to notice that in case a [`BackgroundTask`](https://www.starlette.io/background/) raises an exception,
+it will be handled by the `handle_error` function, but at that point, the response was already sent. In other words,
+the response created by `handle_error` will be discarded. In case the error happens before the response was sent, then
+it will use the response object - in the above example, the returned `JSONResponse`.
+
 In order to deal with this behaviour correctly, the middleware stack of a
 `Starlette` application is configured like this:
 

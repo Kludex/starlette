@@ -1,8 +1,12 @@
+from typing import Optional
+
 import anyio
 import pytest
 
+from starlette.datastructures import Address
 from starlette.requests import ClientDisconnect, Request, State
 from starlette.responses import JSONResponse, PlainTextResponse, Response
+from starlette.types import Scope
 
 
 def test_request_url(test_client_factory):
@@ -52,17 +56,18 @@ def test_request_headers(test_client_factory):
     }
 
 
-def test_request_client(test_client_factory):
-    async def app(scope, receive, send):
-        request = Request(scope, receive)
-        response = JSONResponse(
-            {"host": request.client.host, "port": request.client.port}
-        )
-        await response(scope, receive, send)
-
-    client = test_client_factory(app)
-    response = client.get("/")
-    assert response.json() == {"host": "testclient", "port": 50000}
+@pytest.mark.parametrize(
+    "scope,expected_client",
+    [
+        ({"client": ["client", 42]}, Address("client", 42)),
+        ({"client": None}, None),
+        ({}, None),
+    ],
+)
+def test_request_client(scope: Scope, expected_client: Optional[Address]):
+    scope.update({"type": "http"})  # required by Request's constructor
+    client = Request(scope).client
+    assert client == expected_client
 
 
 def test_request_body(test_client_factory):

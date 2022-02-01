@@ -134,9 +134,12 @@ class HTTPConnection(Mapping):
         return self._cookies
 
     @property
-    def client(self) -> Address:
-        host, port = self.scope.get("client") or (None, None)
-        return Address(host=host, port=port)
+    def client(self) -> typing.Optional[Address]:
+        # client is a 2 item tuple of (host, port), None or missing
+        host_port = self.scope.get("client")
+        if host_port is not None:
+            return Address(*host_port)
+        return None
 
     @property
     def session(self) -> dict:

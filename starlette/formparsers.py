@@ -159,7 +159,7 @@ class MultiPartParser:
         charset = params.get(b"charset", "utf-8")
         if type(charset) == bytes:
             charset = charset.decode("latin-1")
-        boundary = params.get(b"boundary")
+        boundary = params[b"boundary"]
 
         # Callbacks dictionary.
         callbacks = {

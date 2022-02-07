@@ -99,11 +99,19 @@ def test_handled_exc_after_response(test_client_factory, client):
 
 
 def test_force_500_response(test_client_factory):
-    def app(scope):
+    # use a sentinal variable to make sure we actually
+    # make it into the endpoint and don't get a 500
+    # from an incorrect ASGI app signature or something
+    called = False
+
+    async def app(scope, receive, send):
+        nonlocal called
+        called = True
         raise RuntimeError()
 
     force_500_client = test_client_factory(app, raise_server_exceptions=False)
     response = force_500_client.get("/")
+    assert called
     assert response.status_code == 500
     assert response.text == ""
 

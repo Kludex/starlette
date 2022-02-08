@@ -88,4 +88,4 @@ Instead we'd recommend that you ensure that your endpoints perform all I/O,
 for example, strictly evaluate any database queries within the view and
 include the final results in the context.
 
-[jinja2]: https://jinja.palletsprojects.com/en/2.10.x/api/?highlight=environment#writing-filters
+[jinja2]: https://jinja.palletsprojects.com/en/3.0.x/api/?highlight=environment#writing-filters

@@ -20,12 +20,17 @@ def test_config(tmpdir, monkeypatch):
 
     config = Config(path, environ={"DEBUG": "true"})
 
+    def cast_to_int(v) -> int:
+        return int(v)
+
     DEBUG = config("DEBUG", cast=bool)
     DATABASE_URL = config("DATABASE_URL", cast=URL)
     REQUEST_TIMEOUT = config("REQUEST_TIMEOUT", cast=int, default=10)
     REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
     SECRET_KEY = config("SECRET_KEY", cast=Secret)
     assert config("BOOL_AS_INT", cast=bool) is False
+    assert config("BOOL_AS_INT", cast=cast_to_int) == 0
+    assert config("DEFAULTED_BOOL", cast=cast_to_int, default=True) == 1
 
     assert DEBUG is True
     assert DATABASE_URL.path == "/dbname"

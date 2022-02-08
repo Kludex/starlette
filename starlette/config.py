@@ -74,6 +74,15 @@ class Config:
 
     @typing.overload
     def __call__(
+        self,
+        key: str,
+        cast: typing.Callable[[typing.Any], T] = ...,
+        default: typing.Any = ...,
+    ) -> T:  # pragma: no cover
+        ...
+
+    @typing.overload
+    def __call__(
         self, key: str, cast: typing.Type[str] = ..., default: T = ...
     ) -> typing.Union[T, str]:  # pragma: no cover
         ...

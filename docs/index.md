@@ -18,12 +18,12 @@
 
 # Introduction
 
-Starlette is a lightweight [ASGI](https://asgi.readthedocs.io/en/latest/) framework/toolkit,
-which is ideal for building high performance asyncio services.
+Starlette is a lightweight [ASGI][asgi] framework/toolkit,
+which is ideal for building async web services in Python.
 
 It is production-ready, and gives you the following:
 
-* Seriously impressive performance.
+* A lightweight, low-complexity HTTP web framework.
 * WebSocket support.
 * In-process background tasks.
 * Startup and shutdown events.
@@ -33,6 +33,8 @@ It is production-ready, and gives you the following:
 * 100% test coverage.
 * 100% type annotated codebase.
 * Few hard dependencies.
+* Compatible with `asyncio` and `trio` backends.
+* Great overall performance [against independant benchmarks][techempower].
 
 ## Requirements
 
@@ -123,45 +125,15 @@ an ecosystem of shared middleware and mountable applications.
 The clean API separation also means it's easier to understand each component
 in isolation.
 
-## Performance
+---
 
-Independent TechEmpower benchmarks show Starlette applications running under Uvicorn
-as [one of the fastest Python frameworks available](https://www.techempower.com/benchmarks/#section=data-r17&hw=ph&test=fortune&l=zijzen-1). *(\*)*
+<p align="center"><i>Starlette is <a href="https://github.com/encode/starlette/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
 
-For high throughput loads you should:
-
-* Run using Gunicorn using the `uvicorn` worker class.
-* Use one or two workers per-CPU core. (You might need to experiment with this.)
-* Disable access logging.
-
-For example:
-
-```shell
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker --log-level warning example:app
-```
-
-Several of the ASGI servers also have pure Python implementations available,
-so you can also run under `PyPy` if your application code has parts that are
-CPU constrained.
-
-Either programatically:
-
-```python
-uvicorn.run(..., http='h11', loop='asyncio')
-```
-
-Or using Gunicorn:
-
-```shell
-gunicorn -k uvicorn.workers.UvicornH11Worker ...
-```
-
-<p align="center">&mdash; ⭐️ &mdash;</p>
-<p align="center"><i>Starlette is <a href="https://github.com/encode/starlette/blob/master/LICENSE.md">BSD licensed</a> code. Designed & built in Brighton, England.</i></p>
-
+[asgi]: https://asgi.readthedocs.io/en/latest/
 [requests]: http://docs.python-requests.org/en/master/
 [jinja2]: http://jinja.pocoo.org/
 [python-multipart]: https://andrew-d.github.io/python-multipart/
 [itsdangerous]: https://pythonhosted.org/itsdangerous/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation
+[techempower]: https://www.techempower.com/benchmarks/#hw=ph&test=fortune&l=zijzen-sf

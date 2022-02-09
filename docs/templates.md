@@ -67,7 +67,7 @@ def test_homepage():
 ## Customizing Jinja2 Environment
 
 `Jinja2Templates` accepts all options supported by Jinja2 `Environment`.
-This will allow more control over the `Enivornment` instance created by Starlette.
+This will allow more control over the `Environment` instance created by Starlette.
 
 For the list of options available to `Environment` you can check Jinja2 documentation [here](https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment)
 

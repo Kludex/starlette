@@ -12,9 +12,11 @@ from starlette.authentication import (
     requires,
 )
 from starlette.endpoints import HTTPEndpoint
+from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocketDisconnect
 
 
@@ -34,11 +36,6 @@ class BasicAuth(AuthenticationBackend):
         return AuthCredentials(["authenticated"]), SimpleUser(username)
 
 
-app = Starlette()
-app.add_middleware(AuthenticationMiddleware, backend=BasicAuth())
-
-
-@app.route("/")
 def homepage(request):
     return JSONResponse(
         {
@@ -48,7 +45,6 @@ def homepage(request):
     )
 
 
-@app.route("/dashboard")
 @requires("authenticated")
 async def dashboard(request):
     return JSONResponse(
@@ -59,7 +55,6 @@ async def dashboard(request):
     )
 
 
-@app.route("/admin")
 @requires("authenticated", redirect="homepage")
 async def admin(request):
     return JSONResponse(
@@ -70,7 +65,6 @@ async def admin(request):
     )
 
 
-@app.route("/dashboard/sync")
 @requires("authenticated")
 def dashboard_sync(request):
     return JSONResponse(
@@ -81,7 +75,6 @@ def dashboard_sync(request):
     )
 
 
-@app.route("/dashboard/class")
 class Dashboard(HTTPEndpoint):
     @requires("authenticated")
     def get(self, request):
@@ -93,7 +86,6 @@ class Dashboard(HTTPEndpoint):
         )
 
 
-@app.route("/admin/sync")
 @requires("authenticated", redirect="homepage")
 def admin_sync(request):
     return JSONResponse(
@@ -104,7 +96,6 @@ def admin_sync(request):
     )
 
 
-@app.websocket_route("/ws")
 @requires("authenticated")
 async def websocket_endpoint(websocket):
     await websocket.accept()
@@ -126,7 +117,6 @@ def async_inject_decorator(**kwargs):
     return wrapper
 
 
-@app.route("/dashboard/decorated")
 @async_inject_decorator(additional="payload")
 @requires("authenticated")
 async def decorated_async(request, additional):
@@ -149,7 +139,6 @@ def sync_inject_decorator(**kwargs):
     return wrapper
 
 
-@app.route("/dashboard/decorated/sync")
 @sync_inject_decorator(additional="payload")
 @requires("authenticated")
 def decorated_sync(request, additional):
@@ -172,7 +161,6 @@ def ws_inject_decorator(**kwargs):
     return wrapper
 
 
-@app.websocket_route("/ws/decorated")
 @ws_inject_decorator(additional="payload")
 @requires("authenticated")
 async def websocket_endpoint_decorated(websocket, additional):
@@ -184,6 +172,23 @@ async def websocket_endpoint_decorated(websocket, additional):
             "additional": additional,
         }
     )
+
+
+app = Starlette(
+    middleware=[Middleware(AuthenticationMiddleware, backend=BasicAuth())],
+    routes=[
+        Route("/", endpoint=homepage),
+        Route("/dashboard", endpoint=dashboard),
+        Route("/admin", endpoint=admin),
+        Route("/dashboard/sync", endpoint=dashboard_sync),
+        Route("/dashboard/class", endpoint=Dashboard),
+        Route("/admin/sync", endpoint=admin_sync),
+        Route("/dashboard/decorated", endpoint=decorated_async),
+        Route("/dashboard/decorated/sync", endpoint=decorated_sync),
+        WebSocketRoute("/ws", endpoint=websocket_endpoint),
+        WebSocketRoute("/ws/decorated", endpoint=websocket_endpoint_decorated),
+    ],
+)
 
 
 def test_invalid_decorator_usage():

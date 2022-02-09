@@ -161,3 +161,10 @@ A simple framework to help minimise the code needed to get HTML to the browser. 
 
 <a href="https://lllama.github.io/dark-star" target="_blank">Docs</a>
 <a href="https://github.com/lllama/dark-star" target="_blank">GitHub</a>
+
+### Xpresso
+
+A flexible and extendable web framework built on top of Starlette, Pydantic and [di](https://github.com/adriangb/di).
+
+<a href="https://github.com/adriangb/xpresso" target="_blank">GitHub</a> |
+<a href=https://xpresso-api.dev/" target="_blank">Documentation</a>

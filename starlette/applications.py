@@ -119,8 +119,8 @@ class Starlette:
         await self.middleware_stack(scope, receive, send)
 
     # The following usages are now discouraged in favour of configuration
-    #  during Starlette.__init__(...)
-    def on_event(self, event_type: str) -> typing.Callable:
+    # during Starlette.__init__(...)
+    def on_event(self, event_type: str) -> typing.Callable:  # pragma: nocover
         return self.router.on_event(event_type)
 
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
@@ -163,7 +163,7 @@ class Starlette:
 
     def exception_handler(
         self, exc_class_or_status_code: typing.Union[int, typing.Type[Exception]]
-    ) -> typing.Callable:
+    ) -> typing.Callable:  # pragma: nocover
         def decorator(func: typing.Callable) -> typing.Callable:
             self.add_exception_handler(exc_class_or_status_code, func)
             return func
@@ -176,7 +176,19 @@ class Starlette:
         methods: typing.List[str] = None,
         name: str = None,
         include_in_schema: bool = True,
-    ) -> typing.Callable:
+    ) -> typing.Callable:  # pragma: nocover
+        """
+        We no longer document this decorator style API, and its usage is discouraged.
+        Instead you should use the following approach:
+
+        routes = [
+            Route(path, endpoint=..., ...),
+            ...
+        ]
+
+        app = Starlette(routes=routes)
+        """
+
         def decorator(func: typing.Callable) -> typing.Callable:
             self.router.add_route(
                 path,
@@ -189,14 +201,40 @@ class Starlette:
 
         return decorator
 
-    def websocket_route(self, path: str, name: str = None) -> typing.Callable:
+    def websocket_route(
+        self, path: str, name: str = None
+    ) -> typing.Callable:  # pragma: nocover
+        """
+        We no longer document this decorator style API, and its usage is discouraged.
+        Instead you should use the following approach:
+
+        routes = [
+            WebSocketRoute(path, endpoint=..., ...),
+            ...
+        ]
+
+        app = Starlette(routes=routes)
+        """
+
         def decorator(func: typing.Callable) -> typing.Callable:
             self.router.add_websocket_route(path, func, name=name)
             return func
 
         return decorator
 
-    def middleware(self, middleware_type: str) -> typing.Callable:
+    def middleware(self, middleware_type: str) -> typing.Callable:  # pragma: nocover
+        """
+        We no longer document this decorator style API, and its usage is discouraged.
+        Instead you should use the following approach:
+
+        middleware = [
+            Middleware(...),
+            ...
+        ]
+
+        app = Starlette(middleware=middleware)
+        """
+
         assert (
             middleware_type == "http"
         ), 'Currently only middleware("http") is supported.'

@@ -54,6 +54,51 @@ class PartialRoutes:
         await websocket.close()
 
 
+def func_homepage(request):
+    return Response("Hello, world!", media_type="text/plain")
+
+
+def contact(request):
+    return Response("Hello, POST!", media_type="text/plain")
+
+
+def int_convertor(request):
+    number = request.path_params["param"]
+    return JSONResponse({"int": number})
+
+
+def float_convertor(request):
+    num = request.path_params["param"]
+    return JSONResponse({"float": num})
+
+
+def path_convertor(request):
+    path = request.path_params["param"]
+    return JSONResponse({"path": path})
+
+
+def uuid_converter(request):
+    uuid_param = request.path_params["param"]
+    return JSONResponse({"uuid": str(uuid_param)})
+
+
+def path_with_parentheses(request):
+    number = request.path_params["param"]
+    return JSONResponse({"int": number})
+
+
+async def websocket_endpoint(session: WebSocket):
+    await session.accept()
+    await session.send_text("Hello, world!")
+    await session.close()
+
+
+async def websocket_params(session: WebSocket):
+    await session.accept()
+    await session.send_text(f"Hello, {session.path_params['room']}!")
+    await session.close()
+
+
 app = Router(
     [
         Route("/", endpoint=homepage, methods=["GET"]),
@@ -82,63 +127,22 @@ app = Router(
             ],
         ),
         Mount("/static", app=Response("xxxxx", media_type="image/png")),
+        Route("/func", endpoint=func_homepage, methods=["GET"]),
+        Route("/func", endpoint=contact, methods=["POST"]),
+        Route("/int/{param:int}", endpoint=int_convertor, name="int-convertor"),
+        Route("/float/{param:float}", endpoint=float_convertor, name="float-convertor"),
+        Route("/path/{param:path}", endpoint=path_convertor, name="path-convertor"),
+        Route("/uuid/{param:uuid}", endpoint=uuid_converter, name="uuid-convertor"),
+        # Route with chars that conflict with regex meta chars
+        Route(
+            "/path-with-parentheses({param:int})",
+            endpoint=path_with_parentheses,
+            name="path-with-parentheses",
+        ),
+        WebSocketRoute("/ws", endpoint=websocket_endpoint),
+        WebSocketRoute("/ws/{room}", endpoint=websocket_params),
     ]
 )
-
-
-@app.route("/func")
-def func_homepage(request):
-    return Response("Hello, world!", media_type="text/plain")
-
-
-@app.route("/func", methods=["POST"])
-def contact(request):
-    return Response("Hello, POST!", media_type="text/plain")
-
-
-@app.route("/int/{param:int}", name="int-convertor")
-def int_convertor(request):
-    number = request.path_params["param"]
-    return JSONResponse({"int": number})
-
-
-@app.route("/float/{param:float}", name="float-convertor")
-def float_convertor(request):
-    num = request.path_params["param"]
-    return JSONResponse({"float": num})
-
-
-@app.route("/path/{param:path}", name="path-convertor")
-def path_convertor(request):
-    path = request.path_params["param"]
-    return JSONResponse({"path": path})
-
-
-@app.route("/uuid/{param:uuid}", name="uuid-convertor")
-def uuid_converter(request):
-    uuid_param = request.path_params["param"]
-    return JSONResponse({"uuid": str(uuid_param)})
-
-
-# Route with chars that conflict with regex meta chars
-@app.route("/path-with-parentheses({param:int})", name="path-with-parentheses")
-def path_with_parentheses(request):
-    number = request.path_params["param"]
-    return JSONResponse({"int": number})
-
-
-@app.websocket_route("/ws")
-async def websocket_endpoint(session: WebSocket):
-    await session.accept()
-    await session.send_text("Hello, world!")
-    await session.close()
-
-
-@app.websocket_route("/ws/{room}")
-async def websocket_params(session: WebSocket):
-    await session.accept()
-    await session.send_text(f"Hello, {session.path_params['room']}!")
-    await session.close()
 
 
 @pytest.fixture

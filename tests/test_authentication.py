@@ -324,13 +324,6 @@ def on_auth_error(request: Request, exc: Exception):
     return JSONResponse({"error": str(exc)}, status_code=401)
 
 
-other_app = Starlette()
-other_app.add_middleware(
-    AuthenticationMiddleware, backend=BasicAuth(), on_error=on_auth_error
-)
-
-
-@other_app.route("/control-panel")
 @requires("authenticated")
 def control_panel(request):
     return JSONResponse(
@@ -339,6 +332,16 @@ def control_panel(request):
             "user": request.user.display_name,
         }
     )
+
+
+other_app = Starlette(
+    routes=[Route("/control-panel", control_panel)],
+    middleware=[
+        Middleware(
+            AuthenticationMiddleware, backend=BasicAuth(), on_error=on_auth_error
+        )
+    ],
+)
 
 
 def test_custom_on_error(test_client_factory):

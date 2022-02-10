@@ -3,6 +3,7 @@ import os
 import pytest
 
 from starlette.applications import Starlette
+from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 
 
@@ -11,12 +12,14 @@ def test_templates(tmpdir, test_client_factory):
     with open(path, "w") as file:
         file.write("<html>Hello, <a href='{{ url_for('homepage') }}'>world</a></html>")
 
-    app = Starlette(debug=True)
-    templates = Jinja2Templates(directory=str(tmpdir))
-
-    @app.route("/")
     async def homepage(request):
         return templates.TemplateResponse("index.html", {"request": request})
+
+    app = Starlette(
+        debug=True,
+        routes=[Route("/", endpoint=homepage)],
+    )
+    templates = Jinja2Templates(directory=str(tmpdir))
 
     client = test_client_factory(app)
     response = client.get("/")

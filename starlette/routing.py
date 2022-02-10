@@ -695,7 +695,9 @@ class Router:
 
     # The following usages are now discouraged in favour of configuration
     #  during Router.__init__(...)
-    def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
+    def mount(
+        self, path: str, app: ASGIApp, name: str = None
+    ) -> None:  # pragma: nocover
         """
         We no longer document this API, and its usage is discouraged.
         Instead you should use the following approach:
@@ -736,7 +738,7 @@ class Router:
         methods: typing.List[str] = None,
         name: str = None,
         include_in_schema: bool = True,
-    ) -> None:
+    ) -> None:  # pragma: nocover
         route = Route(
             path,
             endpoint=endpoint,

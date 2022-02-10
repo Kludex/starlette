@@ -123,7 +123,9 @@ class Starlette:
     def on_event(self, event_type: str) -> typing.Callable:  # pragma: nocover
         return self.router.on_event(event_type)
 
-    def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
+    def mount(
+        self, path: str, app: ASGIApp, name: str = None
+    ) -> None:  # pragma: nocover
         """
         We no longer document this API, and its usage is discouraged.
         Instead you should use the following approach:

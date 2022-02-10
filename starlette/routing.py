@@ -748,7 +748,7 @@ class Router:
 
     def add_websocket_route(
         self, path: str, endpoint: typing.Callable, name: str = None
-    ) -> None:
+    ) -> None:  # pragma: no cover
         route = WebSocketRoute(path, endpoint=endpoint, name=name)
         self.routes.append(route)
 

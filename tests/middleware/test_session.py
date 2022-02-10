@@ -1,8 +1,10 @@
 import re
 
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
+from starlette.routing import Mount, Route
 
 
 def view_session(request):
@@ -20,17 +22,15 @@ async def clear_session(request):
     return JSONResponse({"session": request.session})
 
 
-def create_app():
-    app = Starlette()
-    app.add_route("/view_session", view_session)
-    app.add_route("/update_session", update_session, methods=["POST"])
-    app.add_route("/clear_session", clear_session, methods=["POST"])
-    return app
-
-
 def test_session(test_client_factory):
-    app = create_app()
-    app.add_middleware(SessionMiddleware, secret_key="example")
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/clear_session", endpoint=clear_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
     client = test_client_factory(app)
 
     response = client.get("/view_session")
@@ -56,8 +56,13 @@ def test_session(test_client_factory):
 
 
 def test_session_expires(test_client_factory):
-    app = create_app()
-    app.add_middleware(SessionMiddleware, secret_key="example", max_age=-1)
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", max_age=-1)],
+    )
     client = test_client_factory(app)
 
     response = client.post("/update_session", json={"some": "data"})
@@ -74,8 +79,16 @@ def test_session_expires(test_client_factory):
 
 
 def test_secure_session(test_client_factory):
-    app = create_app()
-    app.add_middleware(SessionMiddleware, secret_key="example", https_only=True)
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/clear_session", endpoint=clear_session, methods=["POST"]),
+        ],
+        middleware=[
+            Middleware(SessionMiddleware, secret_key="example", https_only=True)
+        ],
+    )
     secure_client = test_client_factory(app, base_url="https://testserver")
     unsecure_client = test_client_factory(app, base_url="http://testserver")
 
@@ -105,10 +118,13 @@ def test_secure_session(test_client_factory):
 
 
 def test_session_cookie_subpath(test_client_factory):
-    app = create_app()
-    second_app = create_app()
-    second_app.add_middleware(SessionMiddleware, secret_key="example")
-    app.mount("/second_app", second_app)
+    second_app = Starlette(
+        routes=[
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    app = Starlette(routes=[Mount("/second_app", app=second_app)])
     client = test_client_factory(app, base_url="http://testserver/second_app")
     response = client.post("second_app/update_session", json={"some": "data"})
     cookie = response.headers["set-cookie"]
@@ -119,8 +135,13 @@ def test_session_cookie_subpath(test_client_factory):
 
 
 def test_invalid_session_cookie(test_client_factory):
-    app = create_app()
-    app.add_middleware(SessionMiddleware, secret_key="example")
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
     client = test_client_factory(app)
 
     response = client.post("/update_session", json={"some": "data"})
@@ -132,8 +153,13 @@ def test_invalid_session_cookie(test_client_factory):
 
 
 def test_session_cookie(test_client_factory):
-    app = create_app()
-    app.add_middleware(SessionMiddleware, secret_key="example", max_age=None)
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", max_age=None)],
+    )
     client = test_client_factory(app)
 
     response = client.post("/update_session", json={"some": "data"})

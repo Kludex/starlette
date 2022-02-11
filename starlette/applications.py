@@ -157,7 +157,9 @@ class Starlette:
 
         self.router.host(host, app=app, name=name)
 
-    def add_middleware(self, middleware_class: type, **options: typing.Any) -> None:
+    def add_middleware(
+        self, middleware_class: type, **options: typing.Any
+    ) -> None:  # pragma: no cover
         self.user_middleware.insert(0, Middleware(middleware_class, **options))
         self.middleware_stack = self.build_middleware_stack()
 

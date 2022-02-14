@@ -122,7 +122,9 @@ def test_session_cookie_subpath(test_client_factory):
         routes=[
             Route("/update_session", endpoint=update_session, methods=["POST"]),
         ],
-        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+        middleware=[
+            Middleware(SessionMiddleware, secret_key="example", path="/second_app")
+        ],
     )
     app = Starlette(routes=[Mount("/second_app", app=second_app)])
     client = test_client_factory(app, base_url="http://testserver/second_app")

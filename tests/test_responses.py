@@ -273,6 +273,21 @@ def test_file_response_with_chinese_filename(tmpdir, test_client_factory):
     assert response.headers["content-disposition"] == expected_disposition
 
 
+def test_file_response_with_inline_disposition(tmpdir, test_client_factory):
+    content = b"file content"
+    filename = "hello.txt"
+    path = os.path.join(tmpdir, filename)
+    with open(path, "wb") as f:
+        f.write(content)
+    app = FileResponse(path=path, filename=filename, content_disposition_type="inline")
+    client = test_client_factory(app)
+    response = client.get("/")
+    expected_disposition = 'inline; filename="hello.txt"'
+    assert response.status_code == status.HTTP_200_OK
+    assert response.content == content
+    assert response.headers["content-disposition"] == expected_disposition
+
+
 def test_set_cookie(test_client_factory):
     async def app(scope, receive, send):
         response = Response("Hello, world!", media_type="text/plain")

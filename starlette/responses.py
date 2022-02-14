@@ -274,6 +274,7 @@ class FileResponse(Response):
         filename: str = None,
         stat_result: os.stat_result = None,
         method: str = None,
+        content_disposition_type: str = "attachment",
     ) -> None:
         self.path = path
         self.status_code = status_code
@@ -287,11 +288,13 @@ class FileResponse(Response):
         if self.filename is not None:
             content_disposition_filename = quote(self.filename)
             if content_disposition_filename != self.filename:
-                content_disposition = "attachment; filename*=utf-8''{}".format(
-                    content_disposition_filename
+                content_disposition = "{}; filename*=utf-8''{}".format(
+                    content_disposition_type, content_disposition_filename
                 )
             else:
-                content_disposition = f'attachment; filename="{self.filename}"'
+                content_disposition = '{}; filename="{}"'.format(
+                    content_disposition_type, self.filename
+                )
             self.headers.setdefault("content-disposition", content_disposition)
         self.stat_result = stat_result
         if stat_result is not None:

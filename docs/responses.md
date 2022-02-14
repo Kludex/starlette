@@ -169,6 +169,7 @@ Takes a different set of arguments to instantiate than the other response types:
 * `headers` - Any custom headers to include, as a dictionary.
 * `media_type` - A string giving the media type. If unset, the filename or path will be used to infer a media type.
 * `filename` - If set, this will be included in the response `Content-Disposition`.
+* `content_disposition_type` - will be included in the response `Content-Disposition`. Can be set to "attachment" (default) or "inline".
 
 File responses will include appropriate `Content-Length`, `Last-Modified` and `ETag` headers.
 

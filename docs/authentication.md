@@ -131,6 +131,29 @@ async def dashboard(request):
     ...
 ```
 
+When redirecting users, the page you redirect them to will include URL they originally requested at the `next` query param:
+
+```python
+from starlette.authentication import requires
+from starlette.responses import RedirectResponse
+
+
+@requires('authenticated', redirect='login')
+async def admin(request):
+    ...
+
+
+async def login(request):
+    if request.method == "POST":
+        # Now that the user is authenticated,
+        # we can send them to their original request destination
+        if request.user.is_authenticated:
+            next_url = request.query_params.get("next")
+            if next_url:
+                return RedirectResponse(next_url)
+            return RedirectResponse("/")
+```
+
 For class-based endpoints, you should wrap the decorator
 around a method on the class.
 

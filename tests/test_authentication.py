@@ -1,5 +1,6 @@
 import base64
 import binascii
+from urllib.parse import urlencode
 
 import pytest
 
@@ -305,7 +306,10 @@ def test_authentication_redirect(test_client_factory):
     with test_client_factory(app) as client:
         response = client.get("/admin")
         assert response.status_code == 200
-        assert response.url == "http://testserver/"
+        url = "{}?{}".format(
+            "http://testserver/", urlencode({"next": "http://testserver/admin"})
+        )
+        assert response.url == url
 
         response = client.get("/admin", auth=("tomchristie", "example"))
         assert response.status_code == 200
@@ -313,7 +317,10 @@ def test_authentication_redirect(test_client_factory):
 
         response = client.get("/admin/sync")
         assert response.status_code == 200
-        assert response.url == "http://testserver/"
+        url = "{}?{}".format(
+            "http://testserver/", urlencode({"next": "http://testserver/admin/sync"})
+        )
+        assert response.url == url
 
         response = client.get("/admin/sync", auth=("tomchristie", "example"))
         assert response.status_code == 200

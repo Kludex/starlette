@@ -2,6 +2,7 @@ import asyncio
 import functools
 import inspect
 import typing
+from urllib.parse import urlencode
 
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection, Request
@@ -63,9 +64,12 @@ def requires(
 
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:
-                        return RedirectResponse(
-                            url=request.url_for(redirect), status_code=303
+                        orig_request_qparam = urlencode({"next": str(request.url)})
+                        next_url = "{redirect_path}?{orig_request}".format(
+                            redirect_path=request.url_for(redirect),
+                            orig_request=orig_request_qparam,
                         )
+                        return RedirectResponse(url=next_url, status_code=303)
                     raise HTTPException(status_code=status_code)
                 return await func(*args, **kwargs)
 
@@ -80,9 +84,12 @@ def requires(
 
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:
-                        return RedirectResponse(
-                            url=request.url_for(redirect), status_code=303
+                        orig_request_qparam = urlencode({"next": str(request.url)})
+                        next_url = "{redirect_path}?{orig_request}".format(
+                            redirect_path=request.url_for(redirect),
+                            orig_request=orig_request_qparam,
                         )
+                        return RedirectResponse(url=next_url, status_code=303)
                     raise HTTPException(status_code=status_code)
                 return func(*args, **kwargs)
 

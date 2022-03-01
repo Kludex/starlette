@@ -5,7 +5,7 @@
 autoflake==1.4
 black==22.1.0
 coverage==6.2
-databases[sqlite]==0.5.3
+databases[sqlite]==0.5.5
 flake8==4.0.1
 isort==5.10.1
 mypy==0.931

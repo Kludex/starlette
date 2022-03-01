@@ -13,7 +13,7 @@ types-requests==2.26.3
 types-contextvars==2.4.2
 types-PyYAML==6.0.4
 types-dataclasses==0.6.2
-pytest==6.2.5
+pytest==7.0.1
 trio==0.19.0
 
 # Documentation

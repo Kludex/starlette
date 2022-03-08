@@ -113,6 +113,14 @@ of [webargs](https://github.com/marshmallow-code/webargs).
 Allows you to parse querystring, JSON, form, headers, and cookies using
 type annotations.
 
+### DecoRouter
+
+<a href="https://github.com/MrPigss/DecoRouter" target="_blank">GitHub</a>
+
+FastAPI style routing for Starlette.
+
+Allows you to use decorators to generate routing tables.
+
 ## Frameworks
 
 ### FastAPI

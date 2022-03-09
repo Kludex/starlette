@@ -1,8 +1,37 @@
+## 0.19.0
+
+March 9, 2022
+
+### Added
+* Error handler will always run, even if the error happens on a background task [#761](https://github.com/encode/starlette/pull/761).
+* Add `headers` parameter to `HTTPException` [#1435](https://github.com/encode/starlette/pull/1435).
+* Internal responses with `405` status code insert an `Allow` header, as described by [RFC 7231](https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.5) [#1436](https://github.com/encode/starlette/pull/1436).
+* The `content` argument in `JSONResponse` is now required [#1431](https://github.com/encode/starlette/pull/1431).
+* Add custom URL convertor register [#1437](https://github.com/encode/starlette/pull/1437).
+* Add content disposition type parameter to `FileResponse` [#1266](https://github.com/encode/starlette/pull/1266).
+* Add next query param with original request URL in requires decorator [#920](https://github.com/encode/starlette/pull/920).
+* Add `raw_path` to `TestClient` scope [#1445](https://github.com/encode/starlette/pull/1445).
+* Add union operators to `MutableHeaders` [#1240](https://github.com/encode/starlette/pull/1240).
+* Display missing route details on debug page [#1363](https://github.com/encode/starlette/pull/1363).
+* Change `anyio` required version range to `>=3.4.0,<5.0` [#1421](https://github.com/encode/starlette/pull/1421) and [#1460](https://github.com/encode/starlette/pull/1460).
+* Add `typing-extensions>=3.10` requirement - used only on lower versions than Python 3.10 [#1475](https://github.com/encode/starlette/pull/1475).
+
+### Fixed
+* Prevent `BaseHTTPMiddleware` from hiding errors of `StreamingResponse` and mounted applications [#1459](https://github.com/encode/starlette/pull/1459).
+* `SessionMiddleware` uses an explicit `path=...`, instead of defaulting to the ASGI 'root_path' [#1512](https://github.com/encode/starlette/pull/1512).
+* `Request.client` is now compliant with the ASGI specifications [#1462](https://github.com/encode/starlette/pull/1462).
+* Raise `KeyError` at early stage for missing boundary [#1349](https://github.com/encode/starlette/pull/1349).
+
+### Deprecated
+* Deprecate WSGIMiddleware in favor of a2wsgi [#1504](https://github.com/encode/starlette/pull/1504).
+* Deprecate `run_until_first_complete` [#1443](https://github.com/encode/starlette/pull/1443).
+
+
 ## 0.18.0
 
 January 23, 2022
 
-#### Added
+### Added
 * Change default chunk size from 4Kb to 64Kb on `FileResponse` [#1345](https://github.com/encode/starlette/pull/1345).
 * Add support for `functools.partial` in `WebSocketRoute` [#1356](https://github.com/encode/starlette/pull/1356).
 * Add `StaticFiles` packages with directory [#1350](https://github.com/encode/starlette/pull/1350).
@@ -15,7 +44,7 @@ January 23, 2022
 * Don't set headers for responses with 1xx, 204 and 304 status code [#1397](https://github.com/encode/starlette/pull/1397).
 * `SessionMiddleware.max_age` now accepts `None`, so cookie can last as long as the browser session [#1387](https://github.com/encode/starlette/pull/1387).
 
-#### Fixed
+### Fixed
 * Tweak `hashlib.md5()` function on `FileResponse`s ETag generation. The parameter [`usedforsecurity`](https://bugs.python.org/issue9216) flag is set to `False`, if the flag is available on the system. This fixes an error raised on systems with [FIPS](https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/FIPS_Mode_-_an_explanation) enabled [#1366](https://github.com/encode/starlette/pull/1366) and [#1410](https://github.com/encode/starlette/pull/1410).
 * Fix `path_params` type on `url_path_for()` method i.e. turn `str` into `Any` [#1341](https://github.com/encode/starlette/pull/1341).
 * `Host` now ignores `port` on routing [#1322](https://github.com/encode/starlette/pull/1322).

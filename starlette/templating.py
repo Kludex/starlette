@@ -12,7 +12,7 @@ try:
     if hasattr(jinja2, "pass_context"):
         pass_context = jinja2.pass_context
     else:  # pragma: nocover
-        pass_context = jinja2.contextfunction
+        pass_context = jinja2.contextfunction  # type: ignore[attr-defined]
 except ImportError:  # pragma: nocover
     jinja2 = None  # type: ignore
 

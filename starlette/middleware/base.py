@@ -13,7 +13,9 @@ DispatchFunction = typing.Callable[
 
 
 class BaseHTTPMiddleware:
-    def __init__(self, app: ASGIApp, dispatch: DispatchFunction = None) -> None:
+    def __init__(
+        self, app: ASGIApp, dispatch: typing.Optional[DispatchFunction] = None
+    ) -> None:
         self.app = app
         self.dispatch_func = self.dispatch if dispatch is None else dispatch
 

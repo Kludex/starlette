@@ -10,7 +10,10 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 class HTTPException(Exception):
     def __init__(
-        self, status_code: int, detail: str = None, headers: dict = None
+        self,
+        status_code: int,
+        detail: typing.Optional[str] = None,
+        headers: typing.Optional[dict] = None,
     ) -> None:
         if detail is None:
             detail = http.HTTPStatus(status_code).phrase
@@ -27,8 +30,8 @@ class ExceptionMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        handlers: typing.Mapping[
-            typing.Any, typing.Callable[[Request, Exception], Response]
+        handlers: typing.Optional[
+            typing.Mapping[typing.Any, typing.Callable[[Request, Exception], Response]]
         ] = None,
         debug: bool = False,
     ) -> None:

@@ -18,7 +18,7 @@ class CORSMiddleware:
         allow_methods: typing.Sequence[str] = ("GET",),
         allow_headers: typing.Sequence[str] = (),
         allow_credentials: bool = False,
-        allow_origin_regex: str = None,
+        allow_origin_regex: typing.Optional[str] = None,
         expose_headers: typing.Sequence[str] = (),
         max_age: int = 600,
     ) -> None:

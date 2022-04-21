@@ -16,8 +16,8 @@ class AuthenticationMiddleware:
         self,
         app: ASGIApp,
         backend: AuthenticationBackend,
-        on_error: typing.Callable[
-            [HTTPConnection, AuthenticationError], Response
+        on_error: typing.Optional[
+            typing.Callable[[HTTPConnection, AuthenticationError], Response]
         ] = None,
     ) -> None:
         self.app = app

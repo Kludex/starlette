@@ -29,7 +29,7 @@ class BackgroundTask:
 
 
 class BackgroundTasks(BackgroundTask):
-    def __init__(self, tasks: typing.Sequence[BackgroundTask] = None):
+    def __init__(self, tasks: typing.Optional[typing.Sequence[BackgroundTask]] = None):
         self.tasks = list(tasks) if tasks else []
 
     def add_task(

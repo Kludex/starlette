@@ -28,9 +28,9 @@ class _TemplateResponse(Response):
         template: typing.Any,
         context: dict,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] = None,
-        media_type: str = None,
-        background: BackgroundTask = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        media_type: typing.Optional[str] = None,
+        background: typing.Optional[BackgroundTask] = None,
     ):
         self.template = template
         self.context = context
@@ -88,9 +88,9 @@ class Jinja2Templates:
         name: str,
         context: dict,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] = None,
-        media_type: str = None,
-        background: BackgroundTask = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        media_type: typing.Optional[str] = None,
+        background: typing.Optional[BackgroundTask] = None,
     ) -> _TemplateResponse:
         if "request" not in context:
             raise ValueError('context must include a "request" key')

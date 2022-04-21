@@ -20,7 +20,7 @@ def has_required_scope(conn: HTTPConnection, scopes: typing.Sequence[str]) -> bo
 def requires(
     scopes: typing.Union[str, typing.Sequence[str]],
     status_code: int = 403,
-    redirect: str = None,
+    redirect: typing.Optional[str] = None,
 ) -> typing.Callable:
     scopes_list = [scopes] if isinstance(scopes, str) else list(scopes)
 
@@ -110,7 +110,7 @@ class AuthenticationBackend:
 
 
 class AuthCredentials:
-    def __init__(self, scopes: typing.Sequence[str] = None):
+    def __init__(self, scopes: typing.Optional[typing.Sequence[str]] = None):
         self.scopes = [] if scopes is None else list(scopes)
 
 

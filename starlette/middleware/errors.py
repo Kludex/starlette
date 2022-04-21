@@ -135,7 +135,10 @@ class ServerErrorMiddleware:
     """
 
     def __init__(
-        self, app: ASGIApp, handler: typing.Callable = None, debug: bool = False
+        self,
+        app: ASGIApp,
+        handler: typing.Optional[typing.Callable] = None,
+        debug: bool = False,
     ) -> None:
         self.app = app
         self.handler = handler

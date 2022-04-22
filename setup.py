@@ -25,7 +25,7 @@ def get_long_description():
 
 setup(
     name="starlette",
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     version=get_version("starlette"),
     url="https://github.com/encode/starlette",
     license="BSD",
@@ -40,7 +40,6 @@ setup(
     install_requires=[
         "anyio>=3.4.0,<5",
         "typing_extensions>=3.10.0; python_version < '3.10'",
-        "contextlib2 >= 21.6.0; python_version < '3.7'",
     ],
     extras_require={
         "full": [
@@ -60,7 +59,6 @@ setup(
         "Topic :: Internet :: WWW/HTTP",
         "Framework :: AnyIO",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

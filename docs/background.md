@@ -72,3 +72,7 @@ routes = [
 
 app = Starlette(routes=routes)
 ```
+
+!!! important
+    The tasks are executed in order. In case one of the tasks raises
+    an exception, the following tasks will not get the opportunity to be executed.

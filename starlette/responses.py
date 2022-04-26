@@ -17,6 +17,11 @@ from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, MutableHeaders
 from starlette.types import Receive, Scope, Send
 
+if sys.version_info >= (3, 8):  # pragma: no cover
+    from typing import Literal
+else:  # pragma: no cover
+    from typing_extensions import Literal
+
 # Workaround for adding samesite support to pre 3.8 python
 http.cookies.Morsel._reserved["samesite"] = "SameSite"  # type: ignore
 
@@ -105,7 +110,7 @@ class Response:
         domain: typing.Optional[str] = None,
         secure: bool = False,
         httponly: bool = False,
-        samesite: str = "lax",
+        samesite: typing.Optional[Literal["lax", "strict", "none"]] = "lax",
     ) -> None:
         cookie: http.cookies.BaseCookie = http.cookies.SimpleCookie()
         cookie[key] = value
@@ -138,7 +143,7 @@ class Response:
         domain: typing.Optional[str] = None,
         secure: bool = False,
         httponly: bool = False,
-        samesite: str = "lax",
+        samesite: typing.Optional[Literal["lax", "strict", "none"]] = "lax",
     ) -> None:
         self.set_cookie(
             key,

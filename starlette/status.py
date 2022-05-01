@@ -5,7 +5,6 @@ https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
 
 And RFC 2324 - https://tools.ietf.org/html/rfc2324
 """
-import sys
 import warnings
 from typing import List
 
@@ -187,11 +186,10 @@ def __getattr__(name: str) -> int:
     }
     deprecated = __deprecated__.get(name)
     if deprecated:
-        stacklevel = 3 if sys.version_info >= (3, 7) else 4
         warnings.warn(
             f"'{name}' is deprecated. Use '{deprecation_changes[name]}' instead.",
             category=DeprecationWarning,
-            stacklevel=stacklevel,
+            stacklevel=3,
         )
         return deprecated
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

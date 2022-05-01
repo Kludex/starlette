@@ -3,11 +3,11 @@ import contextlib
 import functools
 import inspect
 import re
-import sys
 import traceback
 import types
 import typing
 import warnings
+from contextlib import asynccontextmanager
 from enum import Enum
 
 from starlette.concurrency import run_in_threadpool
@@ -18,11 +18,6 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
-
-if sys.version_info >= (3, 7):
-    from contextlib import asynccontextmanager  # pragma: no cover
-else:
-    from contextlib2 import asynccontextmanager  # pragma: no cover
 
 
 class NoMatchFound(Exception):

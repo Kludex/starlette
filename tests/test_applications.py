@@ -1,5 +1,5 @@
 import os
-import sys
+from contextlib import asynccontextmanager
 
 import pytest
 
@@ -11,11 +11,6 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
-
-if sys.version_info >= (3, 7):
-    from contextlib import asynccontextmanager  # pragma: no cover
-else:
-    from contextlib2 import asynccontextmanager  # pragma: no cover
 
 
 async def error_500(request, exc):

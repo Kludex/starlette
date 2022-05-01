@@ -10,7 +10,7 @@ flake8==3.9.2
 isort==5.10.1
 mypy==0.950
 types-requests==2.26.3
-types-contextvars==2.4.2
+types-contextvars==2.4.5
 types-PyYAML==6.0.4
 types-dataclasses==0.6.5
 pytest==7.1.2

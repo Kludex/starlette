@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 import anyio
@@ -36,6 +37,10 @@ def test_request_query_params(test_client_factory):
     assert response.json() == {"params": {"a": "123", "b": "456"}}
 
 
+@pytest.mark.skipif(
+    any(module in sys.modules for module in ("brotli", "brotlicffi")),
+    reason='urllib3 includes "br" to the "accept-encoding" headers.',
+)
 def test_request_headers(test_client_factory):
     async def app(scope, receive, send):
         request = Request(scope, receive)

@@ -28,6 +28,8 @@ def test_config(tmpdir, monkeypatch):
     REQUEST_TIMEOUT = config("REQUEST_TIMEOUT", cast=int, default=10)
     REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
     SECRET_KEY = config("SECRET_KEY", cast=Secret)
+    UNSET_SECRET = config("UNSET_SECRET", cast=Secret, default=None)
+    EMPTY_SECRET = config("EMPTY_SECRET", cast=Secret, default="")
     assert config("BOOL_AS_INT", cast=bool) is False
     assert config("BOOL_AS_INT", cast=cast_to_int) == 0
     assert config("DEFAULTED_BOOL", cast=cast_to_int, default=True) == 1
@@ -40,6 +42,9 @@ def test_config(tmpdir, monkeypatch):
     assert REQUEST_HOSTNAME == "example.com"
     assert repr(SECRET_KEY) == "Secret('**********')"
     assert str(SECRET_KEY) == "12345"
+    assert bool(SECRET_KEY)
+    assert not bool(EMPTY_SECRET)
+    assert not bool(UNSET_SECRET)
 
     with pytest.raises(KeyError):
         config.get("MISSING")

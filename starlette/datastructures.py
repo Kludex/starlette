@@ -206,6 +206,9 @@ class Secret:
     def __str__(self) -> str:
         return self._value
 
+    def __bool__(self) -> bool:
+        return bool(self._value)
+
 
 class CommaSeparatedStrings(Sequence):
     def __init__(self, value: typing.Union[str, typing.Sequence[str]]):

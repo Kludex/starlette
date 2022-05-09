@@ -97,6 +97,15 @@ May raise `starlette.websockets.WebSocketDisconnect` if the application does not
 
 `websocket_connect()` must be used as a context manager (in a `with` block).
 
+!!! note
+    The `params` argument is not supported by `websocket_connect`. If you need to pass query arguments, hard code it
+    directly in the URL.
+
+    ```python
+    with client.websocket_connect('/path?foo=bar') as websocket:
+        ...
+    ```
+
 #### Sending data
 
 * `.send_text(data)` - Send the given text to the application.

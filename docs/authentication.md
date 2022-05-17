@@ -115,6 +115,10 @@ async def dashboard(request):
     ...
 ```
 
+!!! note
+    The `status_code` parameter is not supported with WebSockets. The 403 (Forbidden)
+    status code will always be used for those.
+
 Alternatively you might want to redirect unauthenticated users to a different
 page.
 

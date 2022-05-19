@@ -38,6 +38,11 @@ def _user_safe_decode(src: bytes, codec: str) -> str:
         return src.decode("latin-1")
 
 
+class MultiPartException(Exception):
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+
 class FormParser:
     def __init__(
         self, headers: Headers, stream: typing.AsyncGenerator[bytes, None]
@@ -159,7 +164,10 @@ class MultiPartParser:
         charset = params.get(b"charset", "utf-8")
         if type(charset) == bytes:
             charset = charset.decode("latin-1")
-        boundary = params[b"boundary"]
+        try:
+            boundary = params[b"boundary"]
+        except KeyError:
+            raise MultiPartException("Missing boundary in multipart.")
 
         # Callbacks dictionary.
         callbacks = {

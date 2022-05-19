@@ -1,11 +1,15 @@
 import os
 import typing
+from contextlib import nullcontext as does_not_raise
 
 import pytest
 
-from starlette.formparsers import UploadFile, _user_safe_decode
+from starlette.applications import Starlette
+from starlette.formparsers import MultiPartException, UploadFile, _user_safe_decode
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.routing import Mount
+from starlette.testclient import TestClient
 
 
 class ForceMultipartDict(dict):
@@ -390,10 +394,19 @@ def test_user_safe_decode_ignores_wrong_charset():
     assert result == "abc"
 
 
-def test_missing_boundary_parameter(test_client_factory):
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
+def test_missing_boundary_parameter(
+    app, expectation, test_client_factory: typing.Callable[..., TestClient]
+) -> None:
     client = test_client_factory(app)
-    with pytest.raises(KeyError, match="boundary"):
-        client.post(
+    with expectation:
+        res = client.post(
             "/",
             data=(
                 # file
@@ -403,3 +416,5 @@ def test_missing_boundary_parameter(test_client_factory):
             ),
             headers={"Content-Type": "multipart/form-data; charset=utf-8"},
         )
+        assert res.status_code == 400
+        assert res.text == "Missing boundary in multipart."

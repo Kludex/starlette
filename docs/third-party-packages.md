@@ -97,6 +97,15 @@ A plugin for providing an endpoint that exposes [Prometheus](https://prometheus.
 
 A simple tool for integrating Starlette and WTForms. It is modeled on the excellent Flask-WTF library.
 
+### Starlette-Login
+
+<a href="https://github.com/jockerz/Starlette-Login" target="_blank">GitHub</a> |
+<a href="https://starlette-login.readthedocs.io/en/stable/" target="_blank">Documentation</a>
+
+User session management for Starlette. 
+It handles the common tasks of logging in, logging out, and remembering your users' sessions over extended periods of time.
+
+
 ### Starsessions
 
 <a href="https://github.com/alex-oleshkevich/starsessions" target="_blank">GitHub</a>

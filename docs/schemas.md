@@ -46,8 +46,8 @@ def openapi_schema(request):
 
 
 routes = [
-    Route("/users", endpoint=list_users, methods=["GET"])
-    Route("/users", endpoint=create_user, methods=["POST"])
+    Route("/users", endpoint=list_users, methods=["GET"]),
+    Route("/users", endpoint=create_user, methods=["POST"]),
     Route("/schema", endpoint=openapi_schema, include_in_schema=False)
 ]
 

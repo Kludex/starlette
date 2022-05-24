@@ -220,7 +220,9 @@ def test_url_blank_params():
     assert "abc" in q
     assert "def" in q
     assert "b" in q
-    assert len(q.get("abc")) == 0
+    val = q.get("abc")
+    assert val is not None
+    assert len(val) == 0
     assert len(q["a"]) == 3
     assert list(q.keys()) == ["a", "abc", "def", "b"]
 
@@ -342,6 +344,7 @@ def test_multidict():
     q = MultiDict([("a", "123"), ("a", "456")])
     q["a"] = "789"
     assert q["a"] == "789"
+    assert q.get("a") == "789"
     assert q.getlist("a") == ["789"]
 
     q = MultiDict([("a", "123"), ("a", "456")])

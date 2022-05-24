@@ -1,10 +1,37 @@
+import asyncio
+import time
 import typing
 
 import anyio
+from contextlib2 import aclosing
 
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+
+def timeit(func):
+    async def process(func, *args, **params):
+        if asyncio.iscoroutinefunction(func):
+            print("this function is a coroutine: {}".format(func.__name__))
+            return await func(*args, **params)
+        else:
+            print("this is not a coroutine")
+            return func(*args, **params)
+
+    async def helper(*args, **params):
+        print("{}.time".format(func.__name__))
+        start = time.time()
+        result = await process(func, *args, **params)
+
+        # Test normal function route...
+        # result = await process(lambda *a, **p: print(*a, **p), *args, **params)
+
+        print(">>>", time.time() - start)
+        return result
+
+    return helper
+
 
 RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
 DispatchFunction = typing.Callable[
@@ -24,6 +51,7 @@ class BaseHTTPMiddleware:
             await self.app(scope, receive, send)
             return
 
+        @timeit
         async def call_next(request: Request) -> Response:
             app_exc: typing.Optional[Exception] = None
             send_stream, recv_stream = anyio.create_memory_object_stream()
@@ -41,6 +69,7 @@ class BaseHTTPMiddleware:
 
             try:
                 message = await recv_stream.receive()
+                print("HERE", message)
             except anyio.EndOfStream:
                 if app_exc is not None:
                     raise app_exc
@@ -72,6 +101,7 @@ class BaseHTTPMiddleware:
             response = await self.dispatch_func(request, call_next)
             await response(scope, receive, send)
             task_group.cancel_scope.cancel()
+        print("hi")
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint

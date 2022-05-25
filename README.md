@@ -37,7 +37,7 @@ It is production-ready, and gives you the following:
 * 100% type annotated codebase.
 * Few hard dependencies.
 * Compatible with `asyncio` and `trio` backends.
-* Great overall performance [against independant benchmarks][techempower].
+* Great overall performance [against independent benchmarks][techempower].
 
 ## Requirements
 

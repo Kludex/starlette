@@ -477,7 +477,7 @@ class UploadFile:
             await run_in_threadpool(self.file.close)
 
 
-class FormData(ImmutableMultiDict):
+class FormData(ImmutableMultiDict[str, typing.Union[UploadFile, str]]):
     """
     An immutable multidict, containing both file uploads and text input.
     """

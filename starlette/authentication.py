@@ -1,9 +1,9 @@
-import asyncio
 import functools
 import inspect
 import typing
 from urllib.parse import urlencode
 
+from starlette._utils import is_async_callable
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import RedirectResponse, Response
@@ -53,7 +53,7 @@ def requires(
 
             return websocket_wrapper
 
-        elif asyncio.iscoroutinefunction(func):
+        elif is_async_callable(func):
             # Handle async request/response functions.
             @functools.wraps(func)
             async def async_wrapper(

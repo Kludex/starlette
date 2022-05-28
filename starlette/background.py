@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import typing
 
@@ -7,6 +6,7 @@ if sys.version_info >= (3, 10):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import ParamSpec
 
+from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 
 P = ParamSpec("P")
@@ -19,7 +19,7 @@ class BackgroundTask:
         self.func = func
         self.args = args
         self.kwargs = kwargs
-        self.is_async = asyncio.iscoroutinefunction(func)
+        self.is_async = is_async_callable(func)
 
     async def __call__(self) -> None:
         if self.is_async:

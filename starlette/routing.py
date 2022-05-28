@@ -1,4 +1,3 @@
-import asyncio
 import contextlib
 import functools
 import inspect
@@ -10,6 +9,7 @@ import warnings
 from contextlib import asynccontextmanager
 from enum import Enum
 
+from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
@@ -37,11 +37,16 @@ class Match(Enum):
     FULL = 2
 
 
-def iscoroutinefunction_or_partial(obj: typing.Any) -> bool:
+def iscoroutinefunction_or_partial(obj: typing.Any) -> bool:  # pragma: no cover
     """
     Correctly determines if an object is a coroutine function,
     including those wrapped in functools.partial objects.
     """
+    warnings.warn(
+        "iscoroutinefunction_or_partial is deprecated, "
+        "and will be removed in a future release.",
+        DeprecationWarning,
+    )
     while isinstance(obj, functools.partial):
         obj = obj.func
     return inspect.iscoroutinefunction(obj)
@@ -52,7 +57,7 @@ def request_response(func: typing.Callable) -> ASGIApp:
     Takes a function or coroutine `func(request) -> response`,
     and returns an ASGI application.
     """
-    is_coroutine = iscoroutinefunction_or_partial(func)
+    is_coroutine = is_async_callable(func)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive=receive, send=send)
@@ -603,7 +608,7 @@ class Router:
         Run any `.on_startup` event handlers.
         """
         for handler in self.on_startup:
-            if asyncio.iscoroutinefunction(handler):
+            if is_async_callable(handler):
                 await handler()
             else:
                 handler()
@@ -613,7 +618,7 @@ class Router:
         Run any `.on_shutdown` event handlers.
         """
         for handler in self.on_shutdown:
-            if asyncio.iscoroutinefunction(handler):
+            if is_async_callable(handler):
                 await handler()
             else:
                 handler()

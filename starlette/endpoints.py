@@ -1,8 +1,8 @@
-import asyncio
 import json
 import typing
 
 from starlette import status
+from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -37,7 +37,7 @@ class HTTPEndpoint:
         handler: typing.Callable[[Request], typing.Any] = getattr(
             self, handler_name, self.method_not_allowed
         )
-        is_async = asyncio.iscoroutinefunction(handler)
+        is_async = is_async_callable(handler)
         if is_async:
             response = await handler(request)
         else:

@@ -1,9 +1,9 @@
-import asyncio
 import html
 import inspect
 import traceback
 import typing
 
+from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
@@ -170,7 +170,7 @@ class ServerErrorMiddleware:
                 response = self.error_response(request, exc)
             else:
                 # Use an installed 500 error handler.
-                if asyncio.iscoroutinefunction(self.handler):
+                if is_async_callable(self.handler):
                     response = await self.handler(request, exc)
                 else:
                     response = await run_in_threadpool(self.handler, request, exc)

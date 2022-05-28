@@ -1,4 +1,3 @@
-import asyncio
 import contextlib
 import http
 import inspect
@@ -16,6 +15,7 @@ import anyio.abc
 import requests
 from anyio.streams.stapled import StapledObjectStream
 
+from starlette._utils import is_async_callable
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
 
@@ -84,10 +84,7 @@ def _get_reason_phrase(status_code: int) -> str:
 def _is_asgi3(app: typing.Union[ASGI2App, ASGI3App]) -> bool:
     if inspect.isclass(app):
         return hasattr(app, "__await__")
-    elif inspect.isfunction(app):
-        return asyncio.iscoroutinefunction(app)
-    call = getattr(app, "__call__", None)
-    return asyncio.iscoroutinefunction(call)
+    return is_async_callable(app)
 
 
 class _WrapASGI2:

@@ -8,7 +8,7 @@ coverage==6.2
 databases[sqlite]==0.5.5
 flake8==3.9.2
 isort==5.10.1
-mypy==0.950
+mypy==0.960
 types-requests==2.26.3
 types-contextvars==2.4.5
 types-PyYAML==6.0.4

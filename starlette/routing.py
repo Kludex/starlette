@@ -111,13 +111,16 @@ def compile_path(
     path: str,
 ) -> typing.Tuple[typing.Pattern, str, typing.Dict[str, Convertor]]:
     """
-    Given a path string, like: "/{username:str}", return a three-tuple
+    Given a path string, like: "/{username:str}",
+    or a host string, like: "{subdomain}.mydomain.org", return a three-tuple
     of (regex, format, {param_name:convertor}).
 
     regex:      "/(?P<username>[^/]+)"
     format:     "/{username}"
     convertors: {"username": StringConvertor()}
     """
+    is_host = not path.startswith("/")
+
     path_regex = "^"
     path_format = ""
     duplicated_params = set()
@@ -150,7 +153,13 @@ def compile_path(
         ending = "s" if len(duplicated_params) > 1 else ""
         raise ValueError(f"Duplicated param name{ending} {names} at path {path}")
 
-    path_regex += re.escape(path[idx:].split(":")[0]) + "$"
+    if is_host:
+        # Align with `Host.matches()` behavior, which ignores port.
+        hostname = path[idx:].split(":")[0]
+        path_regex += re.escape(hostname) + "$"
+    else:
+        path_regex += re.escape(path[idx:]) + "$"
+
     path_format += path[idx:]
 
     return re.compile(path_regex), path_format, param_convertors
@@ -429,6 +438,7 @@ class Host(BaseRoute):
     def __init__(
         self, host: str, app: ASGIApp, name: typing.Optional[str] = None
     ) -> None:
+        assert not host.startswith("/"), "Host must not start with '/'"
         self.host = host
         self.app = app
         self.name = name

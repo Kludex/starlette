@@ -28,6 +28,11 @@ def user_me(request):
     return Response(content, media_type="text/plain")
 
 
+def disable_user(request):
+    content = "User " + request.path_params["username"] + " disabled"
+    return Response(content, media_type="text/plain")
+
+
 def user_no_match(request):  # pragma: no cover
     content = "User fixed no match"
     return Response(content, media_type="text/plain")
@@ -109,6 +114,7 @@ app = Router(
                 Route("/", endpoint=users),
                 Route("/me", endpoint=user_me),
                 Route("/{username}", endpoint=user),
+                Route("/{username}:disable", endpoint=disable_user, methods=["PUT"]),
                 Route("/nomatch", endpoint=user_no_match),
             ],
         ),
@@ -188,6 +194,11 @@ def test_router(client):
     assert response.status_code == 200
     assert response.url == "http://testserver/users/tomchristie"
     assert response.text == "User tomchristie"
+
+    response = client.put("/users/tomchristie:disable")
+    assert response.status_code == 200
+    assert response.url == "http://testserver/users/tomchristie:disable"
+    assert response.text == "User tomchristie disabled"
 
     response = client.get("/users/nomatch")
     assert response.status_code == 200
@@ -429,10 +440,19 @@ def test_host_routing(test_client_factory):
     response = client.get("/")
     assert response.status_code == 200
 
-    client = test_client_factory(mixed_hosts_app, base_url="https://port.example.org/")
+    client = test_client_factory(
+        mixed_hosts_app, base_url="https://port.example.org:3600/"
+    )
 
     response = client.get("/users")
     assert response.status_code == 404
+
+    response = client.get("/")
+    assert response.status_code == 200
+
+    # Port in requested Host is irrelevant.
+
+    client = test_client_factory(mixed_hosts_app, base_url="https://port.example.org/")
 
     response = client.get("/")
     assert response.status_code == 200

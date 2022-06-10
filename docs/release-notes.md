@@ -1,3 +1,10 @@
+## 0.20.3
+
+June 10, 2022
+
+### Fixed
+* Revert "Allow `StaticFiles` to follow symlinks" [#1681](https://github.com/encode/starlette/pull/1681).
+
 ## 0.20.2
 
 June 7, 2022

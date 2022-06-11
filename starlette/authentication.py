@@ -9,6 +9,8 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import RedirectResponse, Response
 from starlette.websockets import WebSocket
 
+_CallableType = typing.TypeVar("_CallableType", bound=typing.Callable)
+
 
 def has_required_scope(conn: HTTPConnection, scopes: typing.Sequence[str]) -> bool:
     for scope in scopes:
@@ -21,7 +23,7 @@ def requires(
     scopes: typing.Union[str, typing.Sequence[str]],
     status_code: int = 403,
     redirect: typing.Optional[str] = None,
-) -> typing.Callable:
+) -> typing.Callable[[_CallableType], _CallableType]:
     scopes_list = [scopes] if isinstance(scopes, str) else list(scopes)
 
     def decorator(func: typing.Callable) -> typing.Callable:
@@ -95,7 +97,7 @@ def requires(
 
             return sync_wrapper
 
-    return decorator
+    return decorator  # type: ignore[return-value]
 
 
 class AuthenticationError(Exception):

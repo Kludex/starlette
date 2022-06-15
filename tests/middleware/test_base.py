@@ -6,7 +6,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse, StreamingResponse
-from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.routing import Route, WebSocketRoute
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 
@@ -139,11 +139,6 @@ def test_app_middleware_argument(test_client_factory):
     assert response.headers["Custom-Header"] == "Example"
 
 
-def test_middleware_repr():
-    middleware = Middleware(CustomMiddleware)
-    assert repr(middleware) == "Middleware(CustomMiddleware)"
-
-
 def test_fully_evaluated_response(test_client_factory):
     # Test for https://github.com/encode/starlette/issues/1022
     class CustomMiddleware(BaseHTTPMiddleware):
@@ -156,16 +151,6 @@ def test_fully_evaluated_response(test_client_factory):
     client = test_client_factory(app)
     response = client.get("/does_not_exist")
     assert response.text == "Custom"
-
-
-def test_exception_on_mounted_apps(test_client_factory):
-    sub_app = Starlette(routes=[Route("/", exc)])
-    app = Starlette(routes=[Mount("/sub", app=sub_app)])
-
-    client = test_client_factory(app)
-    with pytest.raises(Exception) as ctx:
-        client.get("/sub/")
-    assert str(ctx.value) == "Exc"
 
 
 ctxvar: contextvars.ContextVar[str] = contextvars.ContextVar("ctxvar")

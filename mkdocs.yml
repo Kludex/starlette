@@ -44,6 +44,7 @@ nav:
   - Configuration: 'config.md'
   - Test Client: 'testclient.md'
   - Third Party Packages: 'third-party-packages.md'
+  - Contributing: 'contributing.md'
   - Release Notes: 'release-notes.md'
 
 markdown_extensions:

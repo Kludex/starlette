@@ -112,7 +112,7 @@ class Response:
         httponly: bool = False,
         samesite: typing.Optional[Literal["lax", "strict", "none"]] = "lax",
     ) -> None:
-        cookie: http.cookies.BaseCookie = http.cookies.SimpleCookie()
+        cookie: "http.cookies.BaseCookie[str]" = http.cookies.SimpleCookie()
         cookie[key] = value
         if max_age is not None:
             cookie[key]["max-age"] = max_age
@@ -185,7 +185,7 @@ class JSONResponse(Response):
         self,
         content: typing.Any,
         status_code: int = 200,
-        headers: typing.Optional[dict] = None,
+        headers: typing.Optional[typing.Dict[str, str]] = None,
         media_type: typing.Optional[str] = None,
         background: typing.Optional[BackgroundTask] = None,
     ) -> None:

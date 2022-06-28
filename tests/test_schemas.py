@@ -13,6 +13,17 @@ def ws(session):
     pass  # pragma: no cover
 
 
+def get_user(request):
+    """
+    responses:
+        200:
+            description: A user.
+            examples:
+                {"username": "tom"}
+    """
+    pass  # pragma: no cover
+
+
 def list_users(request):
     """
     responses:
@@ -103,6 +114,7 @@ subapp = Starlette(
 app = Starlette(
     routes=[
         WebSocketRoute("/ws", endpoint=ws),
+        Route("/users/{id:int}", endpoint=get_user, methods=["GET"]),
         Route("/users", endpoint=list_users, methods=["GET", "HEAD"]),
         Route("/users", endpoint=create_user, methods=["POST"]),
         Route("/orgs", endpoint=OrganisationsEndpoint),
@@ -168,6 +180,16 @@ def test_schema_generation():
                     }
                 },
             },
+            "/users/{id}": {
+                "get": {
+                    "responses": {
+                        200: {
+                            "description": "A user.",
+                            "examples": {"username": "tom"},
+                        }
+                    }
+                },
+            },
         },
     }
 
@@ -211,6 +233,13 @@ paths:
           - username: tom
           - username: lucy
     post:
+      responses:
+        200:
+          description: A user.
+          examples:
+            username: tom
+  /users/{id}:
+    get:
       responses:
         200:
           description: A user.

@@ -1,4 +1,5 @@
 import inspect
+import re
 import typing
 
 from starlette.requests import Request
@@ -49,10 +50,11 @@ class BaseSchemaGenerator:
 
         for route in routes:
             if isinstance(route, Mount):
+                path = self._remove_converter(route.path)
                 routes = route.routes or []
                 sub_endpoints = [
                     EndpointInfo(
-                        path="".join((route.path, sub_endpoint.path)),
+                        path="".join((path, sub_endpoint.path)),
                         http_method=sub_endpoint.http_method,
                         func=sub_endpoint.func,
                     )
@@ -64,22 +66,31 @@ class BaseSchemaGenerator:
                 continue
 
             elif inspect.isfunction(route.endpoint) or inspect.ismethod(route.endpoint):
+                path = self._remove_converter(route.path)
                 for method in route.methods or ["GET"]:
                     if method == "HEAD":
                         continue
                     endpoints_info.append(
-                        EndpointInfo(route.path, method.lower(), route.endpoint)
+                        EndpointInfo(path, method.lower(), route.endpoint)
                     )
             else:
+                path = self._remove_converter(route.path)
                 for method in ["get", "post", "put", "patch", "delete", "options"]:
                     if not hasattr(route.endpoint, method):
                         continue
                     func = getattr(route.endpoint, method)
-                    endpoints_info.append(
-                        EndpointInfo(route.path, method.lower(), func)
-                    )
+                    endpoints_info.append(EndpointInfo(path, method.lower(), func))
 
         return endpoints_info
+
+    def _remove_converter(self, path: str) -> str:
+        """
+        Remove the converter from the path.
+        For example, a route like this:
+            Route("/users/{id:int}", endpoint=get_user, methods=["GET"])
+        Should be represented as `/users/{id}` in the OpenAPI schema.
+        """
+        return re.sub(r":\w+}", "}", path)
 
     def parse_docstring(self, func_or_method: typing.Callable) -> dict:
         """

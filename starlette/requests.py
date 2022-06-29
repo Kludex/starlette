@@ -1,6 +1,5 @@
 import json
 import typing
-from collections.abc import Mapping
 from http import cookies as http_cookies
 
 import anyio
@@ -60,7 +59,7 @@ class ClientDisconnect(Exception):
     pass
 
 
-class HTTPConnection(Mapping):
+class HTTPConnection(typing.Mapping[str, typing.Any]):
     """
     A base class for incoming HTTP connections, that is used to provide
     any functionality that is common to both `Request` and `WebSocket`.
@@ -143,7 +142,7 @@ class HTTPConnection(Mapping):
         return None
 
     @property
-    def session(self) -> dict:
+    def session(self) -> typing.Dict[str, typing.Any]:
         assert (
             "session" in self.scope
         ), "SessionMiddleware must be installed to access request.session"
@@ -231,7 +230,7 @@ class Request(HTTPConnection):
 
     async def body(self) -> bytes:
         if not hasattr(self, "_body"):
-            chunks = []
+            chunks: "typing.List[bytes]" = []
             async for chunk in self.stream():
                 chunks.append(chunk)
             self._body = b"".join(chunks)
@@ -249,7 +248,8 @@ class Request(HTTPConnection):
                 parse_options_header is not None
             ), "The `python-multipart` library must be installed to use form parsing."
             content_type_header = self.headers.get("Content-Type")
-            content_type, options = parse_options_header(content_type_header)
+            content_type: bytes
+            content_type, _ = parse_options_header(content_type_header)
             if content_type == b"multipart/form-data":
                 try:
                     multipart_parser = MultiPartParser(self.headers, self.stream())
@@ -285,7 +285,7 @@ class Request(HTTPConnection):
 
     async def send_push_promise(self, path: str) -> None:
         if "http.response.push" in self.scope.get("extensions", {}):
-            raw_headers = []
+            raw_headers: "typing.List[typing.Tuple[bytes, bytes]]" = []
             for name in SERVER_PUSH_HEADERS_TO_COPY:
                 for value in self.headers.getlist(name):
                     raw_headers.append(

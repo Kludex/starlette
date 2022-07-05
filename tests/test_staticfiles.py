@@ -377,21 +377,28 @@ def test_staticfiles_cache_invalidation_for_deleted_file_html_mode(
 
 
 def test_staticfiles_with_invalid_dir_permissions_returns_401(
-    tmpdir, test_client_factory
+    tmp_path, test_client_factory
 ):
-    path = os.path.join(tmpdir, "example.txt")
-    with open(path, "w") as file:
-        file.write("<file content>")
+    (tmp_path / "example.txt").write_bytes(b"<file content>")
 
-    os.chmod(tmpdir, stat.S_IRWXO)
+    original_mode = tmp_path.stat().st_mode
+    tmp_path.chmod(stat.S_IRWXO)
+    try:
+        routes = [
+            Mount(
+                "/",
+                app=StaticFiles(directory=os.fsdecode(tmp_path)),
+                name="static",
+            )
+        ]
+        app = Starlette(routes=routes)
+        client = test_client_factory(app)
 
-    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
-    app = Starlette(routes=routes)
-    client = test_client_factory(app)
-
-    response = client.get("/example.txt")
-    assert response.status_code == 401
-    assert response.text == "Unauthorized"
+        response = client.get("/example.txt")
+        assert response.status_code == 401
+        assert response.text == "Unauthorized"
+    finally:
+        tmp_path.chmod(original_mode)
 
 
 def test_staticfiles_with_missing_dir_returns_404(tmpdir, test_client_factory):

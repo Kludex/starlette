@@ -1,0 +1,9 @@
+#!/bin/sh -e
+
+SEMVER_REGEX="([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?"
+CHANGELOG_VERSION=$(grep -o -E $SEMVER_REGEX docs/release-notes.md | head -1)
+VERSION=$(grep -o -E $SEMVER_REGEX starlette/__init__.py | head -1)
+if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
+    echo "Version in changelog does not match version in starlette/__init__.py!"
+    exit 1
+fi

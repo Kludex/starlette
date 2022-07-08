@@ -8,6 +8,7 @@ export SOURCE_FILES="starlette tests"
 
 set -x
 
+./scripts/sync-version
 ${PREFIX}isort --check --diff --project=starlette $SOURCE_FILES
 ${PREFIX}black --check --diff $SOURCE_FILES
 ${PREFIX}flake8 $SOURCE_FILES

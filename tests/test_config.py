@@ -1,10 +1,42 @@
 import os
 from pathlib import Path
+from typing import Any, Optional
 
 import pytest
+from typing_extensions import assert_type
 
 from starlette.config import Config, Environ, EnvironError
 from starlette.datastructures import URL, Secret
+
+
+def test_config_types() -> None:
+    """
+    We use `assert_type` to test the types returned by Config via mypy.
+    """
+    config = Config(
+        environ={"STR": "some_str_value", "STR_CAST": "some_str_value", "BOOL": "true"}
+    )
+
+    assert_type(config("STR"), str)
+    assert_type(config("STR_DEFAULT", default=""), str)
+    assert_type(config("STR_CAST", cast=str), str)
+    assert_type(config("STR_NONE", default=None), Optional[str])
+    assert_type(config("STR_CAST_NONE", cast=str, default=None), Optional[str])
+    assert_type(config("STR_CAST_STR", cast=str, default=""), str)
+
+    assert_type(config("BOOL", cast=bool), bool)
+    assert_type(config("BOOL_DEFAULT", cast=bool, default=False), bool)
+    assert_type(config("BOOL_NONE", cast=bool, default=None), Optional[bool])
+
+    def cast_to_int(v: Any) -> int:
+        return int(v)
+
+    # our type annotations allow these `cast` and `default` configurations, but
+    # the code will error at runtime.
+    with pytest.raises(ValueError):
+        config("INT_CAST_DEFAULT_STR", cast=cast_to_int, default="true")
+    with pytest.raises(ValueError):
+        config("INT_DEFAULT_STR", cast=int, default="true")
 
 
 def test_config(tmpdir, monkeypatch):
@@ -27,6 +59,7 @@ def test_config(tmpdir, monkeypatch):
     DATABASE_URL = config("DATABASE_URL", cast=URL)
     REQUEST_TIMEOUT = config("REQUEST_TIMEOUT", cast=int, default=10)
     REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
+    MAIL_HOSTNAME = config("MAIL_HOSTNAME", default=None)
     SECRET_KEY = config("SECRET_KEY", cast=Secret)
     UNSET_SECRET = config("UNSET_SECRET", cast=Secret, default=None)
     EMPTY_SECRET = config("EMPTY_SECRET", cast=Secret, default="")
@@ -40,6 +73,7 @@ def test_config(tmpdir, monkeypatch):
     assert DATABASE_URL.username == "user"
     assert REQUEST_TIMEOUT == 10
     assert REQUEST_HOSTNAME == "example.com"
+    assert MAIL_HOSTNAME is None
     assert repr(SECRET_KEY) == "Secret('**********')"
     assert str(SECRET_KEY) == "12345"
     assert bool(SECRET_KEY)

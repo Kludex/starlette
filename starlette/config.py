@@ -62,6 +62,12 @@ class Config:
 
     @typing.overload
     def __call__(
+        self, key: str, *, default: None
+    ) -> typing.Optional[str]:  # pragma: no cover
+        ...
+
+    @typing.overload
+    def __call__(
         self, key: str, cast: typing.Type[T], default: T = ...
     ) -> T:  # pragma: no cover
         ...

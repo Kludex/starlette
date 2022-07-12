@@ -9,7 +9,7 @@ databases[sqlite]==0.5.5
 flake8==3.9.2
 isort==5.10.1
 mypy==0.961
-typing_extensions==4.2.0
+typing_extensions==4.3.0
 types-requests==2.26.3
 types-contextvars==2.4.7
 types-PyYAML==6.0.4

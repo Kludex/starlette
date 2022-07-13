@@ -178,6 +178,8 @@ You can customise the error response sent when a `AuthenticationError` is
 raised by an auth backend:
 
 ```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -186,5 +188,9 @@ from starlette.responses import JSONResponse
 def on_auth_error(request: Request, exc: Exception):
     return JSONResponse({"error": str(exc)}, status_code=401)
 
-app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend(), on_error=on_auth_error)
+app = Starlette(
+    middleware=[
+        Middleware(AuthenticationMiddleware, backend=BasicAuthBackend(), on_error=on_auth_error),
+    ],
+)
 ```

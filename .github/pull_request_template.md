@@ -1,4 +1,4 @@
-The starting point for contributions should usually be [a discussion](https://github.com/encode/httpx/discussions)
+The starting point for contributions should usually be [a discussion](https://github.com/encode/starlette/discussions)
 
 Simple documentation typos may be raised as stand-alone pull requests, but otherwise please ensure you've discussed your proposal prior to issuing a pull request.
 

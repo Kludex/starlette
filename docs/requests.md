@@ -144,8 +144,8 @@ contents = await form["upload_file"].read()
 
 !!! info
     As settled in [RFC-7578: 4.2](https://www.ietf.org/rfc/rfc7578.txt), form-data content part that contains file 
-    assumed to have `name` and `filename` fields in `Content-Disposition` header: `Content-Disposition: form-
-    data; name="user"; filename="somefile"`. Though `filename` field is optional according to RFC-7578, it helps 
+    assumed to have `name` and `filename` fields in `Content-Disposition` header: `Content-Disposition: form-data;
+    name="user"; filename="somefile"`. Though `filename` field is optional according to RFC-7578, it helps 
     Starlette to differentiate which data should be treated as file. If `filename` field was supplied, `UploadFile` 
     object will be created to access underlying file, otherwise form-data part will be parsed and available as a raw 
     string.

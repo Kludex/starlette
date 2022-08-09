@@ -52,6 +52,8 @@ markdown_extensions:
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true 
 
 extra_javascript:
   - 'js/chat.js'

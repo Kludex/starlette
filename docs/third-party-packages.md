@@ -130,6 +130,13 @@ FastAPI style routing for Starlette.
 
 Allows you to use decorators to generate routing tables.
 
+### Starception
+    
+<a href="https://github.com/alex-oleshkevich/starception" target="_blank">GitHub</a>
+
+Beautiful exception page for Starlette apps.
+
+
 ## Frameworks
 
 ### FastAPI

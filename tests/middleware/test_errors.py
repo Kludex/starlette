@@ -57,7 +57,11 @@ def test_debug_after_response_sent(test_client_factory):
         client.get("/")
 
 
-def test_debug_websocket(test_client_factory):
+def test_debug_not_http(test_client_factory):
+    """
+    DebugMiddleware should just pass through any non-http messages as-is.
+    """
+
     async def app(scope, receive, send):
         raise RuntimeError("Something went wrong")
 

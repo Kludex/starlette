@@ -8,8 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-
-from ..websockets import WebSocket
+from starlette.websockets import WebSocket
 
 STYLES = """
 p {

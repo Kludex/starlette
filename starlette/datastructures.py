@@ -540,12 +540,6 @@ class Headers(typing.Mapping[str, str]):
             for key, value in self._list
         ]
 
-    def get(self, key: str, default: typing.Any = None) -> typing.Any:
-        try:
-            return self[key]
-        except KeyError:
-            return default
-
     def getlist(self, key: str) -> typing.List[str]:
         get_header_key = key.lower().encode("latin-1")
         return [

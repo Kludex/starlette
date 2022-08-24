@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "starlette"
+dynamic = ["version"]
+description = "The little ASGI library that shines."
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.7"
+authors = [
+    { name = "Tom Christie", email = "tom@tomchristie.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: AnyIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+    "anyio>=3.4.0,<5",
+    "typing_extensions>=3.10.0; python_version < '3.10'",
+]
+
+[project.optional-dependencies]
+full = [
+    "itsdangerous",
+    "jinja2",
+    "python-multipart",
+    "pyyaml",
+    "requests",
+]
+
+[project.urls]
+Homepage = "https://github.com/encode/starlette"
+
+[tool.hatch.version]
+path = "starlette/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/starlette",
+]

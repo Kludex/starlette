@@ -190,7 +190,10 @@ To implement a middleware class using `BaseHTTPMiddleware`, you must override th
 `async def dispatch(request, call_next)` method.
 
 ```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
+
 
 class CustomHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

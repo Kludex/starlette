@@ -2,7 +2,7 @@ import warnings
 
 import pytest
 
-from starlette.exceptions import HTTPException
+from starlette.exceptions import HTTPException, WebSocketException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router, WebSocketRoute
@@ -119,7 +119,7 @@ def test_force_500_response(test_client_factory):
     assert response.text == ""
 
 
-def test_repr():
+def test_http_repr():
     assert repr(HTTPException(404)) == (
         "HTTPException(status_code=404, detail='Not Found')"
     )
@@ -132,6 +132,20 @@ def test_repr():
 
     assert repr(CustomHTTPException(500, detail="Something custom")) == (
         "CustomHTTPException(status_code=500, detail='Something custom')"
+    )
+
+
+def test_websocket_repr():
+    assert repr(WebSocketException(1008, reason="Policy Violation")) == (
+        "WebSocketException(code=1008, reason='Policy Violation')"
+    )
+
+    class CustomWebSocketException(WebSocketException):
+        pass
+
+    assert (
+        repr(CustomWebSocketException(1013, reason="Something custom"))
+        == "CustomWebSocketException(code=1013, reason='Something custom')"
     )
 
 

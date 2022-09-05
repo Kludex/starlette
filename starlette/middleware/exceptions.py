@@ -2,10 +2,11 @@ import typing
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
-from starlette.exceptions import HTTPException
+from starlette.exceptions import HTTPException, WebSocketException
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.websockets import WebSocket
 
 
 class ExceptionMiddleware:
@@ -22,7 +23,10 @@ class ExceptionMiddleware:
         self._status_handlers: typing.Dict[int, typing.Callable] = {}
         self._exception_handlers: typing.Dict[
             typing.Type[Exception], typing.Callable
-        ] = {HTTPException: self.http_exception}
+        ] = {
+            HTTPException: self.http_exception,
+            WebSocketException: self.websocket_exception,
+        }
         if handlers is not None:
             for key, value in handlers.items():
                 self.add_exception_handler(key, value)
@@ -47,7 +51,7 @@ class ExceptionMiddleware:
         return None
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
 
@@ -78,12 +82,19 @@ class ExceptionMiddleware:
                 msg = "Caught handled exception, but response already started."
                 raise RuntimeError(msg) from exc
 
-            request = Request(scope, receive=receive)
-            if is_async_callable(handler):
-                response = await handler(request, exc)
-            else:
-                response = await run_in_threadpool(handler, request, exc)
-            await response(scope, receive, sender)
+            if scope["type"] == "http":
+                request = Request(scope, receive=receive)
+                if is_async_callable(handler):
+                    response = await handler(request, exc)
+                else:
+                    response = await run_in_threadpool(handler, request, exc)
+                await response(scope, receive, sender)
+            elif scope["type"] == "websocket":
+                websocket = WebSocket(scope, receive=receive, send=send)
+                if is_async_callable(handler):
+                    await handler(websocket, exc)
+                else:
+                    await run_in_threadpool(handler, websocket, exc)
 
     def http_exception(self, request: Request, exc: HTTPException) -> Response:
         if exc.status_code in {204, 304}:
@@ -91,3 +102,8 @@ class ExceptionMiddleware:
         return PlainTextResponse(
             exc.detail, status_code=exc.status_code, headers=exc.headers
         )
+
+    async def websocket_exception(
+        self, websocket: WebSocket, exc: WebSocketException
+    ) -> None:
+        await websocket.close(code=exc.code, reason=exc.reason)

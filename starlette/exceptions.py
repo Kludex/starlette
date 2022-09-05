@@ -2,7 +2,7 @@ import http
 import typing
 import warnings
 
-__all__ = ("HTTPException",)
+__all__ = ("HTTPException", "WebSocketException")
 
 
 class HTTPException(Exception):
@@ -21,6 +21,16 @@ class HTTPException(Exception):
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
         return f"{class_name}(status_code={self.status_code!r}, detail={self.detail!r})"
+
+
+class WebSocketException(Exception):
+    def __init__(self, code: int, reason: typing.Optional[str] = None) -> None:
+        self.code = code
+        self.reason = reason or ""
+
+    def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        return f"{class_name}(code={self.code!r}, reason={self.reason!r})"
 
 
 __deprecated__ = "ExceptionMiddleware"

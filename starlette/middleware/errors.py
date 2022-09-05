@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.websockets import WebSocket
 
 STYLES = """
 p {
@@ -145,7 +146,7 @@ class ServerErrorMiddleware:
         self.debug = debug
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
 
@@ -161,22 +162,31 @@ class ServerErrorMiddleware:
         try:
             await self.app(scope, receive, _send)
         except Exception as exc:
-            request = Request(scope)
-            if self.debug:
-                # In debug mode, return traceback responses.
-                response = self.debug_response(request, exc)
-            elif self.handler is None:
-                # Use our default 500 error handler.
-                response = self.error_response(request, exc)
-            else:
-                # Use an installed 500 error handler.
-                if is_async_callable(self.handler):
-                    response = await self.handler(request, exc)
+            if scope["type"] == "http":
+                request = Request(scope)
+                if self.debug:
+                    # In debug mode, return traceback responses.
+                    response = self.debug_response(request, exc)
+                elif self.handler is None:
+                    # Use our default 500 error handler.
+                    response = self.error_response(request, exc)
                 else:
-                    response = await run_in_threadpool(self.handler, request, exc)
+                    # Use an installed 500 error handler.
+                    if is_async_callable(self.handler):
+                        response = await self.handler(request, exc)
+                    else:
+                        response = await run_in_threadpool(self.handler, request, exc)
 
-            if not response_started:
-                await response(scope, receive, send)
+                if not response_started:
+                    await response(scope, receive, send)
+            elif scope["type"] == "websocket":
+                if self.handler is not None:
+                    websocket = WebSocket(scope, receive, send)
+
+                    if is_async_callable(self.handler):
+                        await self.handler(websocket, exc)
+                    else:
+                        await run_in_threadpool(self.handler, websocket, exc)
 
             # We always continue to raise the exception.
             # This allows servers to log the error, or allows test clients

@@ -9,7 +9,6 @@ from starlette.formparsers import MultiPartException, UploadFile, _user_safe_dec
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
-from starlette.testclient import TestClient
 
 
 class ForceMultipartDict(dict):
@@ -114,7 +113,7 @@ def test_multipart_request_files(tmpdir, test_client_factory):
             "test": {
                 "filename": "test.txt",
                 "content": "<file content>",
-                "content_type": "",
+                "content_type": "text/plain",
             }
         }
 
@@ -154,7 +153,7 @@ def test_multipart_request_multiple_files(tmpdir, test_client_factory):
             "test1": {
                 "filename": "test1.txt",
                 "content": "<file1 content>",
-                "content_type": "",
+                "content_type": "text/plain",
             },
             "test2": {
                 "filename": "test2.txt",
@@ -193,8 +192,8 @@ def test_multipart_request_multiple_files_with_headers(tmpdir, test_client_facto
                         "content-disposition",
                         'form-data; name="test2"; filename="test2.txt"',
                     ],
-                    ["content-type", "text/plain"],
                     ["x-custom", "f2"],
+                    ["content-type", "text/plain"],
                 ],
             },
         }
@@ -213,7 +212,7 @@ def test_multi_items(tmpdir, test_client_factory):
     with open(path1, "rb") as f1, open(path2, "rb") as f2:
         response = client.post(
             "/",
-            data=[("test1", "abc")],
+            data={"test1": "abc"},
             files=[("test1", f1), ("test1", ("test2.txt", f2, "text/plain"))],
         )
         assert response.json() == {
@@ -222,7 +221,7 @@ def test_multi_items(tmpdir, test_client_factory):
                 {
                     "filename": "test1.txt",
                     "content": "<file1 content>",
-                    "content_type": "",
+                    "content_type": "text/plain",
                 },
                 {
                     "filename": "test2.txt",
@@ -401,9 +400,7 @@ def test_user_safe_decode_ignores_wrong_charset():
         (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
     ],
 )
-def test_missing_boundary_parameter(
-    app, expectation, test_client_factory: typing.Callable[..., TestClient]
-) -> None:
+def test_missing_boundary_parameter(app, expectation, test_client_factory) -> None:
     client = test_client_factory(app)
     with expectation:
         res = client.post(
@@ -428,7 +425,7 @@ def test_missing_boundary_parameter(
     ],
 )
 def test_missing_name_parameter_on_content_disposition(
-    app, expectation, test_client_factory: typing.Callable[..., TestClient]
+    app, expectation, test_client_factory
 ):
     client = test_client_factory(app)
     with expectation:

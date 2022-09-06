@@ -5,6 +5,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
+from starlette.testclient import TestClient
 
 
 def view_session(request):
@@ -74,7 +75,8 @@ def test_session_expires(test_client_factory):
     expired_session_match = re.search(r"session=([^;]*);", expired_cookie_header)
     assert expired_session_match is not None
     expired_session_value = expired_session_match[1]
-    response = client.get("/view_session", cookies={"session": expired_session_value})
+    client = test_client_factory(app, cookies={"session": expired_session_value})
+    response = client.get("/view_session")
     assert response.json() == {"session": {}}
 
 
@@ -128,7 +130,8 @@ def test_session_cookie_subpath(test_client_factory):
     )
     app = Starlette(routes=[Mount("/second_app", app=second_app)])
     client = test_client_factory(app, base_url="http://testserver/second_app")
-    response = client.post("second_app/update_session", json={"some": "data"})
+    response = client.post("/second_app/update_session", json={"some": "data"})
+    assert response.status_code == 200
     cookie = response.headers["set-cookie"]
     cookie_path_match = re.search(r"; path=(\S+);", cookie)
     assert cookie_path_match is not None
@@ -150,7 +153,8 @@ def test_invalid_session_cookie(test_client_factory):
     assert response.json() == {"session": {"some": "data"}}
 
     # we expect it to not raise an exception if we provide a bogus session cookie
-    response = client.get("/view_session", cookies={"session": "invalid"})
+    client = test_client_factory(app, cookies={"session": "invalid"})
+    response = client.get("/view_session")
     assert response.json() == {"session": {}}
 
 
@@ -162,7 +166,7 @@ def test_session_cookie(test_client_factory):
         ],
         middleware=[Middleware(SessionMiddleware, secret_key="example", max_age=None)],
     )
-    client = test_client_factory(app)
+    client: TestClient = test_client_factory(app)
 
     response = client.post("/update_session", json={"some": "data"})
     assert response.json() == {"session": {"some": "data"}}
@@ -171,6 +175,6 @@ def test_session_cookie(test_client_factory):
     set_cookie = response.headers["set-cookie"]
     assert "Max-Age" not in set_cookie
 
-    client.cookies.clear_session_cookies()
+    client.cookies.delete("session")
     response = client.get("/view_session")
     assert response.json() == {"session": {}}

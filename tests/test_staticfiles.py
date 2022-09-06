@@ -171,7 +171,7 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir):
         file.write("outside root dir")
 
     app = StaticFiles(directory=directory)
-    # We can't test this with 'requests', so we test the app directly here.
+    # We can't test this with 'httpx', so we test the app directly here.
     path = app.get_path({"path": "/../example.txt"})
     scope = {"method": "GET"}
 

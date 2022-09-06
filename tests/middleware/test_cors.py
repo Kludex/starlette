@@ -279,8 +279,11 @@ def test_cors_allow_all_methods(test_client_factory):
 
     headers = {"Origin": "https://example.org"}
 
-    for method in ("delete", "get", "head", "options", "patch", "post", "put"):
+    for method in ("patch", "post", "put"):
         response = getattr(client, method)("/", headers=headers, json={})
+        assert response.status_code == 200
+    for method in ("delete", "get", "head", "options"):
+        response = getattr(client, method)("/", headers=headers)
         assert response.status_code == 200
 
 

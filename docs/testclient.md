@@ -1,6 +1,6 @@
 
 The test client allows you to make requests against your ASGI application,
-using the `requests` library.
+using the `httpx` library.
 
 ```python
 from starlette.responses import HTMLResponse
@@ -19,11 +19,11 @@ def test_app():
     assert response.status_code == 200
 ```
 
-The test client exposes the same interface as any other `requests` session.
+The test client exposes the same interface as any other `httpx` session.
 In particular, note that the calls to make a request are just standard
 function calls, not awaitables.
 
-You can use any of `requests` standard API, such as authentication, session
+You can use any of `httpx` standard API, such as authentication, session
 cookies handling, or file uploads.
 
 For example, to set headers on the TestClient you can do:
@@ -96,7 +96,7 @@ def test_app()
 
 You can also test websocket sessions with the test client.
 
-The `requests` library will be used to build the initial handshake, meaning you
+The `httpx` library will be used to build the initial handshake, meaning you
 can use the same authentication options and other headers between both http and
 websocket testing.
 
@@ -129,7 +129,7 @@ always raised by the test client.
 
 #### Establishing a test session
 
-* `.websocket_connect(url, subprotocols=None, **options)` - Takes the same set of arguments as `requests.get()`.
+* `.websocket_connect(url, subprotocols=None, **options)` - Takes the same set of arguments as `httpx.get()`.
 
 May raise `starlette.websockets.WebSocketDisconnect` if the application does not accept the websocket connection.
 

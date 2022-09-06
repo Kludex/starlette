@@ -30,7 +30,7 @@ It is production-ready, and gives you the following:
 * WebSocket support.
 * In-process background tasks.
 * Startup and shutdown events.
-* Test client built on `requests`.
+* Test client built on `httpx`.
 * CORS, GZip, Static Files, Streaming responses.
 * Session and Cookie support.
 * 100% test coverage.
@@ -87,7 +87,7 @@ For a more complete example, see [encode/starlette-example](https://github.com/e
 
 Starlette only requires `anyio`, and the following are optional:
 
-* [`requests`][requests] - Required if you want to use the `TestClient`.
+* [`httpx`][httpx] - Required if you want to use the `TestClient`.
 * [`jinja2`][jinja2] - Required if you want to use `Jinja2Templates`.
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
@@ -134,7 +134,7 @@ in isolation.
 <p align="center"><i>Starlette is <a href="https://github.com/encode/starlette/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
 
 [asgi]: https://asgi.readthedocs.io/en/latest/
-[requests]: http://docs.python-requests.org/en/master/
+[httpx]: https://www.python-httpx.org/
 [jinja2]: http://jinja.pocoo.org/
 [python-multipart]: https://andrew-d.github.io/python-multipart/
 [itsdangerous]: https://pythonhosted.org/itsdangerous/

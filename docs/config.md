@@ -224,9 +224,6 @@ def client():
     """
     # Our fixture is created within a context manager. This ensures that
     # application startup and shutdown run for every test case.
-    #
-    # Because we've configured the DatabaseMiddleware with `rollback_on_shutdown`
-    # we'll get a complete rollback to the initial state after each test case runs.
     with TestClient(app) as test_client:
         yield test_client
 ```

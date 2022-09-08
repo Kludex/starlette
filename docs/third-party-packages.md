@@ -136,6 +136,17 @@ Allows you to use decorators to generate routing tables.
 
 Beautiful exception page for Starlette apps.
 
+### Starlette-Admin
+
+<a href="https://github.com/jowilf/starlette-admin" target="_blank">GitHub</a> |
+<a href="https://jowilf.github.io/starlette-admin" target="_blank">Documentation</a>
+
+Simple and extensible admin interface framework.
+
+Built with [Tabler](https://tabler.io/) and [Datatables](https://datatables.net/), it allows you 
+to quickly generate fully customizable admin interface for your models. You can export your data to many formats (*CSV*, *PDF*,
+*Excel*, etc), filter your data with complex query including `AND` and `OR` conditions,  upload files, ...
+
 
 ## Frameworks
 

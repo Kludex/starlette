@@ -686,6 +686,41 @@ to use the `middleware=<List of Middleware instances>` style, as it will:
 * Ensure that everything remains wrapped in a single outermost `ServerErrorMiddleware`.
 * Preserves the top-level `app` instance.
 
+## Applying middleware to `Mount`s
+
+Middleware can also be added to `Mount`, which allows you to apply middleware to a single route, a group of routes or any mounted ASGI application:
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.routing import Mount, Route
+
+
+routes = [
+    Mount(
+        "/",
+        routes=[
+            Route(
+                "/example",
+                endpoint=...,
+            )
+        ],
+        middleware=[Middleware(GZipMiddleware)]
+    )
+]
+
+app = Starlette(routes=routes)
+```
+
+Note that middleware used in this way is *not* wrapped in exception handling middleware like the middleware applied to the `Starlette` application is.
+This is often not a problem because it only applies to middleware that inspect or modify the `Response`, and even then you probably don't want to apply this logic to error responses.
+If you do want to apply the middleware logic to error responses only on some routes you have a couple of options:
+
+* Add an `ExceptionMiddleware` onto the `Mount`
+* Add a `try/except` block to your middleware and return an error response from there
+* Split up marking and processing into two middlewares, one that gets put on `Mount` which marks the response as needing processing (for example by setting `scope["log-response"] = True`) and another applied to the `Starlette` application that does the heavy lifting.
+
 ## Third party middleware
 
 #### [asgi-auth-github](https://github.com/simonw/asgi-auth-github)

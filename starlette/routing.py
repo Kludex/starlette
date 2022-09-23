@@ -283,6 +283,12 @@ class Route(BaseRoute):
             and self.methods == other.methods
         )
 
+    def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        methods = sorted(self.methods or [])
+        path, name = self.path, self.name
+        return f"{class_name}(path={path!r}, name={name!r}, methods={methods!r})"
+
 
 class WebSocketRoute(BaseRoute):
     def __init__(
@@ -340,6 +346,9 @@ class WebSocketRoute(BaseRoute):
             and self.path == other.path
             and self.endpoint == other.endpoint
         )
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(path={self.path!r}, name={self.name!r})"
 
 
 class Mount(BaseRoute):
@@ -440,6 +449,11 @@ class Mount(BaseRoute):
             and self.app == other.app
         )
 
+    def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        name = self.name or ""
+        return f"{class_name}(path={self.path!r}, name={name!r}, app={self.app!r})"
+
 
 class Host(BaseRoute):
     def __init__(
@@ -506,6 +520,11 @@ class Host(BaseRoute):
             and self.host == other.host
             and self.app == other.app
         )
+
+    def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        name = self.name or ""
+        return f"{class_name}(host={self.host!r}, name={name!r}, app={self.app!r})"
 
 
 _T = typing.TypeVar("_T")

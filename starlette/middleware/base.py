@@ -4,12 +4,13 @@ import anyio
 
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
 DispatchFunction = typing.Callable[
     [Request, RequestResponseEndpoint], typing.Awaitable[Response]
 ]
+T = typing.TypeVar("T")
 
 
 class BaseHTTPMiddleware:
@@ -24,19 +25,52 @@ class BaseHTTPMiddleware:
             await self.app(scope, receive, send)
             return
 
+        response_sent = anyio.Event()
+
         async def call_next(request: Request) -> Response:
             app_exc: typing.Optional[Exception] = None
             send_stream, recv_stream = anyio.create_memory_object_stream()
+
+            async def receive_or_disconnect() -> Message:
+                if response_sent.is_set():
+                    return {"type": "http.disconnect"}
+
+                async with anyio.create_task_group() as task_group:
+
+                    async def wrap(func: typing.Callable[[], typing.Awaitable[T]]) -> T:
+                        result = await func()
+                        task_group.cancel_scope.cancel()
+                        return result
+
+                    task_group.start_soon(wrap, response_sent.wait)
+                    message = await wrap(request.receive)
+
+                if response_sent.is_set():
+                    return {"type": "http.disconnect"}
+
+                return message
+
+            async def close_recv_stream_on_response_sent() -> None:
+                await response_sent.wait()
+                recv_stream.close()
+
+            async def send_no_error(message: Message) -> None:
+                try:
+                    await send_stream.send(message)
+                except anyio.BrokenResourceError:
+                    # recv_stream has been closed, i.e. response_sent has been set.
+                    return
 
             async def coro() -> None:
                 nonlocal app_exc
 
                 async with send_stream:
                     try:
-                        await self.app(scope, request.receive, send_stream.send)
+                        await self.app(scope, receive_or_disconnect, send_no_error)
                     except Exception as exc:
                         app_exc = exc
 
+            task_group.start_soon(close_recv_stream_on_response_sent)
             task_group.start_soon(coro)
 
             try:
@@ -71,7 +105,7 @@ class BaseHTTPMiddleware:
             request = Request(scope, receive=receive)
             response = await self.dispatch_func(request, call_next)
             await response(scope, receive, send)
-            task_group.cancel_scope.cancel()
+            response_sent.set()
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint

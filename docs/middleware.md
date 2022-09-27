@@ -114,6 +114,7 @@ requests to `http` or `ws` will be redirected to the secure scheme instead.
 
 ```python
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 routes = ...

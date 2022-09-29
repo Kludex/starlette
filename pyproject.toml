@@ -43,6 +43,10 @@ full = [
 
 [project.urls]
 Homepage = "https://github.com/encode/starlette"
+Documentation = "https://www.starlette.io/"
+Changelog = "https://www.starlette.io/release-notes/"
+Funding = "https://github.com/sponsors/encode"
+Source = "https://github.com/encode/starlette"
 
 [tool.hatch.version]
 path = "starlette/__init__.py"

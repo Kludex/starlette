@@ -167,7 +167,7 @@ July 19, 2021
  * The ClassVar `starlette.testclient.TestClient.async_backend` was removed,
    the backend is now configured using constructor kwargs
    [#1211](https://github.com/encode/starlette/pull/1211)
- * Passing an Async Generator Function or a Generator Function to `starlette.router.Router(lifespan_context=)` is deprecated. You should wrap your lifespan in `@contextlib.asynccontextmanager`.
+ * Passing an Async Generator Function or a Generator Function to `starlette.routing.Router(lifespan=)` is deprecated. You should wrap your lifespan in `@contextlib.asynccontextmanager`.
    [#1227](https://github.com/encode/starlette/pull/1227)
    [#1110](https://github.com/encode/starlette/pull/1110)
 

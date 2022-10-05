@@ -17,7 +17,7 @@ try:
     else:  # pragma: nocover
         pass_context = jinja2.contextfunction  # type: ignore[attr-defined]
 except ImportError:  # pragma: nocover
-    jinja2 = None  # type: ignore
+    jinja2 = None  # type: ignore[assignment]
 
 
 class _TemplateResponse(Response):

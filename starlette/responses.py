@@ -23,7 +23,7 @@ else:  # pragma: no cover
     from typing_extensions import Literal
 
 # Workaround for adding samesite support to pre 3.8 python
-http.cookies.Morsel._reserved["samesite"] = "SameSite"  # type: ignore
+http.cookies.Morsel._reserved["samesite"] = "SameSite"  # type: ignore[attr-defined]
 
 
 # Compatibility wrapper for `mimetypes.guess_type` to support `os.PathLike` on <py3.8

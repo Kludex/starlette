@@ -9,7 +9,7 @@ from starlette.routing import BaseRoute, Mount, Route
 try:
     import yaml
 except ImportError:  # pragma: nocover
-    yaml = None  # type: ignore
+    yaml = None  # type: ignore[assignment]
 
 
 class OpenAPIResponse(Response):

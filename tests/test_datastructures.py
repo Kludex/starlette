@@ -201,9 +201,9 @@ def test_mutable_headers_update_dict():
 def test_mutable_headers_merge_not_mapping():
     h = MutableHeaders()
     with pytest.raises(TypeError):
-        h |= {"not_mapping"}  # type: ignore
+        h |= {"not_mapping"}  # type: ignore[arg-type]
     with pytest.raises(TypeError):
-        h | {"not_mapping"}  # type: ignore
+        h | {"not_mapping"}  # type: ignore[operator]
 
 
 def test_headers_mutablecopy():

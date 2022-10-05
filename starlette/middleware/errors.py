@@ -198,7 +198,9 @@ class ServerErrorMiddleware:
 
     def generate_frame_html(self, frame: inspect.FrameInfo, is_collapsed: bool) -> str:
         code_context = "".join(
-            self.format_line(index, line, frame.lineno, frame.index)  # type: ignore
+            self.format_line(
+                index, line, frame.lineno, frame.index  # type: ignore[arg-type]
+            )
             for index, line in enumerate(frame.code_context or [])
         )
 

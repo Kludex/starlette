@@ -16,4 +16,3 @@ else
 fi
 
 "$PIP" install -r "$REQUIREMENTS"
-"$PIP" install -e .

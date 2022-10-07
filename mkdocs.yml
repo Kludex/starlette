@@ -17,10 +17,12 @@ theme:
       toggle:
         icon: 'material/lightbulb-outline'
         name: 'Switch to light mode'
+  icon:
+    repo: fontawesome/brands/github
 
 repo_name: encode/starlette
 repo_url: https://github.com/encode/starlette
-edit_uri: ""
+edit_uri: edit/master/docs/
 
 nav:
   - Introduction: 'index.md'

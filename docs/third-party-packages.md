@@ -209,3 +209,9 @@ A flexible and extendable web framework built on top of Starlette, Pydantic and 
 An extension to integrate Swagger/OpenAPI document easily for Starlette project and provide [SwaggerUI](http://swagger.io/swagger-ui/) and [RedocUI](https://rebilly.github.io/ReDoc/).
 
 <a href="https://github.com/strongbugman/apiman" target="_blank">GitHub</a>
+
+### Starlette-Babel
+
+Provides translations, localization, and timezone support via Babel integration.
+
+<a href="https://github.com/alex-oleshkevich/starlette_babel" target="_blank">GitHub</a>

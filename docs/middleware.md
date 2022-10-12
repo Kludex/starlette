@@ -180,6 +180,8 @@ The following arguments are supported:
 
 * `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
 
+The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being encoded twice.
+
 ## BaseHTTPMiddleware
 
 An abstract class that allows you to write ASGI middleware against a request/response

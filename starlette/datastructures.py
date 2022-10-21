@@ -595,7 +595,7 @@ class MutableHeaders(Headers):
         set_key = key.lower().encode("latin-1")
         set_value = value.encode("latin-1")
 
-        found_indexes = []
+        found_indexes: "typing.List[int]" = []
         for idx, (item_key, item_value) in enumerate(self._list):
             if item_key == set_key:
                 found_indexes.append(idx)
@@ -615,7 +615,7 @@ class MutableHeaders(Headers):
         """
         del_key = key.lower().encode("latin-1")
 
-        pop_indexes = []
+        pop_indexes: "typing.List[int]" = []
         for idx, (item_key, item_value) in enumerate(self._list):
             if item_key == del_key:
                 pop_indexes.append(idx)
@@ -623,13 +623,13 @@ class MutableHeaders(Headers):
         for idx in reversed(pop_indexes):
             del self._list[idx]
 
-    def __ior__(self, other: typing.Mapping) -> "MutableHeaders":
+    def __ior__(self, other: typing.Mapping[str, str]) -> "MutableHeaders":
         if not isinstance(other, typing.Mapping):
             raise TypeError(f"Expected a mapping but got {other.__class__.__name__}")
         self.update(other)
         return self
 
-    def __or__(self, other: typing.Mapping) -> "MutableHeaders":
+    def __or__(self, other: typing.Mapping[str, str]) -> "MutableHeaders":
         if not isinstance(other, typing.Mapping):
             raise TypeError(f"Expected a mapping but got {other.__class__.__name__}")
         new = self.mutablecopy()
@@ -654,7 +654,7 @@ class MutableHeaders(Headers):
         self._list.append((set_key, set_value))
         return value
 
-    def update(self, other: typing.Mapping) -> None:
+    def update(self, other: typing.Mapping[str, str]) -> None:
         for key, val in other.items():
             self[key] = val
 

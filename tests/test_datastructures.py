@@ -214,6 +214,16 @@ def test_headers_mutablecopy():
     assert c.items() == [("a", "abc"), ("b", "789")]
 
 
+def test_mutable_headers_from_scope():
+    # "headers" in scope must not necessarily be a list
+    h = MutableHeaders(scope={"headers": ((b"a", b"1"),)})
+    assert dict(h) == {"a": "1"}
+    h.update({"b": "2"})
+    assert dict(h) == {"a": "1", "b": "2"}
+    assert list(h.items()) == [("a", "1"), ("b", "2")]
+    assert list(h.raw) == [(b"a", b"1"), (b"b", b"2")]
+
+
 def test_url_blank_params():
     q = QueryParams("a=123&abc&def&b=456")
     assert "a" in q

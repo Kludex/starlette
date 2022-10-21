@@ -508,7 +508,7 @@ class Headers(typing.Mapping[str, str]):
         self,
         headers: typing.Optional[typing.Mapping[str, str]] = None,
         raw: typing.Optional[typing.List[typing.Tuple[bytes, bytes]]] = None,
-        scope: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+        scope: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
     ) -> None:
         self._list: typing.List[typing.Tuple[bytes, bytes]] = []
         if headers is not None:
@@ -522,7 +522,9 @@ class Headers(typing.Mapping[str, str]):
             assert scope is None, 'Cannot set both "raw" and "scope".'
             self._list = raw
         elif scope is not None:
-            self._list = scope["headers"]
+            # scope["headers"] isn't necessarily a list
+            # it might be a tuple or other iterable
+            self._list = scope["headers"] = list(scope["headers"])
 
     @property
     def raw(self) -> typing.List[typing.Tuple[bytes, bytes]]:

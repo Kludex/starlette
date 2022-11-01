@@ -18,7 +18,7 @@ trio==0.21.0
 
 # Documentation
 mkdocs==1.4.0
-mkdocs-material==8.5.5
+mkdocs-material==8.5.7
 mkautodoc==0.2.0
 
 # Packaging

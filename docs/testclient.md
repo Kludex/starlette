@@ -55,7 +55,7 @@ with open("example.txt", "rb") as f1:
         response = client.post("/form", files=files)
 ```
 
-For more information you can check the `requests` [documentation](https://requests.readthedocs.io/en/master/user/advanced/).
+For more information you can check the `httpx` [documentation](https://www.python-httpx.org/advanced/).
 
 By default the `TestClient` will raise any exceptions that occur in the
 application. Occasionally you might want to test the content of 500 error

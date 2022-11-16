@@ -9,7 +9,7 @@ import trio.lowlevel
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
@@ -240,3 +240,14 @@ def test_client(test_client_factory):
     client = test_client_factory(app)
     response = client.get("/")
     assert response.json() == {"host": "testclient", "port": 50000}
+
+
+@pytest.mark.parametrize("param", ("2020-07-14T00:00:00+00:00", "España", "voilà"))
+def test_query_params(test_client_factory, param: str):
+    def homepage(request):
+        return Response(request.query_params["param"])
+
+    app = Starlette(routes=[Route("/", endpoint=homepage)])
+    client = test_client_factory(app)
+    response = client.get("/", params={"param": param})
+    assert response.text == param

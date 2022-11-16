@@ -196,10 +196,10 @@ class _TestClientTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         scheme = request.url.scheme
-        netloc = unquote(request.url.netloc.decode(encoding="ascii"))
+        netloc = request.url.netloc.decode(encoding="ascii")
         path = request.url.path
         raw_path = request.url.raw_path
-        query = unquote(request.url.query.decode(encoding="ascii"))
+        query = request.url.query.decode(encoding="ascii")
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
 

@@ -86,7 +86,7 @@ def test_gzip_ignored_for_responses_with_encoding_set(test_client_factory):
 
         streaming = generator(bytes=b"x" * 400, count=10)
         return StreamingResponse(
-            streaming, status_code=200, headers={"Content-Encoding": "br"}
+            streaming, status_code=200, headers={"Content-Encoding": "text"}
         )
 
     app = Starlette(
@@ -95,8 +95,8 @@ def test_gzip_ignored_for_responses_with_encoding_set(test_client_factory):
     )
 
     client = test_client_factory(app)
-    response = client.get("/", headers={"accept-encoding": "gzip, br"})
+    response = client.get("/", headers={"accept-encoding": "gzip, text"})
     assert response.status_code == 200
     assert response.text == "x" * 4000
-    assert response.headers["Content-Encoding"] == "br"
+    assert response.headers["Content-Encoding"] == "text"
     assert "Content-Length" not in response.headers

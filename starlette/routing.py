@@ -737,41 +737,15 @@ class Router:
     def __eq__(self, other: typing.Any) -> bool:
         return isinstance(other, Router) and self.routes == other.routes
 
-    # The following usages are now discouraged in favour of configuration
-    #  during Router.__init__(...)
     def mount(
         self, path: str, app: ASGIApp, name: typing.Optional[str] = None
     ) -> None:  # pragma: nocover
-        """
-        We no longer document this API, and its usage is discouraged.
-        Instead you should use the following approach:
-
-        routes = [
-            Mount(path, ...),
-            ...
-        ]
-
-        app = Starlette(routes=routes)
-        """
-
         route = Mount(path, app=app, name=name)
         self.routes.append(route)
 
     def host(
         self, host: str, app: ASGIApp, name: typing.Optional[str] = None
     ) -> None:  # pragma: no cover
-        """
-        We no longer document this API, and its usage is discouraged.
-        Instead you should use the following approach:
-
-        routes = [
-            Host(path, ...),
-            ...
-        ]
-
-        app = Starlette(routes=routes)
-        """
-
         route = Host(host, app=app, name=name)
         self.routes.append(route)
 
@@ -804,18 +778,19 @@ class Router:
         methods: typing.Optional[typing.List[str]] = None,
         name: typing.Optional[str] = None,
         include_in_schema: bool = True,
-    ) -> typing.Callable:  # pragma: nocover
+    ) -> typing.Callable:
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:
 
-        routes = [
-            Route(path, endpoint=..., ...),
-            ...
-        ]
-
-        app = Starlette(routes=routes)
+        >>> routes = [Route(path, endpoint=...), ...]
+        >>> app = Starlette(routes=routes)
         """
+        warnings.warn(
+            "The `route` decorator is deprecated, and will be removed in version 1.0.0."
+            "Refer to https://www.starlette.io/routing/#http-routing for the recommended approach.",  # noqa: E501
+            DeprecationWarning,
+        )
 
         def decorator(func: typing.Callable) -> typing.Callable:
             self.add_route(
@@ -831,18 +806,19 @@ class Router:
 
     def websocket_route(
         self, path: str, name: typing.Optional[str] = None
-    ) -> typing.Callable:  # pragma: nocover
+    ) -> typing.Callable:
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:
 
-        routes = [
-            WebSocketRoute(path, endpoint=..., ...),
-            ...
-        ]
-
-        app = Starlette(routes=routes)
+        >>> routes = [WebSocketRoute(path, endpoint=...), ...]
+        >>> app = Starlette(routes=routes)
         """
+        warnings.warn(
+            "The `websocket_route` decorator is deprecated, and will be removed in version 1.0.0. Refer to "  # noqa: E501
+            "https://www.starlette.io/routing/#websocket-routing for the recommended approach.",  # noqa: E501
+            DeprecationWarning,
+        )
 
         def decorator(func: typing.Callable) -> typing.Callable:
             self.add_websocket_route(path, func, name=name)
@@ -860,7 +836,13 @@ class Router:
         else:
             self.on_shutdown.append(func)
 
-    def on_event(self, event_type: str) -> typing.Callable:  # pragma: nocover
+    def on_event(self, event_type: str) -> typing.Callable:
+        warnings.warn(
+            "The `on_event` decorator is deprecated, and will be removed in version 1.0.0. "  # noqa: E501
+            "Refer to https://www.starlette.io/events/#registering-events for recommended approach.",  # noqa: E501
+            DeprecationWarning,
+        )
+
         def decorator(func: typing.Callable) -> typing.Callable:
             self.add_event_handler(event_type, func)
             return func

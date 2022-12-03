@@ -1020,3 +1020,20 @@ def test_host_named_repr() -> None:
     )
     # test for substring because repr(Router) returns unique object ID
     assert repr(route).startswith("Host(host='example.com', name='app', app=")
+
+
+def test_decorator_deprecations() -> None:
+    router = Router()
+
+    with pytest.deprecated_call():
+        router.route("/")(homepage)
+
+    with pytest.deprecated_call():
+        router.websocket_route("/ws")(websocket_endpoint)
+
+    with pytest.deprecated_call():
+
+        async def startup() -> None:
+            ...  # pragma: nocover
+
+        router.on_event("startup")(startup)

@@ -368,6 +368,7 @@ class TestClient(httpx.Client):
         backend: str = "asyncio",
         backend_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
         cookies: httpx._client.CookieTypes = None,
+        headers: typing.Dict[str, str] = None,
     ) -> None:
         self.async_backend = _AsyncBackend(
             backend=backend, backend_options=backend_options or {}
@@ -385,10 +386,13 @@ class TestClient(httpx.Client):
             raise_server_exceptions=raise_server_exceptions,
             root_path=root_path,
         )
+        if headers is None:
+            headers = {}
+        headers.setdefault("user-agent", "testclient")
         super().__init__(
             app=self.app,
             base_url=base_url,
-            headers={"user-agent": "testclient"},
+            headers=headers,
             transport=transport,
             follow_redirects=True,
             cookies=cookies,

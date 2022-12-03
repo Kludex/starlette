@@ -54,3 +54,17 @@ def test_datetime_convertor(test_client_factory, app: Router):
         app.url_path_for("datetime-convertor", param=datetime(1996, 1, 22, 23, 0, 0))
         == "/datetime/1996-01-22T23:00:00"
     )
+
+
+@pytest.mark.parametrize("param, status_code", [("1.0", 200), ("1-0", 404)])
+def test_default_float_convertor(test_client_factory, param: str, status_code: int):
+    def float_convertor(request):
+        param = request.path_params["param"]
+        assert isinstance(param, float)
+        return JSONResponse({"float": param})
+
+    app = Router(routes=[Route("/{param:float}", endpoint=float_convertor)])
+
+    client = test_client_factory(app)
+    response = client.get(f"/{param}")
+    assert response.status_code == status_code

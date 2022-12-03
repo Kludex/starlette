@@ -51,7 +51,7 @@ class IntegerConvertor(Convertor):
 
 
 class FloatConvertor(Convertor):
-    regex = "[0-9]+(.[0-9]+)?"
+    regex = r"[0-9]+(\.[0-9]+)?"
 
     def convert(self, value: str) -> float:
         return float(value)

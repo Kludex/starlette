@@ -89,8 +89,6 @@ class BaseHTTPMiddleware:
                         body = message.get("body", b"")
                         if body:
                             yield body
-                        if not message.get("more_body", False):
-                            break
 
                 if app_exc is not None:
                     raise app_exc

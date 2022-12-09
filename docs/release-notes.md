@@ -1,3 +1,10 @@
+## 0.23.1
+
+December 9, 2022
+
+### Fixed
+* Only stop receiving stream on `body_stream` if body is empty on the `BaseHTTPMiddleware` [#1940](https://github.com/encode/starlette/pull/1940).
+
 ## 0.23.0
 
 December 5, 2022

@@ -56,6 +56,9 @@ When using the test client, template responses include `.template` and `.context
 attributes.
 
 ```python
+from starlette.testclient import TestClient
+
+
 def test_homepage():
     client = TestClient(app)
     response = client.get("/")

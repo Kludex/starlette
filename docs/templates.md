@@ -1,4 +1,4 @@
-Starlette is not *strictly* coupled to any particular templating engine, but
+Starlette is not _strictly_ coupled to any particular templating engine, but
 Jinja2 provides an excellent choice.
 
 Starlette provides a simple way to get `jinja2` configured. This is probably
@@ -33,7 +33,7 @@ so we can correctly hyperlink to other pages within the application.
 For example, we can link to static files from within our HTML templates:
 
 ```html
-<link href="{{ url_for('static', path='/css/bootstrap.min.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', path='/css/bootstrap.min.css') }}" rel="stylesheet" />
 ```
 
 If you want to use [custom filters][jinja2], you will need to update the `env`
@@ -49,6 +49,42 @@ def marked_filter(text):
 templates = Jinja2Templates(directory='templates')
 templates.env.filters['marked'] = marked_filter
 ```
+
+## Context processors
+
+A context processor is a function that returns a dictionary to be merged into a template context.
+Every function takes only one argument `request` and must return a dictionary to add to the context.
+
+A common use case of template processors is to extend the template context with shared variables.
+
+```python
+import typing
+from starlette.requests import Request
+
+def app_context(request: Request) -> typing.Dict[str, typing.Any]:
+    return {'app': request.app}
+```
+
+### Registering context templates
+
+Pass context processors to `context_processors` argument of the `Jinja2Templates` class.
+
+```python
+import typing
+
+from starlette.requests import Request
+from starlette.templating import Jinja2Templates
+
+def app_context(request: Request) -> typing.Dict[str, typing.Any]:
+    return {'app': request.app}
+
+templates = Jinja2Templates(
+    directory='templates', context_processors=[app_context]
+)
+```
+
+!!! info
+    Asynchronous functions as context processors are not supported.
 
 ## Testing template responses
 

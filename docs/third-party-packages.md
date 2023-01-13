@@ -147,7 +147,6 @@ Built with [Tabler](https://tabler.io/) and [Datatables](https://datatables.net/
 to quickly generate fully customizable admin interface for your models. You can export your data to many formats (*CSV*, *PDF*,
 *Excel*, etc), filter your data with complex query including `AND` and `OR` conditions,  upload files, ...
 
-
 ## Frameworks
 
 ### FastAPI
@@ -157,6 +156,17 @@ to quickly generate fully customizable admin interface for your models. You can 
 
 High performance, easy to learn, fast to code, ready for production web API framework.
 Inspired by **APIStar**'s previous server system with type declarations for route parameters, based on the OpenAPI specification version 3.0.0+ (with JSON Schema), powered by **Pydantic** for the data handling.
+
+### Esmerald
+
+<a href="https://github.com/dymmond/esmerald" target="_blank">GitHub</a> |
+<a href="https://esmerald.dymmond.com/" target="_blank">Documentation</a>
+
+Highly scalable, performant, easy to learn, easy to code and for every application web framework.
+Inspired by a lot of frameworks out there, Esmerald provides what every application needs, from the
+smallest to complex. Includes, routes, middlewares, permissions, scheduler, interceptors and lot more.
+
+Powered by **Starlette** and **Pydantic** with OpenAPI specification.
 
 ### Flama
 

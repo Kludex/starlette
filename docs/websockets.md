@@ -73,6 +73,29 @@ May raise `starlette.websockets.WebSocketDisconnect()`.
 JSON messages default to being received over text data frames, from version 0.10.0 onwards.
 Use `websocket.receive_json(data, mode="binary")` to receive JSON over binary data frames.
 
+### Iterating data
+
+* `websocket.iter_text()`
+* `websocket.iter_bytes()`
+* `websocket.iter_json()`
+
+Similar to `receive_text`, `receive_bytes`, and `receive_json` but returns an
+async iterator.
+
+```python hl_lines="7-8"
+from starlette.websockets import WebSocket
+
+
+async def app(scope, receive, send):
+    websocket = WebSocket(scope=scope, receive=receive, send=send)
+    await websocket.accept()
+    async for message in websocket.iter_text():
+        await websocket.send_text(f"Message text was: {message}")
+    await websocket.close()
+```
+
+When `starlette.websockets.WebSocketDisconnect` is raised, the iterator will exit.
+
 ### Closing the connection
 
 * `await websocket.close(code=1000, reason=None)`

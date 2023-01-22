@@ -54,8 +54,10 @@ class Config:
         self,
         env_file: typing.Optional[typing.Union[str, Path]] = None,
         environ: typing.Mapping[str, str] = environ,
+        env_prefix: str = "",
     ) -> None:
         self.environ = environ
+        self.env_prefix = env_prefix
         self.file_values: typing.Dict[str, str] = {}
         if env_file is not None and os.path.isfile(env_file):
             self.file_values = self._read_file(env_file)
@@ -103,6 +105,7 @@ class Config:
         cast: typing.Optional[typing.Callable] = None,
         default: typing.Any = undefined,
     ) -> typing.Any:
+        key = self.env_prefix + key
         if key in self.environ:
             value = self.environ[key]
             return self._perform_cast(key, value, cast)

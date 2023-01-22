@@ -113,6 +113,23 @@ from starlette.config import environ
 environ['TESTING'] = 'TRUE'
 ```
 
+## Reading prefixed environment variables
+
+You can namespace the environment variables by setting `env_prefix` argument.
+
+```python title="myproject/settings.py"
+import os
+from starlette.config import Config
+
+os.environ['APP_DEBUG'] = 'yes'
+os.environ['ENVIRONMENT'] = 'dev'
+
+config = Config(env_prefix='APP_')
+
+DEBUG = config('DEBUG') # lookups APP_DEBUG, returns "yes"
+ENVIRONMENT = config('ENVIRONMENT') # lookups APP_ENVIRONMENT, raises KeyError as variable is not defined
+```
+
 ## A full example
 
 Structuring large applications can be complex. You need proper separation of

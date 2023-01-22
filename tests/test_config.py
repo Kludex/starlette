@@ -127,3 +127,13 @@ def test_environ():
     environ = Environ()
     assert list(iter(environ)) == list(iter(os.environ))
     assert len(environ) == len(os.environ)
+
+
+def test_config_with_env_prefix(tmpdir, monkeypatch):
+    config = Config(
+        environ={"APP_DEBUG": "value", "ENVIRONMENT": "dev"}, env_prefix="APP_"
+    )
+    assert config.get("DEBUG") == "value"
+
+    with pytest.raises(KeyError):
+        config.get("ENVIRONMENT")

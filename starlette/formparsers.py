@@ -1,5 +1,6 @@
 import typing
 from enum import Enum
+from tempfile import SpooledTemporaryFile
 from urllib.parse import unquote_plus
 
 from starlette.datastructures import FormData, Headers, UploadFile
@@ -116,6 +117,8 @@ class FormParser:
 
 
 class MultiPartParser:
+    max_file_size = 1024 * 1024
+
     def __init__(
         self, headers: Headers, stream: typing.AsyncGenerator[bytes, None]
     ) -> None:
@@ -160,7 +163,7 @@ class MultiPartParser:
 
     async def parse(self) -> FormData:
         # Parse the Content-Type header to get the multipart boundary.
-        content_type, params = parse_options_header(self.headers["Content-Type"])
+        _, params = parse_options_header(self.headers["Content-Type"])
         charset = params.get(b"charset", "utf-8")
         if type(charset) == bytes:
             charset = charset.decode("latin-1")
@@ -186,7 +189,6 @@ class MultiPartParser:
         header_field = b""
         header_value = b""
         content_disposition = None
-        content_type = b""
         field_name = ""
         data = b""
         file: typing.Optional[UploadFile] = None
@@ -202,7 +204,6 @@ class MultiPartParser:
             for message_type, message_bytes in messages:
                 if message_type == MultiPartMessage.PART_BEGIN:
                     content_disposition = None
-                    content_type = b""
                     data = b""
                     item_headers = []
                 elif message_type == MultiPartMessage.HEADER_FIELD:
@@ -213,8 +214,6 @@ class MultiPartParser:
                     field = header_field.lower()
                     if field == b"content-disposition":
                         content_disposition = header_value
-                    elif field == b"content-type":
-                        content_type = header_value
                     item_headers.append((field, header_value))
                     header_field = b""
                     header_value = b""
@@ -229,9 +228,10 @@ class MultiPartParser:
                         )
                     if b"filename" in options:
                         filename = _user_safe_decode(options[b"filename"], charset)
+                        tempfile = SpooledTemporaryFile(max_size=self.max_file_size)
                         file = UploadFile(
+                            file=tempfile,  # type: ignore[arg-type]
                             filename=filename,
-                            content_type=content_type.decode("latin-1"),
                             headers=Headers(raw=item_headers),
                         )
                     else:

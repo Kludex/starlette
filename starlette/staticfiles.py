@@ -45,12 +45,14 @@ class StaticFiles:
         ] = None,
         html: bool = False,
         check_dir: bool = True,
+        follow_symlink: bool = False,
     ) -> None:
         self.directory = directory
         self.packages = packages
         self.all_directories = self.get_directories(directory, packages)
         self.html = html
         self.config_checked = False
+        self.follow_symlink = follow_symlink
         if check_dir and directory is not None and not os.path.isdir(directory):
             raise RuntimeError(f"Directory '{directory}' does not exist")
 
@@ -161,7 +163,11 @@ class StaticFiles:
         self, path: str
     ) -> typing.Tuple[str, typing.Optional[os.stat_result]]:
         for directory in self.all_directories:
-            full_path = os.path.realpath(os.path.join(directory, path))
+            joined_path = os.path.join(directory, path)
+            if self.follow_symlink:
+                full_path = os.path.abspath(joined_path)
+            else:
+                full_path = os.path.realpath(joined_path)
             directory = os.path.realpath(directory)
             if os.path.commonprefix([full_path, directory]) != directory:
                 # Don't allow misbehaving clients to break out of the static files

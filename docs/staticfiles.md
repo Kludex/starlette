@@ -3,12 +3,13 @@ Starlette also includes a `StaticFiles` class for serving files in a given direc
 
 ### StaticFiles
 
-Signature: `StaticFiles(directory=None, packages=None, check_dir=True)`
+Signature: `StaticFiles(directory=None, packages=None, check_dir=True, follow_symlink=False)`
 
 * `directory` - A string or [os.Pathlike][pathlike] denoting a directory path.
 * `packages` - A list of strings or list of tuples of strings of python packages.
 * `html` - Run in HTML mode. Automatically loads `index.html` for directories if such file exist.
 * `check_dir` - Ensure that the directory exists upon instantiation. Defaults to `True`.
+* `follow_symlink` - A boolean indicating if symbolic links for files and directories should be followed. Defaults to `False`.
 
 You can combine this ASGI application with Starlette's routing to provide
 comprehensive static file serving.

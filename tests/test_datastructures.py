@@ -40,6 +40,24 @@ def test_url():
     assert new == "https://example.com:123/path/to/somewhere?abc=123#anchor"
     assert new.hostname == "example.com"
 
+    ipv6_url = URL("https://[fe::2]:12345")
+    new = ipv6_url.replace(port=8080)
+    assert new == "https://[fe::2]:8080"
+
+    new = ipv6_url.replace(username="username", password="password")
+    assert new == "https://username:password@[fe::2]:12345"
+    assert new.netloc == "username:password@[fe::2]:12345"
+
+    ipv6_url = URL("https://[fe::2]")
+    new = ipv6_url.replace(port=123)
+    assert new == "https://[fe::2]:123"
+
+    url = URL("http://u:p@host/")
+    assert url.replace(hostname="bar") == URL("http://u:p@bar/")
+
+    url = URL("http://u:p@host:80")
+    assert url.replace(port=88) == URL("http://u:p@host:88")
+
 
 def test_url_query_params():
     u = URL("https://example.org/path/?page=3")

@@ -2,8 +2,9 @@ import typing
 
 import anyio
 
+from starlette.background import BackgroundTask
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import ContentStream, Response, StreamingResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
@@ -75,6 +76,9 @@ class BaseHTTPMiddleware:
 
             try:
                 message = await recv_stream.receive()
+                info = message.get("info", None)
+                if message["type"] == "http.response.debug" and info is not None:
+                    message = await recv_stream.receive()
             except anyio.EndOfStream:
                 if app_exc is not None:
                     raise app_exc
@@ -93,8 +97,8 @@ class BaseHTTPMiddleware:
                 if app_exc is not None:
                     raise app_exc
 
-            response = StreamingResponse(
-                status_code=message["status"], content=body_stream()
+            response = _StreamingResponse(
+                status_code=message["status"], content=body_stream(), info=info
             )
             response.raw_headers = message["headers"]
             return response
@@ -109,3 +113,22 @@ class BaseHTTPMiddleware:
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         raise NotImplementedError()  # pragma: no cover
+
+
+class _StreamingResponse(StreamingResponse):
+    def __init__(
+        self,
+        content: ContentStream,
+        status_code: int = 200,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        media_type: typing.Optional[str] = None,
+        background: typing.Optional[BackgroundTask] = None,
+        info: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+    ) -> None:
+        self._info = info
+        super().__init__(content, status_code, headers, media_type, background)
+
+    async def stream_response(self, send: Send) -> None:
+        if self._info:
+            await send({"type": "http.response.debug", "info": self._info})
+        return await super().stream_response(send)

@@ -259,7 +259,7 @@ class _TestClientTransport(httpx.BaseTransport):
             "headers": headers,
             "client": ["testclient", 50000],
             "server": [host, port],
-            "extensions": {"http.response.template": {}},
+            "extensions": {"http.response.debug": {}},
         }
 
         request_complete = False
@@ -324,9 +324,9 @@ class _TestClientTransport(httpx.BaseTransport):
                 if not more_body:
                     raw_kwargs["stream"].seek(0)
                     response_complete.set()
-            elif message["type"] == "http.response.template":
-                template = message["template"]
-                context = message["context"]
+            elif message["type"] == "http.response.debug":
+                template = message["info"]["template"]
+                context = message["info"]["context"]
 
         try:
             with self.portal_factory() as portal:

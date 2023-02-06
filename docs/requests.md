@@ -81,7 +81,7 @@ There are a few different interfaces for returning the body of the request:
 
 The request body as bytes: `await request.body()`
 
-The request body, parsed as form data or multipart: `await request.form()`
+The request body, parsed as form data or multipart: `async with request.form() as form:`
 
 The request body, parsed as JSON: `await request.json()`
 
@@ -114,7 +114,7 @@ state with `disconnected = await request.is_disconnected()`.
 
 Request files are normally sent as multipart form data (`multipart/form-data`).
 
-When you call `await request.form()` you receive a `starlette.datastructures.FormData` which is an immutable
+When you call `async with request.form() as form` you receive a `starlette.datastructures.FormData` which is an immutable
 multidict, containing both file uploads and text input. File upload items are represented as instances of `starlette.datastructures.UploadFile`.
 
 `UploadFile` has the following attributes:
@@ -137,9 +137,9 @@ As all these methods are `async` methods, you need to "await" them.
 For example, you can get the file name and the contents with:
 
 ```python
-form = await request.form()
-filename = form["upload_file"].filename
-contents = await form["upload_file"].read()
+async with request.form() as form:
+    filename = form["upload_file"].filename
+    contents = await form["upload_file"].read()
 ```
 
 !!! info

@@ -1,3 +1,23 @@
+## 0.24.0
+
+February 6, 2023
+
+### Added
+* Allow `StaticFiles` to follow symlinks [#1683](https://github.com/encode/starlette/pull/1683).
+* Allow `Request.form()` as a context manager [#1903](https://github.com/encode/starlette/pull/1903).
+* Add `size` attribute to `UploadFile` [#1405](https://github.com/encode/starlette/pull/1405).
+* Add `env_prefix` argument to `Config` [#1990](https://github.com/encode/starlette/pull/1990).
+* Add template context processors [#1904](https://github.com/encode/starlette/pull/1904).
+* Support `str` and `datetime` on `expires` parameter on the `Response.set_cookie` method [#1908](https://github.com/encode/starlette/pull/1908).
+
+### Changed
+* Lazily build the middleware stack [#2017](https://github.com/encode/starlette/pull/2017).
+* Make the `file` argument required on `UploadFile` [#1413](https://github.com/encode/starlette/pull/1413).
+* Use debug extension instead of custom response template extension [#1991](https://github.com/encode/starlette/pull/1991).
+
+### Fixed
+* Fix url parsing of ipv6 urls on `URL.replace` [#1965](https://github.com/encode/starlette/pull/1965).
+
 ## 0.23.1
 
 December 9, 2022

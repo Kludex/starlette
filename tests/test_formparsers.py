@@ -29,6 +29,7 @@ async def app(scope, receive, send):
             content = await value.read()
             output[key] = {
                 "filename": value.filename,
+                "size": value.size,
                 "content": content.decode(),
                 "content_type": value.content_type,
             }
@@ -51,6 +52,7 @@ async def multi_items_app(scope, receive, send):
             output[key].append(
                 {
                     "filename": value.filename,
+                    "size": value.size,
                     "content": content.decode(),
                     "content_type": value.content_type,
                 }
@@ -71,6 +73,7 @@ async def app_with_headers(scope, receive, send):
             content = await value.read()
             output[key] = {
                 "filename": value.filename,
+                "size": value.size,
                 "content": content.decode(),
                 "content_type": value.content_type,
                 "headers": list(value.headers.items()),
@@ -112,6 +115,7 @@ def test_multipart_request_files(tmpdir, test_client_factory):
         assert response.json() == {
             "test": {
                 "filename": "test.txt",
+                "size": 14,
                 "content": "<file content>",
                 "content_type": "text/plain",
             }
@@ -129,6 +133,7 @@ def test_multipart_request_files_with_content_type(tmpdir, test_client_factory):
         assert response.json() == {
             "test": {
                 "filename": "test.txt",
+                "size": 14,
                 "content": "<file content>",
                 "content_type": "text/plain",
             }
@@ -152,11 +157,13 @@ def test_multipart_request_multiple_files(tmpdir, test_client_factory):
         assert response.json() == {
             "test1": {
                 "filename": "test1.txt",
+                "size": 15,
                 "content": "<file1 content>",
                 "content_type": "text/plain",
             },
             "test2": {
                 "filename": "test2.txt",
+                "size": 15,
                 "content": "<file2 content>",
                 "content_type": "text/plain",
             },
@@ -185,6 +192,7 @@ def test_multipart_request_multiple_files_with_headers(tmpdir, test_client_facto
             "test1": "<file1 content>",
             "test2": {
                 "filename": "test2.txt",
+                "size": 15,
                 "content": "<file2 content>",
                 "content_type": "text/plain",
                 "headers": [
@@ -220,11 +228,13 @@ def test_multi_items(tmpdir, test_client_factory):
                 "abc",
                 {
                     "filename": "test1.txt",
+                    "size": 15,
                     "content": "<file1 content>",
                     "content_type": "text/plain",
                 },
                 {
                     "filename": "test2.txt",
+                    "size": 15,
                     "content": "<file2 content>",
                     "content_type": "text/plain",
                 },
@@ -261,6 +271,7 @@ def test_multipart_request_mixed_files_and_data(tmpdir, test_client_factory):
     assert response.json() == {
         "file": {
             "filename": "file.txt",
+            "size": 14,
             "content": "<file content>",
             "content_type": "text/plain",
         },
@@ -291,6 +302,7 @@ def test_multipart_request_with_charset_for_filename(tmpdir, test_client_factory
     assert response.json() == {
         "file": {
             "filename": "文書.txt",
+            "size": 14,
             "content": "<file content>",
             "content_type": "text/plain",
         }
@@ -318,6 +330,7 @@ def test_multipart_request_without_charset_for_filename(tmpdir, test_client_fact
     assert response.json() == {
         "file": {
             "filename": "画像.jpg",
+            "size": 14,
             "content": "<file content>",
             "content_type": "image/jpeg",
         }

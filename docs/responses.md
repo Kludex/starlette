@@ -36,7 +36,7 @@ Signature: `Response.set_cookie(key, value, max_age=None, expires=None, path="/"
 * `key` - A string that will be the cookie's key.
 * `value` - A string that will be the cookie's value.
 * `max_age` - An integer that defines the lifetime of the cookie in seconds. A negative integer or a value of `0` will discard the cookie immediately. `Optional`
-* `expires` - An integer that defines the number of seconds until the cookie expires. `Optional`
+* `expires` - Either an integer that defines the number of seconds until the cookie expires, or a datetime. `Optional`
 * `path` - A string that specifies the subset of routes to which the cookie will apply. `Optional`
 * `domain` - A string that specifies the domain for which the cookie is valid. `Optional`
 * `secure` - A bool indicating that the cookie will only be sent to the server if request is made using SSL and the HTTPS protocol. `Optional`

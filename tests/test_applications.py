@@ -1,7 +1,9 @@
 import os
 from contextlib import asynccontextmanager
+from typing import Any, Callable
 
 import anyio
+import httpx
 import pytest
 
 from starlette import status
@@ -13,6 +15,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
+from starlette.types import ASGIApp
 from starlette.websockets import WebSocket
 
 
@@ -486,3 +489,45 @@ def test_decorator_deprecations() -> None:
 
         app.on_event("startup")(startup)
         assert len(record) == 1
+
+
+def test_middleware_stack_init(test_client_factory: Callable[[ASGIApp], httpx.Client]):
+    class NoOpMiddleware:
+        def __init__(self, app: ASGIApp):
+            self.app = app
+
+        async def __call__(self, *args: Any):
+            await self.app(*args)
+
+    class SimpleInitializableMiddleware:
+        counter = 0
+
+        def __init__(self, app: ASGIApp):
+            self.app = app
+            SimpleInitializableMiddleware.counter += 1
+
+        async def __call__(self, *args: Any):
+            await self.app(*args)
+
+    def get_app() -> ASGIApp:
+        app = Starlette()
+        app.add_middleware(SimpleInitializableMiddleware)
+        app.add_middleware(NoOpMiddleware)
+        return app
+
+    app = get_app()
+
+    with test_client_factory(app):
+        pass
+
+    assert SimpleInitializableMiddleware.counter == 1
+
+    test_client_factory(app).get("/foo")
+
+    assert SimpleInitializableMiddleware.counter == 1
+
+    app = get_app()
+
+    test_client_factory(app).get("/foo")
+
+    assert SimpleInitializableMiddleware.counter == 2

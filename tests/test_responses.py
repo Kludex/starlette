@@ -293,7 +293,7 @@ def test_file_response_with_inline_disposition(tmpdir, test_client_factory):
 
 def test_set_cookie(test_client_factory, monkeypatch):
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
-    mocked_now = dt.datetime(2100, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
+    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
 
     async def app(scope, receive, send):
@@ -316,7 +316,7 @@ def test_set_cookie(test_client_factory, monkeypatch):
     assert response.text == "Hello, world!"
     assert (
         response.headers["set-cookie"]
-        == "mycookie=myvalue; Domain=localhost; expires=Fri, 22 Jan 2100 12:00:10 GMT; "
+        == "mycookie=myvalue; Domain=localhost; expires=Thu, 22 Jan 2037 12:00:10 GMT; "
         "HttpOnly; Max-Age=10; Path=/; SameSite=none; Secure"
     )
 
@@ -325,15 +325,15 @@ def test_set_cookie(test_client_factory, monkeypatch):
     "expires",
     [
         pytest.param(
-            dt.datetime(2100, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"
+            dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"
         ),
-        pytest.param("Fri, 22 Jan 2100 12:00:10 GMT", id="str"),
+        pytest.param("Thu, 22 Jan 2037 12:00:10 GMT", id="str"),
         pytest.param(10, id="int"),
     ],
 )
 def test_expires_on_set_cookie(test_client_factory, monkeypatch, expires):
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
-    mocked_now = dt.datetime(2100, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
+    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
 
     async def app(scope, receive, send):
@@ -344,7 +344,7 @@ def test_expires_on_set_cookie(test_client_factory, monkeypatch, expires):
     client = test_client_factory(app)
     response = client.get("/")
     cookie: SimpleCookie = SimpleCookie(response.headers.get("set-cookie"))
-    assert cookie["mycookie"]["expires"] == "Fri, 22 Jan 2100 12:00:10 GMT"
+    assert cookie["mycookie"]["expires"] == "Thu, 22 Jan 2037 12:00:10 GMT"
 
 
 def test_delete_cookie(test_client_factory):

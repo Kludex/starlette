@@ -142,6 +142,7 @@ class MultiPartParser:
         self._charset = ""
         self._file_parts_to_write: typing.List[typing.Tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: typing.List[MultipartPart] = []
+        self._files_to_close_on_error: typing.List[SpooledTemporaryFile] = []
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()
@@ -204,6 +205,7 @@ class MultiPartParser:
                 )
             filename = _user_safe_decode(options[b"filename"], self._charset)
             tempfile = SpooledTemporaryFile(max_size=self.max_file_size)
+            self._files_to_close_on_error.append(tempfile)
             self._current_part.file = UploadFile(
                 file=tempfile,  # type: ignore[arg-type]
                 size=0,
@@ -247,21 +249,28 @@ class MultiPartParser:
 
         # Create the parser.
         parser = multipart.MultipartParser(boundary, callbacks)
-        # Feed the parser with data from the request.
-        async for chunk in self.stream:
-            parser.write(chunk)
-            # Write file data, it needs to use await with the UploadFile methods that
-            # call the corresponding file methods *in a threadpool*, otherwise, if
-            # they were called directly in the callback methods above (regular,
-            # non-async functions), that would block the event loop in the main thread.
-            for part, data in self._file_parts_to_write:
-                assert part.file  # for type checkers
-                await part.file.write(data)
-            for part in self._file_parts_to_finish:
-                assert part.file  # for type checkers
-                await part.file.seek(0)
-            self._file_parts_to_write.clear()
-            self._file_parts_to_finish.clear()
+        try:
+            # Feed the parser with data from the request.
+            async for chunk in self.stream:
+                parser.write(chunk)
+                # Write file data, it needs to use await with the UploadFile methods
+                # that call the corresponding file methods *in a threadpool*,
+                # otherwise, if they were called directly in the callback methods above
+                # (regular, non-async functions), that would block the event loop in
+                # the main thread.
+                for part, data in self._file_parts_to_write:
+                    assert part.file  # for type checkers
+                    await part.file.write(data)
+                for part in self._file_parts_to_finish:
+                    assert part.file  # for type checkers
+                    await part.file.seek(0)
+                self._file_parts_to_write.clear()
+                self._file_parts_to_finish.clear()
+        except MultiPartException as exc:
+            # Close all the files if there was an error.
+            for file in self._files_to_close_on_error:
+                file.close()
+            raise exc
 
         parser.finalize()
         return FormData(self.items)

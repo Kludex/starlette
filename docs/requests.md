@@ -114,6 +114,18 @@ state with `disconnected = await request.is_disconnected()`.
 
 Request files are normally sent as multipart form data (`multipart/form-data`).
 
+Signature: `request.form(max_files=1000, max_fields=1000)`
+
+You can configure the number of maximum fields or files with the parameters `max_files` and `max_fields`:
+
+```python
+async with request.form(max_files=1000, max_fields=1000):
+    ...
+```
+
+!!! info
+    These limits are for security reasons, allowing an unlimited number of fields or files could lead to a denial of service attack by consuming a lot of CPU and memory parsing too many empty fields.
+
 When you call `async with request.form() as form` you receive a `starlette.datastructures.FormData` which is an immutable
 multidict, containing both file uploads and text input. File upload items are represented as instances of `starlette.datastructures.UploadFile`.
 

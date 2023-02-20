@@ -773,10 +773,6 @@ A middleware class for reading/generating request IDs and attaching them to appl
 
 A middleware class for logging exceptions, errors, and log messages to [Rollbar](https://www.rollbar.com).
 
-#### [SentryMiddleware](https://github.com/encode/sentry-asgi)
-
-A middleware class for logging exceptions to [Sentry](https://sentry.io/).
-
 #### [StarletteOpentracing](https://github.com/acidjunk/starlette-opentracing)
 
 A middleware class that emits tracing info to [OpenTracing.io](https://opentracing.io/) compatible tracers and

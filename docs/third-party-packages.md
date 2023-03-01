@@ -170,12 +170,12 @@ Powered by **Starlette** and **Pydantic** with OpenAPI specification.
 
 ### Flama
 
-<a href="https://github.com/perdy/flama/" target="_blank">GitHub</a> |
-<a href="https://flama.perdy.io/" target="_blank">Documentation</a>
+<a href="https://github.com/vortico/flama" target="_blank">GitHub</a> |
+<a href="https://flama.dev/" target="_blank">Documentation</a>
 
-Formerly Starlette API.
+Flama is a **data-science oriented framework** to rapidly build modern and robust **machine learning** (ML) APIs. The main aim of the framework is to make ridiculously simple the deployment of ML APIs. With Flama, data scientists can now quickly turn their ML models into asynchronous, auto-documented APIs with just a single line of code. All in just few seconds! 
 
-Flama aims to bring a layer on top of Starlette to provide an **easy to learn** and **fast to develop** approach for building **highly performant** GraphQL and REST APIs. In the same way of Starlette is, Flama is a perfect option for developing **asynchronous** and **production-ready** services.
+Flama comes with an intuitive CLI, and provides an easy-to-learn philosophy to speed up the building of **highly performant** GraphQL, REST, and ML APIs. Besides, it comprises an ideal solution for the development of asynchronous and **production-ready** services, offering **automatic deployment** for ML models.  
 
 ### Greppo
 

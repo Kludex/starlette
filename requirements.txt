@@ -8,7 +8,7 @@ coverage==7.1.0
 flake8==3.9.2
 importlib-metadata==4.13.0
 isort==5.10.1
-mypy==0.991
+mypy==1.0.1
 typing_extensions==4.4.0
 types-contextvars==2.4.7
 types-PyYAML==6.0.12.3

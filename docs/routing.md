@@ -151,6 +151,8 @@ app = Starlette(routes=routes)
 You'll often want to be able to generate the URL for a particular route,
 such as in cases where you need to return a redirect response.
 
+* Signature: `url_for(name, **path_params) -> URL`
+
 ```python
 routes = [
     Route("/", homepage, name="homepage")

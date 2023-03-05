@@ -2,6 +2,7 @@ import typing
 from os import PathLike
 
 from starlette.background import BackgroundTask
+from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import Receive, Scope, Send
@@ -77,7 +78,7 @@ class Jinja2Templates:
         self, directory: typing.Union[str, PathLike], **env_options: typing.Any
     ) -> "jinja2.Environment":
         @pass_context
-        def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
+        def url_for(context: dict, name: str, **path_params: typing.Any) -> URL:
             request = context["request"]
             return request.url_for(name, **path_params)
 

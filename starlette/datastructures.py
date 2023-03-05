@@ -187,7 +187,7 @@ class URLPath(str):
         self.protocol = protocol
         self.host = host
 
-    def make_absolute_url(self, base_url: typing.Union[str, URL]) -> str:
+    def make_absolute_url(self, base_url: typing.Union[str, URL]) -> URL:
         if isinstance(base_url, str):
             base_url = URL(base_url)
         if self.protocol:
@@ -200,7 +200,7 @@ class URLPath(str):
 
         netloc = self.host or base_url.netloc
         path = base_url.path.rstrip("/") + str(self)
-        return str(URL(scheme=scheme, netloc=netloc, path=path))
+        return URL(scheme=scheme, netloc=netloc, path=path)
 
 
 class Secret:

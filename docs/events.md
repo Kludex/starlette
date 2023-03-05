@@ -37,7 +37,7 @@ registered startup handlers have completed.
 The shutdown handlers will run once all connections have been closed, and
 any in-process background tasks have completed.
 
-A single lifespan asynccontextmanager handler can be used instead of
+A single lifespan `asynccontextmanager` handler can be used instead of
 separate startup and shutdown handlers:
 
 ```python
@@ -61,6 +61,63 @@ app = Starlette(routes=routes, lifespan=lifespan)
 
 Consider using [`anyio.create_task_group()`](https://anyio.readthedocs.io/en/stable/tasks.html)
 for managing asynchronous tasks.
+
+## Lifespan State
+
+The event handlers also accept a `state` argument, which is a dictionary
+that can be used to share the objects between the startup and shutdown handlers,
+and the requests.
+
+```python
+import httpx
+from starlette.applications import Starlette
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def startup(state):
+    state["http_client"] = httpx.AsyncClient()
+
+async def shutdown(state):
+    await state["http_client"].aclose()
+
+async def homepage(request):
+    res = await request.state.http_client.get("https://example.org")
+    # Do something with the response.
+    return PlainTextResponse("Hello, world!")
+
+
+app = Starlette(
+    routes=[Route("/", homepage)],
+    on_startup=[startup],
+    on_shutdown=[shutdown]
+)
+```
+
+Analogously, the single lifespan `asynccontextmanager` can be used.
+
+```python
+import contextlib
+import httpx
+from starlette.applications import Starlette
+from starlette.routing import Route
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app, state):
+    async with httpx.AsyncClient() as client:
+        state["http_client"] = client
+        yield
+
+
+app = Starlette(
+    lifespan=lifespan,
+    routes=[Route("/", homepage)]
+)
+```
+
+The `state` received on the requests is a **shallow** copy of the state received on the
+startup event.
 
 ## Running event handlers in tests
 

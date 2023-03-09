@@ -629,11 +629,14 @@ def test_lifespan_async(test_client_factory):
         nonlocal shutdown_complete
         shutdown_complete = True
 
-    app = Router(
-        on_startup=[run_startup],
-        on_shutdown=[run_shutdown],
-        routes=[Route("/", hello_world)],
-    )
+    with pytest.deprecated_call(
+        match="The on_startup and on_shutdown parameters are deprecated"
+    ):
+        app = Router(
+            on_startup=[run_startup],
+            on_shutdown=[run_shutdown],
+            routes=[Route("/", hello_world)],
+        )
 
     assert not startup_complete
     assert not shutdown_complete
@@ -660,11 +663,14 @@ def test_lifespan_sync(test_client_factory):
         nonlocal shutdown_complete
         shutdown_complete = True
 
-    app = Router(
-        on_startup=[run_startup],
-        on_shutdown=[run_shutdown],
-        routes=[Route("/", hello_world)],
-    )
+    with pytest.deprecated_call(
+        match="The on_startup and on_shutdown parameters are deprecated"
+    ):
+        app = Router(
+            on_startup=[run_startup],
+            on_shutdown=[run_shutdown],
+            routes=[Route("/", hello_world)],
+        )
 
     assert not startup_complete
     assert not shutdown_complete
@@ -749,7 +755,10 @@ def test_raise_on_startup(test_client_factory):
     def run_startup():
         raise RuntimeError()
 
-    router = Router(on_startup=[run_startup])
+    with pytest.deprecated_call(
+        match="The on_startup and on_shutdown parameters are deprecated"
+    ):
+        router = Router(on_startup=[run_startup])
     startup_failed = False
 
     async def app(scope, receive, send):
@@ -771,7 +780,10 @@ def test_raise_on_shutdown(test_client_factory):
     def run_shutdown():
         raise RuntimeError()
 
-    app = Router(on_shutdown=[run_shutdown])
+    with pytest.deprecated_call(
+        match="The on_startup and on_shutdown parameters are deprecated"
+    ):
+        app = Router(on_shutdown=[run_shutdown])
 
     with pytest.raises(RuntimeError):
         with test_client_factory(app):

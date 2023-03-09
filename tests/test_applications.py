@@ -345,10 +345,13 @@ def test_app_add_event_handler(test_client_factory):
         nonlocal cleanup_complete
         cleanup_complete = True
 
-    app = Starlette(
-        on_startup=[run_startup],
-        on_shutdown=[run_cleanup],
-    )
+    with pytest.deprecated_call(
+        match="The on_startup and on_shutdown parameters are deprecated"
+    ):
+        app = Starlette(
+            on_startup=[run_startup],
+            on_shutdown=[run_cleanup],
+        )
 
     assert not startup_complete
     assert not cleanup_complete

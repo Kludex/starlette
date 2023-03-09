@@ -45,9 +45,6 @@ def startup():
     raise RuntimeError()
 
 
-startup_error_app = Starlette(on_startup=[startup])
-
-
 def test_use_testclient_in_endpoint(test_client_factory):
     """
     We should be able to use the test client within applications.
@@ -166,6 +163,11 @@ def test_use_testclient_as_contextmanager(test_client_factory, anyio_backend_nam
 
 
 def test_error_on_startup(test_client_factory):
+    with pytest.deprecated_call(
+        match="The on_startup and on_shutdown parameters are deprecated"
+    ):
+        startup_error_app = Starlette(on_startup=[startup])
+
     with pytest.raises(RuntimeError):
         with test_client_factory(startup_error_app):
             pass  # pragma: no cover

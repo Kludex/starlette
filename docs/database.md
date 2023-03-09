@@ -18,6 +18,8 @@ DATABASE_URL=sqlite:///test.db
 **app.py**
 
 ```python
+import contextlib
+
 import databases
 import sqlalchemy
 from starlette.applications import Starlette
@@ -44,6 +46,11 @@ notes = sqlalchemy.Table(
 
 database = databases.Database(DATABASE_URL)
 
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    await database.connect()
+    yield
+    await database.disconnect()
 
 # Main application code.
 async def list_notes(request):
@@ -77,8 +84,7 @@ routes = [
 
 app = Starlette(
     routes=routes,
-    on_startup=[database.connect],
-    on_shutdown=[database.disconnect]
+    lifespan=lifespan,
 )
 ```
 

@@ -240,7 +240,7 @@ def client():
     Make a 'client' fixture available to test cases.
     """
     # Our fixture is created within a context manager. This ensures that
-    # application startup and shutdown run for every test case.
+    # application lifespan runs for every test case.
     with TestClient(app) as test_client:
         yield test_client
 ```

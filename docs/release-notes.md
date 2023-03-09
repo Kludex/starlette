@@ -1,9 +1,13 @@
+## 0.26.0.post1
+
+### Fixed
+* Replace reference from Events to Lifespan on the mkdocs.yml [#2072](https://github.com/encode/starlette/pull/2072).
+
 ## 0.26.0
 
 March 9, 2023
 
 ### Added
-
 * Support [lifespan state](/lifespan/) [#2060](https://github.com/encode/starlette/pull/2060),
   [#2065](https://github.com/encode/starlette/pull/2065) and [#2064](https://github.com/encode/starlette/pull/2064).
 

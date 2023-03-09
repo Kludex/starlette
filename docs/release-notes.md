@@ -1,3 +1,21 @@
+## 0.26.0
+
+March 9, 2023
+
+### Added
+
+* Support [lifespan state](/lifespan/) [#2060](https://github.com/encode/starlette/pull/2060),
+  [#2065](https://github.com/encode/starlette/pull/2065) and [#2064](https://github.com/encode/starlette/pull/2064).
+
+### Changed
+* Change `url_for` signature to return a `URL` instance [#1385](https://github.com/encode/starlette/pull/1385).
+
+### Fixed
+* Allow "name" argument on `url_for()` and `url_path_for()` [#2050](https://github.com/encode/starlette/pull/2050).
+
+### Deprecated
+* Deprecate `on_startup` and `on_shutdown` events [#2070](https://github.com/encode/starlette/pull/2070).
+
 ## 0.25.0
 
 February 14, 2023

@@ -98,16 +98,21 @@ Analogously, the single lifespan `asynccontextmanager` can be used.
 
 ```python
 import contextlib
+from typing import TypedDict
+
 import httpx
 from starlette.applications import Starlette
 from starlette.routing import Route
 
 
+class State(TypedDict):
+    http_client: httpx.AsyncClient
+
+
 @contextlib.asynccontextmanager
-async def lifespan(app, state):
+async def lifespan(app: Starlette) -> State:
     async with httpx.AsyncClient() as client:
-        state["http_client"] = client
-        yield
+        yield {"http_client": client}
 
 
 app = Starlette(

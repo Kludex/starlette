@@ -1,7 +1,13 @@
 import contextlib
 import functools
+import sys
 import typing
 import uuid
+
+if sys.version_info < (3, 8):
+    from typing_extensions import TypedDict  # pragma: no cover
+else:
+    from typing import TypedDict  # pragma: no cover
 
 import pytest
 
@@ -670,57 +676,10 @@ def test_lifespan_sync(test_client_factory):
     assert shutdown_complete
 
 
-def test_lifespan_with_state(test_client_factory):
-    startup_complete = False
-    shutdown_complete = False
-
-    async def hello_world(request):
-        # modifications to the state should not leak across requests
-        assert request.state.count == 0
-        # modify the state, this should not leak to the lifespan or other requests
-        request.state.count += 1
-        # since state.list is a mutable object this modification _will_ leak across
-        # requests and to the lifespan
-        request.state.list.append(1)
-        return PlainTextResponse("hello, world")
-
-    async def run_startup(state):
-        nonlocal startup_complete
-        startup_complete = True
-        state["count"] = 0
-        state["list"] = []
-
-    async def run_shutdown(state):
-        nonlocal shutdown_complete
-        shutdown_complete = True
-        # modifications made to the state from a request do not leak to the lifespan
-        assert state["count"] == 0
-        # unless of course the request mutates a mutable object that is referenced
-        # via state
-        assert state["list"] == [1, 1]
-
-    app = Router(
-        on_startup=[run_startup],
-        on_shutdown=[run_shutdown],
-        routes=[Route("/", hello_world)],
-    )
-
-    assert not startup_complete
-    assert not shutdown_complete
-    with test_client_factory(app) as client:
-        assert startup_complete
-        assert not shutdown_complete
-        client.get("/")
-        # Calling it a second time to ensure that the state is preserved.
-        client.get("/")
-    assert startup_complete
-    assert shutdown_complete
-
-
 def test_lifespan_state_unsupported(test_client_factory):
     @contextlib.asynccontextmanager
-    async def lifespan(app, scope):
-        yield None  # pragma: no cover
+    async def lifespan(app):
+        yield {"foo": "bar"}
 
     app = Router(
         lifespan=lifespan,
@@ -738,33 +697,36 @@ def test_lifespan_state_unsupported(test_client_factory):
             raise AssertionError("Should not be called")  # pragma: no cover
 
 
-def test_lifespan_async_cm(test_client_factory):
+def test_lifespan_state_async_cm(test_client_factory):
     startup_complete = False
     shutdown_complete = False
 
-    async def hello_world(request):
+    class State(TypedDict):
+        count: int
+        items: typing.List[int]
+
+    async def hello_world(request: Request) -> Response:
         # modifications to the state should not leak across requests
         assert request.state.count == 0
         # modify the state, this should not leak to the lifespan or other requests
         request.state.count += 1
-        # since state.list is a mutable object this modification _will_ leak across
+        # since state.items is a mutable object this modification _will_ leak across
         # requests and to the lifespan
-        request.state.list.append(1)
+        request.state.items.append(1)
         return PlainTextResponse("hello, world")
 
     @contextlib.asynccontextmanager
-    async def lifespan(app: Starlette, state: typing.Dict[str, typing.Any]):
+    async def lifespan(app: Starlette) -> typing.AsyncIterator[State]:
         nonlocal startup_complete, shutdown_complete
         startup_complete = True
-        state["count"] = 0
-        state["list"] = []
-        yield
+        state = State(count=0, items=[])
+        yield state
         shutdown_complete = True
         # modifications made to the state from a request do not leak to the lifespan
         assert state["count"] == 0
         # unless of course the request mutates a mutable object that is referenced
         # via state
-        assert state["list"] == [1, 1]
+        assert state["items"] == [1, 1]
 
     app = Router(
         lifespan=lifespan,

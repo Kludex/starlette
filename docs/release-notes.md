@@ -1,5 +1,7 @@
 ## 0.26.0.post1
 
+March 9, 2023
+
 ### Fixed
 * Replace reference from Events to Lifespan on the mkdocs.yml [#2072](https://github.com/encode/starlette/pull/2072).
 

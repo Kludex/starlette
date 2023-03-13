@@ -1,3 +1,10 @@
+## 0.26.1
+
+March 13, 2023
+
+### Fixed
+* Fix typing of Lifespan to allow subclasses of Starlette [#2077](https://github.com/encode/starlette/pull/2077).
+
 ## 0.26.0.post1
 
 March 9, 2023

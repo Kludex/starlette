@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from typing import Any, Callable
+from typing import Any, AsyncIterator, Callable
 
 import anyio
 import httpx
@@ -534,3 +534,17 @@ def test_middleware_stack_init(test_client_factory: Callable[[ASGIApp], httpx.Cl
     test_client_factory(app).get("/foo")
 
     assert SimpleInitializableMiddleware.counter == 2
+
+
+def test_lifespan_app_subclass():
+    # This test exists to make sure that subclasses of Starlette
+    # (like FastAPI) are compatible with the types hints for Lifespan
+
+    class App(Starlette):
+        pass
+
+    @asynccontextmanager
+    async def lifespan(app: App) -> AsyncIterator[None]:  # pragma: no cover
+        yield
+
+    App(lifespan=lifespan)

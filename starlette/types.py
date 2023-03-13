@@ -1,7 +1,6 @@
 import typing
 
-if typing.TYPE_CHECKING:
-    from starlette.applications import Starlette
+AppType = typing.TypeVar("AppType")
 
 Scope = typing.MutableMapping[str, typing.Any]
 Message = typing.MutableMapping[str, typing.Any]
@@ -11,8 +10,8 @@ Send = typing.Callable[[Message], typing.Awaitable[None]]
 
 ASGIApp = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
 
-StatelessLifespan = typing.Callable[["Starlette"], typing.AsyncContextManager[None]]
+StatelessLifespan = typing.Callable[[AppType], typing.AsyncContextManager[None]]
 StatefulLifespan = typing.Callable[
-    ["Starlette"], typing.AsyncContextManager[typing.Mapping[str, typing.Any]]
+    [AppType], typing.AsyncContextManager[typing.Mapping[str, typing.Any]]
 ]
-Lifespan = typing.Union[StatelessLifespan, StatefulLifespan]
+Lifespan = typing.Union[StatelessLifespan[AppType], StatefulLifespan[AppType]]

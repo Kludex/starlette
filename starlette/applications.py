@@ -11,6 +11,8 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Router
 from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 
+AppType = typing.TypeVar("AppType", bound="Starlette")
+
 
 class Starlette:
     """
@@ -43,7 +45,7 @@ class Starlette:
     """
 
     def __init__(
-        self,
+        self: "AppType",
         debug: bool = False,
         routes: typing.Optional[typing.Sequence[BaseRoute]] = None,
         middleware: typing.Optional[typing.Sequence[Middleware]] = None,
@@ -58,7 +60,7 @@ class Starlette:
         ] = None,
         on_startup: typing.Optional[typing.Sequence[typing.Callable]] = None,
         on_shutdown: typing.Optional[typing.Sequence[typing.Callable]] = None,
-        lifespan: typing.Optional[Lifespan] = None,
+        lifespan: typing.Optional[Lifespan["AppType"]] = None,
     ) -> None:
         # The lifespan context function is a newer style that replaces
         # on_startup / on_shutdown handlers. Use one or the other, not both.

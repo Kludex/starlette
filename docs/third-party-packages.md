@@ -147,6 +147,16 @@ Built with [Tabler](https://tabler.io/) and [Datatables](https://datatables.net/
 to quickly generate fully customizable admin interface for your models. You can export your data to many formats (*CSV*, *PDF*,
 *Excel*, etc), filter your data with complex query including `AND` and `OR` conditions,  upload files, ...
 
+## Starlette Bridge
+
+<a href="https://github.com/tarsil/starlette-bridge" target="_blank">GitHub</a> |
+<a href="https://starlette-bridge.tarsild.io/" target="_blank">Documentation</a>
+
+With the deprecation of `on_startup` and `on_shutdown`, Starlette Bridge makes sure you can still
+use the old ways of declaring events with a particularity that internally, in fact, creates the
+`lifespan` for you. This way backwards compatibility is assured for the existing packages out there
+while maintaining the integrity of the newly `lifespan` events of `Starlette`.
+
 ## Frameworks
 
 ### FastAPI
@@ -160,7 +170,7 @@ Inspired by **APIStar**'s previous server system with type declarations for rout
 ### Esmerald
 
 <a href="https://github.com/dymmond/esmerald" target="_blank">GitHub</a> |
-<a href="https://esmerald.dymmond.com/" target="_blank">Documentation</a>
+<a href="https://www.esmerald.dev" target="_blank">Documentation</a>
 
 Highly scalable, performant, easy to learn, easy to code and for every application web framework.
 Inspired by a lot of frameworks out there, Esmerald provides what every application needs, from the

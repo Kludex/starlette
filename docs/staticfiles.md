@@ -3,7 +3,7 @@ Starlette also includes a `StaticFiles` class for serving files in a given direc
 
 ### StaticFiles
 
-Signature: `StaticFiles(directory=None, packages=None, check_dir=True, follow_symlink=False)`
+Signature: `StaticFiles(directory=None, packages=None, html=False, check_dir=True, follow_symlink=False)`
 
 * `directory` - A string or [os.Pathlike][pathlike] denoting a directory path.
 * `packages` - A list of strings or list of tuples of strings of python packages.

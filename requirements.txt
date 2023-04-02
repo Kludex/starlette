@@ -11,7 +11,7 @@ isort==5.10.1
 mypy==1.0.1
 typing_extensions==4.4.0
 types-contextvars==2.4.7.1
-types-PyYAML==6.0.12.3
+types-PyYAML==6.0.12.9
 types-dataclasses==0.6.6
 pytest==7.2.1
 trio==0.21.0

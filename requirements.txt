@@ -9,7 +9,7 @@ flake8==3.9.2
 importlib-metadata==4.13.0
 isort==5.10.1
 mypy==1.0.1
-typing_extensions==4.4.0
+typing_extensions==4.5.0
 types-contextvars==2.4.7.2
 types-PyYAML==6.0.12.9
 types-dataclasses==0.6.6

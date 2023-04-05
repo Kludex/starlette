@@ -132,7 +132,6 @@ class SchemaGenerator(BaseSchemaGenerator):
         endpoints_info = self.get_endpoints(routes)
 
         for endpoint in endpoints_info:
-
             parsed = self.parse_docstring(endpoint.func)
 
             if not parsed:

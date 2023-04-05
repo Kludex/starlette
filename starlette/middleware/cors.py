@@ -22,7 +22,6 @@ class CORSMiddleware:
         expose_headers: typing.Sequence[str] = (),
         max_age: int = 600,
     ) -> None:
-
         if "*" in allow_methods:
             allow_methods = ALL_METHODS
 

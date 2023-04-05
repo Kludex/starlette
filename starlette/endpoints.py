@@ -55,7 +55,6 @@ class HTTPEndpoint:
 
 
 class WebSocketEndpoint:
-
     encoding: typing.Optional[str] = None  # May be "text", "bytes", or "json".
 
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -91,7 +90,6 @@ class WebSocketEndpoint:
             await self.on_disconnect(websocket, close_code)
 
     async def decode(self, websocket: WebSocket, message: Message) -> typing.Any:
-
         if self.encoding == "text":
             if "text" not in message:
                 await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)

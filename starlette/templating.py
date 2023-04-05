@@ -68,7 +68,7 @@ class Jinja2Templates:
         context_processors: typing.Optional[
             typing.List[typing.Callable[[Request], typing.Dict[str, typing.Any]]]
         ] = None,
-        **env_options: typing.Any
+        **env_options: typing.Any,
     ) -> None:
         assert jinja2 is not None, "jinja2 must be installed to use Jinja2Templates"
         self.env = self._create_env(directory, **env_options)

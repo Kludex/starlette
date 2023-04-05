@@ -10,7 +10,6 @@ import hashlib
 #
 # See issue: https://github.com/encode/starlette/issues/1365
 try:
-
     # check if the Python version supports the parameter
     # using usedforsecurity=False to avoid an exception on FIPS systems
     # that reject usedforsecurity=True

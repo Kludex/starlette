@@ -55,3 +55,9 @@ path = "starlette/__init__.py"
 include = [
     "/starlette",
 ]
+
+[tool.ruff]
+select = ["E", "F", "I"]
+
+[tool.ruff.isort]
+combine-as-imports = true

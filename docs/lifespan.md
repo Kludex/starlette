@@ -43,6 +43,7 @@ from typing import TypedDict
 
 import httpx
 from starlette.applications import Starlette
+from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 
@@ -52,12 +53,12 @@ class State(TypedDict):
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: Starlette) -> State:
+async def lifespan(app: Starlette) -> typing.AsyncIterator[State]:
     async with httpx.AsyncClient() as client:
         yield {"http_client": client}
 
 
-async def homepage(request):
+async def homepage(request: Request) -> PlainTextResponse:
     client = request.state.http_client
     response = await client.get("https://www.example.com")
     return PlainTextResponse(response.text)

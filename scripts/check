@@ -11,4 +11,4 @@ set -x
 ./scripts/sync-version
 ${PREFIX}black --check --diff $SOURCE_FILES
 ${PREFIX}mypy $SOURCE_FILES
-${PREFIX}ruff --diff $SOURCE_FILES
+${PREFIX}ruff check $SOURCE_FILES

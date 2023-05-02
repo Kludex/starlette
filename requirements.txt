@@ -6,7 +6,7 @@ black==23.3.0
 coverage==7.2.5
 importlib-metadata==4.13.0
 mypy==1.2.0
-ruff==0.0.260
+ruff==0.0.263
 typing_extensions==4.5.0
 types-contextvars==2.4.7.2
 types-PyYAML==6.0.12.9

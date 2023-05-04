@@ -8,5 +8,5 @@ export SOURCE_FILES="starlette tests"
 
 set -x
 
-${PREFIX}ruff --fix $SOURCE_FILES
 ${PREFIX}black $SOURCE_FILES
+${PREFIX}ruff --fix $SOURCE_FILES

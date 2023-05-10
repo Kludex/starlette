@@ -778,6 +778,11 @@ A middleware class for logging exceptions, errors, and log messages to [Rollbar]
 A middleware class that emits tracing info to [OpenTracing.io](https://opentracing.io/) compatible tracers and
 can be used to profile and monitor distributed applications.
 
+#### [SecureCookiesMiddleware](https://github.com/thearchitector/starlette-securecookies)
+
+Customizable middleware for adding automatic cookie encryption and decryption to Starlette applications, with
+extra support for existing cookie-based middleware.
+
 #### [TimingMiddleware](https://github.com/steinnes/timing-asgi)
 
 A middleware class to emit timing information (cpu and wall time) for each request which

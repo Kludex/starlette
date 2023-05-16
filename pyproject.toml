@@ -61,3 +61,48 @@ select = ["E", "F", "I"]
 
 [tool.ruff.isort]
 combine-as-imports = true
+
+[tool.mypy]
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "starlette.testclient.*"
+no_implicit_optional = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+addopts = "-rxXs --strict-config --strict-markers"
+xfail_strict = true
+filterwarnings = [
+    # Turn warnings that aren't filtered into exceptions
+    "error",
+    "ignore: run_until_first_complete is deprecated and will be removed in a future version.:DeprecationWarning",
+    "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:DeprecationWarning",
+    "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
+    "ignore: path is deprecated.*:DeprecationWarning:certifi",
+    "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
+    "ignore: The `allow_redirects` argument is deprecated. Use `follow_redirects` instead.:DeprecationWarning",
+    "ignore: 'cgi' is deprecated and slated for removal in Python 3.13:DeprecationWarning",
+    "ignore: You seem to already have a custom sys.excepthook handler installed. I'll skip installing Trio's custom handler, but this means MultiErrors will not show full tracebacks.:RuntimeWarning",
+]
+
+[tool.coverage.run]
+source_pkgs = [
+    "starlette",
+    "tests",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "pragma: nocover",
+    "if typing.TYPE_CHECKING:",
+    "@typing.overload",
+]

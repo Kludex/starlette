@@ -1,8 +1,8 @@
 import os
-import pathlib
 import stat
 import tempfile
 import time
+from pathlib import Path
 
 import anyio
 import pytest
@@ -28,13 +28,12 @@ def test_staticfiles(tmpdir, test_client_factory):
     assert response.text == "<file content>"
 
 
-def test_staticfiles_with_pathlib(tmpdir, test_client_factory):
-    base_dir = pathlib.Path(tmpdir)
-    path = base_dir / "example.txt"
+def test_staticfiles_with_pathlib(tmp_path: Path, test_client_factory):
+    path = tmp_path / "example.txt"
     with open(path, "w") as file:
         file.write("<file content>")
 
-    app = StaticFiles(directory=base_dir)
+    app = StaticFiles(directory=tmp_path)
     client = test_client_factory(app)
     response = client.get("/example.txt")
     assert response.status_code == 200
@@ -513,6 +512,39 @@ def test_staticfiles_disallows_path_traversal_with_symlinks(tmpdir):
 
     with pytest.raises(HTTPException) as exc_info:
         anyio.run(app.get_response, path, scope)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Not Found"
+
+
+def test_staticfiles_avoids_path_traversal(tmp_path: Path):
+    statics_path = tmp_path / "static"
+    statics_disallow_path = tmp_path / "static_disallow"
+
+    statics_path.mkdir()
+    statics_disallow_path.mkdir()
+
+    static_index_file = statics_path / "index.html"
+    statics_disallow_path_index_file = statics_disallow_path / "index.html"
+    static_file = tmp_path / "static1.txt"
+
+    static_index_file.write_text("<h1>Hello</h1>")
+    statics_disallow_path_index_file.write_text("<h1>Private</h1>")
+    static_file.write_text("Private")
+
+    app = StaticFiles(directory=statics_path)
+
+    # We can't test this with 'httpx', so we test the app directly here.
+    path = app.get_path({"path": "/../static1.txt"})
+    with pytest.raises(HTTPException) as exc_info:
+        anyio.run(app.get_response, path, {"method": "GET"})
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Not Found"
+
+    path = app.get_path({"path": "/../static_disallow/index.html"})
+    with pytest.raises(HTTPException) as exc_info:
+        anyio.run(app.get_response, path, {"method": "GET"})
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"

@@ -1,3 +1,18 @@
+## 0.27.0
+
+May 16, 2023
+
+This release fixes a path traversal vulnerability in `StaticFiles`. You can view the full security advisory:
+https://github.com/encode/starlette/security/advisories/GHSA-v5gw-mw7f-84px
+
+### Added
+* Minify JSON websocket data via `send_json` https://github.com/encode/starlette/pull/2128
+
+### Fixed
+* Replace `commonprefix` by `commonpath` on `StaticFiles` [1797de4](https://github.com/encode/starlette/commit/1797de464124b090f10cf570441e8292936d63e3).
+* Convert ImportErrors into ModuleNotFoundError [#2135](https://github.com/encode/starlette/pull/2135).
+* Correct the RuntimeError message content in websockets [#2141](https://github.com/encode/starlette/pull/2141).
+
 ## 0.26.1
 
 March 13, 2023

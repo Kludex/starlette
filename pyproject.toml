@@ -51,11 +51,6 @@ Source = "https://github.com/encode/starlette"
 [tool.hatch.version]
 path = "starlette/__init__.py"
 
-[tool.hatch.build.targets.sdist]
-include = [
-    "/starlette",
-]
-
 [tool.ruff]
 select = ["E", "F", "I"]
 

@@ -216,15 +216,14 @@ class Request(HTTPConnection):
             return
         if self._stream_consumed:
             raise RuntimeError("Stream consumed")
-        self._stream_consumed = True
-        while True:
+        while not self._stream_consumed:
             message = await self._receive()
             if message["type"] == "http.request":
                 body = message.get("body", b"")
+                if not message.get("more_body", False):
+                    self._stream_consumed = True
                 if body:
                     yield body
-                if not message.get("more_body", False):
-                    break
             elif message["type"] == "http.disconnect":
                 self._is_disconnected = True
                 raise ClientDisconnect()

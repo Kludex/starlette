@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import List, Optional
 
 import anyio
 import pytest
@@ -7,7 +7,7 @@ import pytest
 from starlette.datastructures import Address
 from starlette.requests import ClientDisconnect, Request, State
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.types import Scope
+from starlette.types import Message, Scope
 
 
 def test_request_url(test_client_factory):
@@ -506,3 +506,69 @@ def test_request_send_push_promise_without_setting_send(test_client_factory):
     client = test_client_factory(app)
     response = client.get("/")
     assert response.json() == {"json": "Send channel not available"}
+
+
+@pytest.mark.parametrize(
+    "messages",
+    [
+        [{"body": b"123", "more_body": True}, {"body": b""}],
+        [{"body": b"", "more_body": True}, {"body": b"123"}],
+        [{"body": b"12", "more_body": True}, {"body": b"3"}],
+        [
+            {"body": b"123", "more_body": True},
+            {"body": b"", "more_body": True},
+            {"body": b""},
+        ],
+    ],
+)
+@pytest.mark.anyio
+async def test_request_rcv(messages: List[Message]) -> None:
+    messages = messages.copy()
+
+    async def rcv() -> Message:
+        return {"type": "http.request", **messages.pop(0)}
+
+    request = Request({"type": "http"}, rcv)
+
+    body = await request.body()
+
+    assert body == b"123"
+
+
+@pytest.mark.anyio
+async def test_request_stream_called_twice() -> None:
+    messages: List[Message] = [
+        {"type": "http.request", "body": b"1", "more_body": True},
+        {"type": "http.request", "body": b"2", "more_body": True},
+        {"type": "http.request", "body": b"3"},
+    ]
+
+    async def rcv() -> Message:
+        return messages.pop(0)
+
+    request = Request({"type": "http"}, rcv)
+
+    s1 = request.stream()
+    s2 = request.stream()
+
+    msg = await s1.__anext__()
+    assert msg == b"1"
+
+    msg = await s2.__anext__()
+    assert msg == b"2"
+
+    msg = await s1.__anext__()
+    assert msg == b"3"
+
+    # at this point we've consumed the entire body
+    # so we should not wait for more body (which would hang us forever)
+    msg = await s1.__anext__()
+    assert msg == b""
+    msg = await s2.__anext__()
+    assert msg == b""
+
+    # and now both streams are exhausted
+    with pytest.raises(StopAsyncIteration):
+        assert await s2.__anext__()
+    with pytest.raises(StopAsyncIteration):
+        await s1.__anext__()

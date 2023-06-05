@@ -58,6 +58,21 @@ templates = Jinja2Templates(directory='templates')
 templates.env.filters['marked'] = marked_filter
 ```
 
+
+## Using custom jinja2.Environment instance
+
+Starlette also accepts a preconfigured [`jinja2.Environment`](https://jinja.palletsprojects.com/en/3.0.x/api/#api) instance. 
+
+
+```python
+import jinja2
+from starlette.templating import Jinja2Templates
+
+env = jinja2.Environment(...)
+templates = Jinja2Templates(env=env)
+```
+
+
 ## Context processors
 
 A context processor is a function that returns a dictionary to be merged into a template context.

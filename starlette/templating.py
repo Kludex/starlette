@@ -1,4 +1,5 @@
 import typing
+import warnings
 from os import PathLike
 
 from starlette.background import BackgroundTask
@@ -62,19 +63,57 @@ class Jinja2Templates:
     return templates.TemplateResponse("index.html", {"request": request})
     """
 
+    @typing.overload
     def __init__(
         self,
         directory: typing.Union[
-            str, PathLike, typing.Sequence[typing.Union[str, PathLike]]
+            str,
+            PathLike,
+            typing.Sequence[typing.Union[str, PathLike]],
         ],
+        *,
         context_processors: typing.Optional[
             typing.List[typing.Callable[[Request], typing.Dict[str, typing.Any]]]
         ] = None,
         **env_options: typing.Any,
     ) -> None:
+        ...
+
+    @typing.overload
+    def __init__(
+        self,
+        *,
+        env: "jinja2.Environment",
+        context_processors: typing.Optional[
+            typing.List[typing.Callable[[Request], typing.Dict[str, typing.Any]]]
+        ] = None,
+    ) -> None:
+        ...
+
+    def __init__(
+        self,
+        directory: typing.Union[
+            str, PathLike, typing.Sequence[typing.Union[str, PathLike]], None
+        ] = None,
+        *,
+        context_processors: typing.Optional[
+            typing.List[typing.Callable[[Request], typing.Dict[str, typing.Any]]]
+        ] = None,
+        env: typing.Optional["jinja2.Environment"] = None,
+        **env_options: typing.Any,
+    ) -> None:
+        if env_options:
+            warnings.warn(
+                "Extra environment options are deprecated. Use a preconfigured jinja2.Environment instead.",  # noqa: E501
+                DeprecationWarning,
+            )
         assert jinja2 is not None, "jinja2 must be installed to use Jinja2Templates"
-        self.env = self._create_env(directory, **env_options)
+        assert directory or env, "either 'directory' or 'env' arguments must be passed"
         self.context_processors = context_processors or []
+        if directory is not None:
+            self.env = self._create_env(directory, **env_options)
+        elif env is not None:
+            self.env = env
 
     def _create_env(
         self,

@@ -13,12 +13,20 @@ from urllib.parse import unquote, urljoin
 
 import anyio
 import anyio.from_thread
-import httpx
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
+
+try:
+    import httpx
+except ModuleNotFoundError:  # pragma: no cover
+    raise RuntimeError(
+        "The starlette.testclient module requires the httpx package to be installed.\n"
+        "You can install this with:\n"
+        "    $ pip install httpx\n"
+    )
 
 if sys.version_info >= (3, 8):  # pragma: no cover
     from typing import TypedDict

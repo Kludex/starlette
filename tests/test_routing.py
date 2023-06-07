@@ -1033,13 +1033,9 @@ def test_mounted_middleware_does_not_catch_exception(
     assert resp.status_code == 200, resp.content
     assert "X-Mounted" in resp.headers
 
-    # this is the "surprising" behavior bit
-    # the middleware on the mount never runs because there
-    # is nothing to catch the HTTPException
-    # since Mount middlweare is not wrapped by ExceptionMiddleware
     resp = client.get("/mount/err")
     assert resp.status_code == 403, resp.content
-    assert "X-Mounted" not in resp.headers
+    assert "X-Mounted" in resp.headers
 
 
 def test_route_repr() -> None:

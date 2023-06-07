@@ -9,6 +9,7 @@ import warnings
 from contextlib import asynccontextmanager
 from enum import Enum
 
+from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
@@ -61,12 +62,16 @@ def request_response(func: typing.Callable) -> ASGIApp:
     is_coroutine = is_async_callable(func)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        request = Request(scope, receive=receive, send=send)
-        if is_coroutine:
-            response = await func(request)
-        else:
-            response = await run_in_threadpool(func, request)
-        await response(scope, receive, send)
+        request = Request(scope, receive, send)
+
+        async def app(scope: Scope, receive: Receive, send: Send) -> None:
+            if is_coroutine:
+                response = await func(request)
+            else:
+                response = await run_in_threadpool(func, request)
+            await response(scope, receive, send)
+
+        await wrap_app_handling_exceptions(app, request)(scope, receive, send)
 
     return app
 
@@ -79,7 +84,11 @@ def websocket_session(func: typing.Callable) -> ASGIApp:
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         session = WebSocket(scope, receive=receive, send=send)
-        await func(session)
+
+        async def app(scope: Scope, receive: Receive, send: Send) -> None:
+            await func(session)
+
+        await wrap_app_handling_exceptions(app, session)(scope, receive, send)
 
     return app
 

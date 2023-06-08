@@ -31,7 +31,7 @@ class Starlette:
     * **exception_handlers** - A mapping of either integer status codes,
     or exception class types onto callables which handle the exceptions.
     Exception handler callables should be of the form
-    `handler(request, exc) -> response` and may be be either standard functions, or
+    `handler(request, exc) -> response` and may be either standard functions, or
     async functions.
     * **on_startup** - A list of callables to run on application startup.
     Startup handler callables do not take any arguments, and may be be either

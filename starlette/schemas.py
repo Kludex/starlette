@@ -4,7 +4,7 @@ import typing
 
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import BaseRoute, Mount, Route
+from starlette.routing import BaseRoute, Host, Mount, Route
 
 try:
     import yaml
@@ -49,9 +49,12 @@ class BaseSchemaGenerator:
         endpoints_info: list = []
 
         for route in routes:
-            if isinstance(route, Mount):
-                path = self._remove_converter(route.path)
+            if isinstance(route, (Mount, Host)):
                 routes = route.routes or []
+                if isinstance(route, Mount):
+                    path = self._remove_converter(route.path)
+                else:
+                    path = ""
                 sub_endpoints = [
                     EndpointInfo(
                         path="".join((path, sub_endpoint.path)),

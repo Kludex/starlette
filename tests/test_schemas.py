@@ -1,6 +1,6 @@
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
-from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.schemas import SchemaGenerator
 
 schemas = SchemaGenerator(
@@ -123,6 +123,7 @@ app = Starlette(
         Route("/no-docstring", endpoint=no_docstring),
         Route("/schema", endpoint=schema, methods=["GET"], include_in_schema=False),
         Mount("/subapp", subapp),
+        Host("sub.domain.com", app=Router(routes=[Mount("/subapp2", subapp)])),
     ]
 )
 
@@ -159,6 +160,13 @@ def test_schema_generation():
                 }
             },
             "/subapp/subapp-endpoint": {
+                "get": {
+                    "responses": {
+                        200: {"description": "This endpoint is part of a subapp."}
+                    }
+                }
+            },
+            "/subapp2/subapp-endpoint": {
                 "get": {
                     "responses": {
                         200: {"description": "This endpoint is part of a subapp."}
@@ -220,6 +228,11 @@ paths:
         200:
           description: This is included in the schema.
   /subapp/subapp-endpoint:
+    get:
+      responses:
+        200:
+          description: This endpoint is part of a subapp.
+  /subapp2/subapp-endpoint:
     get:
       responses:
         200:

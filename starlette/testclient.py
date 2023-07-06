@@ -382,6 +382,7 @@ class TestClient(httpx.Client):
         backend_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
         cookies: httpx._client.CookieTypes = None,
         headers: typing.Dict[str, str] = None,
+        follow_redirects: bool = True,
     ) -> None:
         self.async_backend = _AsyncBackend(
             backend=backend, backend_options=backend_options or {}
@@ -409,7 +410,7 @@ class TestClient(httpx.Client):
             base_url=base_url,
             headers=headers,
             transport=transport,
-            follow_redirects=True,
+            follow_redirects=follow_redirects,
             cookies=cookies,
         )
 

@@ -10,7 +10,7 @@ import trio.lowlevel
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -319,3 +319,26 @@ def test_domain_restricted_cookies(test_client_factory, domain, ok):
     response = client.get("/")
     cookie_set = len(response.cookies) == 1
     assert cookie_set == ok
+
+
+def test_forward_follow_redirects(test_client_factory):
+    async def app(scope, receive, send):
+        if "/ok" in scope["path"]:
+            response = Response("ok")
+        else:
+            response = RedirectResponse("/ok")
+        await response(scope, receive, send)
+
+    client = test_client_factory(app, follow_redirects=True)
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+def test_forward_nofollow_redirects(test_client_factory):
+    async def app(scope, receive, send):
+        response = RedirectResponse("/ok")
+        await response(scope, receive, send)
+
+    client = test_client_factory(app, follow_redirects=False)
+    response = client.get("/")
+    assert response.status_code == 307

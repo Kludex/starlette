@@ -1,3 +1,11 @@
+## 0.30.0
+
+July 13, 2023
+
+### Removed
+
+* Drop Python 3.7 support [#2178](https://github.com/encode/starlette/pull/2178).
+
 ## 0.29.0
 
 July 13, 2023

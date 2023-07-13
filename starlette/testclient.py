@@ -4,7 +4,6 @@ import io
 import json
 import math
 import queue
-import sys
 import typing
 import warnings
 from concurrent.futures import Future
@@ -27,12 +26,6 @@ except ModuleNotFoundError:  # pragma: no cover
         "You can install this with:\n"
         "    $ pip install httpx\n"
     )
-
-if sys.version_info >= (3, 8):  # pragma: no cover
-    from typing import TypedDict
-else:  # pragma: no cover
-    from typing_extensions import TypedDict
-
 _PortalFactoryType = typing.Callable[
     [], typing.ContextManager[anyio.abc.BlockingPortal]
 ]
@@ -64,7 +57,7 @@ class _WrapASGI2:
         await instance(receive, send)
 
 
-class _AsyncBackend(TypedDict):
+class _AsyncBackend(typing.TypedDict):
     backend: str
     backend_options: typing.Dict[str, typing.Any]
 

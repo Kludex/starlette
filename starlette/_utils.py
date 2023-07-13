@@ -1,13 +1,6 @@
 import asyncio
 import functools
-import sys
 import typing
-from types import TracebackType
-
-if sys.version_info < (3, 8):  # pragma: no cover
-    from typing_extensions import Protocol
-else:  # pragma: no cover
-    from typing import Protocol
 
 
 def is_async_callable(obj: typing.Any) -> bool:
@@ -22,31 +15,13 @@ def is_async_callable(obj: typing.Any) -> bool:
 T_co = typing.TypeVar("T_co", covariant=True)
 
 
-# TODO: once 3.8 is the minimum supported version (27 Jun 2023)
-# this can just become
-# class AwaitableOrContextManager(
-#     typing.Awaitable[T_co],
-#     typing.AsyncContextManager[T_co],
-#     typing.Protocol[T_co],
-# ):
-#     pass
-class AwaitableOrContextManager(Protocol[T_co]):
-    def __await__(self) -> typing.Generator[typing.Any, None, T_co]:
-        ...  # pragma: no cover
-
-    async def __aenter__(self) -> T_co:
-        ...  # pragma: no cover
-
-    async def __aexit__(
-        self,
-        __exc_type: typing.Optional[typing.Type[BaseException]],
-        __exc_value: typing.Optional[BaseException],
-        __traceback: typing.Optional[TracebackType],
-    ) -> typing.Union[bool, None]:
-        ...  # pragma: no cover
+class AwaitableOrContextManager(
+    typing.Awaitable[T_co], typing.AsyncContextManager[T_co], typing.Protocol[T_co]
+):
+    ...
 
 
-class SupportsAsyncClose(Protocol):
+class SupportsAsyncClose(typing.Protocol):
     async def close(self) -> None:
         ...  # pragma: no cover
 

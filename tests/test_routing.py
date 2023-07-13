@@ -1,13 +1,7 @@
 import contextlib
 import functools
-import sys
 import typing
 import uuid
-
-if sys.version_info < (3, 8):
-    from typing_extensions import TypedDict  # pragma: no cover
-else:
-    from typing import TypedDict  # pragma: no cover
 
 import pytest
 
@@ -751,7 +745,7 @@ def test_lifespan_state_async_cm(test_client_factory):
     startup_complete = False
     shutdown_complete = False
 
-    class State(TypedDict):
+    class State(typing.TypedDict):
         count: int
         items: typing.List[int]
 

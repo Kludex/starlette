@@ -41,7 +41,7 @@ It is production-ready, and gives you the following:
 
 ## Requirements
 
-Python 3.7+ (For Python 3.6 support, install version 0.19.1)
+Python 3.8+
 
 ## Installation
 

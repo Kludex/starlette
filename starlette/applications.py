@@ -111,9 +111,8 @@ class Starlette:
     def routes(self) -> typing.List[BaseRoute]:
         return self.router.routes
 
-    # TODO: Make `__name` a positional-only argument when we drop Python 3.7 support.
-    def url_path_for(self, __name: str, **path_params: typing.Any) -> URLPath:
-        return self.router.url_path_for(__name, **path_params)
+    def url_path_for(self, name: str, /, **path_params: typing.Any) -> URLPath:
+        return self.router.url_path_for(name, **path_params)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         scope["app"] = self

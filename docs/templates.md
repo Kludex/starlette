@@ -22,7 +22,7 @@ from starlette.staticfiles import StaticFiles
 templates = Jinja2Templates(directory='templates')
 
 async def homepage(request):
-    return templates.TemplateResponse('index.html', {'request': request})
+    return templates.TemplateResponse(request, 'index.html')
 
 routes = [
     Route('/', endpoint=homepage),

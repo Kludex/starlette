@@ -266,6 +266,71 @@ async def test_run_background_tasks_even_if_client_disconnects():
 
 
 @pytest.mark.anyio
+async def test_do_not_block_on_background_tasks():
+    request_body_sent = False
+    response_complete = anyio.Event()
+    events: List[Union[str, Message]] = []
+
+    async def sleep_and_set():
+        events.append("Background task started")
+        await anyio.sleep(0.1)
+        events.append("Background task finished")
+
+    async def endpoint_with_background_task(_):
+        return PlainTextResponse(
+            content="Hello", background=BackgroundTask(sleep_and_set)
+        )
+
+    async def passthrough(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", endpoint_with_background_task)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+    }
+
+    async def receive() -> Message:
+        nonlocal request_body_sent
+        if not request_body_sent:
+            request_body_sent = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        await response_complete.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message):
+        if message["type"] == "http.response.body":
+            events.append(message)
+            if not message.get("more_body", False):
+                response_complete.set()
+
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(app, scope, receive, send)
+        tg.start_soon(app, scope, receive, send)
+
+    # Without the fix, the background tasks would start and finish before the
+    # last http.response.body is sent.
+    assert events == [
+        {"body": b"Hello", "more_body": True, "type": "http.response.body"},
+        {"body": b"", "more_body": False, "type": "http.response.body"},
+        {"body": b"Hello", "more_body": True, "type": "http.response.body"},
+        {"body": b"", "more_body": False, "type": "http.response.body"},
+        "Background task started",
+        "Background task started",
+        "Background task finished",
+        "Background task finished",
+    ]
+
+
+@pytest.mark.anyio
 async def test_run_context_manager_exit_even_if_client_disconnects():
     # test for https://github.com/encode/starlette/issues/1678#issuecomment-1172916042
     request_body_sent = False

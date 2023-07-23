@@ -12,7 +12,8 @@ types-contextvars==2.4.7.2
 types-PyYAML==6.0.12.10
 types-dataclasses==0.6.6
 pytest==7.4.0
-trio==0.21.0
+trio==0.22.1
+anyio@git+https://github.com/agronholm/anyio.git
 
 # Documentation
 mkdocs==1.4.3

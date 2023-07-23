@@ -10,7 +10,7 @@ class HTTPException(Exception):
         self,
         status_code: int,
         detail: typing.Optional[str] = None,
-        headers: typing.Optional[dict] = None,
+        headers: typing.Optional[typing.Dict[str, str]] = None,
     ) -> None:
         if detail is None:
             detail = http.HTTPStatus(status_code).phrase

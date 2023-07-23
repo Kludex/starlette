@@ -142,7 +142,7 @@ class MultiPartParser:
         self._charset = ""
         self._file_parts_to_write: typing.List[typing.Tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: typing.List[MultipartPart] = []
-        self._files_to_close_on_error: typing.List[SpooledTemporaryFile] = []
+        self._files_to_close_on_error: typing.List[SpooledTemporaryFile[bytes]] = []
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()

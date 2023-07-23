@@ -4,8 +4,8 @@ from typing import List, Optional
 import anyio
 import pytest
 
-from starlette.datastructures import Address
-from starlette.requests import ClientDisconnect, Request, State
+from starlette.datastructures import Address, State
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import Message, Scope
 

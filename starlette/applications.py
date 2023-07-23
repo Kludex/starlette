@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 import warnings
 
@@ -9,7 +11,8 @@ from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Router
-from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
+from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope, Send
+from starlette.websockets import WebSocket
 
 AppType = typing.TypeVar("AppType", bound="Starlette")
 
@@ -47,19 +50,11 @@ class Starlette:
     def __init__(
         self: "AppType",
         debug: bool = False,
-        routes: typing.Optional[typing.Sequence[BaseRoute]] = None,
-        middleware: typing.Optional[typing.Sequence[Middleware]] = None,
-        exception_handlers: typing.Optional[
-            typing.Mapping[
-                typing.Any,
-                typing.Callable[
-                    [Request, Exception],
-                    typing.Union[Response, typing.Awaitable[Response]],
-                ],
-            ]
-        ] = None,
-        on_startup: typing.Optional[typing.Sequence[typing.Callable]] = None,
-        on_shutdown: typing.Optional[typing.Sequence[typing.Callable]] = None,
+        routes: typing.Sequence[BaseRoute] | None = None,
+        middleware: typing.Sequence[Middleware] | None = None,
+        exception_handlers: typing.Mapping[typing.Any, ExceptionHandler] | None = None,
+        on_startup: typing.Sequence[typing.Callable[[], typing.Any]] | None = None,
+        on_shutdown: typing.Sequence[typing.Callable[[], typing.Any]] | None = None,
         lifespan: typing.Optional[Lifespan["AppType"]] = None,
     ) -> None:
         # The lifespan context function is a newer style that replaces
@@ -120,18 +115,14 @@ class Starlette:
             self.middleware_stack = self.build_middleware_stack()
         await self.middleware_stack(scope, receive, send)
 
-    def on_event(self, event_type: str) -> typing.Callable:  # pragma: nocover
-        return self.router.on_event(event_type)
+    def on_event(self, event_type: str) -> typing.Callable:  # type: ignore[type-arg]
+        return self.router.on_event(event_type)  # pragma: nocover
 
-    def mount(
-        self, path: str, app: ASGIApp, name: typing.Optional[str] = None
-    ) -> None:  # pragma: nocover
-        self.router.mount(path, app=app, name=name)
+    def mount(self, path: str, app: ASGIApp, name: str | None = None) -> None:
+        self.router.mount(path, app=app, name=name)  # pragma: no cover
 
-    def host(
-        self, host: str, app: ASGIApp, name: typing.Optional[str] = None
-    ) -> None:  # pragma: no cover
-        self.router.host(host, app=app, name=name)
+    def host(self, host: str, app: ASGIApp, name: str | None = None) -> None:
+        self.router.host(host, app=app, name=name)  # pragma: no cover
 
     def add_middleware(self, middleware_class: type, **options: typing.Any) -> None:
         if self.middleware_stack is not None:  # pragma: no cover
@@ -140,20 +131,20 @@ class Starlette:
 
     def add_exception_handler(
         self,
-        exc_class_or_status_code: typing.Union[int, typing.Type[Exception]],
-        handler: typing.Callable,
+        exc_class_or_status_code: int | typing.Type[Exception],
+        handler: ExceptionHandler,
     ) -> None:  # pragma: no cover
         self.exception_handlers[exc_class_or_status_code] = handler
 
     def add_event_handler(
-        self, event_type: str, func: typing.Callable
+        self, event_type: str, func: typing.Callable  # type: ignore[type-arg]
     ) -> None:  # pragma: no cover
         self.router.add_event_handler(event_type, func)
 
     def add_route(
         self,
         path: str,
-        route: typing.Callable,
+        route: typing.Callable[[Request], typing.Awaitable[Response] | Response],
         methods: typing.Optional[typing.List[str]] = None,
         name: typing.Optional[str] = None,
         include_in_schema: bool = True,
@@ -163,20 +154,23 @@ class Starlette:
         )
 
     def add_websocket_route(
-        self, path: str, route: typing.Callable, name: typing.Optional[str] = None
+        self,
+        path: str,
+        route: typing.Callable[[WebSocket], typing.Awaitable[None]],
+        name: str | None = None,
     ) -> None:  # pragma: no cover
         self.router.add_websocket_route(path, route, name=name)
 
     def exception_handler(
-        self, exc_class_or_status_code: typing.Union[int, typing.Type[Exception]]
-    ) -> typing.Callable:
+        self, exc_class_or_status_code: int | typing.Type[Exception]
+    ) -> typing.Callable:  # type: ignore[type-arg]
         warnings.warn(
             "The `exception_handler` decorator is deprecated, and will be removed in version 1.0.0. "  # noqa: E501
             "Refer to https://www.starlette.io/exceptions/ for the recommended approach.",  # noqa: E501
             DeprecationWarning,
         )
 
-        def decorator(func: typing.Callable) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
             self.add_exception_handler(exc_class_or_status_code, func)
             return func
 
@@ -185,10 +179,10 @@ class Starlette:
     def route(
         self,
         path: str,
-        methods: typing.Optional[typing.List[str]] = None,
-        name: typing.Optional[str] = None,
+        methods: typing.List[str] | None = None,
+        name: str | None = None,
         include_in_schema: bool = True,
-    ) -> typing.Callable:
+    ) -> typing.Callable:  # type: ignore[type-arg]
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:
@@ -202,7 +196,7 @@ class Starlette:
             DeprecationWarning,
         )
 
-        def decorator(func: typing.Callable) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
             self.router.add_route(
                 path,
                 func,
@@ -215,8 +209,8 @@ class Starlette:
         return decorator
 
     def websocket_route(
-        self, path: str, name: typing.Optional[str] = None
-    ) -> typing.Callable:
+        self, path: str, name: str | None = None
+    ) -> typing.Callable:  # type: ignore[type-arg]
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:
@@ -230,13 +224,13 @@ class Starlette:
             DeprecationWarning,
         )
 
-        def decorator(func: typing.Callable) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
             self.router.add_websocket_route(path, func, name=name)
             return func
 
         return decorator
 
-    def middleware(self, middleware_type: str) -> typing.Callable:
+    def middleware(self, middleware_type: str) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:
@@ -253,7 +247,7 @@ class Starlette:
             middleware_type == "http"
         ), 'Currently only middleware("http") is supported.'
 
-        def decorator(func: typing.Callable) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
             self.add_middleware(BaseHTTPMiddleware, dispatch=func)
             return func
 

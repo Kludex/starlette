@@ -26,7 +26,7 @@ class ExceptionMiddleware:
         self._status_handlers: StatusHandlers = {}
         self._exception_handlers: ExceptionHandlers = {
             HTTPException: self.http_exception,
-            WebSocketException: self.websocket_exception,  # type: ignore[dict-item]
+            WebSocketException: self.websocket_exception,
         }
         if handlers is not None:
             for key, value in handlers.items():

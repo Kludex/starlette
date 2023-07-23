@@ -26,11 +26,13 @@ class OpenAPIResponse(Response):
 class EndpointInfo(typing.NamedTuple):
     path: str
     http_method: str
-    func: typing.Callable
+    func: typing.Callable[..., typing.Any]
 
 
 class BaseSchemaGenerator:
-    def get_schema(self, routes: typing.List[BaseRoute]) -> dict:
+    def get_schema(
+        self, routes: typing.List[BaseRoute]
+    ) -> typing.Dict[str, typing.Any]:
         raise NotImplementedError()  # pragma: no cover
 
     def get_endpoints(
@@ -46,7 +48,7 @@ class BaseSchemaGenerator:
         - func
             method ready to extract the docstring
         """
-        endpoints_info: list = []
+        endpoints_info: typing.List[EndpointInfo] = []
 
         for route in routes:
             if isinstance(route, (Mount, Host)):
@@ -95,7 +97,9 @@ class BaseSchemaGenerator:
         """
         return re.sub(r":\w+}", "}", path)
 
-    def parse_docstring(self, func_or_method: typing.Callable) -> dict:
+    def parse_docstring(
+        self, func_or_method: typing.Callable[..., typing.Any]
+    ) -> typing.Dict[str, typing.Any]:
         """
         Given a function, parse the docstring as YAML and return a dictionary of info.
         """
@@ -126,10 +130,12 @@ class BaseSchemaGenerator:
 
 
 class SchemaGenerator(BaseSchemaGenerator):
-    def __init__(self, base_schema: dict) -> None:
+    def __init__(self, base_schema: typing.Dict[str, typing.Any]) -> None:
         self.base_schema = base_schema
 
-    def get_schema(self, routes: typing.List[BaseRoute]) -> dict:
+    def get_schema(
+        self, routes: typing.List[BaseRoute]
+    ) -> typing.Dict[str, typing.Any]:
         schema = dict(self.base_schema)
         schema.setdefault("paths", {})
         endpoints_info = self.get_endpoints(routes)

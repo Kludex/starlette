@@ -6,7 +6,7 @@ class Middleware:
         self.cls = cls
         self.options = options
 
-    def __iter__(self) -> typing.Iterator:
+    def __iter__(self) -> typing.Iterator[typing.Any]:
         as_tuple = (self.cls, self.options)
         return iter(as_tuple)
 

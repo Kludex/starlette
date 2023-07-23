@@ -895,7 +895,7 @@ class Endpoint:
         pytest.param(lambda request: ..., "<lambda>", id="lambda"),
     ],
 )
-def test_route_name(endpoint: typing.Callable, expected_name: str):
+def test_route_name(endpoint: typing.Callable[..., typing.Any], expected_name: str):
     assert Route(path="/", endpoint=endpoint).name == expected_name
 
 

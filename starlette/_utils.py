@@ -1,9 +1,28 @@
 import asyncio
 import functools
+import sys
 import typing
 
+if sys.version_info >= (3, 10):  # pragma: no cover
+    from typing import TypeGuard
+else:  # pragma: no cover
+    from typing_extensions import TypeGuard
 
-def is_async_callable(obj: typing.Any) -> bool:
+T = typing.TypeVar("T")
+AwaitableCallable = typing.Callable[..., typing.Awaitable[T]]
+
+
+@typing.overload
+def is_async_callable(obj: AwaitableCallable[T]) -> TypeGuard[AwaitableCallable[T]]:
+    ...
+
+
+@typing.overload
+def is_async_callable(obj: typing.Any) -> TypeGuard[AwaitableCallable[typing.Any]]:
+    ...
+
+
+def is_async_callable(obj: typing.Any) -> typing.Any:
     while isinstance(obj, functools.partial):
         obj = obj.func
 

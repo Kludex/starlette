@@ -15,7 +15,7 @@ def refresh_convertor_types():
     convertors.CONVERTOR_TYPES = convert_types
 
 
-class DateTimeConvertor(Convertor):
+class DateTimeConvertor(Convertor[datetime]):
     regex = "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?"
 
     def convert(self, value: str) -> datetime:

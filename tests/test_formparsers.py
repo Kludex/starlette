@@ -5,13 +5,14 @@ from contextlib import nullcontext as does_not_raise
 import pytest
 
 from starlette.applications import Starlette
-from starlette.formparsers import MultiPartException, UploadFile, _user_safe_decode
+from starlette.datastructures import UploadFile
+from starlette.formparsers import MultiPartException, _user_safe_decode
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
 
 
-class ForceMultipartDict(dict):
+class ForceMultipartDict(typing.Dict[typing.Any, typing.Any]):
     def __bool__(self):
         return True
 
@@ -43,7 +44,7 @@ async def app(scope, receive, send):
 async def multi_items_app(scope, receive, send):
     request = Request(scope, receive)
     data = await request.form()
-    output: typing.Dict[str, list] = {}
+    output: typing.Dict[str, typing.List[typing.Any]] = {}
     for key, value in data.multi_items():
         if key not in output:
             output[key] = []

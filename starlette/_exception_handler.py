@@ -4,18 +4,16 @@ from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import Response
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, ExceptionHandler, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
-Handler = typing.Callable[..., typing.Any]
-ExceptionHandlers = typing.Dict[typing.Any, Handler]
-StatusHandlers = typing.Dict[int, Handler]
+ExceptionHandlers = typing.Dict[typing.Any, ExceptionHandler]
+StatusHandlers = typing.Dict[int, ExceptionHandler]
 
 
 def _lookup_exception_handler(
     exc_handlers: ExceptionHandlers, exc: Exception
-) -> typing.Optional[Handler]:
+) -> typing.Optional[ExceptionHandler]:
     for cls in type(exc).__mro__:
         if cls in exc_handlers:
             return exc_handlers[cls]
@@ -61,7 +59,6 @@ def wrap_app_handling_exceptions(
                 raise RuntimeError(msg) from exc
 
             if scope["type"] == "http":
-                response: Response
                 if is_async_callable(handler):
                     response = await handler(conn, exc)
                 else:

@@ -16,7 +16,7 @@ warnings.warn(
 )
 
 
-def build_environ(scope: Scope, body: bytes) -> dict:
+def build_environ(scope: Scope, body: bytes) -> typing.Dict[str, typing.Any]:
     """
     Builds a scope and request body into a WSGI environ object.
     """
@@ -63,7 +63,7 @@ def build_environ(scope: Scope, body: bytes) -> dict:
 
 
 class WSGIMiddleware:
-    def __init__(self, app: typing.Callable) -> None:
+    def __init__(self, app: typing.Callable[..., typing.Any]) -> None:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -76,7 +76,7 @@ class WSGIResponder:
     stream_send: ObjectSendStream[typing.MutableMapping[str, typing.Any]]
     stream_receive: ObjectReceiveStream[typing.MutableMapping[str, typing.Any]]
 
-    def __init__(self, app: typing.Callable, scope: Scope) -> None:
+    def __init__(self, app: typing.Callable[..., typing.Any], scope: Scope) -> None:
         self.app = app
         self.scope = scope
         self.status = None
@@ -132,7 +132,11 @@ class WSGIResponder:
                 },
             )
 
-    def wsgi(self, environ: dict, start_response: typing.Callable) -> None:
+    def wsgi(
+        self,
+        environ: typing.Dict[str, typing.Any],
+        start_response: typing.Callable[..., typing.Any],
+    ) -> None:
         for chunk in self.app(environ, start_response):
             anyio.from_thread.run(
                 self.stream_send.send,

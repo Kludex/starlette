@@ -111,7 +111,7 @@ class WebSocket(HTTPConnection):
             )
         message = await self.receive()
         self._raise_on_disconnect(message)
-        return message["text"]
+        return typing.cast(str, message["text"])
 
     async def receive_bytes(self) -> bytes:
         if self.application_state != WebSocketState.CONNECTED:
@@ -120,7 +120,7 @@ class WebSocket(HTTPConnection):
             )
         message = await self.receive()
         self._raise_on_disconnect(message)
-        return message["bytes"]
+        return typing.cast(bytes, message["bytes"])
 
     async def receive_json(self, mode: str = "text") -> typing.Any:
         if mode not in {"text", "binary"}:

@@ -58,18 +58,21 @@ select = ["E", "F", "I"]
 combine-as-imports = true
 
 [tool.mypy]
-disallow_untyped_defs = true
+strict = true
 ignore_missing_imports = true
-show_error_codes = true
+python_version = "3.8"
 
 [[tool.mypy.overrides]]
 module = "starlette.testclient.*"
-no_implicit_optional = false
+implicit_optional = true
 
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
-check_untyped_defs = true
+# TODO: Uncomment the following configuration when
+# https://github.com/python/mypy/issues/10045 is solved. In the meantime,
+# we are calling `mypy tests` directly. Check `scripts/check` for more info.
+# [[tool.mypy.overrides]]
+# module = "tests.*"
+# disallow_untyped_defs = false
+# check_untyped_defs = true
 
 [tool.pytest.ini_options]
 addopts = "-rxXs --strict-config --strict-markers"

@@ -23,7 +23,7 @@ class HTTPEndpoint:
             if getattr(self, method.lower(), None) is not None
         ]
 
-    def __await__(self) -> typing.Generator:
+    def __await__(self) -> typing.Generator[typing.Any, None, None]:
         return self.dispatch().__await__()
 
     async def dispatch(self) -> None:
@@ -63,7 +63,7 @@ class WebSocketEndpoint:
         self.receive = receive
         self.send = send
 
-    def __await__(self) -> typing.Generator:
+    def __await__(self) -> typing.Generator[typing.Any, None, None]:
         return self.dispatch().__await__()
 
     async def dispatch(self) -> None:

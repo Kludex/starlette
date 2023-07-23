@@ -79,8 +79,8 @@ class WebSocketTestSession:
         self.scope = scope
         self.accepted_subprotocol = None
         self.portal_factory = portal_factory
-        self._receive_queue: "queue.Queue[typing.Any]" = queue.Queue()
-        self._send_queue: "queue.Queue[typing.Any]" = queue.Queue()
+        self._receive_queue: "queue.Queue[Message]" = queue.Queue()
+        self._send_queue: "queue.Queue[Message | BaseException]" = queue.Queue()
         self.extra_headers = None
 
     def __enter__(self) -> "WebSocketTestSession":
@@ -165,12 +165,12 @@ class WebSocketTestSession:
     def receive_text(self) -> str:
         message = self.receive()
         self._raise_on_close(message)
-        return message["text"]
+        return typing.cast(str, message["text"])
 
     def receive_bytes(self) -> bytes:
         message = self.receive()
         self._raise_on_close(message)
-        return message["bytes"]
+        return typing.cast(bytes, message["bytes"])
 
     def receive_json(self, mode: str = "text") -> typing.Any:
         assert mode in ["text", "binary"]
@@ -374,7 +374,7 @@ class TestClient(httpx.Client):
         root_path: str = "",
         backend: str = "asyncio",
         backend_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        cookies: httpx._client.CookieTypes = None,
+        cookies: httpx._types.CookieTypes = None,
         headers: typing.Dict[str, str] = None,
         follow_redirects: bool = True,
     ) -> None:
@@ -459,7 +459,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:
@@ -469,7 +469,7 @@ class TestClient(httpx.Client):
             method,
             url,
             content=content,
-            data=data,  # type: ignore[arg-type]
+            data=data,
             files=files,
             json=json,
             params=params,
@@ -494,7 +494,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:
@@ -523,7 +523,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:
@@ -552,7 +552,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:
@@ -585,7 +585,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:
@@ -593,7 +593,7 @@ class TestClient(httpx.Client):
         return super().post(
             url,
             content=content,
-            data=data,  # type: ignore[arg-type]
+            data=data,
             files=files,
             json=json,
             params=params,
@@ -622,7 +622,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:
@@ -630,7 +630,7 @@ class TestClient(httpx.Client):
         return super().put(
             url,
             content=content,
-            data=data,  # type: ignore[arg-type]
+            data=data,
             files=files,
             json=json,
             params=params,
@@ -659,7 +659,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:
@@ -667,7 +667,7 @@ class TestClient(httpx.Client):
         return super().patch(
             url,
             content=content,
-            data=data,  # type: ignore[arg-type]
+            data=data,
             files=files,
             json=json,
             params=params,
@@ -692,7 +692,7 @@ class TestClient(httpx.Client):
         follow_redirects: typing.Optional[bool] = None,
         allow_redirects: typing.Optional[bool] = None,
         timeout: typing.Union[
-            httpx._client.TimeoutTypes, httpx._client.UseClientDefault
+            httpx._types.TimeoutTypes, httpx._client.UseClientDefault
         ] = httpx._client.USE_CLIENT_DEFAULT,
         extensions: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> httpx.Response:

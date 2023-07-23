@@ -17,7 +17,7 @@ from starlette.datastructures import URL, Headers, URLPath
 from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse, RedirectResponse
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
 
@@ -54,18 +54,19 @@ def iscoroutinefunction_or_partial(obj: typing.Any) -> bool:  # pragma: no cover
     return inspect.iscoroutinefunction(obj)
 
 
-def request_response(func: typing.Callable) -> ASGIApp:
+def request_response(
+    func: typing.Callable[[Request], typing.Union[typing.Awaitable[Response], Response]]
+) -> ASGIApp:
     """
     Takes a function or coroutine `func(request) -> response`,
     and returns an ASGI application.
     """
-    is_coroutine = is_async_callable(func)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive, send)
 
         async def app(scope: Scope, receive: Receive, send: Send) -> None:
-            if is_coroutine:
+            if is_async_callable(func):
                 response = await func(request)
             else:
                 response = await run_in_threadpool(func, request)
@@ -76,7 +77,9 @@ def request_response(func: typing.Callable) -> ASGIApp:
     return app
 
 
-def websocket_session(func: typing.Callable) -> ASGIApp:
+def websocket_session(
+    func: typing.Callable[[WebSocket], typing.Awaitable[None]]
+) -> ASGIApp:
     """
     Takes a coroutine `func(session)`, and returns an ASGI application.
     """
@@ -93,7 +96,7 @@ def websocket_session(func: typing.Callable) -> ASGIApp:
     return app
 
 
-def get_name(endpoint: typing.Callable) -> str:
+def get_name(endpoint: typing.Callable[..., typing.Any]) -> str:
     if inspect.isroutine(endpoint) or inspect.isclass(endpoint):
         return endpoint.__name__
     return endpoint.__class__.__name__
@@ -101,9 +104,9 @@ def get_name(endpoint: typing.Callable) -> str:
 
 def replace_params(
     path: str,
-    param_convertors: typing.Dict[str, Convertor],
+    param_convertors: typing.Dict[str, Convertor[typing.Any]],
     path_params: typing.Dict[str, str],
-) -> typing.Tuple[str, dict]:
+) -> typing.Tuple[str, typing.Dict[str, str]]:
     for key, value in list(path_params.items()):
         if "{" + key + "}" in path:
             convertor = param_convertors[key]
@@ -119,7 +122,7 @@ PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
 def compile_path(
     path: str,
-) -> typing.Tuple[typing.Pattern, str, typing.Dict[str, Convertor]]:
+) -> typing.Tuple[typing.Pattern[str], str, typing.Dict[str, Convertor[typing.Any]]]:
     """
     Given a path string, like: "/{username:str}",
     or a host string, like: "{subdomain}.mydomain.org", return a three-tuple
@@ -209,7 +212,7 @@ class Route(BaseRoute):
     def __init__(
         self,
         path: str,
-        endpoint: typing.Callable,
+        endpoint: typing.Callable[..., typing.Any],
         *,
         methods: typing.Optional[typing.List[str]] = None,
         name: typing.Optional[str] = None,
@@ -301,7 +304,11 @@ class Route(BaseRoute):
 
 class WebSocketRoute(BaseRoute):
     def __init__(
-        self, path: str, endpoint: typing.Callable, *, name: typing.Optional[str] = None
+        self,
+        path: str,
+        endpoint: typing.Callable[..., typing.Any],
+        *,
+        name: typing.Optional[str] = None,
     ) -> None:
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
@@ -556,12 +563,14 @@ class _AsyncLiftContextManager(typing.AsyncContextManager[_T]):
 
 
 def _wrap_gen_lifespan_context(
-    lifespan_context: typing.Callable[[typing.Any], typing.Generator]
-) -> typing.Callable[[typing.Any], typing.AsyncContextManager]:
+    lifespan_context: typing.Callable[
+        [typing.Any], typing.Generator[typing.Any, typing.Any, typing.Any]
+    ]
+) -> typing.Callable[[typing.Any], typing.AsyncContextManager[typing.Any]]:
     cmgr = contextlib.contextmanager(lifespan_context)
 
     @functools.wraps(cmgr)
-    def wrapper(app: typing.Any) -> _AsyncLiftContextManager:
+    def wrapper(app: typing.Any) -> _AsyncLiftContextManager[typing.Any]:
         return _AsyncLiftContextManager(cmgr(app))
 
     return wrapper
@@ -587,8 +596,12 @@ class Router:
         routes: typing.Optional[typing.Sequence[BaseRoute]] = None,
         redirect_slashes: bool = True,
         default: typing.Optional[ASGIApp] = None,
-        on_startup: typing.Optional[typing.Sequence[typing.Callable]] = None,
-        on_shutdown: typing.Optional[typing.Sequence[typing.Callable]] = None,
+        on_startup: typing.Optional[
+            typing.Sequence[typing.Callable[[], typing.Any]]
+        ] = None,
+        on_shutdown: typing.Optional[
+            typing.Sequence[typing.Callable[[], typing.Any]]
+        ] = None,
         # the generic to Lifespan[AppType] is the type of the top level application
         # which the router cannot know statically, so we use typing.Any
         lifespan: typing.Optional[Lifespan[typing.Any]] = None,
@@ -614,7 +627,7 @@ class Router:
                 )
 
         if lifespan is None:
-            self.lifespan_context: Lifespan = _DefaultLifespan(self)
+            self.lifespan_context: Lifespan[typing.Any] = _DefaultLifespan(self)
 
         elif inspect.isasyncgenfunction(lifespan):
             warnings.warn(
@@ -623,7 +636,7 @@ class Router:
                 DeprecationWarning,
             )
             self.lifespan_context = asynccontextmanager(
-                lifespan,  # type: ignore[arg-type]
+                lifespan,
             )
         elif inspect.isgeneratorfunction(lifespan):
             warnings.warn(
@@ -632,7 +645,7 @@ class Router:
                 DeprecationWarning,
             )
             self.lifespan_context = _wrap_gen_lifespan_context(
-                lifespan,  # type: ignore[arg-type]
+                lifespan,
             )
         else:
             self.lifespan_context = lifespan
@@ -779,7 +792,9 @@ class Router:
     def add_route(
         self,
         path: str,
-        endpoint: typing.Callable,
+        endpoint: typing.Callable[
+            [Request], typing.Union[typing.Awaitable[Response], Response]
+        ],
         methods: typing.Optional[typing.List[str]] = None,
         name: typing.Optional[str] = None,
         include_in_schema: bool = True,
@@ -794,7 +809,10 @@ class Router:
         self.routes.append(route)
 
     def add_websocket_route(
-        self, path: str, endpoint: typing.Callable, name: typing.Optional[str] = None
+        self,
+        path: str,
+        endpoint: typing.Callable[[WebSocket], typing.Awaitable[None]],
+        name: typing.Optional[str] = None,
     ) -> None:  # pragma: no cover
         route = WebSocketRoute(path, endpoint=endpoint, name=name)
         self.routes.append(route)
@@ -805,7 +823,7 @@ class Router:
         methods: typing.Optional[typing.List[str]] = None,
         name: typing.Optional[str] = None,
         include_in_schema: bool = True,
-    ) -> typing.Callable:
+    ) -> typing.Callable:  # type: ignore[type-arg]
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:
@@ -819,7 +837,7 @@ class Router:
             DeprecationWarning,
         )
 
-        def decorator(func: typing.Callable) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
             self.add_route(
                 path,
                 func,
@@ -833,7 +851,7 @@ class Router:
 
     def websocket_route(
         self, path: str, name: typing.Optional[str] = None
-    ) -> typing.Callable:
+    ) -> typing.Callable:  # type: ignore[type-arg]
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:
@@ -847,14 +865,14 @@ class Router:
             DeprecationWarning,
         )
 
-        def decorator(func: typing.Callable) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
             self.add_websocket_route(path, func, name=name)
             return func
 
         return decorator
 
     def add_event_handler(
-        self, event_type: str, func: typing.Callable
+        self, event_type: str, func: typing.Callable[[], typing.Any]
     ) -> None:  # pragma: no cover
         assert event_type in ("startup", "shutdown")
 
@@ -863,14 +881,14 @@ class Router:
         else:
             self.on_shutdown.append(func)
 
-    def on_event(self, event_type: str) -> typing.Callable:
+    def on_event(self, event_type: str) -> typing.Callable:  # type: ignore[type-arg]
         warnings.warn(
             "The `on_event` decorator is deprecated, and will be removed in version 1.0.0. "  # noqa: E501
             "Refer to https://www.starlette.io/lifespan/ for recommended approach.",
             DeprecationWarning,
         )
 
-        def decorator(func: typing.Callable) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:  # type: ignore[type-arg]  # noqa: E501
             self.add_event_handler(event_type, func)
             return func
 

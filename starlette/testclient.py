@@ -225,7 +225,7 @@ class _TestClientTransport(httpx.BaseTransport):
         # Include other request headers.
         headers += [
             (key.lower().encode(), value.encode())
-            for key, value in request.headers.items()
+            for key, value in request.headers.multi_items()
         ]
 
         scope: typing.Dict[str, typing.Any]

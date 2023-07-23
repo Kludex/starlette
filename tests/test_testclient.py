@@ -2,6 +2,7 @@ import itertools
 import sys
 from asyncio import current_task as asyncio_current_task
 from contextlib import asynccontextmanager
+from typing import Callable
 
 import anyio
 import pytest
@@ -10,6 +11,7 @@ import trio.lowlevel
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
+from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
@@ -342,3 +344,13 @@ def test_forward_nofollow_redirects(test_client_factory):
     client = test_client_factory(app, follow_redirects=False)
     response = client.get("/")
     assert response.status_code == 307
+
+
+def test_with_duplicate_headers(test_client_factory: Callable[[Starlette], TestClient]):
+    def homepage(request: Request) -> JSONResponse:
+        return JSONResponse({"x-token": request.headers.getlist("x-token")})
+
+    app = Starlette(routes=[Route("/", endpoint=homepage)])
+    client = test_client_factory(app)
+    response = client.get("/", headers=[("x-token", "foo"), ("x-token", "bar")])
+    assert response.json() == {"x-token": ["foo", "bar"]}

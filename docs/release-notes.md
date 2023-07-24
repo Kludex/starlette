@@ -1,3 +1,17 @@
+## 0.31.0
+
+July 24, 2023
+
+### Added
+
+* Officially support Python 3.12 [#2214](https://github.com/encode/starlette/pull/2214).
+* Support AnyIO 4.0 [#2211](https://github.com/encode/starlette/pull/2211).
+* Strictly type annotate Starlette (strict mode on mypy) [#2180](https://github.com/encode/starlette/pull/2180).
+
+### Fixed
+
+* Don't group duplicated headers on a single string when using the `TestClient` [#2219](https://github.com/encode/starlette/pull/2219).
+
 ## 0.30.0
 
 July 13, 2023
@@ -154,7 +168,7 @@ This release replaces the underlying HTTP client used on the `TestClient` (`requ
 ### Added
 * Add `WebSocketException` and support for WebSocket exception handlers [#1263](https://github.com/encode/starlette/pull/1263).
 * Add `middleware` parameter to `Mount` class [#1649](https://github.com/encode/starlette/pull/1649).
-* Officially support Python 3.11 [1863](https://github.com/encode/starlette/pull/1863).
+* Officially support Python 3.11 [#1863](https://github.com/encode/starlette/pull/1863).
 * Implement `__repr__` for route classes [#1864](https://github.com/encode/starlette/pull/1864).
 
 ### Fixed

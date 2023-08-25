@@ -2,11 +2,19 @@ import asyncio
 import functools
 import sys
 import typing
+from contextlib import contextmanager
 
 if sys.version_info >= (3, 10):  # pragma: no cover
     from typing import TypeGuard
 else:  # pragma: no cover
     from typing_extensions import TypeGuard
+
+has_exceptiongroups = True
+if sys.version_info < (3, 11):  # pragma: no cover
+    try:
+        from exceptiongroup import BaseExceptionGroup
+    except ImportError:
+        has_exceptiongroups = False
 
 T = typing.TypeVar("T")
 AwaitableCallable = typing.Callable[..., typing.Awaitable[T]]
@@ -66,3 +74,15 @@ class AwaitableOrContextManagerWrapper(typing.Generic[SupportsAsyncCloseType]):
     async def __aexit__(self, *args: typing.Any) -> typing.Union[None, bool]:
         await self.entered.close()
         return None
+
+
+@contextmanager
+def collapse_excgroups() -> typing.Generator[None, None, None]:
+    try:
+        yield
+    except BaseException as exc:
+        if has_exceptiongroups:
+            while isinstance(exc, BaseExceptionGroup) and len(exc.exceptions) == 1:
+                exc = exc.exceptions[0]  # pragma: no cover
+
+        raise exc

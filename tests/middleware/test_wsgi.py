@@ -2,10 +2,8 @@ import sys
 
 import pytest
 
+from starlette._utils import collapse_excgroups
 from starlette.middleware.wsgi import WSGIMiddleware, build_environ
-
-if sys.version_info < (3, 11):  # pragma: no cover
-    from exceptiongroup import ExceptionGroup
 
 
 def hello_world(environ, start_response):
@@ -69,11 +67,8 @@ def test_wsgi_exception(test_client_factory):
     # The HTTP protocol implementations would catch this error and return 500.
     app = WSGIMiddleware(raise_exception)
     client = test_client_factory(app)
-    with pytest.raises(ExceptionGroup) as exc:
+    with pytest.raises(RuntimeError), collapse_excgroups():
         client.get("/")
-
-    assert len(exc.value.exceptions) == 1
-    assert isinstance(exc.value.exceptions[0], RuntimeError)
 
 
 def test_wsgi_exc_info(test_client_factory):

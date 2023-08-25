@@ -140,15 +140,25 @@ def test_templates_with_directory(tmpdir):
     assert template.render({}) == "Hello"
 
 
-def test_templates_with_environment(tmpdir):
+def test_templates_with_environment(tmpdir, test_client_factory):
     path = os.path.join(tmpdir, "index.html")
     with open(path, "w") as file:
-        file.write("Hello")
+        file.write("<html>Hello, <a href='{{ url_for('homepage') }}'>world</a></html>")
+
+    async def homepage(request):
+        return templates.TemplateResponse(request, "index.html")
 
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(tmpdir)))
+    app = Starlette(
+        debug=True,
+        routes=[Route("/", endpoint=homepage)],
+    )
     templates = Jinja2Templates(env=env)
-    template = templates.get_template("index.html")
-    assert template.render({}) == "Hello"
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.text == "<html>Hello, <a href='http://testserver/'>world</a></html>"
+    assert response.template.name == "index.html"
+    assert set(response.context.keys()) == {"request"}
 
 
 def test_templates_with_environment_options_emit_warning(tmpdir):

@@ -39,7 +39,7 @@ can be used to share the objects between the lifespan, and the requests.
 
 ```python
 import contextlib
-from typing import TypedDict
+from typing import AsyncIterator, TypedDict
 
 import httpx
 from starlette.applications import Starlette
@@ -53,7 +53,7 @@ class State(TypedDict):
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: Starlette) -> typing.AsyncIterator[State]:
+async def lifespan(app: Starlette) -> AsyncIterator[State]:
     async with httpx.AsyncClient() as client:
         yield {"http_client": client}
 

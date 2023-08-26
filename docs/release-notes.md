@@ -1,3 +1,12 @@
+## 0.31.1
+
+August 26, 2023
+
+### Fixed
+
+* Fix import error when `exceptiongroup` isn't available [#2231](https://github.com/encode/starlette/pull/2231).
+* Set `url_for` global for custom Jinja environments [#2230](https://github.com/encode/starlette/pull/2230).
+
 ## 0.31.0
 
 July 24, 2023

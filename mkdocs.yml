@@ -19,6 +19,8 @@ theme:
         name: 'Switch to light mode'
   icon:
     repo: fontawesome/brands/github
+  features:
+    - content.code.copy
 
 repo_name: encode/starlette
 repo_url: https://github.com/encode/starlette

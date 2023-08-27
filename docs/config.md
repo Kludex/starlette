@@ -4,9 +4,7 @@ following [the twelve-factor pattern][twelve-factor].
 Configuration should be stored in environment variables, or in a ".env" file
 that is not committed to source control.
 
-**app.py**:
-
-```python
+```python title="main.py"
 import databases
 
 from starlette.applications import Starlette
@@ -25,9 +23,7 @@ app = Starlette(debug=DEBUG)
 ...
 ```
 
-**.env**:
-
-```shell
+```shell title=".env"
 # Don't commit this to source control.
 # Eg. Include ".env" in your `.gitignore` file.
 DEBUG=True
@@ -142,9 +138,7 @@ we can start to structure an application.
 First, let's keep our settings, our database table definitions, and our
 application logic separated:
 
-**myproject/settings.py**:
-
-```python
+```python title="myproject/settings.py"
 import databases
 from starlette.config import Config
 from starlette.datastructures import Secret
@@ -160,9 +154,7 @@ if TESTING:
     DATABASE_URL = DATABASE_URL.replace(database='test_' + DATABASE_URL.database)
 ```
 
-**myproject/tables.py**:
-
-```python
+```python title="myproject/tables.py"
 import sqlalchemy
 
 # Database table definitions.
@@ -173,9 +165,7 @@ organisations = sqlalchemy.Table(
 )
 ```
 
-**myproject/app.py**
-
-```python
+```python title="myproject/app.py"
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -204,9 +194,7 @@ Now let's deal with our test configuration.
 We'd like to create a new test database every time the test suite runs,
 and drop it once the tests complete. We'd also like to ensure
 
-**tests/conftest.py**:
-
-```python
+```python title="tests/conftest.py"
 from starlette.config import environ
 from starlette.testclient import TestClient
 from sqlalchemy import create_engine

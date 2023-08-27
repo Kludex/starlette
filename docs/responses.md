@@ -45,7 +45,7 @@ Signature: `Response.set_cookie(key, value, max_age=None, expires=None, path="/"
 
 #### Delete Cookie
 
-Conversly, Starlette also provides a `delete_cookie` method to manually expire a set cookie.
+Conversely, Starlette also provides a `delete_cookie` method to manually expire a set cookie.
 
 Signature: `Response.delete_cookie(key, path='/', domain=None)`
 

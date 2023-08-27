@@ -5,7 +5,7 @@ Starlette also includes a `StaticFiles` class for serving files in a given direc
 
 Signature: `StaticFiles(directory=None, packages=None, html=False, check_dir=True, follow_symlink=False)`
 
-* `directory` - A string or [os.Pathlike][pathlike] denoting a directory path.
+* `directory` - A string or [os.PathLike][pathlike] denoting a directory path.
 * `packages` - A list of strings or list of tuples of strings of python packages.
 * `html` - Run in HTML mode. Automatically loads `index.html` for directories if such file exist.
 * `check_dir` - Ensure that the directory exists upon instantiation. Defaults to `True`.

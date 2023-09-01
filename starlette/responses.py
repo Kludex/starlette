@@ -37,12 +37,12 @@ class Response:
         self.body = self.render(content)
         self.init_headers(headers)
 
-    def render(self, content: typing.Union[str, bytes, None]) -> bytes:
+    def render(self, content: typing.Any) -> bytes:
         if content is None:
             return b""
         if isinstance(content, bytes):
             return content
-        return content.encode(self.charset)
+        return content.encode(self.charset)  # type: ignore
 
     def init_headers(
         self, headers: typing.Optional[typing.Mapping[str, str]] = None

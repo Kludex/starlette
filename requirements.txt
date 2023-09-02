@@ -4,7 +4,7 @@
 # Testing
 black==23.7.0
 coverage==7.2.7
-importlib-metadata==6.6.0
+importlib-metadata==6.8.0
 mypy==1.4.1
 ruff==0.0.285
 typing_extensions==4.7.0

@@ -7,7 +7,7 @@ coverage==7.3.0
 importlib-metadata==6.8.0
 mypy==1.5.1
 ruff==0.0.285
-typing_extensions==4.7.0
+typing_extensions==4.7.1
 types-contextvars==2.4.7.2
 types-PyYAML==6.0.12.11
 types-dataclasses==0.6.6

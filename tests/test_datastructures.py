@@ -389,9 +389,6 @@ def test_multidict():
     assert MultiDict({"a": "123", "b": "456"}) == MultiDict(
         [("a", "123"), ("b", "456")]
     )
-    assert MultiDict({"a": "123", "b": "456"}) == MultiDict(
-        [("a", "123"), ("b", "456")]
-    )
     assert MultiDict({"a": "123", "b": "456"}) == MultiDict({"b": "456", "a": "123"})
     assert MultiDict() == MultiDict({})
     assert MultiDict({"a": "123", "b": "456"}) != "invalid"
@@ -450,7 +447,7 @@ def test_multidict():
     q = MultiDict([("a", "123"), ("b", "456")])
     q.update({"a": "789"})
     assert q.getlist("a") == ["789"]
-    q == MultiDict([("a", "789"), ("b", "456")])
+    assert q == MultiDict([("a", "789"), ("b", "456")])
 
     q = MultiDict([("a", "123"), ("b", "456")])
     q.update(q)

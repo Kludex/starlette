@@ -5,7 +5,7 @@ from os import PathLike
 from starlette.background import BackgroundTask
 from starlette.datastructures import URL
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import HTMLResponse
 from starlette.types import Receive, Scope, Send
 
 try:
@@ -23,9 +23,7 @@ except ModuleNotFoundError:  # pragma: nocover
     jinja2 = None  # type: ignore[assignment]
 
 
-class _TemplateResponse(Response):
-    media_type = "text/html"
-
+class _TemplateResponse(HTMLResponse):
     def __init__(
         self,
         template: typing.Any,

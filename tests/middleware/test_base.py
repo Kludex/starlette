@@ -396,7 +396,18 @@ async def test_run_context_manager_exit_even_if_client_disconnects():
 def test_app_receives_http_disconnect_while_sending_if_discarded(test_client_factory):
     class DiscardingMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
-            await call_next(request)
+            # As a matter of ordering, this test targets the case where the downstream
+            # app response is discarded while it is sending a response body.
+            # We need to wait for the downstream app to begin sending a response body
+            # before sending the middleware response that will overwrite the downstream
+            # response.
+            downstream_app_response = await call_next(request)
+            body_generator = downstream_app_response.body_iterator
+            try:
+                await body_generator.__anext__()
+            finally:
+                await body_generator.aclose()
+
             return PlainTextResponse("Custom")
 
     async def downstream_app(scope, receive, send):
@@ -411,17 +422,21 @@ def test_app_receives_http_disconnect_while_sending_if_discarded(test_client_fac
         )
         async with anyio.create_task_group() as task_group:
 
-            async def cancel_on_disconnect():
+            async def cancel_on_disconnect(*, task_status=anyio.TASK_STATUS_IGNORED):
+                task_status.started()
                 while True:
                     message = await receive()
                     if message["type"] == "http.disconnect":
                         task_group.cancel_scope.cancel()
                         break
 
-            task_group.start_soon(cancel_on_disconnect)
+            # Using start instead of start_soon to ensure that
+            # cancel_on_disconnect is scheduled by the event loop
+            # before we start returning the body
+            await task_group.start(cancel_on_disconnect)
 
             # A timeout is set for 0.1 second in order to ensure that
-            # cancel_on_disconnect is scheduled by the event loop
+            # we never deadlock the test run in an infinite loop
             with anyio.move_on_after(0.1):
                 while True:
                     await send(

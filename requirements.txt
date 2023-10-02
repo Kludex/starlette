@@ -8,7 +8,7 @@ importlib-metadata==6.8.0
 mypy==1.5.1
 ruff==0.0.291
 typing_extensions==4.7.1
-types-contextvars==2.4.7.2
+types-contextvars==2.4.7.3
 types-PyYAML==6.0.12.12
 types-dataclasses==0.6.6
 pytest==7.4.0

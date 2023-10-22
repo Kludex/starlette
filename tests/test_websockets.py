@@ -1,11 +1,12 @@
 import sys
-from typing import Any, MutableMapping
+from typing import Any, Callable, MutableMapping
 
 import anyio
 import pytest
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
 from starlette import status
+from starlette.testclient import TestClient
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
@@ -209,22 +210,25 @@ def test_websocket_concurrency_pattern(test_client_factory):
         assert data == {"hello": "world"}
 
 
-def test_client_close(test_client_factory):
+def test_client_close(test_client_factory: Callable[..., TestClient]):
     close_code = None
+    close_reason = None
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        nonlocal close_code
+        nonlocal close_code, close_reason
         websocket = WebSocket(scope, receive=receive, send=send)
         await websocket.accept()
         try:
             await websocket.receive_text()
         except WebSocketDisconnect as exc:
             close_code = exc.code
+            close_reason = exc.reason
 
     client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
-        websocket.close(code=status.WS_1001_GOING_AWAY)
+        websocket.close(code=status.WS_1001_GOING_AWAY, reason="Going Away")
     assert close_code == status.WS_1001_GOING_AWAY
+    assert close_reason == "Going Away"
 
 
 def test_application_close(test_client_factory):

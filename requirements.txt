@@ -16,7 +16,7 @@ trio==0.22.2
 anyio==4.0.0
 
 # Documentation
-mkdocs==1.5.2
+mkdocs==1.5.3
 mkdocs-material==9.1.17
 mkautodoc==0.2.0
 

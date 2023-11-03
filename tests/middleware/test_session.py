@@ -178,3 +178,27 @@ def test_session_cookie(test_client_factory):
     client.cookies.delete("session")
     response = client.get("/view_session")
     assert response.json() == {"session": {}}
+
+
+def test_domain_cookie(test_client_factory):
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[
+            Middleware(SessionMiddleware, secret_key="example", domain=".example.com")
+        ],
+    )
+    client: TestClient = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+
+    # check cookie max-age
+    set_cookie = response.headers["set-cookie"]
+    assert "domain=.example.com" in set_cookie
+
+    client.cookies.delete("session")
+    response = client.get("/view_session")
+    assert response.json() == {"session": {}}

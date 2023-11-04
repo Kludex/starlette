@@ -1,3 +1,15 @@
+## 0.32.0
+
+### Added
+
+* Send `reason` on `WebSocketDisconnect` [#2309](https:://github.com/encode/starlette/pull/2309).
+* Add `domain` parameter to `SessionMiddleware` [#2280](https:://github.com/encode/starlette/pull/2280).
+
+### Changed
+
+* Inherit from `HTMLResponse` instead of `Response` on `_TemplateResponse` [#2274](https://github.com/encode/starlette/pull/2274).
+* Restore the `Response.render` type annotation to its pre-0.31.0 state [#2264](https://github.com/encode/starlette/pull/2264).
+
 ## 0.31.1
 
 August 26, 2023

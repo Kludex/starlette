@@ -5,6 +5,13 @@ Here are some of those third party packages:
 
 ## Plugins
 
+### Apitally
+
+<a href="https://github.com/apitally/python-client" target="_blank">GitHub</a> |
+<a href="https://docs.apitally.io/frameworks/starlette" target="_blank">Documentation</a>
+
+Simple traffic, error and response time monitoring plus API key and permission management for Starlette (and other frameworks).
+
 ### Authlib
 
 <a href="https://github.com/lepture/Authlib" target="_blank">GitHub</a> |

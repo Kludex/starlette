@@ -17,7 +17,7 @@ anyio==4.0.0
 
 # Documentation
 mkdocs==1.5.3
-mkdocs-material==9.4.7
+mkdocs-material==9.1.17
 mkautodoc==0.2.0
 
 # Packaging

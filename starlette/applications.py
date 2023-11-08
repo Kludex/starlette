@@ -137,7 +137,9 @@ class Starlette:
         self.exception_handlers[exc_class_or_status_code] = handler
 
     def add_event_handler(
-        self, event_type: str, func: typing.Callable  # type: ignore[type-arg]
+        self,
+        event_type: str,
+        func: typing.Callable,  # type: ignore[type-arg]
     ) -> None:  # pragma: no cover
         self.router.add_event_handler(event_type, func)
 
@@ -208,9 +210,7 @@ class Starlette:
 
         return decorator
 
-    def websocket_route(
-        self, path: str, name: str | None = None
-    ) -> typing.Callable:  # type: ignore[type-arg]
+    def websocket_route(self, path: str, name: str | None = None) -> typing.Callable:  # type: ignore[type-arg]
         """
         We no longer document this decorator style API, and its usage is discouraged.
         Instead you should use the following approach:

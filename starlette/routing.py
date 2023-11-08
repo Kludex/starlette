@@ -565,7 +565,7 @@ class _AsyncLiftContextManager(typing.AsyncContextManager[_T]):
 def _wrap_gen_lifespan_context(
     lifespan_context: typing.Callable[
         [typing.Any], typing.Generator[typing.Any, typing.Any, typing.Any]
-    ]
+    ],
 ) -> typing.Callable[[typing.Any], typing.AsyncContextManager[typing.Any]]:
     cmgr = contextlib.contextmanager(lifespan_context)
 

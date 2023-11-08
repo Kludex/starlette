@@ -51,10 +51,10 @@ Source = "https://github.com/encode/starlette"
 [tool.hatch.version]
 path = "starlette/__init__.py"
 
-[tool.ruff]
+[tool.ruff.lint]
 select = ["E", "F", "I"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 combine-as-imports = true
 
 [tool.mypy]

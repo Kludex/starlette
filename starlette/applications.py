@@ -37,10 +37,10 @@ class Starlette:
     `handler(request, exc) -> response` and may be either standard functions, or
     async functions.
     * **on_startup** - A list of callables to run on application startup.
-    Startup handler callables do not take any arguments, and may be be either
+    Startup handler callables do not take any arguments, and may be either
     standard functions, or async functions.
     * **on_shutdown** - A list of callables to run on application shutdown.
-    Shutdown handler callables do not take any arguments, and may be be either
+    Shutdown handler callables do not take any arguments, and may be either
     standard functions, or async functions.
     * **lifespan** - A lifespan context function, which can be used to perform
     startup and shutdown tasks. This is a newer style that replaces the

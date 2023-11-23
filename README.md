@@ -137,7 +137,7 @@ in isolation.
 [httpx]: https://www.python-httpx.org/
 [jinja2]: https://jinja.palletsprojects.com/
 [python-multipart]: https://andrew-d.github.io/python-multipart/
-[itsdangerous]: https://pythonhosted.org/itsdangerous/
+[itsdangerous]: https://itsdangerous.palletsprojects.com/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation
 [techempower]: https://www.techempower.com/benchmarks/#hw=ph&test=fortune&l=zijzen-sf

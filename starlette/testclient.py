@@ -147,7 +147,7 @@ class WebSocketTestSession:
 
     def send_json(self, data: typing.Any, mode: str = "text") -> None:
         assert mode in ["text", "binary"]
-        text = json.dumps(data, separators=(",", ":"))
+        text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
         if mode == "text":
             self.send({"type": "websocket.receive", "text": text})
         else:

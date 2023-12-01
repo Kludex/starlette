@@ -39,6 +39,24 @@ def test_websocket_binary_json(test_client_factory):
         assert data == {"test": "data"}
 
 
+def test_websocket_ensure_unicode_on_send_json(
+    test_client_factory: Callable[..., TestClient]
+):
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+
+        await websocket.accept()
+        message = await websocket.receive_json(mode="text")
+        await websocket.send_json(message, mode="text")
+        await websocket.close()
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/123?a=abc") as websocket:
+        websocket.send_json({"test": "数据"}, mode="text")
+        data = websocket.receive_text()
+        assert data == '{"test":"数据"}'
+
+
 def test_websocket_query_params(test_client_factory):
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)

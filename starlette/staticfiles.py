@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import re
 import stat
 import typing
 from email.utils import parsedate
@@ -108,7 +109,9 @@ class StaticFiles:
         Given the ASGI scope, return the `path` string to serve up,
         with OS specific path separators, and any '..', '.' components removed.
         """
-        return os.path.normpath(os.path.join(*scope["path"].split("/")))  # type: ignore[no-any-return]  # noqa: E501
+        root_path = scope.get("route_root_path", scope.get("root_path", ""))
+        path = scope.get("route_path", re.sub(r"^" + root_path, "", scope["path"]))
+        return os.path.normpath(os.path.join(*path.split("/")))  # type: ignore[no-any-return]  # noqa: E501
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         """

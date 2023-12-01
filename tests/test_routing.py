@@ -159,7 +159,7 @@ app = Router(
 
 
 @pytest.fixture
-def client(test_client_factory):
+def client(test_client_factory: typing.Callable[..., TestClient]):
     with test_client_factory(app) as client:
         yield client
 
@@ -170,7 +170,7 @@ def client(test_client_factory):
     r":UserWarning"
     r":charset_normalizer.api"
 )
-def test_router(client):
+def test_router(client: TestClient):
     response = client.get("/")
     assert response.status_code == 200
     assert response.text == "Hello, world"
@@ -1210,3 +1210,57 @@ def test_decorator_deprecations() -> None:
             ...  # pragma: nocover
 
         router.on_event("startup")(startup)
+
+
+async def echo_paths(request: Request, name: str):
+    return JSONResponse(
+        {
+            "name": name,
+            "path": request.scope["path"],
+            "root_path": request.scope["root_path"],
+        }
+    )
+
+
+echo_paths_routes = [
+    Route(
+        "/path",
+        functools.partial(echo_paths, name="path"),
+        name="path",
+        methods=["GET"],
+    ),
+    Mount(
+        "/root",
+        name="mount",
+        routes=[
+            Route(
+                "/path",
+                functools.partial(echo_paths, name="subpath"),
+                name="subpath",
+                methods=["GET"],
+            )
+        ],
+    ),
+]
+
+
+def test_paths_with_root_path(test_client_factory: typing.Callable[..., TestClient]):
+    app = Starlette(routes=echo_paths_routes)
+    client = test_client_factory(
+        app, base_url="https://www.example.org/", root_path="/root"
+    )
+    response = client.get("/root/path")
+    assert response.status_code == 200
+    assert response.json() == {
+        "name": "path",
+        "path": "/root/path",
+        "root_path": "/root",
+    }
+
+    response = client.get("/root/root/path")
+    assert response.status_code == 200
+    assert response.json() == {
+        "name": "subpath",
+        "path": "/root/root/path",
+        "root_path": "/root",
+    }

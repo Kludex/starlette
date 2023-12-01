@@ -919,6 +919,18 @@ def assert_middleware_header_route(request: Request) -> Response:
     return Response()
 
 
+route_with_middleware = Starlette(
+    routes=[
+        Route(
+            "/http",
+            endpoint=assert_middleware_header_route,
+            methods=["GET"],
+            middleware=[Middleware(AddHeadersMiddleware)],
+        ),
+        Route("/home", homepage),
+    ]
+)
+
 mounted_routes_with_middleware = Starlette(
     routes=[
         Mount(
@@ -960,9 +972,10 @@ mounted_app_with_middleware = Starlette(
     [
         mounted_routes_with_middleware,
         mounted_app_with_middleware,
+        route_with_middleware,
     ],
 )
-def test_mount_middleware(
+def test_base_route_middleware(
     test_client_factory: typing.Callable[..., TestClient],
     app: Starlette,
 ) -> None:
@@ -1074,6 +1087,44 @@ def test_mounted_middleware_does_not_catch_exception(
     resp = client.get("/mount/err")
     assert resp.status_code == 403, resp.content
     assert "X-Mounted" in resp.headers
+
+
+def test_websocket_route_middleware(
+    test_client_factory: typing.Callable[..., TestClient]
+):
+    async def websocket_endpoint(session: WebSocket):
+        await session.accept()
+        await session.send_text("Hello, world!")
+        await session.close()
+
+    class WebsocketMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            async def modified_send(msg: Message) -> None:
+                if msg["type"] == "websocket.accept":
+                    msg["headers"].append((b"X-Test", b"Set by middleware"))
+                await send(msg)
+
+            await self.app(scope, receive, modified_send)
+
+    app = Starlette(
+        routes=[
+            WebSocketRoute(
+                "/ws",
+                endpoint=websocket_endpoint,
+                middleware=[Middleware(WebsocketMiddleware)],
+            )
+        ]
+    )
+
+    client = test_client_factory(app)
+
+    with client.websocket_connect("/ws") as websocket:
+        text = websocket.receive_text()
+        assert text == "Hello, world!"
+        assert websocket.extra_headers == [(b"X-Test", b"Set by middleware")]
 
 
 def test_route_repr() -> None:

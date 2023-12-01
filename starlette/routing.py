@@ -217,6 +217,7 @@ class Route(BaseRoute):
         methods: typing.Optional[typing.List[str]] = None,
         name: typing.Optional[str] = None,
         include_in_schema: bool = True,
+        middleware: typing.Optional[typing.Sequence[Middleware]] = None,
     ) -> None:
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
@@ -235,6 +236,10 @@ class Route(BaseRoute):
         else:
             # Endpoint is a class. Treat it as ASGI.
             self.app = endpoint
+
+        if middleware is not None:
+            for cls, options in reversed(middleware):
+                self.app = cls(app=self.app, **options)
 
         if methods is None:
             self.methods = None
@@ -309,6 +314,7 @@ class WebSocketRoute(BaseRoute):
         endpoint: typing.Callable[..., typing.Any],
         *,
         name: typing.Optional[str] = None,
+        middleware: typing.Optional[typing.Sequence[Middleware]] = None,
     ) -> None:
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
@@ -324,6 +330,10 @@ class WebSocketRoute(BaseRoute):
         else:
             # Endpoint is a class. Treat it as ASGI.
             self.app = endpoint
+
+        if middleware is not None:
+            for cls, options in reversed(middleware):
+                self.app = cls(app=self.app, **options)
 
         self.path_regex, self.path_format, self.param_convertors = compile_path(path)
 

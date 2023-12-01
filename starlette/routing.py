@@ -623,6 +623,8 @@ class Router:
         # the generic to Lifespan[AppType] is the type of the top level application
         # which the router cannot know statically, so we use typing.Any
         lifespan: typing.Optional[Lifespan[typing.Any]] = None,
+        *,
+        middleware: typing.Optional[typing.Sequence[Middleware]] = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
@@ -667,6 +669,11 @@ class Router:
             )
         else:
             self.lifespan_context = lifespan
+
+        self.middleware_stack = self.app
+        if middleware:
+            for cls, options in reversed(middleware):
+                self.middleware_stack = cls(self.middleware_stack, **options)
 
     async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
@@ -744,6 +751,9 @@ class Router:
         """
         The main entry point to the Router class.
         """
+        await self.middleware_stack(scope, receive, send)
+
+    async def app(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
         if "router" not in scope:

@@ -328,6 +328,26 @@ def test_router_add_websocket_route(client):
         assert text == "Hello, test!"
 
 
+def test_router_middleware(test_client_factory: typing.Callable[..., TestClient]):
+    class CustomMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send):
+            response = PlainTextResponse("OK")
+            await response(scope, receive, send)
+
+    app = Router(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(CustomMiddleware)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.text == "OK"
+
+
 def http_endpoint(request):
     url = request.url_for("http_endpoint")
     return Response(f"URL: {url}", media_type="text/plain")

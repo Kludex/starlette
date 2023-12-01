@@ -29,8 +29,7 @@ middleware = [
 app = Starlette(routes=routes, middleware=middleware)
 ```
 
-Every Starlette application automatically includes two pieces of middleware
-by default:
+Every Starlette application automatically includes two pieces of middleware by default:
 
 * `ServerErrorMiddleware` - Ensures that application exceptions may return a custom 500 page, or display an application traceback in DEBUG mode. This is *always* the outermost middleware layer.
 * `ExceptionMiddleware` - Adds exception handlers, so that particular types of expected exception cases can be associated with handler functions. For example raising `HTTPException(status_code=404)` within an endpoint will end up rendering a custom 404 page.
@@ -106,7 +105,7 @@ The following arguments are supported:
 * `max_age` - Session expiry time in seconds. Defaults to 2 weeks. If set to `None` then the cookie will last as long as the browser session.
 * `same_site` - SameSite flag prevents the browser from sending session cookie along with cross-site requests. Defaults to `'lax'`.
 * `https_only` - Indicate that Secure flag should be set (can be used with HTTPS only). Defaults to `False`.
-* `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains [refrence](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute). 
+* `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains [refrence](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute).
 
 
 ## HTTPSRedirectMiddleware
@@ -573,7 +572,7 @@ import time
 class MonitoringMiddleware:
     def __init__(self, app):
         self.app = app
-    
+
     async def __call__(self, scope, receive, send):
         start = time.time()
         try:
@@ -690,9 +689,9 @@ to use the `middleware=<List of Middleware instances>` style, as it will:
 * Ensure that everything remains wrapped in a single outermost `ServerErrorMiddleware`.
 * Preserves the top-level `app` instance.
 
-## Applying middleware to `Mount`s
+## Applying middleware to groups of routes
 
-Middleware can also be added to `Mount`, which allows you to apply middleware to a single route, a group of routes or any mounted ASGI application:
+Middleware can also be added to `Mount` instances, which allows you to apply middleware to a group of routes or a sub-application:
 
 ```python
 from starlette.applications import Starlette
@@ -724,6 +723,43 @@ If you do want to apply the middleware logic to error responses only on some rou
 * Add an `ExceptionMiddleware` onto the `Mount`
 * Add a `try/except` block to your middleware and return an error response from there
 * Split up marking and processing into two middlewares, one that gets put on `Mount` which marks the response as needing processing (for example by setting `scope["log-response"] = True`) and another applied to the `Starlette` application that does the heavy lifting.
+
+The `Route`/`WebSocket` class also accepts a `middleware` argument, which allows you to apply middleware to a single route:
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.routing import Route
+
+
+routes = [
+    Route(
+        "/example",
+        endpoint=...,
+        middleware=[Middleware(GZipMiddleware)]
+    )
+]
+
+app = Starlette(routes=routes)
+```
+
+You can also apply middleware to the `Router` class, which allows you to apply middleware to a group of routes:
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.routing import Route, Router
+
+
+routes = [
+    Route("/example", endpoint=...),
+    Route("/another", endpoint=...),
+]
+
+router = Router(routes=routes, middleware=[Middleware(GZipMiddleware)])
+```
 
 ## Third party middleware
 

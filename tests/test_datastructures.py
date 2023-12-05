@@ -369,6 +369,23 @@ def test_formdata():
     assert FormData({"a": "123", "b": "789"}) != {"a": "123", "b": "789"}
 
 
+@pytest.mark.anyio
+async def test_upload_file_repr():
+    stream = io.BytesIO(b"data")
+    file = UploadFile(filename="file", file=stream, size=4)
+    assert repr(file) == "UploadFile(filename='file', size=4, headers=Headers({}))"
+
+
+@pytest.mark.anyio
+async def test_upload_file_repr_headers():
+    stream = io.BytesIO(b"data")
+    file = UploadFile(filename="file", file=stream, headers=Headers({"foo": "bar"}))
+    assert (
+        repr(file)
+        == "UploadFile(filename='file', size=None, headers=Headers({'foo': 'bar'}))"
+    )
+
+
 def test_multidict():
     q = MultiDict([("a", "123"), ("a", "456"), ("b", "789")])
     assert "a" in q

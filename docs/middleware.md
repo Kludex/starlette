@@ -108,6 +108,20 @@ The following arguments are supported:
 * `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains [refrence](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute).
 
 
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.sessions import SessionMiddleware
+
+routes = ...
+
+middleware = [
+    Middleware(SessionMiddleware, secret_key=..., https_only=True)
+]
+
+app = Starlette(routes=routes, middleware=middleware)
+```
+
 ## HTTPSRedirectMiddleware
 
 Enforces that all incoming requests must either be `https` or `wss`. Any incoming

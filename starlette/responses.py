@@ -311,7 +311,7 @@ class FileResponse(Response):
         content_length = str(stat_result.st_size)
         last_modified = formatdate(stat_result.st_mtime, usegmt=True)
         etag_base = str(stat_result.st_mtime) + "-" + str(stat_result.st_size)
-        etag = md5_hexdigest(etag_base.encode(), usedforsecurity=False)
+        etag = f'"{md5_hexdigest(etag_base.encode(), usedforsecurity=False)}"'
 
         self.headers.setdefault("content-length", content_length)
         self.headers.setdefault("last-modified", last_modified)

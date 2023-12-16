@@ -225,7 +225,7 @@ class StaticFiles:
         try:
             if_none_match = request_headers["if-none-match"]
             etag = response_headers["etag"]
-            if if_none_match == etag:
+            if etag in [tag.strip(" W/") for tag in if_none_match.split(",")]:
                 return True
         except KeyError:
             pass

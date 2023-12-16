@@ -3,6 +3,7 @@ import json
 import os
 import stat
 import typing
+import warnings
 from datetime import datetime
 from email.utils import format_datetime, formatdate
 from functools import partial
@@ -10,6 +11,7 @@ from mimetypes import guess_type
 from urllib.parse import quote
 
 import anyio
+import anyio.to_thread
 
 from starlette._compat import md5_hexdigest
 from starlette.background import BackgroundTask
@@ -280,7 +282,11 @@ class FileResponse(Response):
         self.path = path
         self.status_code = status_code
         self.filename = filename
-        self.send_header_only = method is not None and method.upper() == "HEAD"
+        if method is not None:
+            warnings.warn(
+                "The 'method' parameter is not used, and it will be removed.",
+                DeprecationWarning,
+            )
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "text/plain"
         self.media_type = media_type
@@ -329,7 +335,7 @@ class FileResponse(Response):
                 "headers": self.raw_headers,
             }
         )
-        if self.send_header_only:
+        if scope["method"].upper() == "HEAD":
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
             async with await anyio.open_file(self.path, mode="rb") as file:

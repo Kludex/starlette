@@ -2,12 +2,14 @@ import datetime as dt
 import os
 import time
 from http.cookies import SimpleCookie
+from pathlib import Path
 
 import anyio
 import pytest
 
 from starlette import status
 from starlette.background import BackgroundTask
+from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.responses import (
     FileResponse,
@@ -17,6 +19,7 @@ from starlette.responses import (
     StreamingResponse,
 )
 from starlette.testclient import TestClient
+from starlette.types import Message
 
 
 def test_text_response(test_client_factory):
@@ -242,6 +245,36 @@ def test_file_response(tmpdir, test_client_factory):
     assert "last-modified" in response.headers
     assert "etag" in response.headers
     assert filled_by_bg_task == "6, 7, 8, 9"
+
+
+@pytest.mark.anyio
+async def test_file_response_on_head_method(tmpdir: Path):
+    path = os.path.join(tmpdir, "xyz")
+    content = b"<file content>" * 1000
+    with open(path, "wb") as file:
+        file.write(content)
+
+    app = FileResponse(path=path, filename="example.png")
+
+    async def receive() -> Message:  # type: ignore[empty-body]
+        ...  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.start":
+            assert message["status"] == status.HTTP_200_OK
+            headers = Headers(raw=message["headers"])
+            assert headers["content-type"] == "image/png"
+            assert "content-length" in headers
+            assert "content-disposition" in headers
+            assert "last-modified" in headers
+            assert "etag" in headers
+        elif message["type"] == "http.response.body":
+            assert message["body"] == b""
+            assert message["more_body"] is False
+
+    # Since the TestClient drops the response body on HEAD requests, we need to test
+    # this directly.
+    await app({"type": "http", "method": "head"}, receive, send)
 
 
 def test_file_response_with_directory_raises_error(tmpdir, test_client_factory):

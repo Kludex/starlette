@@ -1,12 +1,11 @@
 Starlette encourages a strict separation of configuration from code,
 following [the twelve-factor pattern][twelve-factor].
 
-Configuration should be stored in environment variables, or in a ".env" file
+Configuration should be stored in environment variables, or in a `.env` file
 that is not committed to source control.
 
 ```python title="main.py"
-import databases
-
+from sqlalchemy import create_engine
 from starlette.applications import Starlette
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings, Secret
@@ -15,11 +14,12 @@ from starlette.datastructures import CommaSeparatedStrings, Secret
 config = Config(".env")
 
 DEBUG = config('DEBUG', cast=bool, default=False)
-DATABASE_URL = config('DATABASE_URL', cast=databases.DatabaseURL)
+DATABASE_URL = config('DATABASE_URL')
 SECRET_KEY = config('SECRET_KEY', cast=Secret)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=CommaSeparatedStrings)
 
 app = Starlette(debug=DEBUG)
+engine = create_engine(DATABASE_URL)
 ...
 ```
 
@@ -27,7 +27,7 @@ app = Starlette(debug=DEBUG)
 # Don't commit this to source control.
 # Eg. Include ".env" in your `.gitignore` file.
 DEBUG=True
-DATABASE_URL=postgresql://localhost/myproject
+DATABASE_URL=postgresql://user:password@localhost:5432/database
 SECRET_KEY=43n080musdfjt54t-09sdgr
 ALLOWED_HOSTS=127.0.0.1, localhost
 ```
@@ -37,7 +37,7 @@ ALLOWED_HOSTS=127.0.0.1, localhost
 The order in which configuration values are read is:
 
 * From an environment variable.
-* From the ".env" file.
+* From the `.env` file.
 * The default value given in `config`.
 
 If none of those match, then `config(...)` will raise an error.
@@ -59,16 +59,11 @@ Secret('**********')
 '98n349$%8b8-7yjn0n8y93T$23r'
 ```
 
-Similarly, the `URL` class will hide any password component
-in their representations.
+!!! tip
 
-```python
->>> from myproject import settings
->>> settings.DATABASE_URL
-DatabaseURL('postgresql://admin:**********@192.168.0.8/my-application')
->>> str(settings.DATABASE_URL)
-'postgresql://admin:Fkjh348htGee4t3@192.168.0.8/my-application'
-```
+    You can use `DatabaseURL` from `databases`
+    package [here](https://github.com/encode/databases/blob/ab5eb718a78a27afe18775754e9c0fa2ad9cd211/databases/core.py#L420)
+    to store database URLs and avoid leaking them in the logs.
 
 ## CommaSeparatedStrings
 
@@ -101,12 +96,10 @@ is set *after* the point that it has already been read by the configuration.
 If you're using `pytest`, then you can setup any initial environment in
 `tests/conftest.py`.
 
-**tests/conftest.py**:
-
-```python
+```python title="tests/conftest.py"
 from starlette.config import environ
 
-environ['TESTING'] = 'TRUE'
+environ['DEBUG'] = 'TRUE'
 ```
 
 ## Reading prefixed environment variables
@@ -115,6 +108,7 @@ You can namespace the environment variables by setting `env_prefix` argument.
 
 ```python title="myproject/settings.py"
 import os
+
 from starlette.config import Config
 
 os.environ['APP_DEBUG'] = 'yes'
@@ -139,19 +133,15 @@ First, let's keep our settings, our database table definitions, and our
 application logic separated:
 
 ```python title="myproject/settings.py"
-import databases
 from starlette.config import Config
 from starlette.datastructures import Secret
 
 config = Config(".env")
 
 DEBUG = config('DEBUG', cast=bool, default=False)
-TESTING = config('TESTING', cast=bool, default=False)
 SECRET_KEY = config('SECRET_KEY', cast=Secret)
 
-DATABASE_URL = config('DATABASE_URL', cast=databases.DatabaseURL)
-if TESTING:
-    DATABASE_URL = DATABASE_URL.replace(database='test_' + DATABASE_URL.database)
+DATABASE_URL = config('DATABASE_URL')
 ```
 
 ```python title="myproject/tables.py"
@@ -170,6 +160,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Route
+
 from myproject import settings
 
 
@@ -201,7 +192,7 @@ from sqlalchemy import create_engine
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 # This line would raise an error if we use it after 'settings' has been imported.
-environ['TESTING'] = 'TRUE'
+environ['DEBUG'] = 'TRUE'
 
 from myproject import settings
 from myproject.app import app
@@ -213,7 +204,7 @@ def setup_test_database():
     """
     Create a clean test database every time the tests are run.
     """
-    url = str(settings.DATABASE_URL)
+    url = settings.DATABASE_URL
     engine = create_engine(url)
     assert not database_exists(url), 'Test database already exists. Aborting tests.'
     create_database(url)             # Create the test database.

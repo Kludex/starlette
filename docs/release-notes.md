@@ -1,3 +1,21 @@
+## 0.34.0
+
+December 16, 2023
+
+### Added
+
+* Use `ParamSpec` for `run_in_threadpool` [#2375](https://github.com/encode/starlette/pull/2375).
+* Add `UploadFile.__repr__` [#2360](https://github.com/encode/starlette/pull/2360).
+
+### Fixed
+
+* Merge URLs properly on `TestClient` [#2376](https://github.com/encode/starlette/pull/2376).
+* Take weak ETags in consideration on `StaticFiles` [#2334](https://github.com/encode/starlette/pull/2334).
+
+### Deprecated
+
+* Deprecate `FileResponse(method=...)` parameter [#2366](https://github.com/encode/starlette/pull/2366).
+
 ## 0.33.0
 
 December 1, 2023

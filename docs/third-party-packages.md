@@ -251,3 +251,10 @@ Provides translations, localization, and timezone support via Babel integration.
 <a href="https://github.com/DavidVentura/starlette-static-resources" target="_blank">GitHub</a>
 
 Allows mounting [package resources](https://docs.python.org/3/library/importlib.resources.html#module-importlib.resources) for static data, similar to [StaticFiles](https://www.starlette.io/staticfiles/).
+
+### Sentry
+
+<a href="https://github.com/getsentry/sentry-python" target="_blank">GitHub</a> |
+<a href="https://docs.sentry.io/platforms/python/guides/starlette/" target="_blank">Documentation</a>
+
+Sentry is a software error detection tool. It offers actionable insights for resolving performance issues and errors, allowing users to diagnose, fix, and optimize Python debugging. Additionally, it integrates seamlessly with Starlette for Python application development. Sentry's capabilities include error tracking, performance insights, contextual information, and alerts/notifications.

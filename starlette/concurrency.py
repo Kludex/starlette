@@ -1,9 +1,16 @@
 import functools
+import sys
 import typing
 import warnings
 
 import anyio.to_thread
 
+if sys.version_info >= (3, 10):  # pragma: no cover
+    from typing import ParamSpec
+else:  # pragma: no cover
+    from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
 T = typing.TypeVar("T")
 
 
@@ -24,10 +31,8 @@ async def run_until_first_complete(*args: typing.Tuple[typing.Callable, dict]) -
             task_group.start_soon(run, functools.partial(func, **kwargs))
 
 
-# TODO: We should use `ParamSpec` here, but mypy doesn't support it yet.
-# Check https://github.com/python/mypy/issues/12278 for more details.
 async def run_in_threadpool(
-    func: typing.Callable[..., T], *args: typing.Any, **kwargs: typing.Any
+    func: typing.Callable[P, T], *args: P.args, **kwargs: P.kwargs
 ) -> T:
     if kwargs:  # pragma: no cover
         # run_sync doesn't accept 'kwargs', so bind them in here

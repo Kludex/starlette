@@ -4,7 +4,7 @@ import anyio
 import pytest
 
 from starlette.applications import Starlette
-from starlette.concurrency import run_until_first_complete
+from starlette.concurrency import iterate_in_threadpool, run_until_first_complete
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Route
@@ -40,3 +40,12 @@ def test_accessing_context_from_threaded_sync_endpoint(test_client_factory) -> N
 
     resp = client.get("/")
     assert resp.content == b"data"
+
+
+@pytest.mark.anyio
+async def test_iterate_in_threadpool() -> None:
+    class CustomIterable:
+        def __iter__(self):
+            yield from range(3)
+
+    assert [v async for v in iterate_in_threadpool(CustomIterable())] == [0, 1, 2]

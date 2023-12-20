@@ -204,7 +204,7 @@ class RedirectResponse(Response):
 
 
 Content = typing.Union[str, bytes]
-SyncContentStream = typing.Iterator[Content]
+SyncContentStream = typing.Iterable[Content]
 AsyncContentStream = typing.AsyncIterable[Content]
 ContentStream = typing.Union[AsyncContentStream, SyncContentStream]
 

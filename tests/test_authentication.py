@@ -15,7 +15,7 @@ from starlette.authentication import (
 from starlette.endpoints import HTTPEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.requests import Request
+from starlette.requests import HTTPConnection
 from starlette.responses import JSONResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocketDisconnect
@@ -327,7 +327,7 @@ def test_authentication_redirect(test_client_factory):
         assert response.json() == {"authenticated": True, "user": "tomchristie"}
 
 
-def on_auth_error(request: Request, exc: Exception):
+def on_auth_error(request: HTTPConnection, exc: AuthenticationError):
     return JSONResponse({"error": str(exc)}, status_code=401)
 
 

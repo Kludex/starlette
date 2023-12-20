@@ -3,8 +3,10 @@ from __future__ import annotations
 import typing
 import warnings
 
+from typing_extensions import ParamSpec
+
 from starlette.datastructures import State, URLPath
-from starlette.middleware import Middleware
+from starlette.middleware import Middleware, _MiddlewareClass
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
@@ -15,6 +17,7 @@ from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope,
 from starlette.websockets import WebSocket
 
 AppType = typing.TypeVar("AppType", bound="Starlette")
+P = ParamSpec("P")
 
 
 class Starlette:
@@ -98,8 +101,8 @@ class Starlette:
         )
 
         app = self.router
-        for cls, options in reversed(middleware):
-            app = cls(app=app, **options)
+        for cls, args, kwargs in reversed(middleware):
+            app = cls(app=app, *args, **kwargs)
         return app
 
     @property
@@ -124,10 +127,15 @@ class Starlette:
     def host(self, host: str, app: ASGIApp, name: str | None = None) -> None:
         self.router.host(host, app=app, name=name)  # pragma: no cover
 
-    def add_middleware(self, middleware_class: type, **options: typing.Any) -> None:
+    def add_middleware(
+        self,
+        middleware_class: typing.Type[_MiddlewareClass[P]],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> None:
         if self.middleware_stack is not None:  # pragma: no cover
             raise RuntimeError("Cannot add middleware after an application has started")
-        self.user_middleware.insert(0, Middleware(middleware_class, **options))
+        self.user_middleware.insert(0, Middleware(middleware_class, *args, **kwargs))
 
     def add_exception_handler(
         self,

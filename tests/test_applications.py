@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Callable
+from typing import AsyncIterator, Callable
 
 import anyio
 import httpx
@@ -15,7 +15,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
 
@@ -499,8 +499,8 @@ def test_middleware_stack_init(test_client_factory: Callable[[ASGIApp], httpx.Cl
         def __init__(self, app: ASGIApp):
             self.app = app
 
-        async def __call__(self, *args: Any):
-            await self.app(*args)
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            await self.app(scope, receive, send)
 
     class SimpleInitializableMiddleware:
         counter = 0
@@ -509,8 +509,8 @@ def test_middleware_stack_init(test_client_factory: Callable[[ASGIApp], httpx.Cl
             self.app = app
             SimpleInitializableMiddleware.counter += 1
 
-        async def __call__(self, *args: Any):
-            await self.app(*args)
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            await self.app(scope, receive, send)
 
     def get_app() -> ASGIApp:
         app = Starlette()

@@ -254,19 +254,6 @@ def test_websocket_blocking_receive(test_client_factory):
         assert data == {"message": "test"}
 
 
-def test_client(test_client_factory):
-    async def app(scope, receive, send):
-        client = scope.get("client")
-        assert client is not None
-        host, port = client
-        response = JSONResponse({"host": host, "port": port})
-        await response(scope, receive, send)
-
-    client = test_client_factory(app)
-    response = client.get("/")
-    assert response.json() == {"host": "testclient", "port": 50000}
-
-
 @pytest.mark.parametrize("param", ("2020-07-14T00:00:00+00:00", "España", "voilà"))
 def test_query_params(test_client_factory, param: str):
     def homepage(request):

@@ -3,7 +3,7 @@
 
 # Testing
 coverage==7.3.2
-importlib-metadata==6.9.0
+importlib-metadata==7.0.1
 mypy==1.7.1
 ruff==0.1.6
 typing_extensions==4.8.0

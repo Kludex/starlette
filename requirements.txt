@@ -5,7 +5,7 @@
 coverage==7.4.0
 importlib-metadata==7.0.1
 mypy==1.7.1
-ruff==0.1.6
+ruff==0.1.9
 typing_extensions==4.9.0
 types-contextvars==2.4.7.3
 types-PyYAML==6.0.12.12

@@ -1110,7 +1110,7 @@ def test_mounted_middleware_does_not_catch_exception(
 
 
 def test_websocket_route_middleware(
-    test_client_factory: typing.Callable[..., TestClient]
+    test_client_factory: typing.Callable[..., TestClient],
 ):
     async def websocket_endpoint(session: WebSocket):
         await session.accept()

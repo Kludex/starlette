@@ -40,7 +40,7 @@ def test_websocket_binary_json(test_client_factory):
 
 
 def test_websocket_ensure_unicode_on_send_json(
-    test_client_factory: Callable[..., TestClient]
+    test_client_factory: Callable[..., TestClient],
 ):
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)

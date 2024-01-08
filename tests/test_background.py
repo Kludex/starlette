@@ -69,7 +69,7 @@ def test_multiple_tasks(test_client_factory: Callable[..., TestClient]):
 
 
 def test_multi_tasks_failure_avoids_next_execution(
-    test_client_factory: Callable[..., TestClient]
+    test_client_factory: Callable[..., TestClient],
 ) -> None:
     TASK_COUNTER = 0
 

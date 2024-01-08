@@ -499,7 +499,7 @@ def test_app_receives_http_disconnect_after_sending_if_discarded(test_client_fac
 
 
 def test_read_request_stream_in_app_after_middleware_calls_stream(
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         expected = [b""]
@@ -527,7 +527,7 @@ def test_read_request_stream_in_app_after_middleware_calls_stream(
 
 
 def test_read_request_stream_in_app_after_middleware_calls_body(
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         expected = [b"a", b""]
@@ -552,7 +552,7 @@ def test_read_request_stream_in_app_after_middleware_calls_body(
 
 
 def test_read_request_body_in_app_after_middleware_calls_stream(
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         assert await request.body() == b""
@@ -577,7 +577,7 @@ def test_read_request_body_in_app_after_middleware_calls_stream(
 
 
 def test_read_request_body_in_app_after_middleware_calls_body(
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         assert await request.body() == b"a"
@@ -599,7 +599,7 @@ def test_read_request_body_in_app_after_middleware_calls_body(
 
 
 def test_read_request_stream_in_dispatch_after_app_calls_stream(
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         expected = [b"a", b""]
@@ -627,7 +627,7 @@ def test_read_request_stream_in_dispatch_after_app_calls_stream(
 
 
 def test_read_request_stream_in_dispatch_after_app_calls_body(
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         assert await request.body() == b"a"
@@ -705,7 +705,7 @@ async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None
 
 
 def test_read_request_stream_in_dispatch_after_app_calls_body_with_middleware_calling_body_before_call_next(  # noqa: E501
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         assert await request.body() == b"a"
@@ -733,7 +733,7 @@ def test_read_request_stream_in_dispatch_after_app_calls_body_with_middleware_ca
 
 
 def test_read_request_body_in_dispatch_after_app_calls_body_with_middleware_calling_body_before_call_next(  # noqa: E501
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     async def homepage(request: Request):
         assert await request.body() == b"a"
@@ -837,7 +837,7 @@ async def test_read_request_disconnected_after_consuming_steam() -> None:
 
 
 def test_downstream_middleware_modifies_receive(
-    test_client_factory: Callable[[ASGIApp], TestClient]
+    test_client_factory: Callable[[ASGIApp], TestClient],
 ) -> None:
     """If a downstream middleware modifies receive() the final ASGI app
     should see the modified version.

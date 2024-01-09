@@ -1,8 +1,11 @@
 import asyncio
 import functools
+import re
 import sys
 import typing
 from contextlib import contextmanager
+
+from starlette.types import Scope
 
 if sys.version_info >= (3, 10):  # pragma: no cover
     from typing import TypeGuard
@@ -86,3 +89,9 @@ def collapse_excgroups() -> typing.Generator[None, None, None]:
                 exc = exc.exceptions[0]  # pragma: no cover
 
         raise exc
+
+
+def get_route_path(scope: Scope) -> str:
+    root_path = scope.get("root_path", "")
+    route_path = re.sub(r"^" + root_path, "", scope["path"])
+    return route_path

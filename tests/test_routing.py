@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import json
 import typing
 import uuid
 
@@ -563,12 +564,12 @@ def test_url_for_with_root_path(test_client_factory):
     client = test_client_factory(
         app, base_url="https://www.example.org/", root_path="/sub_path"
     )
-    response = client.get("/")
+    response = client.get("/sub_path/")
     assert response.json() == {
         "index": "https://www.example.org/sub_path/",
         "submount": "https://www.example.org/sub_path/submount/",
     }
-    response = client.get("/submount/")
+    response = client.get("/sub_path/submount/")
     assert response.json() == {
         "index": "https://www.example.org/sub_path/",
         "submount": "https://www.example.org/sub_path/submount/",
@@ -1242,6 +1243,19 @@ async def echo_paths(request: Request, name: str):
     )
 
 
+async def pure_asgi_echo_paths(scope: Scope, receive: Receive, send: Send, name: str):
+    data = {"name": name, "path": scope["path"], "root_path": scope["root_path"]}
+    content = json.dumps(data).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json")],
+        }
+    )
+    await send({"type": "http.response.body", "body": content})
+
+
 echo_paths_routes = [
     Route(
         "/path",
@@ -1249,8 +1263,9 @@ echo_paths_routes = [
         name="path",
         methods=["GET"],
     ),
+    Mount("/asgipath", app=functools.partial(pure_asgi_echo_paths, name="asgipath")),
     Mount(
-        "/root",
+        "/sub",
         name="mount",
         routes=[
             Route(
@@ -1258,7 +1273,7 @@ echo_paths_routes = [
                 functools.partial(echo_paths, name="subpath"),
                 name="subpath",
                 methods=["GET"],
-            )
+            ),
         ],
     ),
 ]
@@ -1276,11 +1291,22 @@ def test_paths_with_root_path(test_client_factory: typing.Callable[..., TestClie
         "path": "/root/path",
         "root_path": "/root",
     }
+    response = client.get("/root/asgipath/")
+    assert response.status_code == 200
+    assert response.json() == {
+        "name": "asgipath",
+        "path": "/root/asgipath/",
+        # Things that mount other ASGI apps, like WSGIMiddleware, would not be aware
+        # of the prefixed path, and would have their own notion of their own paths,
+        # so they need to be able to rely on the root_path to know the location they
+        # are mounted on
+        "root_path": "/root/asgipath",
+    }
 
-    response = client.get("/root/root/path")
+    response = client.get("/root/sub/path")
     assert response.status_code == 200
     assert response.json() == {
         "name": "subpath",
-        "path": "/root/root/path",
-        "root_path": "/root",
+        "path": "/root/sub/path",
+        "root_path": "/root/sub",
     }

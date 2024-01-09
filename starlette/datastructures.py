@@ -30,7 +30,7 @@ class URL:
             assert not components, 'Cannot set both "scope" and "**components".'
             scheme = scope.get("scheme", "http")
             server = scope.get("server", None)
-            path = scope.get("root_path", "") + scope["path"]
+            path = scope["path"]
             query_string = scope.get("query_string", b"")
 
             host_header = None

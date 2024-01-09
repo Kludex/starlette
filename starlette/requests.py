@@ -99,9 +99,18 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
     def base_url(self) -> URL:
         if not hasattr(self, "_base_url"):
             base_url_scope = dict(self.scope)
-            base_url_scope["path"] = "/"
+            # This is used by request.url_for, it might be used inside a Mount which
+            # would have its own child scope with its own root_path, but the base URL
+            # for url_for should still be the top level app root path.
+            app_root_path = base_url_scope.get(
+                "app_root_path", base_url_scope.get("root_path", "")
+            )
+            path = app_root_path
+            if not path.endswith("/"):
+                path += "/"
+            base_url_scope["path"] = path
             base_url_scope["query_string"] = b""
-            base_url_scope["root_path"] = base_url_scope.get("root_path", "")
+            base_url_scope["root_path"] = app_root_path
             self._base_url = URL(scope=base_url_scope)
         return self._base_url
 

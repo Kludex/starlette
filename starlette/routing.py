@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from enum import Enum
 
 from starlette._exception_handler import wrap_app_handling_exceptions
-from starlette._utils import is_async_callable
+from starlette._utils import get_route_path, is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
@@ -255,9 +255,8 @@ class Route(BaseRoute):
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         path_params: "typing.Dict[str, typing.Any]"
         if scope["type"] == "http":
-            root_path = scope.get("route_root_path", scope.get("root_path", ""))
-            path = scope.get("route_path", re.sub(r"^" + root_path, "", scope["path"]))
-            match = self.path_regex.match(path)
+            route_path = get_route_path(scope)
+            match = self.path_regex.match(route_path)
             if match:
                 matched_params = match.groupdict()
                 for key, value in matched_params.items():
@@ -345,9 +344,8 @@ class WebSocketRoute(BaseRoute):
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         path_params: "typing.Dict[str, typing.Any]"
         if scope["type"] == "websocket":
-            root_path = scope.get("route_root_path", scope.get("root_path", ""))
-            path = scope.get("route_path", re.sub(r"^" + root_path, "", scope["path"]))
-            match = self.path_regex.match(path)
+            route_path = get_route_path(scope)
+            match = self.path_regex.match(route_path)
             if match:
                 matched_params = match.groupdict()
                 for key, value in matched_params.items():
@@ -420,9 +418,8 @@ class Mount(BaseRoute):
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         path_params: "typing.Dict[str, typing.Any]"
         if scope["type"] in ("http", "websocket"):
-            path = scope["path"]
-            root_path = scope.get("route_root_path", scope.get("root_path", ""))
-            route_path = scope.get("route_path", re.sub(r"^" + root_path, "", path))
+            root_path = scope.get("root_path", "")
+            route_path = get_route_path(scope)
             match = self.path_regex.match(route_path)
             if match:
                 matched_params = match.groupdict()
@@ -432,11 +429,20 @@ class Mount(BaseRoute):
                 matched_path = route_path[: -len(remaining_path)]
                 path_params = dict(scope.get("path_params", {}))
                 path_params.update(matched_params)
-                root_path = scope.get("root_path", "")
                 child_scope = {
                     "path_params": path_params,
-                    "route_root_path": root_path + matched_path,
-                    "route_path": remaining_path,
+                    # app_root_path will only be set at the top level scope,
+                    # initialized with the (optional) value of a root_path
+                    # set above/before Starlette. And even though any
+                    # mount will have its own child scope with its own respective
+                    # root_path, the app_root_path will always be available in all
+                    # the child scopes with the same top level value because it's
+                    # set only once here with a default, any other child scope will
+                    # just inherit that app_root_path default value stored in the
+                    # scope. All this is needed to support Request.url_for(), as it
+                    # uses the app_root_path to build the URL path.
+                    "app_root_path": scope.get("app_root_path", root_path),
+                    "root_path": root_path + matched_path,
                     "endpoint": self.app,
                 }
                 return Match.FULL, child_scope
@@ -787,15 +793,12 @@ class Router:
             await partial.handle(scope, receive, send)
             return
 
-        root_path = scope.get("route_root_path", scope.get("root_path", ""))
-        path = scope.get("route_path", re.sub(r"^" + root_path, "", scope["path"]))
-        if scope["type"] == "http" and self.redirect_slashes and path != "/":
+        route_path = get_route_path(scope)
+        if scope["type"] == "http" and self.redirect_slashes and route_path != "/":
             redirect_scope = dict(scope)
-            if path.endswith("/"):
-                redirect_scope["route_path"] = path.rstrip("/")
+            if route_path.endswith("/"):
                 redirect_scope["path"] = redirect_scope["path"].rstrip("/")
             else:
-                redirect_scope["route_path"] = path + "/"
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
             for route in self.routes:

@@ -92,7 +92,8 @@ def test_build_environ():
         "http_version": "1.1",
         "method": "GET",
         "scheme": "https",
-        "path": "/",
+        "path": "/sub/",
+        "root_path": "/sub",
         "query_string": b"a=123&b=456",
         "headers": [
             (b"host", b"www.example.org"),
@@ -117,7 +118,7 @@ def test_build_environ():
         "QUERY_STRING": "a=123&b=456",
         "REMOTE_ADDR": "134.56.78.4",
         "REQUEST_METHOD": "GET",
-        "SCRIPT_NAME": "",
+        "SCRIPT_NAME": "/sub",
         "SERVER_NAME": "www.example.org",
         "SERVER_PORT": 443,
         "SERVER_PROTOCOL": "HTTP/1.1",

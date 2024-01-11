@@ -1,6 +1,10 @@
+import sys
 from typing import Any, Iterator, Protocol, Type
 
-from typing_extensions import ParamSpec
+if sys.version_info >= (3, 10):  # pragma: no cover
+    from typing import ParamSpec
+else:  # pragma: no cover
+    from typing_extensions import ParamSpec
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 

@@ -324,6 +324,11 @@ def test_file_response_with_inline_disposition(tmpdir, test_client_factory):
     assert response.headers["content-disposition"] == expected_disposition
 
 
+def test_file_response_with_method_warns(tmpdir, test_client_factory):
+    with pytest.warns(DeprecationWarning):
+        FileResponse(path=tmpdir, filename="example.png", method="GET")
+
+
 def test_set_cookie(test_client_factory, monkeypatch):
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
     mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)

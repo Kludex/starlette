@@ -184,11 +184,10 @@ class StaticFiles:
         scope: Scope,
         status_code: int = 200,
     ) -> Response:
-        method = scope["method"]
         request_headers = Headers(scope=scope)
 
         response = FileResponse(
-            full_path, status_code=status_code, stat_result=stat_result, method=method
+            full_path, status_code=status_code, stat_result=stat_result
         )
         if self.is_not_modified(response.headers, request_headers):
             return NotModifiedResponse(response.headers)

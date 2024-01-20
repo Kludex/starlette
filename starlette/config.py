@@ -58,7 +58,9 @@ class Config:
         self.environ = environ
         self.env_prefix = env_prefix
         self.file_values: typing.Dict[str, str] = {}
-        if env_file is not None and os.path.isfile(env_file):
+        if env_file is not None:
+            if not os.path.isfile(env_file):
+                raise FileNotFoundError(f"Config file '{env_file}' not found.")
             self.file_values = self._read_file(env_file)
 
     @typing.overload

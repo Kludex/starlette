@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.cookies
 import json
 import os
@@ -28,9 +30,9 @@ class Response:
         self,
         content: typing.Any = None,
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
     ) -> None:
         self.status_code = status_code
         if media_type is not None:
@@ -46,11 +48,9 @@ class Response:
             return content
         return content.encode(self.charset)  # type: ignore
 
-    def init_headers(
-        self, headers: typing.Optional[typing.Mapping[str, str]] = None
-    ) -> None:
+    def init_headers(self, headers: typing.Mapping[str, str] | None = None) -> None:
         if headers is None:
-            raw_headers: typing.List[typing.Tuple[bytes, bytes]] = []
+            raw_headers: list[tuple[bytes, bytes]] = []
             populate_content_length = True
             populate_content_type = True
         else:
@@ -89,15 +89,15 @@ class Response:
         self,
         key: str,
         value: str = "",
-        max_age: typing.Optional[int] = None,
-        expires: typing.Optional[typing.Union[datetime, str, int]] = None,
+        max_age: int | None = None,
+        expires: datetime | str | int | None = None,
         path: str = "/",
-        domain: typing.Optional[str] = None,
+        domain: str | None = None,
         secure: bool = False,
         httponly: bool = False,
-        samesite: typing.Optional[typing.Literal["lax", "strict", "none"]] = "lax",
+        samesite: typing.Literal["lax", "strict", "none"] | None = "lax",
     ) -> None:
-        cookie: "http.cookies.BaseCookie[str]" = http.cookies.SimpleCookie()
+        cookie: http.cookies.BaseCookie[str] = http.cookies.SimpleCookie()
         cookie[key] = value
         if max_age is not None:
             cookie[key]["max-age"] = max_age
@@ -128,10 +128,10 @@ class Response:
         self,
         key: str,
         path: str = "/",
-        domain: typing.Optional[str] = None,
+        domain: str | None = None,
         secure: bool = False,
         httponly: bool = False,
-        samesite: typing.Optional[typing.Literal["lax", "strict", "none"]] = "lax",
+        samesite: typing.Literal["lax", "strict", "none"] | None = "lax",
     ) -> None:
         self.set_cookie(
             key,
@@ -173,9 +173,9 @@ class JSONResponse(Response):
         self,
         content: typing.Any,
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
     ) -> None:
         super().__init__(content, status_code, headers, media_type, background)
 
@@ -192,10 +192,10 @@ class JSONResponse(Response):
 class RedirectResponse(Response):
     def __init__(
         self,
-        url: typing.Union[str, URL],
+        url: str | URL,
         status_code: int = 307,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        background: typing.Optional[BackgroundTask] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        background: BackgroundTask | None = None,
     ) -> None:
         super().__init__(
             content=b"", status_code=status_code, headers=headers, background=background
@@ -216,9 +216,9 @@ class StreamingResponse(Response):
         self,
         content: ContentStream,
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
     ) -> None:
         if isinstance(content, typing.AsyncIterable):
             self.body_iterator = content
@@ -253,7 +253,7 @@ class StreamingResponse(Response):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         async with anyio.create_task_group() as task_group:
 
-            async def wrap(func: "typing.Callable[[], typing.Awaitable[None]]") -> None:
+            async def wrap(func: typing.Callable[[], typing.Awaitable[None]]) -> None:
                 await func()
                 task_group.cancel_scope.cancel()
 
@@ -269,14 +269,14 @@ class FileResponse(Response):
 
     def __init__(
         self,
-        path: typing.Union[str, "os.PathLike[str]"],
+        path: str | os.PathLike[str],
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
-        filename: typing.Optional[str] = None,
-        stat_result: typing.Optional[os.stat_result] = None,
-        method: typing.Optional[str] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
+        filename: str | None = None,
+        stat_result: os.stat_result | None = None,
+        method: str | None = None,
         content_disposition_type: str = "attachment",
     ) -> None:
         self.path = path

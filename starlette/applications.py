@@ -55,14 +55,14 @@ class Starlette:
     """
 
     def __init__(
-        self: "AppType",
+        self: AppType,
         debug: bool = False,
         routes: typing.Sequence[BaseRoute] | None = None,
         middleware: typing.Sequence[Middleware] | None = None,
         exception_handlers: typing.Mapping[typing.Any, ExceptionHandler] | None = None,
         on_startup: typing.Sequence[typing.Callable[[], typing.Any]] | None = None,
         on_shutdown: typing.Sequence[typing.Callable[[], typing.Any]] | None = None,
-        lifespan: typing.Optional[Lifespan["AppType"]] = None,
+        lifespan: Lifespan[AppType] | None = None,
     ) -> None:
         # The lifespan context function is a newer style that replaces
         # on_startup / on_shutdown handlers. Use one or the other, not both.
@@ -84,7 +84,7 @@ class Starlette:
     def build_middleware_stack(self) -> ASGIApp:
         debug = self.debug
         error_handler = None
-        exception_handlers: typing.Dict[
+        exception_handlers: dict[
             typing.Any, typing.Callable[[Request, Exception], Response]
         ] = {}
 
@@ -110,7 +110,7 @@ class Starlette:
         return app
 
     @property
-    def routes(self) -> typing.List[BaseRoute]:
+    def routes(self) -> list[BaseRoute]:
         return self.router.routes
 
     def url_path_for(self, name: str, /, **path_params: typing.Any) -> URLPath:
@@ -193,7 +193,7 @@ class Starlette:
     def route(
         self,
         path: str,
-        methods: typing.List[str] | None = None,
+        methods: list[str] | None = None,
         name: str | None = None,
         include_in_schema: bool = True,
     ) -> typing.Callable:  # type: ignore[type-arg]

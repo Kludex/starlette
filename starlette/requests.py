@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import typing
 from http import cookies as http_cookies
@@ -29,7 +31,7 @@ SERVER_PUSH_HEADERS_TO_COPY = {
 }
 
 
-def cookie_parser(cookie_string: str) -> typing.Dict[str, str]:
+def cookie_parser(cookie_string: str) -> dict[str, str]:
     """
     This function parses a ``Cookie`` HTTP header into a dict of key/value pairs.
 
@@ -66,7 +68,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
     any functionality that is common to both `Request` and `WebSocket`.
     """
 
-    def __init__(self, scope: Scope, receive: typing.Optional[Receive] = None) -> None:
+    def __init__(self, scope: Scope, receive: Receive | None = None) -> None:
         assert scope["type"] in ("http", "websocket")
         self.scope = scope
 
@@ -127,11 +129,11 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
         return self._query_params
 
     @property
-    def path_params(self) -> typing.Dict[str, typing.Any]:
+    def path_params(self) -> dict[str, typing.Any]:
         return self.scope.get("path_params", {})
 
     @property
-    def cookies(self) -> typing.Dict[str, str]:
+    def cookies(self) -> dict[str, str]:
         if not hasattr(self, "_cookies"):
             cookies: typing.Dict[str, str] = {}
             cookie_header = self.headers.get("cookie")
@@ -142,7 +144,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
         return self._cookies
 
     @property
-    def client(self) -> typing.Optional[Address]:
+    def client(self) -> Address | None:
         # client is a 2 item tuple of (host, port), None or missing
         host_port = self.scope.get("client")
         if host_port is not None:
@@ -150,7 +152,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
         return None
 
     @property
-    def session(self) -> typing.Dict[str, typing.Any]:
+    def session(self) -> dict[str, typing.Any]:
         assert (
             "session" in self.scope
         ), "SessionMiddleware must be installed to access request.session"
@@ -251,10 +253,7 @@ class Request(HTTPConnection):
         return self._json
 
     async def _get_form(
-        self,
-        *,
-        max_files: typing.Union[int, float] = 1000,
-        max_fields: typing.Union[int, float] = 1000,
+        self, *, max_files: int | float = 1000, max_fields: int | float = 1000
     ) -> FormData:
         if self._form is None:
             assert (
@@ -284,10 +283,7 @@ class Request(HTTPConnection):
         return self._form
 
     def form(
-        self,
-        *,
-        max_files: typing.Union[int, float] = 1000,
-        max_fields: typing.Union[int, float] = 1000,
+        self, *, max_files: int | float = 1000, max_fields: int | float = 1000
     ) -> AwaitableOrContextManager[FormData]:
         return AwaitableOrContextManagerWrapper(
             self._get_form(max_files=max_files, max_fields=max_fields)

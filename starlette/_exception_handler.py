@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from starlette._utils import is_async_callable
@@ -22,16 +24,14 @@ StatusHandlers = typing.Dict[int, ExceptionHandler]
 
 def _lookup_exception_handler(
     exc_handlers: ExceptionHandlers, exc: Exception
-) -> typing.Optional[ExceptionHandler]:
+) -> ExceptionHandler | None:
     for cls in type(exc).__mro__:
         if cls in exc_handlers:
             return exc_handlers[cls]
     return None
 
 
-def wrap_app_handling_exceptions(
-    app: ASGIApp, conn: typing.Union[Request, WebSocket]
-) -> ASGIApp:
+def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASGIApp:
     exception_handlers: ExceptionHandlers
     status_handlers: StatusHandlers
     try:

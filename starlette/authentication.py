@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import inspect
 import sys
@@ -26,9 +28,9 @@ def has_required_scope(conn: HTTPConnection, scopes: typing.Sequence[str]) -> bo
 
 
 def requires(
-    scopes: typing.Union[str, typing.Sequence[str]],
+    scopes: str | typing.Sequence[str],
     status_code: int = 403,
-    redirect: typing.Optional[str] = None,
+    redirect: str | None = None,
 ) -> typing.Callable[
     [typing.Callable[_P, typing.Any]], typing.Callable[_P, typing.Any]
 ]:
@@ -113,12 +115,12 @@ class AuthenticationError(Exception):
 class AuthenticationBackend:
     async def authenticate(
         self, conn: HTTPConnection
-    ) -> typing.Optional[typing.Tuple["AuthCredentials", "BaseUser"]]:
+    ) -> tuple[AuthCredentials, BaseUser] | None:
         raise NotImplementedError()  # pragma: no cover
 
 
 class AuthCredentials:
-    def __init__(self, scopes: typing.Optional[typing.Sequence[str]] = None):
+    def __init__(self, scopes: typing.Sequence[str] | None = None):
         self.scopes = [] if scopes is None else list(scopes)
 
 

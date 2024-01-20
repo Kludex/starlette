@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 from dataclasses import dataclass, field
 from enum import Enum
@@ -24,11 +26,11 @@ class FormMessage(Enum):
 
 @dataclass
 class MultipartPart:
-    content_disposition: typing.Optional[bytes] = None
+    content_disposition: bytes | None = None
     field_name: str = ""
     data: bytes = b""
-    file: typing.Optional[UploadFile] = None
-    item_headers: typing.List[typing.Tuple[bytes, bytes]] = field(default_factory=list)
+    file: UploadFile | None = None
+    item_headers: list[tuple[bytes, bytes]] = field(default_factory=list)
 
 
 def _user_safe_decode(src: bytes, codec: str) -> str:
@@ -52,7 +54,7 @@ class FormParser:
         ), "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
-        self.messages: typing.List[typing.Tuple[FormMessage, bytes]] = []
+        self.messages: list[tuple[FormMessage, bytes]] = []
 
     def on_field_start(self) -> None:
         message = (FormMessage.FIELD_START, b"")
@@ -89,7 +91,7 @@ class FormParser:
         field_name = b""
         field_value = b""
 
-        items: typing.List[typing.Tuple[str, typing.Union[str, UploadFile]]] = []
+        items: list[tuple[str, typing.Union[str, UploadFile]]] = []
 
         # Feed the parser with data from the request.
         async for chunk in self.stream:
@@ -123,8 +125,8 @@ class MultiPartParser:
         headers: Headers,
         stream: typing.AsyncGenerator[bytes, None],
         *,
-        max_files: typing.Union[int, float] = 1000,
-        max_fields: typing.Union[int, float] = 1000,
+        max_files: int | float = 1000,
+        max_fields: int | float = 1000,
     ) -> None:
         assert (
             multipart is not None
@@ -133,16 +135,16 @@ class MultiPartParser:
         self.stream = stream
         self.max_files = max_files
         self.max_fields = max_fields
-        self.items: typing.List[typing.Tuple[str, typing.Union[str, UploadFile]]] = []
+        self.items: list[tuple[str, str | UploadFile]] = []
         self._current_files = 0
         self._current_fields = 0
         self._current_partial_header_name: bytes = b""
         self._current_partial_header_value: bytes = b""
         self._current_part = MultipartPart()
         self._charset = ""
-        self._file_parts_to_write: typing.List[typing.Tuple[MultipartPart, bytes]] = []
-        self._file_parts_to_finish: typing.List[MultipartPart] = []
-        self._files_to_close_on_error: typing.List[SpooledTemporaryFile[bytes]] = []
+        self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
+        self._file_parts_to_finish: list[MultipartPart] = []
+        self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()

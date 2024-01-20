@@ -5,8 +5,9 @@ https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
 
 And RFC 2324 - https://tools.ietf.org/html/rfc2324
 """
+from __future__ import annotations
+
 import warnings
-from typing import List
 
 __all__ = (
     "HTTP_100_CONTINUE",
@@ -195,5 +196,5 @@ def __getattr__(name: str) -> int:
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
-def __dir__() -> List[str]:
+def __dir__() -> list[str]:
     return sorted(list(__all__) + list(__deprecated__.keys()))  # pragma: no cover

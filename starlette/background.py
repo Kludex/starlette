@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import typing
 
@@ -29,7 +31,7 @@ class BackgroundTask:
 
 
 class BackgroundTasks(BackgroundTask):
-    def __init__(self, tasks: typing.Optional[typing.Sequence[BackgroundTask]] = None):
+    def __init__(self, tasks: typing.Sequence[BackgroundTask] | None = None):
         self.tasks = list(tasks) if tasks else []
 
     def add_task(

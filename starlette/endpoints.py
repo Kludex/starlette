@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import typing
 
@@ -55,7 +57,7 @@ class HTTPEndpoint:
 
 
 class WebSocketEndpoint:
-    encoding: typing.Optional[str] = None  # May be "text", "bytes", or "json".
+    encoding: str | None = None  # May be "text", "bytes", or "json".
 
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "websocket"

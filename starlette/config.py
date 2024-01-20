@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import typing
 from pathlib import Path
@@ -51,7 +53,7 @@ T = typing.TypeVar("T")
 class Config:
     def __init__(
         self,
-        env_file: typing.Optional[typing.Union[str, Path]] = None,
+        env_file: str | Path | None = None,
         environ: typing.Mapping[str, str] = environ,
         env_prefix: str = "",
     ) -> None:
@@ -64,17 +66,15 @@ class Config:
             self.file_values = self._read_file(env_file)
 
     @typing.overload
-    def __call__(self, key: str, *, default: None) -> typing.Optional[str]:
+    def __call__(self, key: str, *, default: None) -> str | None:
         ...
 
     @typing.overload
-    def __call__(self, key: str, cast: typing.Type[T], default: T = ...) -> T:
+    def __call__(self, key: str, cast: type[T], default: T = ...) -> T:
         ...
 
     @typing.overload
-    def __call__(
-        self, key: str, cast: typing.Type[str] = ..., default: str = ...
-    ) -> str:
+    def __call__(self, key: str, cast: type[str] = ..., default: str = ...) -> str:
         ...
 
     @typing.overload
@@ -87,15 +87,13 @@ class Config:
         ...
 
     @typing.overload
-    def __call__(
-        self, key: str, cast: typing.Type[str] = ..., default: T = ...
-    ) -> typing.Union[T, str]:
+    def __call__(self, key: str, cast: type[str] = ..., default: T = ...) -> T | str:
         ...
 
     def __call__(
         self,
         key: str,
-        cast: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None,
+        cast: typing.Callable[[typing.Any], typing.Any] | None = None,
         default: typing.Any = undefined,
     ) -> typing.Any:
         return self.get(key, cast, default)
@@ -103,7 +101,7 @@ class Config:
     def get(
         self,
         key: str,
-        cast: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None,
+        cast: typing.Callable[[typing.Any], typing.Any] | None = None,
         default: typing.Any = undefined,
     ) -> typing.Any:
         key = self.env_prefix + key
@@ -117,7 +115,7 @@ class Config:
             return self._perform_cast(key, default, cast)
         raise KeyError(f"Config '{key}' is missing, and has no default.")
 
-    def _read_file(self, file_name: typing.Union[str, Path]) -> typing.Dict[str, str]:
+    def _read_file(self, file_name: str | Path) -> dict[str, str]:
         file_values: typing.Dict[str, str] = {}
         with open(file_name) as input_file:
             for line in input_file.readlines():
@@ -133,7 +131,7 @@ class Config:
         self,
         key: str,
         value: typing.Any,
-        cast: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None,
+        cast: typing.Callable[[typing.Any], typing.Any] | None = None,
     ) -> typing.Any:
         if cast is None or value is None:
             return value

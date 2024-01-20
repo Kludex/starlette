@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib.util
 import os
 import stat
@@ -41,10 +43,8 @@ class StaticFiles:
     def __init__(
         self,
         *,
-        directory: typing.Optional[PathLike] = None,
-        packages: typing.Optional[
-            typing.List[typing.Union[str, typing.Tuple[str, str]]]
-        ] = None,
+        directory: PathLike | None = None,
+        packages: list[str | tuple[str, str]] | None = None,
         html: bool = False,
         check_dir: bool = True,
         follow_symlink: bool = False,
@@ -60,11 +60,9 @@ class StaticFiles:
 
     def get_directories(
         self,
-        directory: typing.Optional[PathLike] = None,
-        packages: typing.Optional[
-            typing.List[typing.Union[str, typing.Tuple[str, str]]]
-        ] = None,
-    ) -> typing.List[PathLike]:
+        directory: PathLike | None = None,
+        packages: list[str | tuple[str, str]] | None = None,
+    ) -> list[PathLike]:
         """
         Given `directory` and `packages` arguments, return a list of all the
         directories that should be used for serving static files from.
@@ -157,9 +155,7 @@ class StaticFiles:
                 return FileResponse(full_path, stat_result=stat_result, status_code=404)
         raise HTTPException(status_code=404)
 
-    def lookup_path(
-        self, path: str
-    ) -> typing.Tuple[str, typing.Optional[os.stat_result]]:
+    def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
         for directory in self.all_directories:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:

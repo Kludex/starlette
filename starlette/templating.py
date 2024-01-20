@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 import warnings
 from os import PathLike
@@ -27,11 +29,11 @@ class _TemplateResponse(HTMLResponse):
     def __init__(
         self,
         template: typing.Any,
-        context: typing.Dict[str, typing.Any],
+        context: dict[str, typing.Any],
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
     ):
         self.template = template
         self.context = context
@@ -64,11 +66,12 @@ class Jinja2Templates:
     @typing.overload
     def __init__(
         self,
-        directory: "typing.Union[str, PathLike[typing.AnyStr], typing.Sequence[typing.Union[str, PathLike[typing.AnyStr]]]]",  # noqa: E501
+        directory: str
+        | PathLike[typing.AnyStr]
+        | typing.Sequence[str | PathLike[typing.AnyStr]],
         *,
-        context_processors: typing.Optional[
-            typing.List[typing.Callable[[Request], typing.Dict[str, typing.Any]]]
-        ] = None,
+        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
+        | None = None,
         **env_options: typing.Any,
     ) -> None:
         ...
@@ -77,21 +80,22 @@ class Jinja2Templates:
     def __init__(
         self,
         *,
-        env: "jinja2.Environment",
-        context_processors: typing.Optional[
-            typing.List[typing.Callable[[Request], typing.Dict[str, typing.Any]]]
-        ] = None,
+        env: jinja2.Environment,
+        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
+        | None = None,
     ) -> None:
         ...
 
     def __init__(
         self,
-        directory: "typing.Union[str, PathLike[typing.AnyStr], typing.Sequence[typing.Union[str, PathLike[typing.AnyStr]]], None]" = None,  # noqa: E501
+        directory: str
+        | PathLike[typing.AnyStr]
+        | typing.Sequence[str | PathLike[typing.AnyStr]]
+        | None = None,
         *,
-        context_processors: typing.Optional[
-            typing.List[typing.Callable[[Request], typing.Dict[str, typing.Any]]]
-        ] = None,
-        env: typing.Optional["jinja2.Environment"] = None,
+        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
+        | None = None,
+        env: jinja2.Environment | None = None,
         **env_options: typing.Any,
     ) -> None:
         if env_options:
@@ -111,16 +115,18 @@ class Jinja2Templates:
 
     def _create_env(
         self,
-        directory: "typing.Union[str, PathLike[typing.AnyStr], typing.Sequence[typing.Union[str, PathLike[typing.AnyStr]]]]",  # noqa: E501
+        directory: str
+        | PathLike[typing.AnyStr]
+        | typing.Sequence[str | PathLike[typing.AnyStr]],
         **env_options: typing.Any,
-    ) -> "jinja2.Environment":
+    ) -> jinja2.Environment:
         loader = jinja2.FileSystemLoader(directory)
         env_options.setdefault("loader", loader)
         env_options.setdefault("autoescape", True)
 
         return jinja2.Environment(**env_options)
 
-    def _setup_env_defaults(self, env: "jinja2.Environment") -> None:
+    def _setup_env_defaults(self, env: jinja2.Environment) -> None:
         @pass_context
         def url_for(
             context: typing.Dict[str, typing.Any],
@@ -133,7 +139,7 @@ class Jinja2Templates:
 
         env.globals.setdefault("url_for", url_for)
 
-    def get_template(self, name: str) -> "jinja2.Template":
+    def get_template(self, name: str) -> jinja2.Template:
         return self.env.get_template(name)
 
     @typing.overload
@@ -141,11 +147,11 @@ class Jinja2Templates:
         self,
         request: Request,
         name: str,
-        context: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        context: dict[str, typing.Any] | None = None,
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
     ) -> _TemplateResponse:
         ...
 
@@ -153,11 +159,11 @@ class Jinja2Templates:
     def TemplateResponse(
         self,
         name: str,
-        context: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        context: dict[str, typing.Any] | None = None,
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
     ) -> _TemplateResponse:
         # Deprecated usage
         ...

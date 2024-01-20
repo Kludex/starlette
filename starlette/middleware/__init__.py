@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import sys
-from typing import Any, Iterator, Protocol, Type
+from typing import Any, Iterator, Protocol
 
 if sys.version_info >= (3, 10):  # pragma: no cover
     from typing import ParamSpec
@@ -22,7 +24,7 @@ class _MiddlewareClass(Protocol[P]):
 class Middleware:
     def __init__(
         self,
-        cls: Type[_MiddlewareClass[P]],
+        cls: type[_MiddlewareClass[P]],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:

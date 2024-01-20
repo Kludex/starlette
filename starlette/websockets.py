@@ -82,7 +82,11 @@ class WebSocket(HTTPConnection):
                 )
             if message_type == "websocket.close":
                 self.application_state = WebSocketState.DISCONNECTED
-            await self._send(message)
+            try:
+                await self._send(message)
+            except IOError:
+                self.application_state = WebSocketState.DISCONNECTED
+                raise WebSocketDisconnect(code=1006)
         else:
             raise RuntimeError('Cannot call "send" once a close message has been sent.')
 

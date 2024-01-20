@@ -255,6 +255,28 @@ def test_client_close(test_client_factory: Callable[..., TestClient]):
     assert close_reason == "Going Away"
 
 
+@pytest.mark.anyio
+async def test_client_disconnect_on_send():
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        await websocket.accept()
+        await websocket.send_text("Hello, world!")
+
+    async def receive() -> Message:
+        return {"type": "websocket.connect"}
+
+    async def send(message: Message) -> None:
+        if message["type"] == "websocket.accept":
+            return
+        # Simulate the exception the server would send to the application when the
+        # client disconnects.
+        raise IOError
+
+    with pytest.raises(WebSocketDisconnect) as ctx:
+        await app({"type": "websocket", "path": "/"}, receive, send)
+    assert ctx.value.code == status.WS_1006_ABNORMAL_CLOSURE
+
+
 def test_application_close(test_client_factory: Callable[..., TestClient]):
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)

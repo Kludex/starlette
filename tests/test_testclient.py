@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Callable
 
 import anyio
+import anyio.lowlevel
 import pytest
 import sniffio
 import trio.lowlevel
@@ -15,18 +16,15 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 
-def mock_service_endpoint(request):
+def mock_service_endpoint(request: Request):
     return JSONResponse({"mock": "example"})
 
 
-mock_service = Starlette(
-    routes=[
-        Route("/", endpoint=mock_service_endpoint),
-    ]
-)
+mock_service = Starlette(routes=[Route("/", endpoint=mock_service_endpoint)])
 
 
 def current_task():
@@ -48,7 +46,7 @@ def startup():
     raise RuntimeError()
 
 
-def test_use_testclient_in_endpoint(test_client_factory):
+def test_use_testclient_in_endpoint(test_client_factory: Callable[..., TestClient]):
     """
     We should be able to use the test client within applications.
 
@@ -56,7 +54,7 @@ def test_use_testclient_in_endpoint(test_client_factory):
     during tests or in development.
     """
 
-    def homepage(request):
+    def homepage(request: Request):
         client = test_client_factory(mock_service)
         response = client.get("/")
         return JSONResponse(response.json())
@@ -87,7 +85,9 @@ def test_testclient_headers_behavior():
     assert client.headers.get("Authentication") == "Bearer 123"
 
 
-def test_use_testclient_as_contextmanager(test_client_factory, anyio_backend_name):
+def test_use_testclient_as_contextmanager(
+    test_client_factory: Callable[..., TestClient], anyio_backend_name: str
+):
     """
     This test asserts a number of properties that are important for an
     app level task_group
@@ -109,17 +109,17 @@ def test_use_testclient_as_contextmanager(test_client_factory, anyio_backend_nam
     shutdown_loop = None
 
     @asynccontextmanager
-    async def lifespan_context(app):
+    async def lifespan_context(app: Starlette):
         nonlocal startup_task, startup_loop, shutdown_task, shutdown_loop
 
         startup_task = current_task()
         startup_loop = get_identity()
-        async with anyio.create_task_group() as app.task_group:
+        async with anyio.create_task_group():
             yield
         shutdown_task = current_task()
         shutdown_loop = get_identity()
 
-    async def loop_id(request):
+    async def loop_id(request: Request):
         return JSONResponse(get_identity())
 
     app = Starlette(
@@ -165,7 +165,7 @@ def test_use_testclient_as_contextmanager(test_client_factory, anyio_backend_nam
     assert first_task is not startup_task
 
 
-def test_error_on_startup(test_client_factory):
+def test_error_on_startup(test_client_factory: Callable[..., TestClient]):
     with pytest.deprecated_call(
         match="The on_startup and on_shutdown parameters are deprecated"
     ):
@@ -176,15 +176,15 @@ def test_error_on_startup(test_client_factory):
             pass  # pragma: no cover
 
 
-def test_exception_in_middleware(test_client_factory):
+def test_exception_in_middleware(test_client_factory: Callable[..., TestClient]):
     class MiddlewareException(Exception):
         pass
 
     class BrokenMiddleware:
-        def __init__(self, app):
+        def __init__(self, app: ASGIApp):
             self.app = app
 
-        async def __call__(self, scope, receive, send):
+        async def __call__(self, scope: Scope, receive: Receive, send: Send):
             raise MiddlewareException()
 
     broken_middleware = Starlette(middleware=[Middleware(BrokenMiddleware)])
@@ -194,9 +194,9 @@ def test_exception_in_middleware(test_client_factory):
             pass  # pragma: no cover
 
 
-def test_testclient_asgi2(test_client_factory):
-    def app(scope):
-        async def inner(receive, send):
+def test_testclient_asgi2(test_client_factory: Callable[..., TestClient]):
+    def app(scope: Scope):
+        async def inner(receive: Receive, send: Send):
             await send(
                 {
                     "type": "http.response.start",
@@ -213,8 +213,8 @@ def test_testclient_asgi2(test_client_factory):
     assert response.text == "Hello, world!"
 
 
-def test_testclient_asgi3(test_client_factory):
-    async def app(scope, receive, send):
+def test_testclient_asgi3(test_client_factory: Callable[..., TestClient]):
+    async def app(scope: Scope, receive: Receive, send: Send):
         await send(
             {
                 "type": "http.response.start",
@@ -229,12 +229,12 @@ def test_testclient_asgi3(test_client_factory):
     assert response.text == "Hello, world!"
 
 
-def test_websocket_blocking_receive(test_client_factory):
-    def app(scope):
-        async def respond(websocket):
+def test_websocket_blocking_receive(test_client_factory: Callable[..., TestClient]):
+    def app(scope: Scope):
+        async def respond(websocket: WebSocket):
             await websocket.send_json({"message": "test"})
 
-        async def asgi(receive, send):
+        async def asgi(receive: Receive, send: Send):
             websocket = WebSocket(scope, receive=receive, send=send)
             await websocket.accept()
             async with anyio.create_task_group() as task_group:
@@ -254,9 +254,25 @@ def test_websocket_blocking_receive(test_client_factory):
         assert data == {"message": "test"}
 
 
+def test_websocket_not_block_on_close(test_client_factory: Callable[..., TestClient]):
+    def app(scope: Scope):
+        async def asgi(receive: Receive, send: Send):
+            websocket = WebSocket(scope, receive=receive, send=send)
+            await websocket.accept()
+            while True:
+                await anyio.sleep(0.1)
+
+        return asgi
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/") as websocket:
+        ...
+    assert websocket.should_close.is_set()
+
+
 @pytest.mark.parametrize("param", ("2020-07-14T00:00:00+00:00", "España", "voilà"))
-def test_query_params(test_client_factory, param: str):
-    def homepage(request):
+def test_query_params(test_client_factory: Callable[..., TestClient], param: str):
+    def homepage(request: Request):
         return Response(request.query_params["param"])
 
     app = Starlette(routes=[Route("/", endpoint=homepage)])
@@ -284,7 +300,9 @@ def test_query_params(test_client_factory, param: str):
         ("example.com", False),
     ],
 )
-def test_domain_restricted_cookies(test_client_factory, domain, ok):
+def test_domain_restricted_cookies(
+    test_client_factory: Callable[..., TestClient], domain: str, ok: bool
+):
     """
     Test that test client discards domain restricted cookies which do not match the
     base_url of the testclient (`http://testserver` by default).
@@ -294,7 +312,7 @@ def test_domain_restricted_cookies(test_client_factory, domain, ok):
     in accordance with RFC 2965.
     """
 
-    async def app(scope, receive, send):
+    async def app(scope: Scope, receive: Receive, send: Send):
         response = Response("Hello, world!", media_type="text/plain")
         response.set_cookie(
             "mycookie",
@@ -310,8 +328,8 @@ def test_domain_restricted_cookies(test_client_factory, domain, ok):
     assert cookie_set == ok
 
 
-def test_forward_follow_redirects(test_client_factory):
-    async def app(scope, receive, send):
+def test_forward_follow_redirects(test_client_factory: Callable[..., TestClient]):
+    async def app(scope: Scope, receive: Receive, send: Send):
         if "/ok" in scope["path"]:
             response = Response("ok")
         else:
@@ -323,8 +341,8 @@ def test_forward_follow_redirects(test_client_factory):
     assert response.status_code == 200
 
 
-def test_forward_nofollow_redirects(test_client_factory):
-    async def app(scope, receive, send):
+def test_forward_nofollow_redirects(test_client_factory: Callable[..., TestClient]):
+    async def app(scope: Scope, receive: Receive, send: Send):
         response = RedirectResponse("/ok")
         await response(scope, receive, send)
 

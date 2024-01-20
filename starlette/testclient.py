@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import contextlib
 import inspect
 import io
 import json
 import math
 import queue
+import sys
 import typing
 import warnings
 from concurrent.futures import Future
@@ -11,6 +14,7 @@ from types import GeneratorType
 from urllib.parse import unquote, urljoin
 
 import anyio
+import anyio.abc
 import anyio.from_thread
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 from anyio.streams.stapled import StapledObjectStream
@@ -18,6 +22,11 @@ from anyio.streams.stapled import StapledObjectStream
 from starlette._utils import is_async_callable
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
+
+if sys.version_info >= (3, 10):  # pragma: no cover
+    from typing import TypeGuard
+else:  # pragma: no cover
+    from typing_extensions import TypeGuard
 
 try:
     import httpx
@@ -39,7 +48,7 @@ ASGI3App = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
 _RequestData = typing.Mapping[str, typing.Union[str, typing.Iterable[str]]]
 
 
-def _is_asgi3(app: typing.Union[ASGI2App, ASGI3App]) -> bool:
+def _is_asgi3(app: typing.Union[ASGI2App, ASGI3App]) -> TypeGuard[ASGI3App]:
     if inspect.isclass(app):
         return hasattr(app, "__await__")
     return is_async_callable(app)
@@ -64,7 +73,7 @@ class _AsyncBackend(typing.TypedDict):
 
 
 class _Upgrade(Exception):
-    def __init__(self, session: "WebSocketTestSession") -> None:
+    def __init__(self, session: WebSocketTestSession) -> None:
         self.session = session
 
 
@@ -79,16 +88,17 @@ class WebSocketTestSession:
         self.scope = scope
         self.accepted_subprotocol = None
         self.portal_factory = portal_factory
-        self._receive_queue: "queue.Queue[Message]" = queue.Queue()
-        self._send_queue: "queue.Queue[Message | BaseException]" = queue.Queue()
+        self._receive_queue: queue.Queue[Message] = queue.Queue()
+        self._send_queue: queue.Queue[Message | BaseException] = queue.Queue()
         self.extra_headers = None
 
-    def __enter__(self) -> "WebSocketTestSession":
+    def __enter__(self) -> WebSocketTestSession:
         self.exit_stack = contextlib.ExitStack()
         self.portal = self.exit_stack.enter_context(self.portal_factory())
+        self.should_close = anyio.Event()
 
         try:
-            _: "Future[None]" = self.portal.start_task_soon(self._run)
+            _: Future[None] = self.portal.start_task_soon(self._run)
             self.send({"type": "websocket.connect"})
             message = self.receive()
             self._raise_on_close(message)
@@ -99,10 +109,14 @@ class WebSocketTestSession:
         self.extra_headers = message.get("headers", None)
         return self
 
+    async def _notify_close(self) -> None:
+        self.should_close.set()
+
     def __exit__(self, *args: typing.Any) -> None:
         try:
             self.close(1000)
         finally:
+            self.portal.start_task_soon(self._notify_close)
             self.exit_stack.close()
         while not self._send_queue.empty():
             message = self._send_queue.get()
@@ -113,14 +127,22 @@ class WebSocketTestSession:
         """
         The sub-thread in which the websocket session runs.
         """
-        scope = self.scope
-        receive = self._asgi_receive
-        send = self._asgi_send
-        try:
-            await self.app(scope, receive, send)
-        except BaseException as exc:
-            self._send_queue.put(exc)
-            raise
+
+        async def run_app(tg: anyio.abc.TaskGroup) -> None:
+            try:
+                await self.app(self.scope, self._asgi_receive, self._asgi_send)
+            except anyio.get_cancelled_exc_class():
+                ...
+            except BaseException as exc:
+                self._send_queue.put(exc)
+                raise
+            finally:
+                tg.cancel_scope.cancel()
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(run_app, tg)
+            await self.should_close.wait()
+            tg.cancel_scope.cancel()
 
     async def _asgi_receive(self) -> Message:
         while self._receive_queue.empty():
@@ -153,7 +175,7 @@ class WebSocketTestSession:
         else:
             self.send({"type": "websocket.receive", "bytes": text.encode("utf-8")})
 
-    def close(self, code: int = 1000, reason: typing.Union[str, None] = None) -> None:
+    def close(self, code: int = 1000, reason: str | None = None) -> None:
         self.send({"type": "websocket.disconnect", "code": code, "reason": reason})
 
     def receive(self) -> Message:
@@ -172,8 +194,9 @@ class WebSocketTestSession:
         self._raise_on_close(message)
         return typing.cast(bytes, message["bytes"])
 
-    def receive_json(self, mode: str = "text") -> typing.Any:
-        assert mode in ["text", "binary"]
+    def receive_json(
+        self, mode: typing.Literal["text", "binary"] = "text"
+    ) -> typing.Any:
         message = self.receive()
         self._raise_on_close(message)
         if mode == "text":
@@ -191,7 +214,7 @@ class _TestClientTransport(httpx.BaseTransport):
         raise_server_exceptions: bool = True,
         root_path: str = "",
         *,
-        app_state: typing.Dict[str, typing.Any],
+        app_state: dict[str, typing.Any],
     ) -> None:
         self.app = app
         self.raise_server_exceptions = raise_server_exceptions
@@ -217,7 +240,7 @@ class _TestClientTransport(httpx.BaseTransport):
 
         # Include the 'host' header.
         if "host" in request.headers:
-            headers: typing.List[typing.Tuple[bytes, bytes]] = []
+            headers: list[tuple[bytes, bytes]] = []
         elif port == default_port:  # pragma: no cover
             headers = [(b"host", host.encode())]
         else:  # pragma: no cover
@@ -229,7 +252,7 @@ class _TestClientTransport(httpx.BaseTransport):
             for key, value in request.headers.multi_items()
         ]
 
-        scope: typing.Dict[str, typing.Any]
+        scope: dict[str, typing.Any]
 
         if scheme in {"ws", "wss"}:
             subprotocol = request.headers.get("sec-websocket-protocol", None)
@@ -272,7 +295,7 @@ class _TestClientTransport(httpx.BaseTransport):
         request_complete = False
         response_started = False
         response_complete: anyio.Event
-        raw_kwargs: typing.Dict[str, typing.Any] = {"stream": io.BytesIO()}
+        raw_kwargs: dict[str, typing.Any] = {"stream": io.BytesIO()}
         template = None
         context = None
 
@@ -363,8 +386,8 @@ class _TestClientTransport(httpx.BaseTransport):
 
 class TestClient(httpx.Client):
     __test__ = False
-    task: "Future[None]"
-    portal: typing.Optional[anyio.abc.BlockingPortal] = None
+    task: Future[None]
+    portal: anyio.abc.BlockingPortal | None = None
 
     def __init__(
         self,
@@ -372,17 +395,16 @@ class TestClient(httpx.Client):
         base_url: str = "http://testserver",
         raise_server_exceptions: bool = True,
         root_path: str = "",
-        backend: str = "asyncio",
-        backend_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        cookies: httpx._types.CookieTypes = None,
-        headers: typing.Dict[str, str] = None,
+        backend: typing.Literal["asyncio", "trio"] = "asyncio",
+        backend_options: typing.Dict[str, typing.Any] | None = None,
+        cookies: httpx._types.CookieTypes | None = None,
+        headers: typing.Dict[str, str] | None = None,
         follow_redirects: bool = True,
     ) -> None:
         self.async_backend = _AsyncBackend(
             backend=backend, backend_options=backend_options or {}
         )
         if _is_asgi3(app):
-            app = typing.cast(ASGI3App, app)
             asgi_app = app
         else:
             app = typing.cast(ASGI2App, app)  # type: ignore[assignment]
@@ -419,13 +441,11 @@ class TestClient(httpx.Client):
                 yield portal
 
     def _choose_redirect_arg(
-        self,
-        follow_redirects: typing.Optional[bool],
-        allow_redirects: typing.Optional[bool],
-    ) -> typing.Union[bool, httpx._client.UseClientDefault]:
-        redirect: typing.Union[
-            bool, httpx._client.UseClientDefault
-        ] = httpx._client.USE_CLIENT_DEFAULT
+        self, follow_redirects: bool | None, allow_redirects: bool | None
+    ) -> bool | httpx._client.UseClientDefault:
+        redirect: bool | httpx._client.UseClientDefault = (
+            httpx._client.USE_CLIENT_DEFAULT
+        )
         if allow_redirects is not None:
             message = (
                 "The `allow_redirects` argument is deprecated. "
@@ -709,7 +729,10 @@ class TestClient(httpx.Client):
         )
 
     def websocket_connect(
-        self, url: str, subprotocols: typing.Sequence[str] = None, **kwargs: typing.Any
+        self,
+        url: str,
+        subprotocols: typing.Sequence[str] | None = None,
+        **kwargs: typing.Any,
     ) -> "WebSocketTestSession":
         url = urljoin("ws://testserver", url)
         headers = kwargs.get("headers", {})

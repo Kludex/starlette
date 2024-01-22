@@ -1,3 +1,14 @@
+## 0.36.0
+
+January 22, 2024
+
+#### Added
+
+* Add support for ASGI `pathsend` extension [#2435](http://github.com/encode/starlette/pull/2435).
+* Cancel `WebSocketTestSession` on close [#2427](http://github.com/encode/starlette/pull/2427).
+* Raise `WebSocketDisconnect` when `WebSocket.send()` excepts `IOError` [#2425](http://github.com/encode/starlette/pull/2425).
+* Raise `FileNotFoundError` when the `env_file` parameter on `Config` is not valid [#2422](http://github.com/encode/starlette/pull/2422).
+
 ## 0.35.1
 
 January 11, 2024

@@ -67,7 +67,7 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
     If you want the `TestClient` to run the `lifespan` handler,
     you will need to use the `TestClient` as a context manager. It will
     not be triggered when the `TestClient` is instantiated. You can learn more about it
-    [here](/lifespan/#running-lifespan-in-tests).
+    [here](lifespan.md#running-lifespan-in-tests).
 
 ### Selecting the Async backend
 

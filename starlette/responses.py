@@ -337,7 +337,7 @@ class FileResponse(Response):
         )
         if scope["method"].upper() == "HEAD":
             await send({"type": "http.response.body", "body": b"", "more_body": False})
-        elif "http.response.pathsend" in scope["extensions"]:
+        elif "extensions" in scope and "http.response.pathsend" in scope["extensions"]:
             await send({"type": "http.response.pathsend", "path": str(self.path)})
         else:
             async with await anyio.open_file(self.path, mode="rb") as file:

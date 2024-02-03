@@ -684,27 +684,30 @@ def test_lifespan_with_on_events(test_client_factory: typing.Callable[..., TestC
         nonlocal shutdown_called
         shutdown_called = True
 
-    with pytest.warns(
-        UserWarning,
-        match=(
-            "The `lifespan` parameter cannot be used with `on_startup` or `on_shutdown`."  # noqa: E501
-        ),
+    with pytest.deprecated_call(
+        match="The on_startup and on_shutdown parameters are deprecated"
     ):
-        app = Router(
-            on_startup=[run_startup], on_shutdown=[run_shutdown], lifespan=lifespan
-        )
+        with pytest.warns(
+            UserWarning,
+            match=(
+                "The `lifespan` parameter cannot be used with `on_startup` or `on_shutdown`."  # noqa: E501
+            ),
+        ):
+            app = Router(
+                on_startup=[run_startup], on_shutdown=[run_shutdown], lifespan=lifespan
+            )
 
-        assert not lifespan_called
-        assert not startup_called
-        assert not shutdown_called
+            assert not lifespan_called
+            assert not startup_called
+            assert not shutdown_called
 
-        # Triggers the lifespan events
-        with test_client_factory(app):
-            ...
+            # Triggers the lifespan events
+            with test_client_factory(app):
+                ...
 
-        assert lifespan_called
-        assert not startup_called
-        assert not shutdown_called
+            assert lifespan_called
+            assert not startup_called
+            assert not shutdown_called
 
 
 def test_lifespan_sync(test_client_factory):

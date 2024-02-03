@@ -473,6 +473,13 @@ def test_non_empty_response(test_client_factory):
     assert response.headers["content-length"] == "2"
 
 
+def test_response_do_not_add_redundant_charset(test_client_factory):
+    app = Response(media_type="text/plain; charset=utf-8")
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+
+
 def test_file_response_known_size(tmpdir, test_client_factory):
     path = os.path.join(tmpdir, "xyz")
     content = b"<file content>" * 1000

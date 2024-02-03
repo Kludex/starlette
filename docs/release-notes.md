@@ -1,3 +1,12 @@
+## 0.36.2
+
+February 3, 2024
+
+#### Fixed
+
+* Upgrade `python-multipart` to `0.0.7` [13e5c26](13e5c26a27f4903924624736abd6131b2da80cc5).
+* Avoid duplicate charset on `Content-Type` [#2443](https://github.com/encode/starlette/2443).
+
 ## 0.36.1
 
 January 23, 2024

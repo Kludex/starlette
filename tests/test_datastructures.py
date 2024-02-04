@@ -16,7 +16,7 @@ from starlette.datastructures import (
 )
 
 
-def test_url():
+def test_url() -> None:
     u = URL("https://example.org:123/path/to/somewhere?abc=123#anchor")
     assert u.scheme == "https"
     assert u.hostname == "example.org"
@@ -59,7 +59,7 @@ def test_url():
     assert url.replace(port=88) == URL("http://u:p@host:88")
 
 
-def test_url_query_params():
+def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")
     assert u.query == "page=3"
     u = u.include_query_params(page=4)
@@ -72,7 +72,7 @@ def test_url_query_params():
     assert str(u) == "https://example.org/path/"
 
 
-def test_hidden_password():
+def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"
 
@@ -83,7 +83,7 @@ def test_hidden_password():
     assert repr(u) == "URL('https://username:********@example.org/path/to/somewhere')"
 
 
-def test_csv():
+def test_csv() -> None:
     csv = CommaSeparatedStrings('"localhost", "127.0.0.1", 0.0.0.0')
     assert list(csv) == ["localhost", "127.0.0.1", "0.0.0.0"]
     assert repr(csv) == "CommaSeparatedStrings(['localhost', '127.0.0.1', '0.0.0.0'])"
@@ -107,7 +107,7 @@ def test_csv():
     assert str(csv) == "'localhost', '127.0.0.1', '0.0.0.0'"
 
 
-def test_url_from_scope():
+def test_url_from_scope() -> None:
     u = URL(
         scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []}
     )
@@ -139,7 +139,7 @@ def test_url_from_scope():
     assert repr(u) == "URL('https://example.org/path/to/somewhere?abc=123')"
 
 
-def test_headers():
+def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h
     assert "A" in h
@@ -166,7 +166,7 @@ def test_headers():
     assert repr(h) == "Headers({'a': '123', 'b': '789'})"
 
 
-def test_mutable_headers():
+def test_mutable_headers() -> None:
     h = MutableHeaders()
     assert dict(h) == {}
     h["a"] = "1"
@@ -182,7 +182,7 @@ def test_mutable_headers():
     assert h.raw == [(b"b", b"4")]
 
 
-def test_mutable_headers_merge():
+def test_mutable_headers_merge() -> None:
     h = MutableHeaders()
     h = h | MutableHeaders({"a": "1"})
     assert isinstance(h, MutableHeaders)
@@ -191,7 +191,7 @@ def test_mutable_headers_merge():
     assert h.raw == [(b"a", b"1")]
 
 
-def test_mutable_headers_merge_dict():
+def test_mutable_headers_merge_dict() -> None:
     h = MutableHeaders()
     h = h | {"a": "1"}
     assert isinstance(h, MutableHeaders)
@@ -200,7 +200,7 @@ def test_mutable_headers_merge_dict():
     assert h.raw == [(b"a", b"1")]
 
 
-def test_mutable_headers_update():
+def test_mutable_headers_update() -> None:
     h = MutableHeaders()
     h |= MutableHeaders({"a": "1"})
     assert isinstance(h, MutableHeaders)
@@ -209,7 +209,7 @@ def test_mutable_headers_update():
     assert h.raw == [(b"a", b"1")]
 
 
-def test_mutable_headers_update_dict():
+def test_mutable_headers_update_dict() -> None:
     h = MutableHeaders()
     h |= {"a": "1"}
     assert isinstance(h, MutableHeaders)
@@ -218,7 +218,7 @@ def test_mutable_headers_update_dict():
     assert h.raw == [(b"a", b"1")]
 
 
-def test_mutable_headers_merge_not_mapping():
+def test_mutable_headers_merge_not_mapping() -> None:
     h = MutableHeaders()
     with pytest.raises(TypeError):
         h |= {"not_mapping"}  # type: ignore[arg-type]
@@ -226,7 +226,7 @@ def test_mutable_headers_merge_not_mapping():
         h | {"not_mapping"}  # type: ignore[operator]
 
 
-def test_headers_mutablecopy():
+def test_headers_mutablecopy() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     c = h.mutablecopy()
     assert c.items() == [("a", "123"), ("a", "456"), ("b", "789")]
@@ -234,7 +234,7 @@ def test_headers_mutablecopy():
     assert c.items() == [("a", "abc"), ("b", "789")]
 
 
-def test_mutable_headers_from_scope():
+def test_mutable_headers_from_scope() -> None:
     # "headers" in scope must not necessarily be a list
     h = MutableHeaders(scope={"headers": ((b"a", b"1"),)})
     assert dict(h) == {"a": "1"}
@@ -244,7 +244,7 @@ def test_mutable_headers_from_scope():
     assert list(h.raw) == [(b"a", b"1"), (b"b", b"2")]
 
 
-def test_url_blank_params():
+def test_url_blank_params() -> None:
     q = QueryParams("a=123&abc&def&b=456")
     assert "a" in q
     assert "abc" in q
@@ -257,7 +257,7 @@ def test_url_blank_params():
     assert list(q.keys()) == ["a", "abc", "def", "b"]
 
 
-def test_queryparams():
+def test_queryparams() -> None:
     q = QueryParams("a=123&a=456&b=789")
     assert "a" in q
     assert "A" not in q
@@ -290,7 +290,7 @@ def test_queryparams():
 
 
 @pytest.mark.anyio
-async def test_upload_file_file_input():
+async def test_upload_file_file_input() -> None:
     """Test passing file/stream into the UploadFile constructor"""
     stream = io.BytesIO(b"data")
     file = UploadFile(filename="file", file=stream, size=4)
@@ -304,7 +304,7 @@ async def test_upload_file_file_input():
 
 
 @pytest.mark.anyio
-async def test_upload_file_without_size():
+async def test_upload_file_without_size() -> None:
     """Test passing file/stream into the UploadFile constructor without size"""
     stream = io.BytesIO(b"data")
     file = UploadFile(filename="file", file=stream)
@@ -343,7 +343,7 @@ async def test_uploadfile_rolling(max_size: int) -> None:
     await file.close()
 
 
-def test_formdata():
+def test_formdata() -> None:
     stream = io.BytesIO(b"data")
     upload = UploadFile(filename="file", file=stream, size=4)
     form = FormData([("a", "123"), ("a", "456"), ("b", upload)])
@@ -370,14 +370,14 @@ def test_formdata():
 
 
 @pytest.mark.anyio
-async def test_upload_file_repr():
+async def test_upload_file_repr() -> None:
     stream = io.BytesIO(b"data")
     file = UploadFile(filename="file", file=stream, size=4)
     assert repr(file) == "UploadFile(filename='file', size=4, headers=Headers({}))"
 
 
 @pytest.mark.anyio
-async def test_upload_file_repr_headers():
+async def test_upload_file_repr_headers() -> None:
     stream = io.BytesIO(b"data")
     file = UploadFile(filename="file", file=stream, headers=Headers({"foo": "bar"}))
     assert (
@@ -386,7 +386,7 @@ async def test_upload_file_repr_headers():
     )
 
 
-def test_multidict():
+def test_multidict() -> None:
     q = MultiDict([("a", "123"), ("a", "456"), ("b", "789")])
     assert "a" in q
     assert "A" not in q

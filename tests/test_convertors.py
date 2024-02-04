@@ -1,15 +1,20 @@
 from datetime import datetime
+from typing import Callable, Iterator
 
 import pytest
 
 from starlette import convertors
 from starlette.convertors import Convertor, register_url_convertor
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route, Router
+from starlette.testclient import TestClient
+
+TestClientFactory = Callable[..., TestClient]
 
 
 @pytest.fixture(scope="module", autouse=True)
-def refresh_convertor_types():
+def refresh_convertor_types() -> Iterator[None]:
     convert_types = convertors.CONVERTOR_TYPES.copy()
     yield
     convertors.CONVERTOR_TYPES = convert_types
@@ -29,7 +34,7 @@ class DateTimeConvertor(Convertor[datetime]):
 def app() -> Router:
     register_url_convertor("datetime", DateTimeConvertor())
 
-    def datetime_convertor(request):
+    def datetime_convertor(request: Request) -> JSONResponse:
         param = request.path_params["param"]
         assert isinstance(param, datetime)
         return JSONResponse({"datetime": param.strftime("%Y-%m-%dT%H:%M:%S")})
@@ -45,7 +50,9 @@ def app() -> Router:
     )
 
 
-def test_datetime_convertor(test_client_factory, app: Router):
+def test_datetime_convertor(
+    test_client_factory: TestClientFactory, app: Router
+) -> None:
     client = test_client_factory(app)
     response = client.get("/datetime/2020-01-01T00:00:00")
     assert response.json() == {"datetime": "2020-01-01T00:00:00"}
@@ -57,8 +64,10 @@ def test_datetime_convertor(test_client_factory, app: Router):
 
 
 @pytest.mark.parametrize("param, status_code", [("1.0", 200), ("1-0", 404)])
-def test_default_float_convertor(test_client_factory, param: str, status_code: int):
-    def float_convertor(request):
+def test_default_float_convertor(
+    test_client_factory: TestClientFactory, param: str, status_code: int
+) -> None:
+    def float_convertor(request: Request) -> JSONResponse:
         param = request.path_params["param"]
         assert isinstance(param, float)
         return JSONResponse({"float": param})

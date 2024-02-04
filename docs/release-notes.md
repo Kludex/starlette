@@ -1,3 +1,11 @@
+## 0.36.3
+
+February 4, 2024
+
+#### Fixed
+
+* Create `anyio.Event` on async context [#2459](https://github.com/encode/starlette/2459).
+
 ## 0.36.2
 
 February 3, 2024

@@ -10,6 +10,7 @@ import sys
 import typing
 import warnings
 from concurrent.futures import Future
+from functools import cached_property
 from types import GeneratorType
 from urllib.parse import unquote, urljoin
 
@@ -95,7 +96,6 @@ class WebSocketTestSession:
     def __enter__(self) -> WebSocketTestSession:
         self.exit_stack = contextlib.ExitStack()
         self.portal = self.exit_stack.enter_context(self.portal_factory())
-        self.should_close = anyio.Event()
 
         try:
             _: Future[None] = self.portal.start_task_soon(self._run)
@@ -108,6 +108,10 @@ class WebSocketTestSession:
         self.accepted_subprotocol = message.get("subprotocol", None)
         self.extra_headers = message.get("headers", None)
         return self
+
+    @cached_property
+    def should_close(self) -> anyio.Event:
+        return anyio.Event()
 
     async def _notify_close(self) -> None:
         self.should_close.set()

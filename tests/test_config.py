@@ -1,4 +1,5 @@
 import os
+import typing
 from pathlib import Path
 from typing import Any, Optional
 
@@ -39,7 +40,7 @@ def test_config_types() -> None:
         config("INT_DEFAULT_STR", cast=int, default="true")
 
 
-def test_config(tmpdir, monkeypatch):
+def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     path = os.path.join(tmpdir, ".env")
     with open(path, "w") as file:
         file.write("# Do not commit to source control\n")
@@ -52,7 +53,7 @@ def test_config(tmpdir, monkeypatch):
 
     config = Config(path, environ={"DEBUG": "true"})
 
-    def cast_to_int(v) -> int:
+    def cast_to_int(v: typing.Any) -> int:
         return int(v)
 
     DEBUG = config("DEBUG", cast=bool)
@@ -104,14 +105,14 @@ def test_config(tmpdir, monkeypatch):
         config.get("BOOL_AS_INT", cast=bool)
 
 
-def test_missing_env_file_raises(tmpdir):
+def test_missing_env_file_raises(tmpdir: Path) -> None:
     path = os.path.join(tmpdir, ".env")
 
     with pytest.raises(FileNotFoundError, match=f"Config file '{path}' not found."):
         Config(path)
 
 
-def test_environ():
+def test_environ() -> None:
     environ = Environ()
 
     # We can mutate the environ at this point.
@@ -136,7 +137,7 @@ def test_environ():
     assert len(environ) == len(os.environ)
 
 
-def test_config_with_env_prefix(tmpdir, monkeypatch):
+def test_config_with_env_prefix(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = Config(
         environ={"APP_DEBUG": "value", "ENVIRONMENT": "dev"}, env_prefix="APP_"
     )

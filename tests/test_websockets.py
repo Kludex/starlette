@@ -6,7 +6,8 @@ import pytest
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
 from starlette import status
-from starlette.testclient import TestClient
+from starlette.responses import Response
+from starlette.testclient import TestClient, WebSocketDenialResponse
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
@@ -293,6 +294,8 @@ def test_application_close(test_client_factory: Callable[..., TestClient]):
 def test_rejected_connection(test_client_factory: Callable[..., TestClient]):
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
         await websocket.close(status.WS_1001_GOING_AWAY)
 
     client = test_client_factory(app)
@@ -300,6 +303,111 @@ def test_rejected_connection(test_client_factory: Callable[..., TestClient]):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
     assert exc.value.code == status.WS_1001_GOING_AWAY
+
+
+def test_send_denial_response(test_client_factory: Callable[..., TestClient]):
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+        response = Response(status_code=404, content="foo")
+        await websocket.send_denial_response(response)
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.status_code == 404
+    assert exc.value.content == b"foo"
+
+
+def test_send_response_multi(test_client_factory: Callable[..., TestClient]):
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+        await websocket.send(
+            {
+                "type": "websocket.http.response.start",
+                "status": 404,
+                "headers": [(b"content-type", b"text/plain"), (b"foo", b"bar")],
+            }
+        )
+        await websocket.send(
+            {
+                "type": "websocket.http.response.body",
+                "body": b"hard",
+                "more_body": True,
+            }
+        )
+        await websocket.send(
+            {
+                "type": "websocket.http.response.body",
+                "body": b"body",
+            }
+        )
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.status_code == 404
+    assert exc.value.content == b"hardbody"
+    assert exc.value.headers["foo"] == "bar"
+
+
+def test_send_response_unsupported(test_client_factory: Callable[..., TestClient]):
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        del scope["extensions"]["websocket.http.response"]
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+        response = Response(status_code=404, content="foo")
+        with pytest.raises(
+            RuntimeError,
+            match="The server doesn't support the Websocket Denial Response extension.",
+        ):
+            await websocket.send_denial_response(response)
+        await websocket.close()
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDisconnect) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.code == status.WS_1000_NORMAL_CLOSURE
+
+
+def test_send_response_duplicate_start(test_client_factory: Callable[..., TestClient]):
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+        response = Response(status_code=404, content="foo")
+        await websocket.send(
+            {
+                "type": "websocket.http.response.start",
+                "status": response.status_code,
+                "headers": response.raw_headers,
+            }
+        )
+        await websocket.send(
+            {
+                "type": "websocket.http.response.start",
+                "status": response.status_code,
+                "headers": response.raw_headers,
+            }
+        )
+
+    client = test_client_factory(app)
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            'Expected ASGI message "websocket.http.response.body", but got '
+            "'websocket.http.response.start'"
+        ),
+    ):
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
 
 
 def test_subprotocol(test_client_factory: Callable[..., TestClient]):

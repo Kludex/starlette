@@ -148,14 +148,15 @@ class Response:
         )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        prefix = "websocket." if scope["type"] == "websocket" else ""
         await send(
             {
-                "type": "http.response.start",
+                "type": prefix + "http.response.start",
                 "status": self.status_code,
                 "headers": self.raw_headers,
             }
         )
-        await send({"type": "http.response.body", "body": self.body})
+        await send({"type": prefix + "http.response.body", "body": self.body})
 
         if self.background is not None:
             await self.background()

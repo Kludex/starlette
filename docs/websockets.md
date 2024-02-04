@@ -109,3 +109,17 @@ correctly updated.
 
 * `await websocket.send(message)`
 * `await websocket.receive()`
+
+### Send Denial Response
+
+If you call `websocket.close()` before calling `websocket.accept()` then
+the server will automatically send a HTTP 403 error to the client.
+
+If you want to send a different error response, you can use the
+`websocket.send_denial_response()` method. This will send the response
+and then close the connection.
+
+* `await websocket.send_denial_response(response)`
+
+This requires the ASGI server to support the WebSocket Denial Response
+extension. If it is not supported a `RuntimeError` will be raised.

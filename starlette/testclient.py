@@ -78,6 +78,16 @@ class _Upgrade(Exception):
         self.session = session
 
 
+class WebSocketDenialResponse(  # type: ignore[misc]
+    httpx.Response,
+    WebSocketDisconnect,
+):
+    """
+    A special case of `WebSocketDisconnect`, raised in the `TestClient` if the
+    `WebSocket` is closed before being accepted with a `send_denial_response()`.
+    """
+
+
 class WebSocketTestSession:
     def __init__(
         self,
@@ -159,7 +169,22 @@ class WebSocketTestSession:
     def _raise_on_close(self, message: Message) -> None:
         if message["type"] == "websocket.close":
             raise WebSocketDisconnect(
-                message.get("code", 1000), message.get("reason", "")
+                code=message.get("code", 1000), reason=message.get("reason", "")
+            )
+        elif message["type"] == "websocket.http.response.start":
+            status_code: int = message["status"]
+            headers: list[tuple[bytes, bytes]] = message["headers"]
+            body: list[bytes] = []
+            while True:
+                message = self.receive()
+                assert message["type"] == "websocket.http.response.body"
+                body.append(message["body"])
+                if not message.get("more_body", False):
+                    break
+            raise WebSocketDenialResponse(
+                status_code=status_code,
+                headers=headers,
+                content=b"".join(body),
             )
 
     def send(self, message: Message) -> None:
@@ -277,6 +302,7 @@ class _TestClientTransport(httpx.BaseTransport):
                 "server": [host, port],
                 "subprotocols": subprotocols,
                 "state": self.app_state.copy(),
+                "extensions": {"websocket.http.response": {}},
             }
             session = WebSocketTestSession(self.app, scope, self.portal_factory)
             raise _Upgrade(session)

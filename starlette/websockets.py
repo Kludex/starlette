@@ -5,6 +5,7 @@ import json
 import typing
 
 from starlette.requests import HTTPConnection
+from starlette.responses import Response
 from starlette.types import Message, Receive, Scope, Send
 
 
@@ -12,6 +13,7 @@ class WebSocketState(enum.Enum):
     CONNECTING = 0
     CONNECTED = 1
     DISCONNECTED = 2
+    RESPONSE = 3
 
 
 class WebSocketDisconnect(Exception):
@@ -65,13 +67,20 @@ class WebSocket(HTTPConnection):
         """
         if self.application_state == WebSocketState.CONNECTING:
             message_type = message["type"]
-            if message_type not in {"websocket.accept", "websocket.close"}:
+            if message_type not in {
+                "websocket.accept",
+                "websocket.close",
+                "websocket.http.response.start",
+            }:
                 raise RuntimeError(
-                    'Expected ASGI message "websocket.accept" or '
-                    f'"websocket.close", but got {message_type!r}'
+                    'Expected ASGI message "websocket.accept",'
+                    '"websocket.close" or "websocket.http.response.start",'
+                    f"but got {message_type!r}"
                 )
             if message_type == "websocket.close":
                 self.application_state = WebSocketState.DISCONNECTED
+            elif message_type == "websocket.http.response.start":
+                self.application_state = WebSocketState.RESPONSE
             else:
                 self.application_state = WebSocketState.CONNECTED
             await self._send(message)
@@ -89,6 +98,16 @@ class WebSocket(HTTPConnection):
             except IOError:
                 self.application_state = WebSocketState.DISCONNECTED
                 raise WebSocketDisconnect(code=1006)
+        elif self.application_state == WebSocketState.RESPONSE:
+            message_type = message["type"]
+            if message_type != "websocket.http.response.body":
+                raise RuntimeError(
+                    'Expected ASGI message "websocket.http.response.body", '
+                    f"but got {message_type!r}"
+                )
+            if not message.get("more_body", False):
+                self.application_state = WebSocketState.DISCONNECTED
+            await self._send(message)
         else:
             raise RuntimeError('Cannot call "send" once a close message has been sent.')
 
@@ -184,6 +203,14 @@ class WebSocket(HTTPConnection):
         await self.send(
             {"type": "websocket.close", "code": code, "reason": reason or ""}
         )
+
+    async def send_denial_response(self, response: Response) -> None:
+        if "websocket.http.response" in self.scope.get("extensions", {}):
+            await response(self.scope, self.receive, self.send)
+        else:
+            raise RuntimeError(
+                "The server doesn't support the Websocket Denial Response extension."
+            )
 
 
 class WebSocketClose:

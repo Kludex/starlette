@@ -1,12 +1,22 @@
 import sys
+from typing import Any, Callable, Dict, Iterable
 
 import pytest
 
 from starlette._utils import collapse_excgroups
 from starlette.middleware.wsgi import WSGIMiddleware, build_environ
+from starlette.testclient import TestClient
+
+WSGIResponse = Iterable[bytes]
+TestClientFactory = Callable[..., TestClient]
+StartResponse = Callable[..., Any]
+Environment = Dict[str, Any]
 
 
-def hello_world(environ, start_response):
+def hello_world(
+    environ: Environment,
+    start_response: StartResponse,
+) -> WSGIResponse:
     status = "200 OK"
     output = b"Hello World!\n"
     headers = [
@@ -17,7 +27,10 @@ def hello_world(environ, start_response):
     return [output]
 
 
-def echo_body(environ, start_response):
+def echo_body(
+    environ: Environment,
+    start_response: StartResponse,
+) -> WSGIResponse:
     status = "200 OK"
     output = environ["wsgi.input"].read()
     headers = [
@@ -28,11 +41,17 @@ def echo_body(environ, start_response):
     return [output]
 
 
-def raise_exception(environ, start_response):
+def raise_exception(
+    environ: Environment,
+    start_response: StartResponse,
+) -> WSGIResponse:
     raise RuntimeError("Something went wrong")
 
 
-def return_exc_info(environ, start_response):
+def return_exc_info(
+    environ: Environment,
+    start_response: StartResponse,
+) -> WSGIResponse:
     try:
         raise RuntimeError("Something went wrong")
     except RuntimeError:
@@ -46,7 +65,7 @@ def return_exc_info(environ, start_response):
         return [output]
 
 
-def test_wsgi_get(test_client_factory):
+def test_wsgi_get(test_client_factory: TestClientFactory) -> None:
     app = WSGIMiddleware(hello_world)
     client = test_client_factory(app)
     response = client.get("/")
@@ -54,7 +73,7 @@ def test_wsgi_get(test_client_factory):
     assert response.text == "Hello World!\n"
 
 
-def test_wsgi_post(test_client_factory):
+def test_wsgi_post(test_client_factory: TestClientFactory) -> None:
     app = WSGIMiddleware(echo_body)
     client = test_client_factory(app)
     response = client.post("/", json={"example": 123})
@@ -62,7 +81,7 @@ def test_wsgi_post(test_client_factory):
     assert response.text == '{"example": 123}'
 
 
-def test_wsgi_exception(test_client_factory):
+def test_wsgi_exception(test_client_factory: TestClientFactory) -> None:
     # Note that we're testing the WSGI app directly here.
     # The HTTP protocol implementations would catch this error and return 500.
     app = WSGIMiddleware(raise_exception)
@@ -71,7 +90,7 @@ def test_wsgi_exception(test_client_factory):
         client.get("/")
 
 
-def test_wsgi_exc_info(test_client_factory):
+def test_wsgi_exc_info(test_client_factory: TestClientFactory) -> None:
     # Note that we're testing the WSGI app directly here.
     # The HTTP protocol implementations would catch this error and return 500.
     app = WSGIMiddleware(return_exc_info)
@@ -86,7 +105,7 @@ def test_wsgi_exc_info(test_client_factory):
     assert response.text == "Internal Server Error"
 
 
-def test_build_environ():
+def test_build_environ() -> None:
     scope = {
         "type": "http",
         "http_version": "1.1",

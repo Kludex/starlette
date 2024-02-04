@@ -1,12 +1,18 @@
+from typing import Callable
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
+from starlette.testclient import TestClient
+
+TestClientFactory = Callable[..., TestClient]
 
 
-def test_trusted_host_middleware(test_client_factory):
-    def homepage(request):
+def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("OK", status_code=200)
 
     app = Starlette(
@@ -31,14 +37,14 @@ def test_trusted_host_middleware(test_client_factory):
     assert response.status_code == 400
 
 
-def test_default_allowed_hosts():
+def test_default_allowed_hosts() -> None:
     app = Starlette()
     middleware = TrustedHostMiddleware(app)
     assert middleware.allowed_hosts == ["*"]
 
 
-def test_www_redirect(test_client_factory):
-    def homepage(request):
+def test_www_redirect(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("OK", status_code=200)
 
     app = Starlette(

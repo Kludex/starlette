@@ -108,7 +108,7 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_missing_env_file_raises(tmpdir: Path) -> None:
     path = os.path.join(tmpdir, ".env")
 
-    with pytest.raises(FileNotFoundError, match=f"Config file '{path}' not found."):
+    with pytest.warns(UserWarning, match=f"Config file '{path}' not found."):
         Config(path)
 
 

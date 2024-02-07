@@ -1,19 +1,27 @@
+from typing import Callable
+
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+from starlette.responses import Response
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.schemas import SchemaGenerator
+from starlette.testclient import TestClient
+from starlette.websockets import WebSocket
 
 schemas = SchemaGenerator(
     {"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}}
 )
 
+TestClientFactory = Callable[..., TestClient]
 
-def ws(session):
+
+def ws(session: WebSocket) -> None:
     """ws"""
     pass  # pragma: no cover
 
 
-def get_user(request):
+def get_user(request: Request) -> None:
     """
     responses:
         200:
@@ -24,7 +32,7 @@ def get_user(request):
     pass  # pragma: no cover
 
 
-def list_users(request):
+def list_users(request: Request) -> None:
     """
     responses:
       200:
@@ -35,7 +43,7 @@ def list_users(request):
     pass  # pragma: no cover
 
 
-def create_user(request):
+def create_user(request: Request) -> None:
     """
     responses:
       200:
@@ -47,7 +55,7 @@ def create_user(request):
 
 
 class OrganisationsEndpoint(HTTPEndpoint):
-    def get(self, request):
+    def get(self, request: Request) -> None:
         """
         responses:
           200:
@@ -57,7 +65,7 @@ class OrganisationsEndpoint(HTTPEndpoint):
         """
         pass  # pragma: no cover
 
-    def post(self, request):
+    def post(self, request: Request) -> None:
         """
         responses:
           200:
@@ -68,7 +76,7 @@ class OrganisationsEndpoint(HTTPEndpoint):
         pass  # pragma: no cover
 
 
-def regular_docstring_and_schema(request):
+def regular_docstring_and_schema(request: Request) -> None:
     """
     This a regular docstring example (not included in schema)
 
@@ -81,18 +89,18 @@ def regular_docstring_and_schema(request):
     pass  # pragma: no cover
 
 
-def regular_docstring(request):
+def regular_docstring(request: Request) -> None:
     """
     This a regular docstring example (not included in schema)
     """
     pass  # pragma: no cover
 
 
-def no_docstring(request):
+def no_docstring(request: Request) -> None:
     pass  # pragma: no cover
 
 
-def subapp_endpoint(request):
+def subapp_endpoint(request: Request) -> None:
     """
     responses:
       200:
@@ -101,7 +109,7 @@ def subapp_endpoint(request):
     pass  # pragma: no cover
 
 
-def schema(request):
+def schema(request: Request) -> Response:
     return schemas.OpenAPIResponse(request=request)
 
 
@@ -128,7 +136,7 @@ app = Starlette(
 )
 
 
-def test_schema_generation():
+def test_schema_generation() -> None:
     schema = schemas.get_schema(routes=app.routes)
     assert schema == {
         "openapi": "3.0.0",
@@ -261,7 +269,7 @@ paths:
 """
 
 
-def test_schema_endpoint(test_client_factory):
+def test_schema_endpoint(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/schema")
     assert response.headers["Content-Type"] == "application/vnd.oai.openapi"

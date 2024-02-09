@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Literal
 
 import pytest
 
@@ -10,7 +10,7 @@ TestClientFactory = Callable[..., TestClient]
 
 @pytest.fixture
 def test_client_factory(
-    anyio_backend_name: str,
+    anyio_backend_name: Literal["asyncio", "trio"],
     anyio_backend_options: Dict[str, Any],
 ) -> TestClientFactory:
     # anyio_backend_name defined by:

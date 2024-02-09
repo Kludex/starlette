@@ -66,14 +66,6 @@ python_version = "3.8"
 module = "starlette.testclient.*"
 implicit_optional = true
 
-# TODO: Uncomment the following configuration when
-# https://github.com/python/mypy/issues/10045 is solved. In the meantime,
-# we are calling `mypy tests` directly. Check `scripts/check` for more info.
-# [[tool.mypy.overrides]]
-# module = "tests.*"
-# disallow_untyped_defs = false
-# check_untyped_defs = true
-
 [tool.pytest.ini_options]
 addopts = "-rxXs --strict-config --strict-markers"
 xfail_strict = true

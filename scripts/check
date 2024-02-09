@@ -12,6 +12,5 @@ set -x
 ${PREFIX}ruff format --check --diff $SOURCE_FILES
 # TODO: Use `[[tool.mypy.overrides]]` on the `pyproject.toml` when the mypy issue is solved:
 # github.com/python/mypy/issues/10045. Check github.com/encode/starlette/pull/2180 for more info.
-${PREFIX}mypy starlette
-${PREFIX}mypy tests --disable-error-code no-untyped-def --disable-error-code no-untyped-call
+${PREFIX}mypy $SOURCE_FILES
 ${PREFIX}ruff check $SOURCE_FILES

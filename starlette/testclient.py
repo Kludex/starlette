@@ -46,7 +46,7 @@ ASGI2App = typing.Callable[[Scope], ASGIInstance]
 ASGI3App = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
 
 
-_RequestData = typing.Mapping[str, typing.Union[str, typing.Iterable[str]]]
+_RequestData = typing.Mapping[str, typing.Union[str, typing.Iterable[str], bytes]]
 
 
 def _is_asgi3(app: ASGI2App | ASGI3App) -> TypeGuard[ASGI3App]:

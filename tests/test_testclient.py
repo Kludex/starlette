@@ -274,6 +274,19 @@ def test_websocket_not_block_on_close(test_client_factory: TestClientFactory) ->
     assert websocket.should_close.is_set()
 
 
+def test_client(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        client = scope.get("client")
+        assert client is not None
+        host, port = client
+        response = JSONResponse({"host": host, "port": port})
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.json() == {"host": "testclient", "port": 50000}
+
+
 @pytest.mark.parametrize("param", ("2020-07-14T00:00:00+00:00", "España", "voilà"))
 def test_query_params(test_client_factory: TestClientFactory, param: str) -> None:
     def homepage(request: Request) -> Response:

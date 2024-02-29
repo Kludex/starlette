@@ -75,10 +75,7 @@ def requires(
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:
                         orig_request_qparam = urlencode({"next": str(request.url)})
-                        next_url = "{redirect_path}?{orig_request}".format(
-                            redirect_path=request.url_for(redirect),
-                            orig_request=orig_request_qparam,
-                        )
+                        next_url = f"{request.url_for(redirect)}?{orig_request_qparam}"
                         return RedirectResponse(url=next_url, status_code=303)
                     raise HTTPException(status_code=status_code)
                 return await func(*args, **kwargs)
@@ -95,10 +92,7 @@ def requires(
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:
                         orig_request_qparam = urlencode({"next": str(request.url)})
-                        next_url = "{redirect_path}?{orig_request}".format(
-                            redirect_path=request.url_for(redirect),
-                            orig_request=orig_request_qparam,
-                        )
+                        next_url = f"{request.url_for(redirect)}?{orig_request_qparam}"
                         return RedirectResponse(url=next_url, status_code=303)
                     raise HTTPException(status_code=status_code)
                 return func(*args, **kwargs)

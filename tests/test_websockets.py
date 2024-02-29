@@ -273,7 +273,7 @@ async def test_client_disconnect_on_send() -> None:
             return
         # Simulate the exception the server would send to the application when the
         # client disconnects.
-        raise IOError
+        raise OSError
 
     with pytest.raises(WebSocketDisconnect) as ctx:
         await app({"type": "websocket", "path": "/"}, receive, send)

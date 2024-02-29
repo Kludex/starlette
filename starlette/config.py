@@ -17,7 +17,7 @@ class EnvironError(Exception):
 class Environ(typing.MutableMapping[str, str]):
     def __init__(self, environ: typing.MutableMapping[str, str] = os.environ):
         self._environ = environ
-        self._has_been_read: typing.Set[str] = set()
+        self._has_been_read: set[str] = set()
 
     def __getitem__(self, key: str) -> str:
         self._has_been_read.add(key)
@@ -60,7 +60,7 @@ class Config:
     ) -> None:
         self.environ = environ
         self.env_prefix = env_prefix
-        self.file_values: typing.Dict[str, str] = {}
+        self.file_values: dict[str, str] = {}
         if env_file is not None:
             if not os.path.isfile(env_file):
                 warnings.warn(f"Config file '{env_file}' not found.")
@@ -118,7 +118,7 @@ class Config:
         raise KeyError(f"Config '{key}' is missing, and has no default.")
 
     def _read_file(self, file_name: str | Path) -> dict[str, str]:
-        file_values: typing.Dict[str, str] = {}
+        file_values: dict[str, str] = {}
         with open(file_name) as input_file:
             for line in input_file.readlines():
                 line = line.strip()

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import sys
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any, Callable, Iterator
 
 import anyio
 import pytest
@@ -72,7 +74,7 @@ def test_request_headers(test_client_factory: TestClientFactory) -> None:
         ({}, None),
     ],
 )
-def test_request_client(scope: Scope, expected_client: Optional[Address]) -> None:
+def test_request_client(scope: Scope, expected_client: Address | None) -> None:
     scope.update({"type": "http"})  # required by Request's constructor
     client = Request(scope).client
     assert client == expected_client
@@ -239,7 +241,7 @@ def test_request_without_setting_receive(
 
 def test_request_disconnect(
     anyio_backend_name: str,
-    anyio_backend_options: Dict[str, Any],
+    anyio_backend_options: dict[str, Any],
 ) -> None:
     """
     If a client disconnect occurs while reading request body
@@ -391,7 +393,7 @@ def test_cookie_lenient_parsing(test_client_factory: TestClientFactory) -> None:
 )
 def test_cookies_edge_cases(
     set_cookie: str,
-    expected: Dict[str, str],
+    expected: dict[str, str],
     test_client_factory: TestClientFactory,
 ) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -430,7 +432,7 @@ def test_cookies_edge_cases(
 )
 def test_cookies_invalid(
     set_cookie: str,
-    expected: Dict[str, str],
+    expected: dict[str, str],
     test_client_factory: TestClientFactory,
 ) -> None:
     """
@@ -542,7 +544,7 @@ def test_request_send_push_promise_without_setting_send(
     ],
 )
 @pytest.mark.anyio
-async def test_request_rcv(messages: List[Message]) -> None:
+async def test_request_rcv(messages: list[Message]) -> None:
     messages = messages.copy()
 
     async def rcv() -> Message:
@@ -557,7 +559,7 @@ async def test_request_rcv(messages: List[Message]) -> None:
 
 @pytest.mark.anyio
 async def test_request_stream_called_twice() -> None:
-    messages: List[Message] = [
+    messages: list[Message] = [
         {"type": "http.request", "body": b"1", "more_body": True},
         {"type": "http.request", "body": b"2", "more_body": True},
         {"type": "http.request", "body": b"3"},

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import math
 import sys
@@ -16,7 +18,7 @@ warnings.warn(
 )
 
 
-def build_environ(scope: Scope, body: bytes) -> typing.Dict[str, typing.Any]:
+def build_environ(scope: Scope, body: bytes) -> dict[str, typing.Any]:
     """
     Builds a scope and request body into a WSGI environ object.
     """
@@ -117,7 +119,7 @@ class WSGIResponder:
     def start_response(
         self,
         status: str,
-        response_headers: typing.List[typing.Tuple[str, str]],
+        response_headers: list[tuple[str, str]],
         exc_info: typing.Any = None,
     ) -> None:
         self.exc_info = exc_info
@@ -140,7 +142,7 @@ class WSGIResponder:
 
     def wsgi(
         self,
-        environ: typing.Dict[str, typing.Any],
+        environ: dict[str, typing.Any],
         start_response: typing.Callable[..., typing.Any],
     ) -> None:
         for chunk in self.app(environ, start_response):

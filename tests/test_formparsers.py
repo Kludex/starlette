@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import typing
 from contextlib import nullcontext as does_not_raise
@@ -29,7 +31,7 @@ FORCE_MULTIPART = ForceMultipartDict()
 async def app(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: typing.Dict[str, typing.Any] = {}
+    output: dict[str, typing.Any] = {}
     for key, value in data.items():
         if isinstance(value, UploadFile):
             content = await value.read()
@@ -49,7 +51,7 @@ async def app(scope: Scope, receive: Receive, send: Send) -> None:
 async def multi_items_app(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: typing.Dict[str, typing.List[typing.Any]] = {}
+    output: dict[str, list[typing.Any]] = {}
     for key, value in data.multi_items():
         if key not in output:
             output[key] = []
@@ -73,7 +75,7 @@ async def multi_items_app(scope: Scope, receive: Receive, send: Send) -> None:
 async def app_with_headers(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: typing.Dict[str, typing.Any] = {}
+    output: dict[str, typing.Any] = {}
     for key, value in data.items():
         if isinstance(value, UploadFile):
             content = await value.read()
@@ -108,7 +110,7 @@ def make_app_max_parts(max_files: int = 1000, max_fields: int = 1000) -> ASGIApp
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         data = await request.form(max_files=max_files, max_fields=max_fields)
-        output: typing.Dict[str, typing.Any] = {}
+        output: dict[str, typing.Any] = {}
         for key, value in data.items():
             if isinstance(value, UploadFile):
                 content = await value.read()

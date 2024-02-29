@@ -9,9 +9,7 @@ description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.8"
-authors = [
-    { name = "Tom Christie", email = "tom@tomchristie.com" },
-]
+authors = [{ name = "Tom Christie", email = "tom@tomchristie.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",
@@ -52,7 +50,7 @@ Source = "https://github.com/encode/starlette"
 path = "starlette/__init__.py"
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "FA", "UP"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -83,10 +81,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source_pkgs = [
-    "starlette",
-    "tests",
-]
+source_pkgs = ["starlette", "tests"]
 
 [tool.coverage.report]
 exclude_lines = [

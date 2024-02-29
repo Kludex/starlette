@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import typing
 from base64 import b64decode, b64encode
@@ -14,13 +16,13 @@ class SessionMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        secret_key: typing.Union[str, Secret],
+        secret_key: str | Secret,
         session_cookie: str = "session",
-        max_age: typing.Optional[int] = 14 * 24 * 60 * 60,  # 14 days, in seconds
+        max_age: int | None = 14 * 24 * 60 * 60,  # 14 days, in seconds
         path: str = "/",
         same_site: typing.Literal["lax", "strict", "none"] = "lax",
         https_only: bool = False,
-        domain: typing.Optional[str] = None,
+        domain: str | None = None,
     ) -> None:
         self.app = app
         self.signer = itsdangerous.TimestampSigner(str(secret_key))

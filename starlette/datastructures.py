@@ -150,7 +150,7 @@ class URL:
         query = urlencode([(str(key), str(value)) for key, value in kwargs.items()])
         return self.replace(query=query)
 
-    def remove_query_params(self, keys: str | typing.Sequence[str]) -> "URL":
+    def remove_query_params(self, keys: str | typing.Sequence[str]) -> URL:
         if isinstance(keys, str):
             keys = [keys]
         params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
@@ -178,7 +178,7 @@ class URLPath(str):
     Used by the routing to return `url_path_for` matches.
     """
 
-    def __new__(cls, path: str, protocol: str = "", host: str = "") -> "URLPath":
+    def __new__(cls, path: str, protocol: str = "", host: str = "") -> URLPath:
         assert protocol in ("http", "websocket", "")
         return str.__new__(cls, path)
 
@@ -251,13 +251,13 @@ class CommaSeparatedStrings(typing.Sequence[str]):
 
 
 class ImmutableMultiDict(typing.Mapping[_KeyType, _CovariantValueType]):
-    _dict: typing.Dict[_KeyType, _CovariantValueType]
+    _dict: dict[_KeyType, _CovariantValueType]
 
     def __init__(
         self,
         *args: ImmutableMultiDict[_KeyType, _CovariantValueType]
         | typing.Mapping[_KeyType, _CovariantValueType]
-        | typing.Iterable[typing.Tuple[_KeyType, _CovariantValueType]],
+        | typing.Iterable[tuple[_KeyType, _CovariantValueType]],
         **kwargs: typing.Any,
     ) -> None:
         assert len(args) < 2, "Too many arguments."
@@ -599,7 +599,7 @@ class MutableHeaders(Headers):
         set_key = key.lower().encode("latin-1")
         set_value = value.encode("latin-1")
 
-        found_indexes: "typing.List[int]" = []
+        found_indexes: list[int] = []
         for idx, (item_key, item_value) in enumerate(self._list):
             if item_key == set_key:
                 found_indexes.append(idx)
@@ -619,7 +619,7 @@ class MutableHeaders(Headers):
         """
         del_key = key.lower().encode("latin-1")
 
-        pop_indexes: "typing.List[int]" = []
+        pop_indexes: list[int] = []
         for idx, (item_key, item_value) in enumerate(self._list):
             if item_key == del_key:
                 pop_indexes.append(idx)

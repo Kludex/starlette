@@ -79,7 +79,7 @@ class Starlette:
             {} if exception_handlers is None else dict(exception_handlers)
         )
         self.user_middleware = [] if middleware is None else list(middleware)
-        self.middleware_stack: typing.Optional[ASGIApp] = None
+        self.middleware_stack: ASGIApp | None = None
 
     def build_middleware_stack(self) -> ASGIApp:
         debug = self.debug
@@ -133,7 +133,7 @@ class Starlette:
 
     def add_middleware(
         self,
-        middleware_class: typing.Type[_MiddlewareClass[P]],
+        middleware_class: type[_MiddlewareClass[P]],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:
@@ -143,7 +143,7 @@ class Starlette:
 
     def add_exception_handler(
         self,
-        exc_class_or_status_code: int | typing.Type[Exception],
+        exc_class_or_status_code: int | type[Exception],
         handler: ExceptionHandler,
     ) -> None:  # pragma: no cover
         self.exception_handlers[exc_class_or_status_code] = handler
@@ -159,8 +159,8 @@ class Starlette:
         self,
         path: str,
         route: typing.Callable[[Request], typing.Awaitable[Response] | Response],
-        methods: typing.Optional[typing.List[str]] = None,
-        name: typing.Optional[str] = None,
+        methods: list[str] | None = None,
+        name: str | None = None,
         include_in_schema: bool = True,
     ) -> None:  # pragma: no cover
         self.router.add_route(
@@ -176,7 +176,7 @@ class Starlette:
         self.router.add_websocket_route(path, route, name=name)
 
     def exception_handler(
-        self, exc_class_or_status_code: int | typing.Type[Exception]
+        self, exc_class_or_status_code: int | type[Exception]
     ) -> typing.Callable:  # type: ignore[type-arg]
         warnings.warn(
             "The `exception_handler` decorator is deprecated, and will be removed in version 1.0.0. "  # noqa: E501

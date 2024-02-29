@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import datetime as dt
 import os
 import time
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import AsyncIterator, Callable, Iterator, Union
+from typing import AsyncIterator, Callable, Iterator
 
 import anyio
 import pytest
@@ -160,7 +162,7 @@ def test_streaming_response_custom_iterable(
 ) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         class CustomAsyncIterable:
-            async def __aiter__(self) -> AsyncIterator[Union[str, bytes]]:
+            async def __aiter__(self) -> AsyncIterator[str | bytes]:
                 for i in range(5):
                     yield str(i + 1)
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from starlette.datastructures import URL, Headers
@@ -11,7 +13,7 @@ class TrustedHostMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        allowed_hosts: typing.Optional[typing.Sequence[str]] = None,
+        allowed_hosts: typing.Sequence[str] | None = None,
         www_redirect: bool = True,
     ) -> None:
         if allowed_hosts is None:

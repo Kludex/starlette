@@ -129,7 +129,7 @@ class Jinja2Templates:
     def _setup_env_defaults(self, env: jinja2.Environment) -> None:
         @pass_context
         def url_for(
-            context: typing.Dict[str, typing.Any],
+            context: dict[str, typing.Any],
             name: str,
             /,
             **path_params: typing.Any,

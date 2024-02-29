@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import typing
 import uuid
@@ -74,7 +76,7 @@ class UUIDConvertor(Convertor[uuid.UUID]):
         return str(value)
 
 
-CONVERTOR_TYPES: typing.Dict[str, Convertor[typing.Any]] = {
+CONVERTOR_TYPES: dict[str, Convertor[typing.Any]] = {
     "str": StringConvertor(),
     "path": PathConvertor(),
     "int": IntegerConvertor(),

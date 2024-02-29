@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 import anyio
@@ -92,9 +94,7 @@ class _CachedRequest(Request):
 
 
 class BaseHTTPMiddleware:
-    def __init__(
-        self, app: ASGIApp, dispatch: typing.Optional[DispatchFunction] = None
-    ) -> None:
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None) -> None:
         self.app = app
         self.dispatch_func = self.dispatch if dispatch is None else dispatch
 
@@ -108,7 +108,7 @@ class BaseHTTPMiddleware:
         response_sent = anyio.Event()
 
         async def call_next(request: Request) -> Response:
-            app_exc: typing.Optional[Exception] = None
+            app_exc: Exception | None = None
             send_stream: ObjectSendStream[typing.MutableMapping[str, typing.Any]]
             recv_stream: ObjectReceiveStream[typing.MutableMapping[str, typing.Any]]
             send_stream, recv_stream = anyio.create_memory_object_stream()
@@ -203,10 +203,10 @@ class _StreamingResponse(StreamingResponse):
         self,
         content: ContentStream,
         status_code: int = 200,
-        headers: typing.Optional[typing.Mapping[str, str]] = None,
-        media_type: typing.Optional[str] = None,
-        background: typing.Optional[BackgroundTask] = None,
-        info: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+        headers: typing.Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
+        info: typing.Mapping[str, typing.Any] | None = None,
     ) -> None:
         self._info = info
         super().__init__(content, status_code, headers, media_type, background)

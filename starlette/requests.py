@@ -43,7 +43,7 @@ def cookie_parser(cookie_string: str) -> dict[str, str]:
     Note: we are explicitly _NOT_ using `SimpleCookie.load` because it is based
     on an outdated spec and will fail on lots of input we want to support
     """
-    cookie_dict: typing.Dict[str, str] = {}
+    cookie_dict: dict[str, str] = {}
     for chunk in cookie_string.split(";"):
         if "=" in chunk:
             key, val = chunk.split("=", 1)
@@ -135,7 +135,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
     @property
     def cookies(self) -> dict[str, str]:
         if not hasattr(self, "_cookies"):
-            cookies: typing.Dict[str, str] = {}
+            cookies: dict[str, str] = {}
             cookie_header = self.headers.get("cookie")
 
             if cookie_header:
@@ -197,7 +197,7 @@ async def empty_send(message: Message) -> typing.NoReturn:
 
 
 class Request(HTTPConnection):
-    _form: typing.Optional[FormData]
+    _form: FormData | None
 
     def __init__(
         self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send
@@ -240,7 +240,7 @@ class Request(HTTPConnection):
 
     async def body(self) -> bytes:
         if not hasattr(self, "_body"):
-            chunks: "typing.List[bytes]" = []
+            chunks: list[bytes] = []
             async for chunk in self.stream():
                 chunks.append(chunk)
             self._body = b"".join(chunks)
@@ -309,7 +309,7 @@ class Request(HTTPConnection):
 
     async def send_push_promise(self, path: str) -> None:
         if "http.response.push" in self.scope.get("extensions", {}):
-            raw_headers: "typing.List[typing.Tuple[bytes, bytes]]" = []
+            raw_headers: list[tuple[bytes, bytes]] = []
             for name in SERVER_PUSH_HEADERS_TO_COPY:
                 for value in self.headers.getlist(name):
                     raw_headers.append(

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import html
 import inspect
 import traceback
@@ -137,9 +139,7 @@ class ServerErrorMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        handler: typing.Optional[
-            typing.Callable[[Request, Exception], typing.Any]
-        ] = None,
+        handler: typing.Callable[[Request, Exception], typing.Any] | None = None,
         debug: bool = False,
     ) -> None:
         self.app = app

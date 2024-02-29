@@ -57,9 +57,7 @@ def iscoroutinefunction_or_partial(obj: typing.Any) -> bool:  # pragma: no cover
 
 
 def request_response(
-    func: typing.Callable[
-        [Request], typing.Union[typing.Awaitable[Response], Response]
-    ],
+    func: typing.Callable[[Request], typing.Awaitable[Response] | Response],
 ) -> ASGIApp:
     """
     Takes a function or coroutine `func(request) -> response`,
@@ -255,7 +253,7 @@ class Route(BaseRoute):
         self.path_regex, self.path_format, self.param_convertors = compile_path(path)
 
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
-        path_params: "typing.Dict[str, typing.Any]"
+        path_params: dict[str, typing.Any]
         if scope["type"] == "http":
             route_path = get_route_path(scope)
             match = self.path_regex.match(route_path)
@@ -344,7 +342,7 @@ class WebSocketRoute(BaseRoute):
         self.path_regex, self.path_format, self.param_convertors = compile_path(path)
 
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
-        path_params: "typing.Dict[str, typing.Any]"
+        path_params: dict[str, typing.Any]
         if scope["type"] == "websocket":
             route_path = get_route_path(scope)
             match = self.path_regex.match(route_path)
@@ -417,8 +415,8 @@ class Mount(BaseRoute):
     def routes(self) -> list[BaseRoute]:
         return getattr(self._base_app, "routes", [])
 
-    def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
-        path_params: "typing.Dict[str, typing.Any]"
+    def matches(self, scope: Scope) -> tuple[Match, Scope]:
+        path_params: dict[str, typing.Any]
         if scope["type"] in ("http", "websocket"):
             root_path = scope.get("root_path", "")
             route_path = get_route_path(scope)

@@ -17,7 +17,7 @@ class WebSocketState(enum.Enum):
 
 
 class WebSocketDisconnect(Exception):
-    def __init__(self, code: int = 1000, reason: typing.Optional[str] = None) -> None:
+    def __init__(self, code: int = 1000, reason: str | None = None) -> None:
         self.code = code
         self.reason = reason or ""
 
@@ -95,7 +95,7 @@ class WebSocket(HTTPConnection):
                 self.application_state = WebSocketState.DISCONNECTED
             try:
                 await self._send(message)
-            except IOError:
+            except OSError:
                 self.application_state = WebSocketState.DISCONNECTED
                 raise WebSocketDisconnect(code=1006)
         elif self.application_state == WebSocketState.RESPONSE:

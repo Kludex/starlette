@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextvars
 from contextlib import AsyncExitStack
 from typing import (
@@ -5,9 +7,6 @@ from typing import (
     AsyncGenerator,
     Callable,
     Generator,
-    List,
-    Type,
-    Union,
 )
 
 import anyio
@@ -241,7 +240,7 @@ class CustomMiddlewareUsingBaseHTTPMiddleware(BaseHTTPMiddleware):
 )
 def test_contextvars(
     test_client_factory: TestClientFactory,
-    middleware_cls: Type[_MiddlewareClass[Any]],
+    middleware_cls: type[_MiddlewareClass[Any]],
 ) -> None:
     # this has to be an async endpoint because Starlette calls run_in_threadpool
     # on sync endpoints which has it's own set of peculiarities w.r.t propagating
@@ -318,7 +317,7 @@ async def test_run_background_tasks_even_if_client_disconnects() -> None:
 async def test_do_not_block_on_background_tasks() -> None:
     request_body_sent = False
     response_complete = anyio.Event()
-    events: List[Union[str, Message]] = []
+    events: list[str | Message] = []
 
     async def sleep_and_set() -> None:
         events.append("Background task started")
@@ -766,7 +765,7 @@ async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None
             call_next: RequestResponseEndpoint,
         ) -> Response:
             expected = b"1"
-            response: Union[Response, None] = None
+            response: Response | None = None
             async for chunk in request.stream():
                 assert chunk == expected
                 if expected == b"1":
@@ -783,7 +782,7 @@ async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None
         yield {"type": "http.request", "body": b"3"}
         await anyio.sleep(float("inf"))
 
-    sent: List[Message] = []
+    sent: list[Message] = []
 
     async def send(msg: Message) -> None:
         sent.append(msg)
@@ -1000,7 +999,7 @@ def test_pr_1519_comment_1236166180_example() -> None:
     """
     https://github.com/encode/starlette/pull/1519#issuecomment-1236166180
     """
-    bodies: List[bytes] = []
+    bodies: list[bytes] = []
 
     class LogRequestBodySize(BaseHTTPMiddleware):
         async def dispatch(

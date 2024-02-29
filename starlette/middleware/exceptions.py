@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from starlette._exception_handler import (
@@ -16,9 +18,10 @@ class ExceptionMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        handlers: typing.Optional[
-            typing.Mapping[typing.Any, typing.Callable[[Request, Exception], Response]]
-        ] = None,
+        handlers: typing.Mapping[
+            typing.Any, typing.Callable[[Request, Exception], Response]
+        ]
+        | None = None,
         debug: bool = False,
     ) -> None:
         self.app = app
@@ -34,7 +37,7 @@ class ExceptionMiddleware:
 
     def add_exception_handler(
         self,
-        exc_class_or_status_code: typing.Union[int, typing.Type[Exception]],
+        exc_class_or_status_code: int | type[Exception],
         handler: typing.Callable[[Request, Exception], Response],
     ) -> None:
         if isinstance(exc_class_or_status_code, int):
@@ -53,7 +56,7 @@ class ExceptionMiddleware:
             self._status_handlers,
         )
 
-        conn: typing.Union[Request, WebSocket]
+        conn: Request | WebSocket
         if scope["type"] == "http":
             conn = Request(scope, receive, send)
         else:

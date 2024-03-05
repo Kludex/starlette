@@ -1,3 +1,16 @@
+## 0.37.2
+
+March 5, 2024
+
+#### Added
+
+* Add `bytes` to `_RequestData` type [#2510](https://github.com/encode/starlette/pull/2510).
+
+#### Fixed
+
+* Revert "Turn `scope["client"]` to `None` on `TestClient` (#2377)" [#2525](https://github.com/encode/starlette/pull/2525).
+* Remove deprecated `app` argument passed to `httpx.Client` on the `TestClient` [#2526](https://github.com/encode/starlette/pull/2526).
+
 ## 0.37.1
 
 February 9, 2024

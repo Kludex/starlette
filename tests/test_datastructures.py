@@ -58,6 +58,9 @@ def test_url() -> None:
     url = URL("http://u:p@host:80")
     assert url.replace(port=88) == URL("http://u:p@host:88")
 
+    url = URL("http://host:80")
+    assert url.replace(username="u") == URL("http://u@host:80")
+
 
 def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")
@@ -69,6 +72,10 @@ def test_url_query_params() -> None:
     u = u.replace_query_params(order="name")
     assert str(u) == "https://example.org/path/?order=name"
     u = u.remove_query_params("order")
+    assert str(u) == "https://example.org/path/"
+    u = u.include_query_params(page=4, search="testing")
+    assert str(u) == "https://example.org/path/?page=4&search=testing"
+    u = u.remove_query_params(["page", "search"])
     assert str(u) == "https://example.org/path/"
 
 
@@ -137,6 +144,21 @@ def test_url_from_scope() -> None:
     )
     assert u == "https://example.org/path/to/somewhere?abc=123"
     assert repr(u) == "URL('https://example.org/path/to/somewhere?abc=123')"
+
+    u = URL(
+        scope={
+            "scheme": "http",
+            "path": "/some/path",
+            "query_string": b"query=string",
+            "headers": [
+                (b"content-type", b"text/html"),
+                (b"host", b"example.com:8000"),
+                (b"accept", b"text/html"),
+            ],
+        }
+    )
+    assert u == "http://example.com:8000/some/path?query=string"
+    assert repr(u) == "URL('http://example.com:8000/some/path?query=string')"
 
 
 def test_headers() -> None:

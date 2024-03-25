@@ -185,7 +185,7 @@ from starlette.middleware.gzip import GZipMiddleware
 routes = ...
 
 middleware = [
-    Middleware(GZipMiddleware, minimum_size=1000)
+    Middleware(GZipMiddleware, minimum_size=1000, compresslevel=9)
 ]
 
 app = Starlette(routes=routes, middleware=middleware)
@@ -194,6 +194,7 @@ app = Starlette(routes=routes, middleware=middleware)
 The following arguments are supported:
 
 * `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
+* `compresslevel` - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to `9`. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.
 
 The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being encoded twice.
 

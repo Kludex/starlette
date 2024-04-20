@@ -63,15 +63,15 @@ def request_response(
     Takes a function or coroutine `func(request) -> response`,
     and returns an ASGI application.
     """
+    f: typing.Callable[[Request], typing.Awaitable[Response]] = (
+        func if is_async_callable(func) else functools.partial(run_in_threadpool, func)  # type:ignore
+    )
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive, send)
 
         async def app(scope: Scope, receive: Receive, send: Send) -> None:
-            if is_async_callable(func):
-                response = await func(request)
-            else:
-                response = await run_in_threadpool(func, request)
+            response = await f(request)
             await response(scope, receive, send)
 
         await wrap_app_handling_exceptions(app, request)(scope, receive, send)

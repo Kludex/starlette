@@ -143,6 +143,13 @@ def test_templates_require_directory_or_environment() -> None:
         Jinja2Templates()  # type: ignore[call-overload]
 
 
+def test_templates_require_directory_or_enviroment_not_both() -> None:
+    with pytest.raises(
+        AssertionError, match="either 'directory' or 'env' arguments must be passed"
+    ):
+        Jinja2Templates(directory="dir", env=jinja2.Environment())
+
+
 def test_templates_with_directory(tmpdir: Path) -> None:
     path = os.path.join(tmpdir, "index.html")
     with open(path, "w") as file:

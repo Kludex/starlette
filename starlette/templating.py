@@ -104,7 +104,9 @@ class Jinja2Templates:
                 DeprecationWarning,
             )
         assert jinja2 is not None, "jinja2 must be installed to use Jinja2Templates"
-        assert directory or env, "either 'directory' or 'env' arguments must be passed"
+        assert bool(directory) ^ bool(
+            env
+        ), "either 'directory' or 'env' arguments must be passed"
         self.context_processors = context_processors or []
         if directory is not None:
             self.env = self._create_env(directory, **env_options)

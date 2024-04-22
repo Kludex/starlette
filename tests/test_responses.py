@@ -541,6 +541,13 @@ def test_streaming_response_known_size(test_client_factory: TestClientFactory) -
     assert response.headers["content-length"] == "10"
 
 
+def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -> None:
+    app = StreamingResponse(content=iter([memoryview(b"hello"), memoryview(b"world")]))
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert response.text == "helloworld"
+
+
 @pytest.mark.anyio
 async def test_streaming_response_stops_if_receiving_http_disconnect() -> None:
     streamed = 0

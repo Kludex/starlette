@@ -168,17 +168,6 @@ while maintaining the integrity of the newly `lifespan` events of `Starlette`.
 High performance, easy to learn, fast to code, ready for production web API framework.
 Inspired by **APIStar**'s previous server system with type declarations for route parameters, based on the OpenAPI specification version 3.0.0+ (with JSON Schema), powered by **Pydantic** for the data handling.
 
-### Esmerald
-
-<a href="https://github.com/dymmond/esmerald" target="_blank">GitHub</a> |
-<a href="https://www.esmerald.dev" target="_blank">Documentation</a>
-
-Highly scalable, performant, easy to learn, easy to code and for every application web framework.
-Inspired by a lot of frameworks out there, Esmerald provides what every application needs, from the
-smallest to complex. Includes, routes, middlewares, permissions, scheduler, interceptors and lot more.
-
-Powered by **Starlette** and **Pydantic** with OpenAPI specification.
-
 ### Flama
 
 <a href="https://github.com/vortico/flama" target="_blank">GitHub</a> |

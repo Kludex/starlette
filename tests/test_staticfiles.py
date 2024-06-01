@@ -469,6 +469,19 @@ def test_staticfiles_access_file_as_dir_returns_404(
     assert response.text == "Not Found"
 
 
+def test_staticfiles_filename_too_long(
+    tmpdir: Path, test_client_factory: TestClientFactory
+) -> None:
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
+    client = test_client_factory(app)
+
+    path_max_size = os.pathconf("/", "PC_PATH_MAX")
+    response = client.get(f"/{'a' * path_max_size}.txt")
+    assert response.status_code == 404
+    assert response.text == "Not Found"
+
+
 def test_staticfiles_unhandled_os_error_returns_500(
     tmpdir: Path,
     test_client_factory: TestClientFactory,

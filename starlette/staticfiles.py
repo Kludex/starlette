@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import importlib.util
 import os
 import stat
@@ -124,8 +125,12 @@ class StaticFiles:
             )
         except PermissionError:
             raise HTTPException(status_code=401)
-        except OSError:
-            raise
+        except OSError as exc:
+            # Filename is too long, so it can't be a valid static file.
+            if exc.errno == errno.ENAMETOOLONG:
+                raise HTTPException(status_code=404)
+
+            raise exc
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.

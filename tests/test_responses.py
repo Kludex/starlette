@@ -541,11 +541,18 @@ def test_streaming_response_known_size(test_client_factory: TestClientFactory) -
     assert response.headers["content-length"] == "10"
 
 
-def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -> None:
-    app = StreamingResponse(content=iter([memoryview(b"hello"), memoryview(b"world")]))
+def test_response_memoryview(test_client_factory: TestClientFactory) -> None:
+    app = Response(content=memoryview(b"\xC0"))
     client: TestClient = test_client_factory(app)
     response = client.get("/")
-    assert response.text == "helloworld"
+    assert response.content == b"\xC0"
+
+
+def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -> None:
+    app = StreamingResponse(content=iter([memoryview(b"\xC0"), memoryview(b"\xF5")]))
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert response.content == b"\xC0\xF5"
 
 
 @pytest.mark.anyio

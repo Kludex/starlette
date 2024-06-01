@@ -1,6 +1,9 @@
 # Optionals
 -e .[full]
 
+# TODO: We need to delete the following line when fixing the test suite for anyio 4.4.0.
+anyio==4.3.0
+
 # Testing
 coverage==7.4.3
 importlib-metadata==7.0.1

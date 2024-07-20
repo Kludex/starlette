@@ -94,7 +94,7 @@ class Response:
         value: str = "",
         max_age: int | None = None,
         expires: datetime | str | int | None = None,
-        path: str = "/",
+        path: str | None = "/",
         domain: str | None = None,
         secure: bool = False,
         httponly: bool = False,

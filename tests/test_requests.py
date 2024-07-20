@@ -269,8 +269,8 @@ def test_request_disconnect(
 
 def test_request_is_disconnected(test_client_factory: TestClientFactory) -> None:
     """
-    If a client disconnect occurs while reading request body
-    then ClientDisconnect should be raised.
+    If a client disconnect occurs after reading request body
+    then request will be set disconnected properly.
     """
     disconnected_after_response = None
 
@@ -278,15 +278,15 @@ def test_request_is_disconnected(test_client_factory: TestClientFactory) -> None
         nonlocal disconnected_after_response
 
         request = Request(scope, receive)
-        await request.body()
+        body = await request.body()
         disconnected = await request.is_disconnected()
-        response = JSONResponse({"disconnected": disconnected})
+        response = JSONResponse({"body": body.decode(), "disconnected": disconnected})
         await response(scope, receive, send)
         disconnected_after_response = await request.is_disconnected()
 
     client = test_client_factory(app)
-    response = client.get("/")
-    assert response.json() == {"disconnected": False}
+    response = client.post("/", content="foo")
+    assert response.json() == {"body": "foo", "disconnected": False}
     assert disconnected_after_response
 
 

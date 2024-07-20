@@ -66,6 +66,13 @@ Simple APISpec integration for Starlette.
 Document your REST API built with Starlette by declaring OpenAPI (Swagger)
 schemas in YAML format in your endpoint's docstrings.
 
+### Starlette Compress
+
+<a href="https://github.com/Zaczero/starlette-compress" target="_blank">GitHub</a>
+
+Starlette-Compress is a fast and simple middleware for compressing responses in Starlette.
+It adds ZStd, Brotli, and GZip compression support with sensible default configuration.
+
 ### Starlette Context
 
 <a href="https://github.com/tomwojcik/starlette-context" target="_blank">GitHub</a>

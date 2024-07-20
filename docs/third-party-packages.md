@@ -155,6 +155,12 @@ Built with [Tabler](https://tabler.io/) and [Datatables](https://datatables.net/
 to quickly generate fully customizable admin interface for your models. You can export your data to many formats (*CSV*, *PDF*,
 *Excel*, etc), filter your data with complex query including `AND` and `OR` conditions,  upload files, ...
 
+### Vellox
+
+<a href="https://github.com/junah201/vellox" target="_blank">GitHub</a>
+
+Serverless ASGI adapter for GCP Cloud Functions.
+
 ## Starlette Bridge
 
 <a href="https://github.com/tarsil/starlette-bridge" target="_blank">GitHub</a> |

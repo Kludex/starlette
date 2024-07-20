@@ -160,7 +160,8 @@ class WebSocketTestSession:
 
     async def _asgi_receive(self) -> Message:
         while self._receive_queue.empty():
-            await anyio.sleep(0)
+            self._queue_event = anyio.Event()
+            await self._queue_event.wait()
         return self._receive_queue.get()
 
     async def _asgi_send(self, message: Message) -> None:
@@ -189,6 +190,8 @@ class WebSocketTestSession:
 
     def send(self, message: Message) -> None:
         self._receive_queue.put(message)
+        if hasattr(self, "_queue_event"):
+            self.portal.start_task_soon(self._queue_event.set)
 
     def send_text(self, data: str) -> None:
         self.send({"type": "websocket.receive", "text": data})

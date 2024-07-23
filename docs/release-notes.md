@@ -1,3 +1,11 @@
+## 0.38.1
+
+July 23, 2024
+
+#### Removed
+
+* Revert "Add support for ASGI pathsend extension" [#2649](https://github.com/encode/starlette/2649).
+
 ## 0.38.0
 
 July 20, 2024

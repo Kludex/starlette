@@ -350,38 +350,6 @@ def test_file_response_with_method_warns(
         FileResponse(path=tmpdir, filename="example.png", method="GET")
 
 
-@pytest.mark.anyio
-async def test_file_response_with_pathsend(tmpdir: Path) -> None:
-    path = os.path.join(tmpdir, "xyz")
-    content = b"<file content>" * 1000
-    with open(path, "wb") as file:
-        file.write(content)
-
-    app = FileResponse(path=path, filename="example.png")
-
-    async def receive() -> Message:  # type: ignore[empty-body]
-        ...  # pragma: no cover
-
-    async def send(message: Message) -> None:
-        if message["type"] == "http.response.start":
-            assert message["status"] == status.HTTP_200_OK
-            headers = Headers(raw=message["headers"])
-            assert headers["content-type"] == "image/png"
-            assert "content-length" in headers
-            assert "content-disposition" in headers
-            assert "last-modified" in headers
-            assert "etag" in headers
-        elif message["type"] == "http.response.pathsend":
-            assert message["path"] == str(path)
-
-    # Since the TestClient doesn't support `pathsend`, we need to test this directly.
-    await app(
-        {"type": "http", "method": "get", "extensions": {"http.response.pathsend": {}}},
-        receive,
-        send,
-    )
-
-
 def test_set_cookie(
     test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:

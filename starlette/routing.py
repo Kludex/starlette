@@ -99,9 +99,7 @@ def websocket_session(
 
 
 def get_name(endpoint: typing.Callable[..., typing.Any]) -> str:
-    if inspect.isroutine(endpoint) or inspect.isclass(endpoint):
-        return endpoint.__name__
-    return endpoint.__class__.__name__
+    return getattr(endpoint, "__name__", endpoint.__class__.__name__)
 
 
 def replace_params(

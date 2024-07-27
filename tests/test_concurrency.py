@@ -1,5 +1,5 @@
 from contextvars import ContextVar
-from typing import Callable, Iterator
+from typing import Iterator
 
 import anyio
 import pytest
@@ -9,9 +9,7 @@ from starlette.concurrency import iterate_in_threadpool, run_until_first_complet
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Route
-from starlette.testclient import TestClient
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 @pytest.mark.anyio

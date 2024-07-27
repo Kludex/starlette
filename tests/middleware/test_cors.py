@@ -1,15 +1,10 @@
-from typing import Callable
-
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
-from starlette.testclient import TestClient
-from starlette.types import ASGIApp
-
-TestClientFactory = Callable[[ASGIApp], TestClient]
+from tests.types import TestClientFactory
 
 
 def test_cors_allow_all(

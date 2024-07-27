@@ -1,13 +1,9 @@
-from typing import Callable
-
 import pytest
 
 from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.responses import Response
-from starlette.testclient import TestClient
 from starlette.types import Receive, Scope, Send
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def test_async_task(test_client_factory: TestClientFactory) -> None:

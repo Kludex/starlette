@@ -1,5 +1,4 @@
 import re
-from typing import Callable
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -8,8 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def view_session(request: Request) -> JSONResponse:

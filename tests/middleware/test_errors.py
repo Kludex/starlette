@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
@@ -8,10 +8,8 @@ from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
-from starlette.testclient import TestClient
 from starlette.types import Receive, Scope, Send
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def test_handler(

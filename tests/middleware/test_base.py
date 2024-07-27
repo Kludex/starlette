@@ -5,7 +5,6 @@ from contextlib import AsyncExitStack
 from typing import (
     Any,
     AsyncGenerator,
-    Callable,
     Generator,
 )
 
@@ -23,8 +22,7 @@ from starlette.routing import Route, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
-
-TestClientFactory = Callable[[ASGIApp], TestClient]
+from tests.types import TestClientFactory
 
 
 class CustomMiddleware(BaseHTTPMiddleware):

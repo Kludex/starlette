@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable, Generator
+from typing import Generator
 
 import pytest
 
@@ -10,8 +10,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import Receive, Scope, Send
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def raise_runtime_error(request: Request) -> None:

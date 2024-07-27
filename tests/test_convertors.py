@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable, Iterator
+from typing import Iterator
 
 import pytest
 
@@ -8,9 +8,7 @@ from starlette.convertors import Convertor, register_url_convertor
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route, Router
-from starlette.testclient import TestClient
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 @pytest.fixture(scope="module", autouse=True)

@@ -13,10 +13,8 @@ from starlette.formparsers import MultiPartException, _user_safe_decode
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
-from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Receive, Scope, Send
-
-TestClientFactory = typing.Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 class ForceMultipartDict(typing.Dict[typing.Any, typing.Any]):

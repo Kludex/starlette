@@ -16,9 +16,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
-from starlette.testclient import TestClient
-
-TestClientFactory = typing.Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def test_staticfiles(tmpdir: Path, test_client_factory: TestClientFactory) -> None:

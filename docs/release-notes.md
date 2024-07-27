@@ -1,10 +1,18 @@
+## 0.38.2
+
+July 27, 2024
+
+#### Fixed
+
+* Not assume all routines have `__name__` on `routing.get_name()` [#2648](https://github.com/encode/starlette/pull/2648).
+
 ## 0.38.1
 
 July 23, 2024
 
 #### Removed
 
-* Revert "Add support for ASGI pathsend extension" [#2649](https://github.com/encode/starlette/2649).
+* Revert "Add support for ASGI pathsend extension" [#2649](https://github.com/encode/starlette/pull/2649).
 
 ## 0.38.0
 

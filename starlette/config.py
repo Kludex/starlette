@@ -68,16 +68,13 @@ class Config:
                 self.file_values = self._read_file(env_file)
 
     @typing.overload
-    def __call__(self, key: str, *, default: None) -> str | None:
-        ...
+    def __call__(self, key: str, *, default: None) -> str | None: ...
 
     @typing.overload
-    def __call__(self, key: str, cast: type[T], default: T = ...) -> T:
-        ...
+    def __call__(self, key: str, cast: type[T], default: T = ...) -> T: ...
 
     @typing.overload
-    def __call__(self, key: str, cast: type[str] = ..., default: str = ...) -> str:
-        ...
+    def __call__(self, key: str, cast: type[str] = ..., default: str = ...) -> str: ...
 
     @typing.overload
     def __call__(
@@ -85,12 +82,12 @@ class Config:
         key: str,
         cast: typing.Callable[[typing.Any], T] = ...,
         default: typing.Any = ...,
-    ) -> T:
-        ...
+    ) -> T: ...
 
     @typing.overload
-    def __call__(self, key: str, cast: type[str] = ..., default: T = ...) -> T | str:
-        ...
+    def __call__(
+        self, key: str, cast: type[str] = ..., default: T = ...
+    ) -> T | str: ...
 
     def __call__(
         self,

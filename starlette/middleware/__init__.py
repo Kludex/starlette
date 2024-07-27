@@ -14,11 +14,13 @@ P = ParamSpec("P")
 
 
 class _MiddlewareClass(Protocol[P]):
-    def __init__(self, app: ASGIApp, *args: P.args, **kwargs: P.kwargs) -> None:
-        ...  # pragma: no cover
+    def __init__(
+        self, app: ASGIApp, *args: P.args, **kwargs: P.kwargs
+    ) -> None: ...  # pragma: no cover
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        ...  # pragma: no cover
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None: ...  # pragma: no cover
 
 
 class Middleware:

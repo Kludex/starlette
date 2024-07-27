@@ -51,6 +51,7 @@ path = "starlette/__init__.py"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "FA", "UP"]
+ignore = ["UP031"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -78,6 +79,8 @@ filterwarnings = [
     "ignore: The `allow_redirects` argument is deprecated. Use `follow_redirects` instead.:DeprecationWarning",
     "ignore: 'cgi' is deprecated and slated for removal in Python 3.13:DeprecationWarning",
     "ignore: You seem to already have a custom sys.excepthook handler installed. I'll skip installing Trio's custom handler, but this means MultiErrors will not show full tracebacks.:RuntimeWarning",
+    # TODO: This warning appeared when we bumped anyio to 4.4.0.
+    "ignore: Unclosed .MemoryObject(Send|Receive)Stream.:ResourceWarning",
 ]
 
 [tool.coverage.run]

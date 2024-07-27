@@ -2,25 +2,25 @@
 -e .[full]
 
 # TODO: We need to delete the following line when fixing the test suite for anyio 4.4.0.
-anyio==4.3.0
+anyio==4.4.0
 
 # Testing
-coverage==7.4.3
-importlib-metadata==7.0.1
-mypy==1.8.0
-ruff==0.1.15
-typing_extensions==4.10.0
+coverage==7.5.4
+importlib-metadata==8.0.0
+mypy==1.10.1
+ruff==0.5.0
+typing_extensions==4.12.2
 types-contextvars==2.4.7.3
-types-PyYAML==6.0.12.12
+types-PyYAML==6.0.12.20240311
 types-dataclasses==0.6.6
-pytest==8.0.2
-trio==0.24.0
+pytest==8.2.2
+trio==0.25.1
 
 # Documentation
-mkdocs==1.5.3
-mkdocs-material==9.5.12
+mkdocs==1.6.0
+mkdocs-material==9.5.27
 mkautodoc==0.2.0
 
 # Packaging
-build==1.1.1
-twine==5.0.0
+build==1.2.1
+twine==5.1.1

@@ -71,8 +71,7 @@ class Jinja2Templates:
         context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
         | None = None,
         **env_options: typing.Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @typing.overload
     def __init__(
@@ -81,8 +80,7 @@ class Jinja2Templates:
         env: jinja2.Environment,
         context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
         | None = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __init__(
         self,
@@ -150,8 +148,7 @@ class Jinja2Templates:
         headers: typing.Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
-    ) -> _TemplateResponse:
-        ...
+    ) -> _TemplateResponse: ...
 
     @typing.overload
     def TemplateResponse(

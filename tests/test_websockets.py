@@ -492,8 +492,7 @@ def test_websocket_scope_interface() -> None:
     async def mock_receive() -> Message:  # type: ignore
         ...  # pragma: no cover
 
-    async def mock_send(message: Message) -> None:
-        ...  # pragma: no cover
+    async def mock_send(message: Message) -> None: ...  # pragma: no cover
 
     websocket = WebSocket(
         {"type": "websocket", "path": "/abc/", "headers": []},

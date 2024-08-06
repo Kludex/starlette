@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import inspect
+import sys
 import traceback
 import typing
 
@@ -237,11 +238,13 @@ class ServerErrorMiddleware:
                 exc_html += self.generate_frame_html(frame, is_collapsed)
                 is_collapsed = True
 
+        if sys.version_info >= (3, 13):  # pragma: no cover
+            exc_type_str = traceback_obj.exc_type_str
+        else:  # pragma: no cover
+            exc_type_str = traceback_obj.exc_type.__name__
+
         # escape error class and text
-        error = (
-            f"{html.escape(traceback_obj.exc_type.__name__)}: "
-            f"{html.escape(str(traceback_obj))}"
-        )
+        error = f"{html.escape(exc_type_str)}: {html.escape(str(traceback_obj))}"
 
         return TEMPLATE.format(styles=STYLES, js=JS, error=error, exc_html=exc_html)
 

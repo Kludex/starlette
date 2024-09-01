@@ -1,5 +1,10 @@
+---
+hide: navigation
+---
+
 <p align="center">
-  <img width="420px" src="/img/starlette.png" alt='starlette'>
+  <img width="400px" src="/img/starlette.svg#only-light" alt="starlette"/>
+  <img width="400px" src="/img/starlette_dark.svg#only-dark" alt="starlette"/>
 </p>
 <p align="center">
     <em>✨ The little ASGI framework that shines. ✨</em>
@@ -11,10 +16,18 @@
 <a href="https://pypi.org/project/starlette/">
     <img src="https://badge.fury.io/py/starlette.svg" alt="Package version">
 </a>
+<a href="https://pypi.org/project/starlette" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058" alt="Supported Python versions">
+</a>
 </p>
 
 ---
 
+**Documentation**: <a href="https://www.starlette.io/" target="_blank">https://www.starlette.io</a>
+
+**Source Code**: <a href="https://github.com/encode/starlette" target="_blank">https://github.com/encode/starlette</a>
+
+---
 
 # Introduction
 
@@ -36,27 +49,21 @@ It is production-ready, and gives you the following:
 * Compatible with `asyncio` and `trio` backends.
 * Great overall performance [against independent benchmarks][techempower].
 
-## Requirements
-
-Python 3.8+
-
 ## Installation
 
 ```shell
-$ pip3 install starlette
+$ pip install starlette
 ```
 
 You'll also want to install an ASGI server, such as [uvicorn](https://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://hypercorn.readthedocs.io/en/latest/).
 
 ```shell
-$ pip3 install uvicorn
+$ pip install uvicorn
 ```
 
 ## Example
 
-**example.py**:
-
-```python
+```python title="example.py"
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -89,7 +96,7 @@ Starlette only requires `anyio`, and the following dependencies are optional:
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
 
-You can install all of these with `pip3 install starlette[full]`.
+You can install all of these with `pip install starlette[full]`.
 
 ## Framework or Toolkit
 

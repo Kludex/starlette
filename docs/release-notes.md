@@ -1,6 +1,9 @@
-## 0.38.3
+---
+hide: navigation
+toc_depth: 2
+---
 
-September 1, 2024
+## 0.38.3 (September 1, 2024)
 
 #### Added
 
@@ -10,25 +13,19 @@ September 1, 2024
 
 * Don't poll for disconnects in `BaseHTTPMiddleware` via `StreamingResponse` [#2620](https://github.com/encode/starlette/pull/2620).
 
-## 0.38.2
-
-July 27, 2024
+## 0.38.2 (July 27, 2024)
 
 #### Fixed
 
 * Not assume all routines have `__name__` on `routing.get_name()` [#2648](https://github.com/encode/starlette/pull/2648).
 
-## 0.38.1
-
-July 23, 2024
+## 0.38.1 (July 23, 2024)
 
 #### Removed
 
 * Revert "Add support for ASGI pathsend extension" [#2649](https://github.com/encode/starlette/pull/2649).
 
-## 0.38.0
-
-July 20, 2024
+## 0.38.0 (July 20, 2024)
 
 #### Added
 
@@ -45,9 +42,7 @@ July 20, 2024
 
 * Add proper synchronization to `WebSocketTestSession` [#2597](https://github.com/encode/starlette/pull/2597).
 
-## 0.37.2
-
-March 5, 2024
+## 0.37.2 (March 5, 2024)
 
 #### Added
 
@@ -58,50 +53,38 @@ March 5, 2024
 * Revert "Turn `scope["client"]` to `None` on `TestClient` (#2377)" [#2525](https://github.com/encode/starlette/pull/2525).
 * Remove deprecated `app` argument passed to `httpx.Client` on the `TestClient` [#2526](https://github.com/encode/starlette/pull/2526).
 
-## 0.37.1
-
-February 9, 2024
+## 0.37.1 (February 9, 2024)
 
 #### Fixed
 
 * Warn instead of raise for missing env file on `Config` [#2485](https://github.com/encode/starlette/pull/2485).
 
-## 0.37.0
-
-February 5, 2024
+## 0.37.0 (February 5, 2024)
 
 #### Added
 
 * Support the WebSocket Denial Response ASGI extension [#2041](https://github.com/encode/starlette/pull/2041).
 
-## 0.36.3
-
-February 4, 2024
+## 0.36.3 (February 4, 2024)
 
 #### Fixed
 
 * Create `anyio.Event` on async context [#2459](https://github.com/encode/starlette/pull/2459).
 
-## 0.36.2
-
-February 3, 2024
+## 0.36.2 (February 3, 2024)
 
 #### Fixed
 
 * Upgrade `python-multipart` to `0.0.7` [13e5c26](13e5c26a27f4903924624736abd6131b2da80cc5).
 * Avoid duplicate charset on `Content-Type` [#2443](https://github.com/encode/starlette/2443).
 
-## 0.36.1
-
-January 23, 2024
+## 0.36.1 (January 23, 2024)
 
 #### Fixed
 
 * Check if "extensions" in scope before checking the extension [#2438](http://github.com/encode/starlette/pull/2438).
 
-## 0.36.0
-
-January 22, 2024
+## 0.36.0 (January 22, 2024)
 
 #### Added
 
@@ -110,18 +93,14 @@ January 22, 2024
 * Raise `WebSocketDisconnect` when `WebSocket.send()` excepts `IOError` [#2425](http://github.com/encode/starlette/pull/2425).
 * Raise `FileNotFoundError` when the `env_file` parameter on `Config` is not valid [#2422](http://github.com/encode/starlette/pull/2422).
 
-## 0.35.1
-
-January 11, 2024
+## 0.35.1 (January 11, 2024)
 
 #### Fixed
 
 * Stop using the deprecated "method" parameter in `FileResponse` inside of `StaticFiles` [#2406](https://github.com/encode/starlette/pull/2406).
 * Make `typing-extensions` optional again [#2409](https://github.com/encode/starlette/pull/2409).
 
-## 0.35.0
-
-January 11, 2024
+## 0.35.0 (January 11, 2024)
 
 #### Added
 
@@ -136,9 +115,7 @@ January 11, 2024
 * Handle `root_path` to keep compatibility with mounted ASGI applications and WSGI [#2400](https://github.com/encode/starlette/pull/2400).
 * Turn `scope["client"]` to `None` on `TestClient` [#2377](https://github.com/encode/starlette/pull/2377).
 
-## 0.34.0
-
-December 16, 2023
+## 0.34.0 (December 16, 2023)
 
 ### Added
 
@@ -154,9 +131,7 @@ December 16, 2023
 
 * Deprecate `FileResponse(method=...)` parameter [#2366](https://github.com/encode/starlette/pull/2366).
 
-## 0.33.0
-
-December 1, 2023
+## 0.33.0 (December 1, 2023)
 
 ### Added
 
@@ -168,17 +143,13 @@ December 1, 2023
 * Do not overwrite `"path"` and `"root_path"` scope keys [#2352](https://github.com/encode/starlette/pull/2352).
 * Set `ensure_ascii=False` on `json.dumps()` for `WebSocket.send_json()` [#2341](https://github.com/encode/starlette/pull/2341).
 
-## 0.32.0.post1
-
-November 5, 2023
+## 0.32.0.post1 (November 5, 2023)
 
 ### Fixed
 
 * Revert mkdocs-material from 9.1.17 to 9.4.7 [#2326](https://github.com/encode/starlette/pull/2326).
 
-## 0.32.0
-
-November 4, 2023
+## 0.32.0 (November 4, 2023)
 
 ### Added
 
@@ -190,18 +161,14 @@ November 4, 2023
 * Inherit from `HTMLResponse` instead of `Response` on `_TemplateResponse` [#2274](https://github.com/encode/starlette/pull/2274).
 * Restore the `Response.render` type annotation to its pre-0.31.0 state [#2264](https://github.com/encode/starlette/pull/2264).
 
-## 0.31.1
-
-August 26, 2023
+## 0.31.1 (August 26, 2023)
 
 ### Fixed
 
 * Fix import error when `exceptiongroup` isn't available [#2231](https://github.com/encode/starlette/pull/2231).
 * Set `url_for` global for custom Jinja environments [#2230](https://github.com/encode/starlette/pull/2230).
 
-## 0.31.0
-
-July 24, 2023
+## 0.31.0 (July 24, 2023)
 
 ### Added
 
@@ -213,17 +180,13 @@ July 24, 2023
 
 * Don't group duplicated headers on a single string when using the `TestClient` [#2219](https://github.com/encode/starlette/pull/2219).
 
-## 0.30.0
-
-July 13, 2023
+## 0.30.0 (July 13, 2023)
 
 ### Removed
 
 * Drop Python 3.7 support [#2178](https://github.com/encode/starlette/pull/2178).
 
-## 0.29.0
-
-July 13, 2023
+## 0.29.0 (July 13, 2023)
 
 ### Added
 
@@ -237,9 +200,7 @@ July 13, 2023
 
 * Stop `body_stream` in case `more_body=False` on `BaseHTTPMiddleware` [#2194](https://github.com/encode/starlette/pull/2194).
 
-## 0.28.0
-
-June 7, 2023
+## 0.28.0 (June 7, 2023)
 
 ### Changed
 * Reuse `Request`'s body buffer for call_next in `BaseHTTPMiddleware` [#1692](https://github.com/encode/starlette/pull/1692).
@@ -252,9 +213,7 @@ June 7, 2023
 ### Fixed
 * Allow "name" argument on `templates url_for()` [#2127](https://github.com/encode/starlette/pull/2127).
 
-## 0.27.0
-
-May 16, 2023
+## 0.27.0 (May 16, 2023)
 
 This release fixes a path traversal vulnerability in `StaticFiles`. You can view the full security advisory:
 https://github.com/encode/starlette/security/advisories/GHSA-v5gw-mw7f-84px
@@ -267,23 +226,17 @@ https://github.com/encode/starlette/security/advisories/GHSA-v5gw-mw7f-84px
 * Convert ImportErrors into ModuleNotFoundError [#2135](https://github.com/encode/starlette/pull/2135).
 * Correct the RuntimeError message content in websockets [#2141](https://github.com/encode/starlette/pull/2141).
 
-## 0.26.1
-
-March 13, 2023
+## 0.26.1 (March 13, 2023)
 
 ### Fixed
 * Fix typing of Lifespan to allow subclasses of Starlette [#2077](https://github.com/encode/starlette/pull/2077).
 
-## 0.26.0.post1
-
-March 9, 2023
+## 0.26.0.post1 (March 9, 2023)
 
 ### Fixed
 * Replace reference from Events to Lifespan on the mkdocs.yml [#2072](https://github.com/encode/starlette/pull/2072).
 
-## 0.26.0
-
-March 9, 2023
+## 0.26.0 (March 9, 2023)
 
 ### Added
 * Support [lifespan state](lifespan.md) [#2060](https://github.com/encode/starlette/pull/2060),
@@ -298,16 +251,12 @@ March 9, 2023
 ### Deprecated
 * Deprecate `on_startup` and `on_shutdown` events [#2070](https://github.com/encode/starlette/pull/2070).
 
-## 0.25.0
-
-February 14, 2023
+## 0.25.0 (February 14, 2023)
 
 ### Fix
 * Limit the number of fields and files when parsing `multipart/form-data` on the `MultipartParser` [8c74c2c](https://github.com/encode/starlette/commit/8c74c2c8dba7030154f8af18e016136bea1938fa) and [#2036](https://github.com/encode/starlette/pull/2036).
 
-## 0.24.0
-
-February 6, 2023
+## 0.24.0 (February 6, 2023)
 
 ### Added
 * Allow `StaticFiles` to follow symlinks [#1683](https://github.com/encode/starlette/pull/1683).
@@ -325,16 +274,12 @@ February 6, 2023
 ### Fixed
 * Fix url parsing of ipv6 urls on `URL.replace` [#1965](https://github.com/encode/starlette/pull/1965).
 
-## 0.23.1
-
-December 9, 2022
+## 0.23.1 (December 9, 2022)
 
 ### Fixed
 * Only stop receiving stream on `body_stream` if body is empty on the `BaseHTTPMiddleware` [#1940](https://github.com/encode/starlette/pull/1940).
 
-## 0.23.0
-
-December 5, 2022
+## 0.23.0 (December 5, 2022)
 
 ### Added
 * Add `headers` parameter to the `TestClient` [#1966](https://github.com/encode/starlette/pull/1966).
@@ -345,9 +290,7 @@ December 5, 2022
 ### Fixed
 * Fix bug on `FloatConvertor` regex [#1973](https://github.com/encode/starlette/pull/1973).
 
-## 0.22.0
-
-November 17, 2022
+## 0.22.0 (November 17, 2022)
 
 ### Changed
 * Bypass `GZipMiddleware` when response includes `Content-Encoding` [#1901](https://github.com/encode/starlette/pull/1901).
@@ -357,9 +300,7 @@ November 17, 2022
 * Make sure `MutableHeaders._list` is actually a `list` [#1917](https://github.com/encode/starlette/pull/1917).
 * Import compatibility with the next version of `AnyIO` [#1936](https://github.com/encode/starlette/pull/1936).
 
-## 0.21.0
-
-September 26, 2022
+## 0.21.0 (September 26, 2022)
 
 This release replaces the underlying HTTP client used on the `TestClient` (`requests` :arrow_right: `httpx`), and as those clients [differ _a bit_ on their API](https://www.python-httpx.org/compatibility/), your test suite will likely break. To make the migration smoother, you can use the [`bump-testclient`](https://github.com/Kludex/bump-testclient) tool.
 
@@ -375,31 +316,23 @@ This release replaces the underlying HTTP client used on the `TestClient` (`requ
 ### Fixed
 * Fix bug on which `BackgroundTasks` were cancelled when using `BaseHTTPMiddleware` and client disconnected [#1715](https://github.com/encode/starlette/pull/1715).
 
-## 0.20.4
-
-June 28, 2022
+## 0.20.4 (June 28, 2022)
 
 ### Fixed
 * Remove converter from path when generating OpenAPI schema [#1648](https://github.com/encode/starlette/pull/1648).
 
-## 0.20.3
-
-June 10, 2022
+## 0.20.3 (June 10, 2022)
 
 ### Fixed
 * Revert "Allow `StaticFiles` to follow symlinks" [#1681](https://github.com/encode/starlette/pull/1681).
 
-## 0.20.2
-
-June 7, 2022
+## 0.20.2 (June 7, 2022)
 
 ### Fixed
 * Fix regression on route paths with colons [#1675](https://github.com/encode/starlette/pull/1675).
 * Allow `StaticFiles` to follow symlinks [#1337](https://github.com/encode/starlette/pull/1377).
 
-## 0.20.1
-
-May 28, 2022
+## 0.20.1 (May 28, 2022)
 
 ### Fixed
 * Improve detection of async callables [#1444](https://github.com/encode/starlette/pull/1444).
@@ -408,17 +341,13 @@ May 28, 2022
 * Do not send empty data to `StreamingResponse` on `BaseHTTPMiddleware` [#1609](https://github.com/encode/starlette/pull/1609).
 * Add `__bool__` dunder for `Secret` [#1625](https://github.com/encode/starlette/pull/1625).
 
-## 0.20.0
-
-May 3, 2022
+## 0.20.0 (May 3, 2022)
 
 ### Removed
 * Drop Python 3.6 support [#1357](https://github.com/encode/starlette/pull/1357) and [#1616](https://github.com/encode/starlette/pull/1616).
 
 
-## 0.19.1
-
-April 22, 2022
+## 0.19.1 (April 22, 2022)
 
 ### Fixed
 * Fix inference of `Route.name` when created from methods [#1553](https://github.com/encode/starlette/pull/1553).
@@ -428,9 +357,7 @@ April 22, 2022
 * Deprecate `WS_1004_NO_STATUS_RCVD` and `WS_1005_ABNORMAL_CLOSURE` in favor of `WS_1005_NO_STATUS_RCVD` and `WS_1006_ABNORMAL_CLOSURE`, as the previous constants didn't match the [WebSockets specs](https://www.iana.org/assignments/websocket/websocket.xhtml) [#1580](https://github.com/encode/starlette/pull/1580).
 
 
-## 0.19.0
-
-March 9, 2022
+## 0.19.0 (March 9, 2022)
 
 ### Added
 * Error handler will always run, even if the error happens on a background task [#761](https://github.com/encode/starlette/pull/761).
@@ -457,9 +384,7 @@ March 9, 2022
 * Deprecate `run_until_first_complete` [#1443](https://github.com/encode/starlette/pull/1443).
 
 
-## 0.18.0
-
-January 23, 2022
+## 0.18.0 (January 23, 2022)
 
 ### Added
 * Change default chunk size from 4Kb to 64Kb on `FileResponse` [#1345](https://github.com/encode/starlette/pull/1345).
@@ -479,16 +404,12 @@ January 23, 2022
 * Fix `path_params` type on `url_path_for()` method i.e. turn `str` into `Any` [#1341](https://github.com/encode/starlette/pull/1341).
 * `Host` now ignores `port` on routing [#1322](https://github.com/encode/starlette/pull/1322).
 
-## 0.17.1
-
-November 17, 2021
+## 0.17.1 (November 17, 2021)
 
 ### Fixed
 * Fix `IndexError` in authentication `requires` when wrapped function arguments are distributed between `*args` and `**kwargs` [#1335](https://github.com/encode/starlette/pull/1335).
 
-## 0.17.0
-
-November 4, 2021
+## 0.17.0 (November 4, 2021)
 
 ### Added
 * `Response.delete_cookie` now accepts the same parameters as `Response.set_cookie` [#1228](https://github.com/encode/starlette/pull/1228).
@@ -505,9 +426,7 @@ November 4, 2021
 ### Removed
 * Remove GraphQL support [#1198](https://github.com/encode/starlette/pull/1198).
 
-## 0.16.0
-
-July 19, 2021
+## 0.16.0 (July 19, 2021)
 
 ### Added
  * Added [Encode](https://github.com/sponsors/encode) funding option
@@ -530,9 +449,7 @@ July 19, 2021
    [#1227](https://github.com/encode/starlette/pull/1227)
    [#1110](https://github.com/encode/starlette/pull/1110)
 
-## 0.15.0
-
-June 23, 2021
+## 0.15.0 (June 23, 2021)
 
 This release includes major changes to the low-level asynchronous parts of Starlette. As a result,
 **Starlette now depends on [AnyIO](https://anyio.readthedocs.io/en/stable/)** and some minor API
@@ -575,9 +492,7 @@ changes have occurred. Another significant change with this release is the
 * The `workers` parameter to `WSGIMiddleware` was removed. This hasn't had any effect since
   Starlette v0.6.3.
 
-## 0.14.2
-
-February 2, 2021
+## 0.14.2 (February 2, 2021)
 
 ### Fixed
 
@@ -589,9 +504,7 @@ February 2, 2021
   [#1106](https://github.com/encode/starlette/pull/1106).
 
 
-## 0.14.1
-
-November 9th, 2020
+## 0.14.1 (November 9th, 2020)
 
 ### Removed
 
@@ -600,9 +513,7 @@ November 9th, 2020
   implement responses using custom JSON serialization -
   [#1074](https://github.com/encode/starlette/pull/1047).
 
-## 0.14.0
-
-November 8th, 2020
+## 0.14.0 (November 8th, 2020)
 
 ### Added
 
@@ -816,13 +727,13 @@ visible throughout the middleware stack.
 
 ## 0.8.2
 
-## StaticFiles
+### StaticFiles
 
 * StaticFiles no longer reads the file for responses to `HEAD` requests.
 
 ## 0.8.1
 
-## Templating
+### Templating
 
 * Add a default templating configuration with Jinja2.
 

@@ -1,3 +1,15 @@
+## 0.38.3
+
+September 1, 2024
+
+#### Added
+
+* Support for Python 3.13 [#2662](https://github.com/encode/starlette/pull/2662).
+
+#### Fixed
+
+* Don't poll for disconnects in `BaseHTTPMiddleware` via `StreamingResponse` [#2620](https://github.com/encode/starlette/pull/2620).
+
 ## 0.38.2
 
 July 27, 2024

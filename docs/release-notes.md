@@ -3,6 +3,12 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.38.4 (September 1, 2024)
+
+#### Fixed
+
+* Ensure accurate `root_path` removal in `get_route_path` function [#2600](https://github.com/encode/starlette/pull/2600).
+
 ## 0.38.3 (September 1, 2024)
 
 #### Added

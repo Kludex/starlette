@@ -85,5 +85,5 @@ def collapse_excgroups() -> typing.Generator[None, None, None]:
 
 def get_route_path(scope: Scope) -> str:
     root_path = scope.get("root_path", "")
-    route_path = re.sub(r"^" + root_path, "", scope["path"])
+    route_path = re.sub(r"^" + root_path + r"(?=/|$)", "", scope["path"])
     return route_path

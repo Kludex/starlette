@@ -1221,6 +1221,12 @@ echo_paths_routes = [
         name="path",
         methods=["GET"],
     ),
+    Route(
+        "/root-queue/path",
+        functools.partial(echo_paths, name="queue_path"),
+        name="queue_path",
+        methods=["POST"],
+    ),
     Mount("/asgipath", app=functools.partial(pure_asgi_echo_paths, name="asgipath")),
     Mount(
         "/sub",
@@ -1265,4 +1271,12 @@ def test_paths_with_root_path(test_client_factory: TestClientFactory) -> None:
         "name": "subpath",
         "path": "/root/sub/path",
         "root_path": "/root/sub",
+    }
+
+    response = client.post("/root/root-queue/path")
+    assert response.status_code == 200
+    assert response.json() == {
+        "name": "queue_path",
+        "path": "/root/root-queue/path",
+        "root_path": "/root",
     }

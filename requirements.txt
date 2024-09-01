@@ -2,22 +2,20 @@
 -e .[full]
 
 # Testing
-coverage==7.6.0
-importlib-metadata==8.2.0
-mypy==1.11.1
-ruff==0.5.5
+coverage==7.6.1
+importlib-metadata==8.4.0
+mypy==1.11.2
+ruff==0.6.3
 typing_extensions==4.12.2
 types-contextvars==2.4.7.3
-types-PyYAML==6.0.12.20240724
+types-PyYAML==6.0.12.20240808
 types-dataclasses==0.6.6
 pytest==8.3.2
-trio==0.26.1
-# TODO: Remove when trio is updated.
-attrs==23.2.0
+trio==0.26.2
 
 # Documentation
-mkdocs==1.6.0
-mkdocs-material==9.5.30
+mkdocs==1.6.1
+mkdocs-material==9.5.34
 mkautodoc==0.2.0
 
 # Packaging

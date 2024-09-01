@@ -17,8 +17,6 @@ theme:
       toggle:
         icon: "material/lightbulb-outline"
         name: "Switch to light mode"
-  logo: img/logo.svg
-  favicon: img/logo.svg
   icon:
     repo: fontawesome/brands/github
   features:

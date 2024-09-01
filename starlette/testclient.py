@@ -37,9 +37,7 @@ except ModuleNotFoundError:  # pragma: no cover
         "You can install this with:\n"
         "    $ pip install httpx\n"
     )
-_PortalFactoryType = typing.Callable[
-    [], typing.ContextManager[anyio.abc.BlockingPortal]
-]
+_PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
 
 ASGIInstance = typing.Callable[[Receive, Send], typing.Awaitable[None]]
 ASGI2App = typing.Callable[[Scope], ASGIInstance]
@@ -169,9 +167,7 @@ class WebSocketTestSession:
 
     def _raise_on_close(self, message: Message) -> None:
         if message["type"] == "websocket.close":
-            raise WebSocketDisconnect(
-                code=message.get("code", 1000), reason=message.get("reason", "")
-            )
+            raise WebSocketDisconnect(code=message.get("code", 1000), reason=message.get("reason", ""))
         elif message["type"] == "websocket.http.response.start":
             status_code: int = message["status"]
             headers: list[tuple[bytes, bytes]] = message["headers"]
@@ -199,9 +195,7 @@ class WebSocketTestSession:
     def send_bytes(self, data: bytes) -> None:
         self.send({"type": "websocket.receive", "bytes": data})
 
-    def send_json(
-        self, data: typing.Any, mode: typing.Literal["text", "binary"] = "text"
-    ) -> None:
+    def send_json(self, data: typing.Any, mode: typing.Literal["text", "binary"] = "text") -> None:
         text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
         if mode == "text":
             self.send({"type": "websocket.receive", "text": text})
@@ -227,9 +221,7 @@ class WebSocketTestSession:
         self._raise_on_close(message)
         return typing.cast(bytes, message["bytes"])
 
-    def receive_json(
-        self, mode: typing.Literal["text", "binary"] = "text"
-    ) -> typing.Any:
+    def receive_json(self, mode: typing.Literal["text", "binary"] = "text") -> typing.Any:
         message = self.receive()
         self._raise_on_close(message)
         if mode == "text":
@@ -280,10 +272,7 @@ class _TestClientTransport(httpx.BaseTransport):
             headers = [(b"host", (f"{host}:{port}").encode())]
 
         # Include other request headers.
-        headers += [
-            (key.lower().encode(), value.encode())
-            for key, value in request.headers.multi_items()
-        ]
+        headers += [(key.lower().encode(), value.encode()) for key, value in request.headers.multi_items()]
 
         scope: dict[str, typing.Any]
 
@@ -365,22 +354,13 @@ class _TestClientTransport(httpx.BaseTransport):
             nonlocal raw_kwargs, response_started, template, context
 
             if message["type"] == "http.response.start":
-                assert (
-                    not response_started
-                ), 'Received multiple "http.response.start" messages.'
+                assert not response_started, 'Received multiple "http.response.start" messages.'
                 raw_kwargs["status_code"] = message["status"]
-                raw_kwargs["headers"] = [
-                    (key.decode(), value.decode())
-                    for key, value in message.get("headers", [])
-                ]
+                raw_kwargs["headers"] = [(key.decode(), value.decode()) for key, value in message.get("headers", [])]
                 response_started = True
             elif message["type"] == "http.response.body":
-                assert (
-                    response_started
-                ), 'Received "http.response.body" without "http.response.start".'
-                assert (
-                    not response_complete.is_set()
-                ), 'Received "http.response.body" after response completed.'
+                assert response_started, 'Received "http.response.body" without "http.response.start".'
+                assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
                 if request.method != "HEAD":
@@ -435,9 +415,7 @@ class TestClient(httpx.Client):
         headers: dict[str, str] | None = None,
         follow_redirects: bool = True,
     ) -> None:
-        self.async_backend = _AsyncBackend(
-            backend=backend, backend_options=backend_options or {}
-        )
+        self.async_backend = _AsyncBackend(backend=backend, backend_options=backend_options or {})
         if _is_asgi3(app):
             asgi_app = app
         else:
@@ -468,22 +446,15 @@ class TestClient(httpx.Client):
         if self.portal is not None:
             yield self.portal
         else:
-            with anyio.from_thread.start_blocking_portal(
-                **self.async_backend
-            ) as portal:
+            with anyio.from_thread.start_blocking_portal(**self.async_backend) as portal:
                 yield portal
 
     def _choose_redirect_arg(
         self, follow_redirects: bool | None, allow_redirects: bool | None
     ) -> bool | httpx._client.UseClientDefault:
-        redirect: bool | httpx._client.UseClientDefault = (
-            httpx._client.USE_CLIENT_DEFAULT
-        )
+        redirect: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT
         if allow_redirects is not None:
-            message = (
-                "The `allow_redirects` argument is deprecated. "
-                "Use `follow_redirects` instead."
-            )
+            message = "The `allow_redirects` argument is deprecated. Use `follow_redirects` instead."
             warnings.warn(message, DeprecationWarning)
             redirect = allow_redirects
         if follow_redirects is not None:
@@ -506,12 +477,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         url = self._merge_url(url)
@@ -539,12 +508,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         redirect = self._choose_redirect_arg(follow_redirects, allow_redirects)
@@ -566,12 +533,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         redirect = self._choose_redirect_arg(follow_redirects, allow_redirects)
@@ -593,12 +558,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         redirect = self._choose_redirect_arg(follow_redirects, allow_redirects)
@@ -624,12 +587,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         redirect = self._choose_redirect_arg(follow_redirects, allow_redirects)
@@ -659,12 +620,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         redirect = self._choose_redirect_arg(follow_redirects, allow_redirects)
@@ -694,12 +653,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         redirect = self._choose_redirect_arg(follow_redirects, allow_redirects)
@@ -725,12 +682,10 @@ class TestClient(httpx.Client):
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
         allow_redirects: bool | None = None,
-        timeout: httpx._types.TimeoutTypes
-        | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         extensions: dict[str, typing.Any] | None = None,
     ) -> httpx.Response:
         redirect = self._choose_redirect_arg(follow_redirects, allow_redirects)
@@ -770,9 +725,7 @@ class TestClient(httpx.Client):
 
     def __enter__(self) -> TestClient:
         with contextlib.ExitStack() as stack:
-            self.portal = portal = stack.enter_context(
-                anyio.from_thread.start_blocking_portal(**self.async_backend)
-            )
+            self.portal = portal = stack.enter_context(anyio.from_thread.start_blocking_portal(**self.async_backend))
 
             @stack.callback
             def reset_portal() -> None:

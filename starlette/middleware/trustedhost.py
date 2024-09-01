@@ -41,9 +41,7 @@ class TrustedHostMiddleware:
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:
-            if host == pattern or (
-                pattern.startswith("*") and host.endswith(pattern[1:])
-            ):
+            if host == pattern or (pattern.startswith("*") and host.endswith(pattern[1:])):
                 is_valid_host = True
                 break
             elif "www." + host == pattern:

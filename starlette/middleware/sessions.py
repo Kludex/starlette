@@ -61,7 +61,7 @@ class SessionMiddleware:
                     data = b64encode(json.dumps(scope["session"]).encode("utf-8"))
                     data = self.signer.sign(data)
                     headers = MutableHeaders(scope=message)
-                    header_value = "{session_cookie}={data}; path={path}; {max_age}{security_flags}".format(  # noqa E501
+                    header_value = "{session_cookie}={data}; path={path}; {max_age}{security_flags}".format(
                         session_cookie=self.session_cookie,
                         data=data.decode("utf-8"),
                         path=self.path,
@@ -72,7 +72,7 @@ class SessionMiddleware:
                 elif not initial_session_was_empty:
                     # The session has been cleared.
                     headers = MutableHeaders(scope=message)
-                    header_value = "{session_cookie}={data}; path={path}; {expires}{security_flags}".format(  # noqa E501
+                    header_value = "{session_cookie}={data}; path={path}; {expires}{security_flags}".format(
                         session_cookie=self.session_cookie,
                         data="null",
                         path=self.path,

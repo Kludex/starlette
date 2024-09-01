@@ -88,9 +88,7 @@ def test_testclient_headers_behavior() -> None:
     assert client.headers.get("Authentication") == "Bearer 123"
 
 
-def test_use_testclient_as_contextmanager(
-    test_client_factory: TestClientFactory, anyio_backend_name: str
-) -> None:
+def test_use_testclient_as_contextmanager(test_client_factory: TestClientFactory, anyio_backend_name: str) -> None:
     """
     This test asserts a number of properties that are important for an
     app level task_group
@@ -169,9 +167,7 @@ def test_use_testclient_as_contextmanager(
 
 
 def test_error_on_startup(test_client_factory: TestClientFactory) -> None:
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
+    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
         startup_error_app = Starlette(on_startup=[startup])
 
     with pytest.raises(RuntimeError):
@@ -306,8 +302,7 @@ def test_query_params(test_client_factory: TestClientFactory, param: str) -> Non
             marks=[
                 pytest.mark.xfail(
                     sys.version_info < (3, 11),
-                    reason="Fails due to domain handling in http.cookiejar module (see "
-                    "#2152)",
+                    reason="Fails due to domain handling in http.cookiejar module (see #2152)",
                 ),
             ],
         ),
@@ -316,9 +311,7 @@ def test_query_params(test_client_factory: TestClientFactory, param: str) -> Non
         ("example.com", False),
     ],
 )
-def test_domain_restricted_cookies(
-    test_client_factory: TestClientFactory, domain: str, ok: bool
-) -> None:
+def test_domain_restricted_cookies(test_client_factory: TestClientFactory, domain: str, ok: bool) -> None:
     """
     Test that test client discards domain restricted cookies which do not match the
     base_url of the testclient (`http://testserver` by default).

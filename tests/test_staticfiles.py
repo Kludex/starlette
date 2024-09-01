@@ -31,9 +31,7 @@ def test_staticfiles(tmpdir: Path, test_client_factory: TestClientFactory) -> No
     assert response.text == "<file content>"
 
 
-def test_staticfiles_with_pathlib(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_with_pathlib(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     path = tmp_path / "example.txt"
     with open(path, "w") as file:
         file.write("<file content>")
@@ -45,9 +43,7 @@ def test_staticfiles_with_pathlib(
     assert response.text == "<file content>"
 
 
-def test_staticfiles_head_with_middleware(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_head_with_middleware(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     """
     see https://github.com/encode/starlette/pull/935
     """
@@ -55,9 +51,7 @@ def test_staticfiles_head_with_middleware(
     with open(path, "w") as file:
         file.write("x" * 100)
 
-    async def does_nothing_middleware(
-        request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def does_nothing_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
         return response
 
@@ -99,9 +93,7 @@ def test_staticfiles_post(tmpdir: Path, test_client_factory: TestClientFactory) 
     assert response.text == "Method Not Allowed"
 
 
-def test_staticfiles_with_directory_returns_404(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_with_directory_returns_404(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
@@ -115,9 +107,7 @@ def test_staticfiles_with_directory_returns_404(
     assert response.text == "Not Found"
 
 
-def test_staticfiles_with_missing_file_returns_404(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_with_missing_file_returns_404(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
@@ -138,9 +128,7 @@ def test_staticfiles_instantiated_with_missing_directory(tmpdir: Path) -> None:
     assert "does not exist" in str(exc_info.value)
 
 
-def test_staticfiles_configured_with_missing_directory(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_configured_with_missing_directory(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "no_such_directory")
     app = StaticFiles(directory=path, check_dir=False)
     client = test_client_factory(app)
@@ -163,9 +151,7 @@ def test_staticfiles_configured_with_file_instead_of_directory(
     assert "is not a directory" in str(exc_info.value)
 
 
-def test_staticfiles_config_check_occurs_only_once(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_config_check_occurs_only_once(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     app = StaticFiles(directory=tmpdir)
     client = test_client_factory(app)
     assert not app.config_checked
@@ -199,9 +185,7 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir: Path) -> None:
     assert exc_info.value.detail == "Not Found"
 
 
-def test_staticfiles_never_read_file_for_head_method(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_never_read_file_for_head_method(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
@@ -214,9 +198,7 @@ def test_staticfiles_never_read_file_for_head_method(
     assert response.headers["content-length"] == "14"
 
 
-def test_staticfiles_304_with_etag_match(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
@@ -229,9 +211,7 @@ def test_staticfiles_304_with_etag_match(
     second_resp = client.get("/example.txt", headers={"if-none-match": last_etag})
     assert second_resp.status_code == 304
     assert second_resp.content == b""
-    second_resp = client.get(
-        "/example.txt", headers={"if-none-match": f'W/{last_etag}, "123"'}
-    )
+    second_resp = client.get("/example.txt", headers={"if-none-match": f'W/{last_etag}, "123"'})
     assert second_resp.status_code == 304
     assert second_resp.content == b""
 
@@ -240,9 +220,7 @@ def test_staticfiles_304_with_last_modified_compare_last_req(
     tmpdir: Path, test_client_factory: TestClientFactory
 ) -> None:
     path = os.path.join(tmpdir, "example.txt")
-    file_last_modified_time = time.mktime(
-        time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S")
-    )
+    file_last_modified_time = time.mktime(time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S"))
     with open(path, "w") as file:
         file.write("<file content>")
     os.utime(path, (file_last_modified_time, file_last_modified_time))
@@ -250,22 +228,16 @@ def test_staticfiles_304_with_last_modified_compare_last_req(
     app = StaticFiles(directory=tmpdir)
     client = test_client_factory(app)
     # last modified less than last request, 304
-    response = client.get(
-        "/example.txt", headers={"If-Modified-Since": "Thu, 11 Oct 2013 15:30:19 GMT"}
-    )
+    response = client.get("/example.txt", headers={"If-Modified-Since": "Thu, 11 Oct 2013 15:30:19 GMT"})
     assert response.status_code == 304
     assert response.content == b""
     # last modified greater than last request, 200 with content
-    response = client.get(
-        "/example.txt", headers={"If-Modified-Since": "Thu, 20 Feb 2012 15:30:19 GMT"}
-    )
+    response = client.get("/example.txt", headers={"If-Modified-Since": "Thu, 20 Feb 2012 15:30:19 GMT"})
     assert response.status_code == 200
     assert response.content == b"<file content>"
 
 
-def test_staticfiles_html_normal(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_html_normal(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "404.html")
     with open(path, "w") as file:
         file.write("<h1>Custom not found page</h1>")
@@ -298,9 +270,7 @@ def test_staticfiles_html_normal(
     assert response.text == "<h1>Custom not found page</h1>"
 
 
-def test_staticfiles_html_without_index(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_html_without_index(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "404.html")
     with open(path, "w") as file:
         file.write("<h1>Custom not found page</h1>")
@@ -325,9 +295,7 @@ def test_staticfiles_html_without_index(
     assert response.text == "<h1>Custom not found page</h1>"
 
 
-def test_staticfiles_html_without_404(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_html_without_404(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "dir")
     os.mkdir(path)
     path = os.path.join(path, "index.html")
@@ -352,9 +320,7 @@ def test_staticfiles_html_without_404(
     assert exc_info.value.status_code == 404
 
 
-def test_staticfiles_html_only_files(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_html_only_files(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "hello.html")
     with open(path, "w") as file:
         file.write("<h1>Hello</h1>")
@@ -381,9 +347,7 @@ def test_staticfiles_cache_invalidation_for_deleted_file_html_mode(
     with open(path_some, "w") as file:
         file.write("<p>some file</p>")
 
-    common_modified_time = time.mktime(
-        time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S")
-    )
+    common_modified_time = time.mktime(time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S"))
     os.utime(path_404, (common_modified_time, common_modified_time))
     os.utime(path_some, (common_modified_time, common_modified_time))
 
@@ -435,9 +399,7 @@ def test_staticfiles_with_invalid_dir_permissions_returns_401(
         tmp_path.chmod(original_mode)
 
 
-def test_staticfiles_with_missing_dir_returns_404(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_with_missing_dir_returns_404(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
@@ -451,9 +413,7 @@ def test_staticfiles_with_missing_dir_returns_404(
     assert response.text == "Not Found"
 
 
-def test_staticfiles_access_file_as_dir_returns_404(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_access_file_as_dir_returns_404(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
@@ -467,9 +427,7 @@ def test_staticfiles_access_file_as_dir_returns_404(
     assert response.text == "Not Found"
 
 
-def test_staticfiles_filename_too_long(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_filename_too_long(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
     app = Starlette(routes=routes)
     client = test_client_factory(app)
@@ -503,9 +461,7 @@ def test_staticfiles_unhandled_os_error_returns_500(
     assert response.text == "Internal Server Error"
 
 
-def test_staticfiles_follows_symlinks(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_follows_symlinks(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     statics_path = os.path.join(tmpdir, "statics")
     os.mkdir(statics_path)
 
@@ -526,9 +482,7 @@ def test_staticfiles_follows_symlinks(
     assert response.text == "<h1>Hello</h1>"
 
 
-def test_staticfiles_follows_symlink_directories(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_staticfiles_follows_symlink_directories(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     statics_path = os.path.join(tmpdir, "statics")
     statics_html_path = os.path.join(statics_path, "html")
     os.mkdir(statics_path)

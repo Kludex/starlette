@@ -270,8 +270,7 @@ async def test_client_disconnect_on_send() -> None:
     async def send(message: Message) -> None:
         if message["type"] == "websocket.accept":
             return
-        # Simulate the exception the server would send to the application when the
-        # client disconnects.
+        # Simulate the exception the server would send to the application when the client disconnects.
         raise OSError
 
     with pytest.raises(WebSocketDisconnect) as ctx:
@@ -334,19 +333,8 @@ def test_send_response_multi(test_client_factory: TestClientFactory) -> None:
                 "headers": [(b"content-type", b"text/plain"), (b"foo", b"bar")],
             }
         )
-        await websocket.send(
-            {
-                "type": "websocket.http.response.body",
-                "body": b"hard",
-                "more_body": True,
-            }
-        )
-        await websocket.send(
-            {
-                "type": "websocket.http.response.body",
-                "body": b"body",
-            }
-        )
+        await websocket.send({"type": "websocket.http.response.body", "body": b"hard", "more_body": True})
+        await websocket.send({"type": "websocket.http.response.body", "body": b"body"})
 
     client = test_client_factory(app)
     with pytest.raises(WebSocketDenialResponse) as exc:
@@ -402,10 +390,7 @@ def test_send_response_duplicate_start(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     with pytest.raises(
         RuntimeError,
-        match=(
-            'Expected ASGI message "websocket.http.response.body", but got '
-            "'websocket.http.response.start'"
-        ),
+        match=("Expected ASGI message \"websocket.http.response.body\", but got 'websocket.http.response.start'"),
     ):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
@@ -493,11 +478,7 @@ def test_websocket_scope_interface() -> None:
 
     async def mock_send(message: Message) -> None: ...  # pragma: no cover
 
-    websocket = WebSocket(
-        {"type": "websocket", "path": "/abc/", "headers": []},
-        receive=mock_receive,
-        send=mock_send,
-    )
+    websocket = WebSocket({"type": "websocket", "path": "/abc/", "headers": []}, receive=mock_receive, send=mock_send)
     assert websocket["type"] == "websocket"
     assert dict(websocket) == {"type": "websocket", "path": "/abc/", "headers": []}
     assert len(websocket) == 3

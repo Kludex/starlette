@@ -68,8 +68,7 @@ class Jinja2Templates:
         self,
         directory: str | PathLike[str] | typing.Sequence[str | PathLike[str]],
         *,
-        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
-        | None = None,
+        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]] | None = None,
         **env_options: typing.Any,
     ) -> None: ...
 
@@ -78,31 +77,24 @@ class Jinja2Templates:
         self,
         *,
         env: jinja2.Environment,
-        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
-        | None = None,
+        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]] | None = None,
     ) -> None: ...
 
     def __init__(
         self,
-        directory: str
-        | PathLike[str]
-        | typing.Sequence[str | PathLike[str]]
-        | None = None,
+        directory: str | PathLike[str] | typing.Sequence[str | PathLike[str]] | None = None,
         *,
-        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]]
-        | None = None,
+        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]] | None = None,
         env: jinja2.Environment | None = None,
         **env_options: typing.Any,
     ) -> None:
         if env_options:
             warnings.warn(
-                "Extra environment options are deprecated. Use a preconfigured jinja2.Environment instead.",  # noqa: E501
+                "Extra environment options are deprecated. Use a preconfigured jinja2.Environment instead.",
                 DeprecationWarning,
             )
         assert jinja2 is not None, "jinja2 must be installed to use Jinja2Templates"
-        assert bool(directory) ^ bool(
-            env
-        ), "either 'directory' or 'env' arguments must be passed"
+        assert bool(directory) ^ bool(env), "either 'directory' or 'env' arguments must be passed"
         self.context_processors = context_processors or []
         if directory is not None:
             self.env = self._create_env(directory, **env_options)
@@ -163,25 +155,19 @@ class Jinja2Templates:
         # Deprecated usage
         ...
 
-    def TemplateResponse(
-        self, *args: typing.Any, **kwargs: typing.Any
-    ) -> _TemplateResponse:
+    def TemplateResponse(self, *args: typing.Any, **kwargs: typing.Any) -> _TemplateResponse:
         if args:
-            if isinstance(
-                args[0], str
-            ):  # the first argument is template name (old style)
+            if isinstance(args[0], str):  # the first argument is template name (old style)
                 warnings.warn(
                     "The `name` is not the first parameter anymore. "
                     "The first parameter should be the `Request` instance.\n"
-                    'Replace `TemplateResponse(name, {"request": request})` by `TemplateResponse(request, name)`.',  # noqa: E501
+                    'Replace `TemplateResponse(name, {"request": request})` by `TemplateResponse(request, name)`.',
                     DeprecationWarning,
                 )
 
                 name = args[0]
                 context = args[1] if len(args) > 1 else kwargs.get("context", {})
-                status_code = (
-                    args[2] if len(args) > 2 else kwargs.get("status_code", 200)
-                )
+                status_code = args[2] if len(args) > 2 else kwargs.get("status_code", 200)
                 headers = args[2] if len(args) > 2 else kwargs.get("headers")
                 media_type = args[3] if len(args) > 3 else kwargs.get("media_type")
                 background = args[4] if len(args) > 4 else kwargs.get("background")
@@ -193,9 +179,7 @@ class Jinja2Templates:
                 request = args[0]
                 name = args[1] if len(args) > 1 else kwargs["name"]
                 context = args[2] if len(args) > 2 else kwargs.get("context", {})
-                status_code = (
-                    args[3] if len(args) > 3 else kwargs.get("status_code", 200)
-                )
+                status_code = args[3] if len(args) > 3 else kwargs.get("status_code", 200)
                 headers = args[4] if len(args) > 4 else kwargs.get("headers")
                 media_type = args[5] if len(args) > 5 else kwargs.get("media_type")
                 background = args[6] if len(args) > 6 else kwargs.get("background")
@@ -203,7 +187,7 @@ class Jinja2Templates:
             if "request" not in kwargs:
                 warnings.warn(
                     "The `TemplateResponse` now requires the `request` argument.\n"
-                    'Replace `TemplateResponse(name, {"context": context})` by `TemplateResponse(request, name)`.',  # noqa: E501
+                    'Replace `TemplateResponse(name, {"context": context})` by `TemplateResponse(request, name)`.',
                     DeprecationWarning,
                 )
                 if "request" not in kwargs.get("context", {}):

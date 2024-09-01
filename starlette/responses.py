@@ -54,10 +54,7 @@ class Response:
             populate_content_length = True
             populate_content_type = True
         else:
-            raw_headers = [
-                (k.lower().encode("latin-1"), v.encode("latin-1"))
-                for k, v in headers.items()
-            ]
+            raw_headers = [(k.lower().encode("latin-1"), v.encode("latin-1")) for k, v in headers.items()]
             keys = [h[0] for h in raw_headers]
             populate_content_length = b"content-length" not in keys
             populate_content_type = b"content-type" not in keys
@@ -73,10 +70,7 @@ class Response:
 
         content_type = self.media_type
         if content_type is not None and populate_content_type:
-            if (
-                content_type.startswith("text/")
-                and "charset=" not in content_type.lower()
-            ):
+            if content_type.startswith("text/") and "charset=" not in content_type.lower():
                 content_type += "; charset=" + self.charset
             raw_headers.append((b"content-type", content_type.encode("latin-1")))
 
@@ -201,9 +195,7 @@ class RedirectResponse(Response):
         headers: typing.Mapping[str, str] | None = None,
         background: BackgroundTask | None = None,
     ) -> None:
-        super().__init__(
-            content=b"", status_code=status_code, headers=headers, background=background
-        )
+        super().__init__(content=b"", status_code=status_code, headers=headers, background=background)
         self.headers["location"] = quote(str(url), safe=":/%#?=@[]!$&'()*+,;")
 
 
@@ -299,11 +291,9 @@ class FileResponse(Response):
         if self.filename is not None:
             content_disposition_filename = quote(self.filename)
             if content_disposition_filename != self.filename:
-                content_disposition = f"{content_disposition_type}; filename*=utf-8''{content_disposition_filename}"  # noqa: E501
+                content_disposition = f"{content_disposition_type}; filename*=utf-8''{content_disposition_filename}"
             else:
-                content_disposition = (
-                    f'{content_disposition_type}; filename="{self.filename}"'
-                )
+                content_disposition = f'{content_disposition_type}; filename="{self.filename}"'
             self.headers.setdefault("content-disposition", content_disposition)
         self.stat_result = stat_result
         if stat_result is not None:

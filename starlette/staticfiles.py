@@ -32,11 +32,7 @@ class NotModifiedResponse(Response):
     def __init__(self, headers: Headers):
         super().__init__(
             status_code=304,
-            headers={
-                name: value
-                for name, value in headers.items()
-                if name in self.NOT_MODIFIED_HEADERS
-            },
+            headers={name: value for name, value in headers.items() if name in self.NOT_MODIFIED_HEADERS},
         )
 
 
@@ -80,9 +76,7 @@ class StaticFiles:
             spec = importlib.util.find_spec(package)
             assert spec is not None, f"Package {package!r} could not be found."
             assert spec.origin is not None, f"Package {package!r} could not be found."
-            package_directory = os.path.normpath(
-                os.path.join(spec.origin, "..", statics_dir)
-            )
+            package_directory = os.path.normpath(os.path.join(spec.origin, "..", statics_dir))
             assert os.path.isdir(
                 package_directory
             ), f"Directory '{statics_dir!r}' in package {package!r} could not be found."
@@ -110,7 +104,7 @@ class StaticFiles:
         with OS specific path separators, and any '..', '.' components removed.
         """
         route_path = get_route_path(scope)
-        return os.path.normpath(os.path.join(*route_path.split("/")))  # noqa: E501
+        return os.path.normpath(os.path.join(*route_path.split("/")))
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         """
@@ -120,9 +114,7 @@ class StaticFiles:
             raise HTTPException(status_code=405)
 
         try:
-            full_path, stat_result = await anyio.to_thread.run_sync(
-                self.lookup_path, path
-            )
+            full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, path)
         except PermissionError:
             raise HTTPException(status_code=401)
         except OSError as exc:
@@ -140,9 +132,7 @@ class StaticFiles:
             # We're in HTML mode, and have got a directory URL.
             # Check if we have 'index.html' file to serve.
             index_path = os.path.join(path, "index.html")
-            full_path, stat_result = await anyio.to_thread.run_sync(
-                self.lookup_path, index_path
-            )
+            full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, index_path)
             if stat_result is not None and stat.S_ISREG(stat_result.st_mode):
                 if not scope["path"].endswith("/"):
                     # Directory URLs should redirect to always end in "/".
@@ -153,9 +143,7 @@ class StaticFiles:
 
         if self.html:
             # Check for '404.html' if we're in HTML mode.
-            full_path, stat_result = await anyio.to_thread.run_sync(
-                self.lookup_path, "404.html"
-            )
+            full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, "404.html")
             if stat_result and stat.S_ISREG(stat_result.st_mode):
                 return FileResponse(full_path, stat_result=stat_result, status_code=404)
         raise HTTPException(status_code=404)
@@ -187,9 +175,7 @@ class StaticFiles:
     ) -> Response:
         request_headers = Headers(scope=scope)
 
-        response = FileResponse(
-            full_path, status_code=status_code, stat_result=stat_result
-        )
+        response = FileResponse(full_path, status_code=status_code, stat_result=stat_result)
         if self.is_not_modified(response.headers, request_headers):
             return NotModifiedResponse(response.headers)
         return response
@@ -206,17 +192,11 @@ class StaticFiles:
         try:
             stat_result = await anyio.to_thread.run_sync(os.stat, self.directory)
         except FileNotFoundError:
-            raise RuntimeError(
-                f"StaticFiles directory '{self.directory}' does not exist."
-            )
+            raise RuntimeError(f"StaticFiles directory '{self.directory}' does not exist.")
         if not (stat.S_ISDIR(stat_result.st_mode) or stat.S_ISLNK(stat_result.st_mode)):
-            raise RuntimeError(
-                f"StaticFiles path '{self.directory}' is not a directory."
-            )
+            raise RuntimeError(f"StaticFiles path '{self.directory}' is not a directory.")
 
-    def is_not_modified(
-        self, response_headers: Headers, request_headers: Headers
-    ) -> bool:
+    def is_not_modified(self, response_headers: Headers, request_headers: Headers) -> bool:
         """
         Given the request and response headers, return `True` if an HTTP
         "Not Modified" response could be returned instead.
@@ -232,11 +212,7 @@ class StaticFiles:
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])
             last_modified = parsedate(response_headers["last-modified"])
-            if (
-                if_modified_since is not None
-                and last_modified is not None
-                and if_modified_since >= last_modified
-            ):
+            if if_modified_since is not None and last_modified is not None and if_modified_since >= last_modified:
                 return True
         except KeyError:
             pass

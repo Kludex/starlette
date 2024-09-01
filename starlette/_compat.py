@@ -15,9 +15,7 @@ try:
     # that reject usedforsecurity=True
     hashlib.md5(b"data", usedforsecurity=False)  # type: ignore[call-arg]
 
-    def md5_hexdigest(
-        data: bytes, *, usedforsecurity: bool = True
-    ) -> str:  # pragma: no cover
+    def md5_hexdigest(data: bytes, *, usedforsecurity: bool = True) -> str:  # pragma: no cover
         return hashlib.md5(  # type: ignore[call-arg]
             data, usedforsecurity=usedforsecurity
         ).hexdigest()

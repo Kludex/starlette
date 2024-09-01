@@ -42,9 +42,7 @@ async def read_body_and_raise_exc(request: Request) -> None:
     raise BadBodyException(422)
 
 
-async def handler_that_reads_body(
-    request: Request, exc: BadBodyException
-) -> JSONResponse:
+async def handler_that_reads_body(request: Request, exc: BadBodyException) -> JSONResponse:
     body = await request.body()
     return JSONResponse(status_code=422, content={"body": body.decode()})
 
@@ -158,9 +156,7 @@ def test_http_str() -> None:
 
 
 def test_http_repr() -> None:
-    assert repr(HTTPException(404)) == (
-        "HTTPException(status_code=404, detail='Not Found')"
-    )
+    assert repr(HTTPException(404)) == ("HTTPException(status_code=404, detail='Not Found')")
     assert repr(HTTPException(404, detail="Not Found: foo")) == (
         "HTTPException(status_code=404, detail='Not Found: foo')"
     )

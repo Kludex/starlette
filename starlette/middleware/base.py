@@ -11,9 +11,7 @@ from starlette.responses import AsyncContentStream, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
-DispatchFunction = typing.Callable[
-    [Request, RequestResponseEndpoint], typing.Awaitable[Response]
-]
+DispatchFunction = typing.Callable[[Request, RequestResponseEndpoint], typing.Awaitable[Response]]
 T = typing.TypeVar("T")
 
 
@@ -180,9 +178,7 @@ class BaseHTTPMiddleware:
                 if app_exc is not None:
                     raise app_exc
 
-            response = _StreamingResponse(
-                status_code=message["status"], content=body_stream(), info=info
-            )
+            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
             response.raw_headers = message["headers"]
             return response
 
@@ -192,9 +188,7 @@ class BaseHTTPMiddleware:
                 await response(scope, wrapped_receive, send)
                 response_sent.set()
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         raise NotImplementedError()  # pragma: no cover
 
 

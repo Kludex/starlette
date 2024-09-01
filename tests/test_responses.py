@@ -118,9 +118,7 @@ def test_streaming_response(test_client_factory: TestClientFactory) -> None:
 
         cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
         generator = numbers(1, 5)
-        response = StreamingResponse(
-            generator, media_type="text/plain", background=cleanup_task
-        )
+        response = StreamingResponse(generator, media_type="text/plain", background=cleanup_task)
         await response(scope, receive, send)
 
     assert filled_by_bg_task == ""
@@ -236,9 +234,7 @@ def test_file_response(tmp_path: Path, test_client_factory: TestClientFactory) -
     cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        response = FileResponse(
-            path=path, filename="example.png", background=cleanup_task
-        )
+        response = FileResponse(path=path, filename="example.png", background=cleanup_task)
         await response(scope, receive, send)
 
     assert filled_by_bg_task == ""
@@ -284,9 +280,7 @@ async def test_file_response_on_head_method(tmp_path: Path) -> None:
     await app({"type": "http", "method": "head"}, receive, send)
 
 
-def test_file_response_set_media_type(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_set_media_type(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     path = tmp_path / "xyz"
     path.write_bytes(b"<file content>")
 
@@ -298,9 +292,7 @@ def test_file_response_set_media_type(
     assert response.headers["content-type"] == "image/jpeg"
 
 
-def test_file_response_with_directory_raises_error(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_with_directory_raises_error(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     app = FileResponse(path=tmp_path, filename="example.png")
     client = test_client_factory(app)
     with pytest.raises(RuntimeError) as exc_info:
@@ -308,9 +300,7 @@ def test_file_response_with_directory_raises_error(
     assert "is not a file" in str(exc_info.value)
 
 
-def test_file_response_with_missing_file_raises_error(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_with_missing_file_raises_error(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     path = tmp_path / "404.txt"
     app = FileResponse(path=path, filename="404.txt")
     client = test_client_factory(app)
@@ -319,9 +309,7 @@ def test_file_response_with_missing_file_raises_error(
     assert "does not exist" in str(exc_info.value)
 
 
-def test_file_response_with_chinese_filename(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_with_chinese_filename(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     content = b"file content"
     filename = "你好.txt"  # probably "Hello.txt" in Chinese
     path = tmp_path / filename
@@ -335,9 +323,7 @@ def test_file_response_with_chinese_filename(
     assert response.headers["content-disposition"] == expected_disposition
 
 
-def test_file_response_with_inline_disposition(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_with_inline_disposition(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     content = b"file content"
     filename = "hello.txt"
     path = tmp_path / filename
@@ -356,9 +342,7 @@ def test_file_response_with_method_warns(tmp_path: Path) -> None:
         FileResponse(path=tmp_path, filename="example.png", method="GET")
 
 
-def test_set_cookie(
-    test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_set_cookie(test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
     mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
@@ -382,8 +366,7 @@ def test_set_cookie(
     response = client.get("/")
     assert response.text == "Hello, world!"
     assert (
-        response.headers["set-cookie"]
-        == "mycookie=myvalue; Domain=localhost; expires=Thu, 22 Jan 2037 12:00:10 GMT; "
+        response.headers["set-cookie"] == "mycookie=myvalue; Domain=localhost; expires=Thu, 22 Jan 2037 12:00:10 GMT; "
         "HttpOnly; Max-Age=10; Path=/; SameSite=none; Secure"
     )
 
@@ -403,9 +386,7 @@ def test_set_cookie_path_none(test_client_factory: TestClientFactory) -> None:
 @pytest.mark.parametrize(
     "expires",
     [
-        pytest.param(
-            dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"
-        ),
+        pytest.param(dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"),
         pytest.param("Thu, 22 Jan 2037 12:00:10 GMT", id="str"),
         pytest.param(10, id="int"),
     ],
@@ -495,9 +476,7 @@ def test_response_do_not_add_redundant_charset(
     assert response.headers["content-type"] == "text/plain; charset=utf-8"
 
 
-def test_file_response_known_size(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_known_size(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     path = tmp_path / "xyz"
     content = b"<file content>" * 1000
     path.write_bytes(content)
@@ -518,9 +497,7 @@ def test_streaming_response_unknown_size(
 
 
 def test_streaming_response_known_size(test_client_factory: TestClientFactory) -> None:
-    app = StreamingResponse(
-        content=iter(["hello", "world"]), headers={"content-length": "10"}
-    )
+    app = StreamingResponse(content=iter(["hello", "world"]), headers={"content-length": "10"})
     client: TestClient = test_client_factory(app)
     response = client.get("/")
     assert response.headers["content-length"] == "10"

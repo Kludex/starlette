@@ -252,9 +252,7 @@ def test_cors_preflight_allow_all_methods(
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
-        middleware=[
-            Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
-        ],
+        middleware=[Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])],
     )
 
     client = test_client_factory(app)
@@ -284,9 +282,7 @@ def test_cors_allow_all_methods(
                 methods=["delete", "get", "head", "options", "patch", "post", "put"],
             )
         ],
-        middleware=[
-            Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
-        ],
+        middleware=[Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])],
     )
 
     client = test_client_factory(app)
@@ -397,10 +393,7 @@ def test_cors_allow_origin_regex_fullmatch(
     response = client.get("/", headers=headers)
     assert response.status_code == 200
     assert response.text == "Homepage"
-    assert (
-        response.headers["access-control-allow-origin"]
-        == "https://subdomain.example.org"
-    )
+    assert response.headers["access-control-allow-origin"] == "https://subdomain.example.org"
     assert "access-control-allow-credentials" not in response.headers
 
     # Test diallowed standard response
@@ -456,9 +449,7 @@ def test_cors_vary_header_is_not_set_for_non_credentialed_request(
     test_client_factory: TestClientFactory,
 ) -> None:
     def homepage(request: Request) -> PlainTextResponse:
-        return PlainTextResponse(
-            "Homepage", status_code=200, headers={"Vary": "Accept-Encoding"}
-        )
+        return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Accept-Encoding"})
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
@@ -475,9 +466,7 @@ def test_cors_vary_header_is_properly_set_for_credentialed_request(
     test_client_factory: TestClientFactory,
 ) -> None:
     def homepage(request: Request) -> PlainTextResponse:
-        return PlainTextResponse(
-            "Homepage", status_code=200, headers={"Vary": "Accept-Encoding"}
-        )
+        return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Accept-Encoding"})
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
@@ -485,9 +474,7 @@ def test_cors_vary_header_is_properly_set_for_credentialed_request(
     )
     client = test_client_factory(app)
 
-    response = client.get(
-        "/", headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"}
-    )
+    response = client.get("/", headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"})
     assert response.status_code == 200
     assert response.headers["vary"] == "Accept-Encoding, Origin"
 
@@ -496,9 +483,7 @@ def test_cors_vary_header_is_properly_set_when_allow_origins_is_not_wildcard(
     test_client_factory: TestClientFactory,
 ) -> None:
     def homepage(request: Request) -> PlainTextResponse:
-        return PlainTextResponse(
-            "Homepage", status_code=200, headers={"Vary": "Accept-Encoding"}
-        )
+        return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Accept-Encoding"})
 
     app = Starlette(
         routes=[
@@ -538,9 +523,7 @@ def test_cors_allowed_origin_does_not_leak_between_credentialed_requests(
     assert response.headers["access-control-allow-origin"] == "*"
     assert "access-control-allow-credentials" not in response.headers
 
-    response = client.get(
-        "/", headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"}
-    )
+    response = client.get("/", headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"})
     assert response.headers["access-control-allow-origin"] == "https://someplace.org"
     assert "access-control-allow-credentials" not in response.headers
 

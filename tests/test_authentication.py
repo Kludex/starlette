@@ -259,9 +259,7 @@ def test_authentication_required(test_client_factory: TestClientFactory) -> None
         response = client.get("/dashboard/decorated")
         assert response.status_code == 403
 
-        response = client.get(
-            "/dashboard/decorated/sync", auth=("tomchristie", "example")
-        )
+        response = client.get("/dashboard/decorated/sync", auth=("tomchristie", "example"))
         assert response.status_code == 200
         assert response.json() == {
             "authenticated": True,
@@ -286,14 +284,10 @@ def test_websocket_authentication_required(
                 pass  # pragma: nocover
 
         with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(
-                "/ws", headers={"Authorization": "basic foobar"}
-            ):
+            with client.websocket_connect("/ws", headers={"Authorization": "basic foobar"}):
                 pass  # pragma: nocover
 
-        with client.websocket_connect(
-            "/ws", auth=("tomchristie", "example")
-        ) as websocket:
+        with client.websocket_connect("/ws", auth=("tomchristie", "example")) as websocket:
             data = websocket.receive_json()
             assert data == {"authenticated": True, "user": "tomchristie"}
 
@@ -302,14 +296,10 @@ def test_websocket_authentication_required(
                 pass  # pragma: nocover
 
         with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(
-                "/ws/decorated", headers={"Authorization": "basic foobar"}
-            ):
+            with client.websocket_connect("/ws/decorated", headers={"Authorization": "basic foobar"}):
                 pass  # pragma: nocover
 
-        with client.websocket_connect(
-            "/ws/decorated", auth=("tomchristie", "example")
-        ) as websocket:
+        with client.websocket_connect("/ws/decorated", auth=("tomchristie", "example")) as websocket:
             data = websocket.receive_json()
             assert data == {
                 "authenticated": True,
@@ -322,9 +312,7 @@ def test_authentication_redirect(test_client_factory: TestClientFactory) -> None
     with test_client_factory(app) as client:
         response = client.get("/admin")
         assert response.status_code == 200
-        url = "{}?{}".format(
-            "http://testserver/", urlencode({"next": "http://testserver/admin"})
-        )
+        url = "{}?{}".format("http://testserver/", urlencode({"next": "http://testserver/admin"}))
         assert response.url == url
 
         response = client.get("/admin", auth=("tomchristie", "example"))
@@ -333,9 +321,7 @@ def test_authentication_redirect(test_client_factory: TestClientFactory) -> None
 
         response = client.get("/admin/sync")
         assert response.status_code == 200
-        url = "{}?{}".format(
-            "http://testserver/", urlencode({"next": "http://testserver/admin/sync"})
-        )
+        url = "{}?{}".format("http://testserver/", urlencode({"next": "http://testserver/admin/sync"}))
         assert response.url == url
 
         response = client.get("/admin/sync", auth=("tomchristie", "example"))
@@ -359,11 +345,7 @@ def control_panel(request: Request) -> JSONResponse:
 
 other_app = Starlette(
     routes=[Route("/control-panel", control_panel)],
-    middleware=[
-        Middleware(
-            AuthenticationMiddleware, backend=BasicAuth(), on_error=on_auth_error
-        )
-    ],
+    middleware=[Middleware(AuthenticationMiddleware, backend=BasicAuth(), on_error=on_auth_error)],
 )
 
 
@@ -373,8 +355,6 @@ def test_custom_on_error(test_client_factory: TestClientFactory) -> None:
         assert response.status_code == 200
         assert response.json() == {"authenticated": True, "user": "tomchristie"}
 
-        response = client.get(
-            "/control-panel", headers={"Authorization": "basic foobar"}
-        )
+        response = client.get("/control-panel", headers={"Authorization": "basic foobar"})
         assert response.status_code == 401
         assert response.json() == {"error": "Invalid basic auth credentials"}

@@ -14,9 +14,7 @@ def test_config_types() -> None:
     """
     We use `assert_type` to test the types returned by Config via mypy.
     """
-    config = Config(
-        environ={"STR": "some_str_value", "STR_CAST": "some_str_value", "BOOL": "true"}
-    )
+    config = Config(environ={"STR": "some_str_value", "STR_CAST": "some_str_value", "BOOL": "true"})
 
     assert_type(config("STR"), str)
     assert_type(config("STR_DEFAULT", default=""), str)
@@ -138,9 +136,7 @@ def test_environ() -> None:
 
 
 def test_config_with_env_prefix(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    config = Config(
-        environ={"APP_DEBUG": "value", "ENVIRONMENT": "dev"}, env_prefix="APP_"
-    )
+    config = Config(environ={"APP_DEBUG": "value", "ENVIRONMENT": "dev"}, env_prefix="APP_")
     assert config.get("DEBUG") == "value"
 
     with pytest.raises(KeyError):

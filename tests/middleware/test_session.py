@@ -89,9 +89,7 @@ def test_secure_session(test_client_factory: TestClientFactory) -> None:
             Route("/update_session", endpoint=update_session, methods=["POST"]),
             Route("/clear_session", endpoint=clear_session, methods=["POST"]),
         ],
-        middleware=[
-            Middleware(SessionMiddleware, secret_key="example", https_only=True)
-        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", https_only=True)],
     )
     secure_client = test_client_factory(app, base_url="https://testserver")
     unsecure_client = test_client_factory(app, base_url="http://testserver")
@@ -126,9 +124,7 @@ def test_session_cookie_subpath(test_client_factory: TestClientFactory) -> None:
         routes=[
             Route("/update_session", endpoint=update_session, methods=["POST"]),
         ],
-        middleware=[
-            Middleware(SessionMiddleware, secret_key="example", path="/second_app")
-        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", path="/second_app")],
     )
     app = Starlette(routes=[Mount("/second_app", app=second_app)])
     client = test_client_factory(app, base_url="http://testserver/second_app")
@@ -188,9 +184,7 @@ def test_domain_cookie(test_client_factory: TestClientFactory) -> None:
             Route("/view_session", endpoint=view_session),
             Route("/update_session", endpoint=update_session, methods=["POST"]),
         ],
-        middleware=[
-            Middleware(SessionMiddleware, secret_key="example", domain=".example.com")
-        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", domain=".example.com")],
     )
     client: TestClient = test_client_factory(app)
 

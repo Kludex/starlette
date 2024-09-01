@@ -108,12 +108,7 @@ class URL:
         return self.scheme in ("https", "wss")
 
     def replace(self, **kwargs: typing.Any) -> URL:
-        if (
-            "username" in kwargs
-            or "password" in kwargs
-            or "hostname" in kwargs
-            or "port" in kwargs
-        ):
+        if "username" in kwargs or "password" in kwargs or "hostname" in kwargs or "port" in kwargs:
             hostname = kwargs.pop("hostname", None)
             port = kwargs.pop("port", self.port)
             username = kwargs.pop("username", self.username)
@@ -264,17 +259,12 @@ class ImmutableMultiDict(typing.Mapping[_KeyType, _CovariantValueType]):
 
         value: typing.Any = args[0] if args else []
         if kwargs:
-            value = (
-                ImmutableMultiDict(value).multi_items()
-                + ImmutableMultiDict(kwargs).multi_items()
-            )
+            value = ImmutableMultiDict(value).multi_items() + ImmutableMultiDict(kwargs).multi_items()
 
         if not value:
             _items: list[tuple[typing.Any, typing.Any]] = []
         elif hasattr(value, "multi_items"):
-            value = typing.cast(
-                ImmutableMultiDict[_KeyType, _CovariantValueType], value
-            )
+            value = typing.cast(ImmutableMultiDict[_KeyType, _CovariantValueType], value)
             _items = list(value.multi_items())
         elif hasattr(value, "items"):
             value = typing.cast(typing.Mapping[_KeyType, _CovariantValueType], value)
@@ -371,9 +361,7 @@ class MultiDict(ImmutableMultiDict[typing.Any, typing.Any]):
 
     def update(
         self,
-        *args: MultiDict
-        | typing.Mapping[typing.Any, typing.Any]
-        | list[tuple[typing.Any, typing.Any]],
+        *args: MultiDict | typing.Mapping[typing.Any, typing.Any] | list[tuple[typing.Any, typing.Any]],
         **kwargs: typing.Any,
     ) -> None:
         value = MultiDict(*args, **kwargs)
@@ -403,9 +391,7 @@ class QueryParams(ImmutableMultiDict[str, str]):
         if isinstance(value, str):
             super().__init__(parse_qsl(value, keep_blank_values=True), **kwargs)
         elif isinstance(value, bytes):
-            super().__init__(
-                parse_qsl(value.decode("latin-1"), keep_blank_values=True), **kwargs
-            )
+            super().__init__(parse_qsl(value.decode("latin-1"), keep_blank_values=True), **kwargs)
         else:
             super().__init__(*args, **kwargs)  # type: ignore[arg-type]
         self._list = [(str(k), str(v)) for k, v in self._list]
@@ -490,9 +476,7 @@ class FormData(ImmutableMultiDict[str, typing.Union[UploadFile, str]]):
 
     def __init__(
         self,
-        *args: FormData
-        | typing.Mapping[str, str | UploadFile]
-        | list[tuple[str, str | UploadFile]],
+        *args: FormData | typing.Mapping[str, str | UploadFile] | list[tuple[str, str | UploadFile]],
         **kwargs: str | UploadFile,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -518,10 +502,7 @@ class Headers(typing.Mapping[str, str]):
         if headers is not None:
             assert raw is None, 'Cannot set both "headers" and "raw".'
             assert scope is None, 'Cannot set both "headers" and "scope".'
-            self._list = [
-                (key.lower().encode("latin-1"), value.encode("latin-1"))
-                for key, value in headers.items()
-            ]
+            self._list = [(key.lower().encode("latin-1"), value.encode("latin-1")) for key, value in headers.items()]
         elif raw is not None:
             assert scope is None, 'Cannot set both "raw" and "scope".'
             self._list = raw
@@ -541,18 +522,11 @@ class Headers(typing.Mapping[str, str]):
         return [value.decode("latin-1") for key, value in self._list]
 
     def items(self) -> list[tuple[str, str]]:  # type: ignore[override]
-        return [
-            (key.decode("latin-1"), value.decode("latin-1"))
-            for key, value in self._list
-        ]
+        return [(key.decode("latin-1"), value.decode("latin-1")) for key, value in self._list]
 
     def getlist(self, key: str) -> list[str]:
         get_header_key = key.lower().encode("latin-1")
-        return [
-            item_value.decode("latin-1")
-            for item_key, item_value in self._list
-            if item_key == get_header_key
-        ]
+        return [item_value.decode("latin-1") for item_key, item_value in self._list if item_key == get_header_key]
 
     def mutablecopy(self) -> MutableHeaders:
         return MutableHeaders(raw=self._list[:])

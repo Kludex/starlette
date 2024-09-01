@@ -46,12 +46,8 @@ class MultiPartException(Exception):
 
 
 class FormParser:
-    def __init__(
-        self, headers: Headers, stream: typing.AsyncGenerator[bytes, None]
-    ) -> None:
-        assert (
-            multipart is not None
-        ), "The `python-multipart` library must be installed to use form parsing."
+    def __init__(self, headers: Headers, stream: typing.AsyncGenerator[bytes, None]) -> None:
+        assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
         self.messages: list[tuple[FormMessage, bytes]] = []
@@ -128,9 +124,7 @@ class MultiPartParser:
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
     ) -> None:
-        assert (
-            multipart is not None
-        ), "The `python-multipart` library must be installed to use form parsing."
+        assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
         self.max_files = max_files
@@ -181,30 +175,20 @@ class MultiPartParser:
         field = self._current_partial_header_name.lower()
         if field == b"content-disposition":
             self._current_part.content_disposition = self._current_partial_header_value
-        self._current_part.item_headers.append(
-            (field, self._current_partial_header_value)
-        )
+        self._current_part.item_headers.append((field, self._current_partial_header_value))
         self._current_partial_header_name = b""
         self._current_partial_header_value = b""
 
     def on_headers_finished(self) -> None:
-        disposition, options = parse_options_header(
-            self._current_part.content_disposition
-        )
+        disposition, options = parse_options_header(self._current_part.content_disposition)
         try:
-            self._current_part.field_name = _user_safe_decode(
-                options[b"name"], self._charset
-            )
+            self._current_part.field_name = _user_safe_decode(options[b"name"], self._charset)
         except KeyError:
-            raise MultiPartException(
-                'The Content-Disposition header field "name" must be ' "provided."
-            )
+            raise MultiPartException('The Content-Disposition header field "name" must be provided.')
         if b"filename" in options:
             self._current_files += 1
             if self._current_files > self.max_files:
-                raise MultiPartException(
-                    f"Too many files. Maximum number of files is {self.max_files}."
-                )
+                raise MultiPartException(f"Too many files. Maximum number of files is {self.max_files}.")
             filename = _user_safe_decode(options[b"filename"], self._charset)
             tempfile = SpooledTemporaryFile(max_size=self.max_file_size)
             self._files_to_close_on_error.append(tempfile)
@@ -217,9 +201,7 @@ class MultiPartParser:
         else:
             self._current_fields += 1
             if self._current_fields > self.max_fields:
-                raise MultiPartException(
-                    f"Too many fields. Maximum number of fields is {self.max_fields}."
-                )
+                raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
             self._current_part.file = None
 
     def on_end(self) -> None:

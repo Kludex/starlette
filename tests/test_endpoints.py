@@ -19,9 +19,7 @@ class Homepage(HTTPEndpoint):
         return PlainTextResponse(f"Hello, {username}!")
 
 
-app = Router(
-    routes=[Route("/", endpoint=Homepage), Route("/{username}", endpoint=Homepage)]
-)
+app = Router(routes=[Route("/", endpoint=Homepage), Route("/{username}", endpoint=Homepage)])
 
 
 @pytest.fixture

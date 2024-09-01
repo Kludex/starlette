@@ -91,9 +91,7 @@ def test_gzip_ignored_for_responses_with_encoding_set(
                 yield bytes
 
         streaming = generator(bytes=b"x" * 400, count=10)
-        return StreamingResponse(
-            streaming, status_code=200, headers={"Content-Encoding": "text"}
-        )
+        return StreamingResponse(streaming, status_code=200, headers={"Content-Encoding": "text"})
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],

@@ -186,9 +186,7 @@ class ServerErrorMiddleware:
             # to optionally raise the error within the test case.
             raise exc
 
-    def format_line(
-        self, index: int, line: str, frame_lineno: int, frame_index: int
-    ) -> str:
+    def format_line(self, index: int, line: str, frame_lineno: int, frame_index: int) -> str:
         values = {
             # HTML escape - line could contain < or >
             "line": html.escape(line).replace(" ", "&nbsp"),
@@ -225,9 +223,7 @@ class ServerErrorMiddleware:
         return FRAME_TEMPLATE.format(**values)
 
     def generate_html(self, exc: Exception, limit: int = 7) -> str:
-        traceback_obj = traceback.TracebackException.from_exception(
-            exc, capture_locals=True
-        )
+        traceback_obj = traceback.TracebackException.from_exception(exc, capture_locals=True)
 
         exc_html = ""
         is_collapsed = False

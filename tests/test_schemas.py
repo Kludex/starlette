@@ -7,9 +7,7 @@ from starlette.schemas import SchemaGenerator
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
-schemas = SchemaGenerator(
-    {"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}}
-)
+schemas = SchemaGenerator({"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}})
 
 
 def ws(session: WebSocket) -> None:
@@ -142,7 +140,7 @@ def test_schema_generation() -> None:
                 "get": {
                     "responses": {
                         200: {
-                            "description": "A list of " "organisations.",
+                            "description": "A list of organisations.",
                             "examples": [{"name": "Foo Corp."}, {"name": "Acme Ltd."}],
                         }
                     }
@@ -157,25 +155,13 @@ def test_schema_generation() -> None:
                 },
             },
             "/regular-docstring-and-schema": {
-                "get": {
-                    "responses": {
-                        200: {"description": "This is included in the schema."}
-                    }
-                }
+                "get": {"responses": {200: {"description": "This is included in the schema."}}}
             },
             "/subapp/subapp-endpoint": {
-                "get": {
-                    "responses": {
-                        200: {"description": "This endpoint is part of a subapp."}
-                    }
-                }
+                "get": {"responses": {200: {"description": "This endpoint is part of a subapp."}}}
             },
             "/subapp2/subapp-endpoint": {
-                "get": {
-                    "responses": {
-                        200: {"description": "This endpoint is part of a subapp."}
-                    }
-                }
+                "get": {"responses": {200: {"description": "This endpoint is part of a subapp."}}}
             },
             "/users": {
                 "get": {
@@ -186,11 +172,7 @@ def test_schema_generation() -> None:
                         }
                     }
                 },
-                "post": {
-                    "responses": {
-                        200: {"description": "A user.", "examples": {"username": "tom"}}
-                    }
-                },
+                "post": {"responses": {200: {"description": "A user.", "examples": {"username": "tom"}}}},
             },
             "/users/{id}": {
                 "get": {

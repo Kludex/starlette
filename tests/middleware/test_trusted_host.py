@@ -13,11 +13,7 @@ def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
-        middleware=[
-            Middleware(
-                TrustedHostMiddleware, allowed_hosts=["testserver", "*.testserver"]
-            )
-        ],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["testserver", "*.testserver"])],
     )
 
     client = test_client_factory(app)
@@ -45,9 +41,7 @@ def test_www_redirect(test_client_factory: TestClientFactory) -> None:
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
-        middleware=[
-            Middleware(TrustedHostMiddleware, allowed_hosts=["www.example.com"])
-        ],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["www.example.com"])],
     )
 
     client = test_client_factory(app, base_url="https://example.com")

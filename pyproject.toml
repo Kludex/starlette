@@ -50,9 +50,19 @@ Source = "https://github.com/encode/starlette"
 [tool.hatch.version]
 path = "starlette/__init__.py"
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
-select = ["E", "F", "I", "FA", "UP"]
-ignore = ["UP031"]
+select = [
+    "E",      # https://docs.astral.sh/ruff/rules/#error-e
+    "F",      # https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "I",      # https://docs.astral.sh/ruff/rules/#isort-i
+    "FA",     # https://docs.astral.sh/ruff/rules/#flake8-future-annotations-fa
+    "UP",     # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "RUF100", # https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf
+]
+ignore = ["UP031"] # https://docs.astral.sh/ruff/rules/printf-string-formatting/
 
 [tool.ruff.lint.isort]
 combine-as-imports = true

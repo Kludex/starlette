@@ -48,23 +48,18 @@ def app() -> Router:
     )
 
 
-def test_datetime_convertor(
-    test_client_factory: TestClientFactory, app: Router
-) -> None:
+def test_datetime_convertor(test_client_factory: TestClientFactory, app: Router) -> None:
     client = test_client_factory(app)
     response = client.get("/datetime/2020-01-01T00:00:00")
     assert response.json() == {"datetime": "2020-01-01T00:00:00"}
 
     assert (
-        app.url_path_for("datetime-convertor", param=datetime(1996, 1, 22, 23, 0, 0))
-        == "/datetime/1996-01-22T23:00:00"
+        app.url_path_for("datetime-convertor", param=datetime(1996, 1, 22, 23, 0, 0)) == "/datetime/1996-01-22T23:00:00"
     )
 
 
 @pytest.mark.parametrize("param, status_code", [("1.0", 200), ("1-0", 404)])
-def test_default_float_convertor(
-    test_client_factory: TestClientFactory, param: str, status_code: int
-) -> None:
+def test_default_float_convertor(test_client_factory: TestClientFactory, param: str, status_code: int) -> None:
     def float_convertor(request: Request) -> JSONResponse:
         param = request.path_params["param"]
         assert isinstance(param, float)

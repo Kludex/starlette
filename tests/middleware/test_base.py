@@ -169,9 +169,7 @@ def test_app_middleware_argument(test_client_factory: TestClientFactory) -> None
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("Homepage")
 
-    app = Starlette(
-        routes=[Route("/", homepage)], middleware=[Middleware(CustomMiddleware)]
-    )
+    app = Starlette(routes=[Route("/", homepage)], middleware=[Middleware(CustomMiddleware)])
 
     client = test_client_factory(app)
     response = client.get("/")
@@ -249,9 +247,7 @@ def test_contextvars(
         ctxvar.set("set by endpoint")
         return PlainTextResponse("Homepage")
 
-    app = Starlette(
-        middleware=[Middleware(middleware_cls)], routes=[Route("/", homepage)]
-    )
+    app = Starlette(middleware=[Middleware(middleware_cls)], routes=[Route("/", homepage)])
 
     client = test_client_factory(app)
     response = client.get("/")
@@ -316,13 +312,9 @@ async def test_do_not_block_on_background_tasks() -> None:
         events.append("Background task finished")
 
     async def endpoint_with_background_task(_: Request) -> PlainTextResponse:
-        return PlainTextResponse(
-            content="Hello", background=BackgroundTask(sleep_and_set)
-        )
+        return PlainTextResponse(content="Hello", background=BackgroundTask(sleep_and_set))
 
-    async def passthrough(
-        request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
         return await call_next(request)
 
     app = Starlette(
@@ -490,9 +482,7 @@ def test_app_receives_http_disconnect_while_sending_if_discarded(
                         }
                     )
 
-            pytest.fail(
-                "http.disconnect should have been received and canceled the scope"
-            )  # pragma: no cover
+            pytest.fail("http.disconnect should have been received and canceled the scope")  # pragma: no cover
 
     app = DiscardingMiddleware(downstream_app)
 
@@ -787,7 +777,7 @@ async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None
     await rcv_stream.aclose()
 
 
-def test_read_request_stream_in_dispatch_after_app_calls_body_with_middleware_calling_body_before_call_next(  # noqa: E501
+def test_read_request_stream_in_dispatch_after_app_calls_body_with_middleware_calling_body_before_call_next(
     test_client_factory: TestClientFactory,
 ) -> None:
     async def homepage(request: Request) -> PlainTextResponse:
@@ -800,9 +790,7 @@ def test_read_request_stream_in_dispatch_after_app_calls_body_with_middleware_ca
             request: Request,
             call_next: RequestResponseEndpoint,
         ) -> Response:
-            assert (
-                await request.body() == b"a"
-            )  # this buffers the request body in memory
+            assert await request.body() == b"a"  # this buffers the request body in memory
             resp = await call_next(request)
             async for chunk in request.stream():
                 if chunk:
@@ -819,7 +807,7 @@ def test_read_request_stream_in_dispatch_after_app_calls_body_with_middleware_ca
     assert response.status_code == 200
 
 
-def test_read_request_body_in_dispatch_after_app_calls_body_with_middleware_calling_body_before_call_next(  # noqa: E501
+def test_read_request_body_in_dispatch_after_app_calls_body_with_middleware_calling_body_before_call_next(
     test_client_factory: TestClientFactory,
 ) -> None:
     async def homepage(request: Request) -> PlainTextResponse:
@@ -832,9 +820,7 @@ def test_read_request_body_in_dispatch_after_app_calls_body_with_middleware_call
             request: Request,
             call_next: RequestResponseEndpoint,
         ) -> Response:
-            assert (
-                await request.body() == b"a"
-            )  # this buffers the request body in memory
+            assert await request.body() == b"a"  # this buffers the request body in memory
             resp = await call_next(request)
             assert await request.body() == b"a"  # no problem here
             return resp
@@ -1026,9 +1012,7 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
             self.events = events
             super().__init__(app)
 
-        async def dispatch(
-            self, request: Request, call_next: RequestResponseEndpoint
-        ) -> Response:
+        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
             self.events.append(f"{self.version}:STARTED")
             res = await call_next(request)
             self.events.append(f"{self.version}:COMPLETED")
@@ -1047,9 +1031,7 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
 
     app = Starlette(
         routes=[Route("/", sleepy)],
-        middleware=[
-            Middleware(MyMiddleware, version=_ + 1, events=events) for _ in range(10)
-        ],
+        middleware=[Middleware(MyMiddleware, version=_ + 1, events=events) for _ in range(10)],
     )
 
     scope = {
@@ -1114,9 +1096,7 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
         await Response(b"good!")(scope, receive, send)
 
     class MyMiddleware(BaseHTTPMiddleware):
-        async def dispatch(
-            self, request: Request, call_next: RequestResponseEndpoint
-        ) -> Response:
+        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
             return await call_next(request)
 
     app = MyMiddleware(app_poll_disconnect)

@@ -36,9 +36,7 @@ def test_templates(tmpdir: Path, test_client_factory: TestClientFactory) -> None
     assert set(response.context.keys()) == {"request"}  # type: ignore
 
 
-def test_calls_context_processors(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_calls_context_processors(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     path = tmp_path / "index.html"
     path.write_text("<html>Hello {{ username }}</html>")
 
@@ -66,9 +64,7 @@ def test_calls_context_processors(
     assert set(response.context.keys()) == {"request", "username"}  # type: ignore
 
 
-def test_template_with_middleware(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_template_with_middleware(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "index.html")
     with open(path, "w") as file:
         file.write("<html>Hello, <a href='{{ url_for('homepage') }}'>world</a></html>")
@@ -77,9 +73,7 @@ def test_template_with_middleware(
         return templates.TemplateResponse(request, "index.html")
 
     class CustomMiddleware(BaseHTTPMiddleware):
-        async def dispatch(
-            self, request: Request, call_next: RequestResponseEndpoint
-        ) -> Response:
+        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
             return await call_next(request)
 
     app = Starlette(
@@ -96,9 +90,7 @@ def test_template_with_middleware(
     assert set(response.context.keys()) == {"request"}  # type: ignore
 
 
-def test_templates_with_directories(
-    tmp_path: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_templates_with_directories(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     dir_a = tmp_path.resolve() / "a"
     dir_a.mkdir()
     template_a = dir_a / "template_a.html"
@@ -134,16 +126,12 @@ def test_templates_with_directories(
 
 
 def test_templates_require_directory_or_environment() -> None:
-    with pytest.raises(
-        AssertionError, match="either 'directory' or 'env' arguments must be passed"
-    ):
+    with pytest.raises(AssertionError, match="either 'directory' or 'env' arguments must be passed"):
         Jinja2Templates()  # type: ignore[call-overload]
 
 
 def test_templates_require_directory_or_enviroment_not_both() -> None:
-    with pytest.raises(
-        AssertionError, match="either 'directory' or 'env' arguments must be passed"
-    ):
+    with pytest.raises(AssertionError, match="either 'directory' or 'env' arguments must be passed"):
         Jinja2Templates(directory="dir", env=jinja2.Environment())
 
 
@@ -157,9 +145,7 @@ def test_templates_with_directory(tmpdir: Path) -> None:
     assert template.render({}) == "Hello"
 
 
-def test_templates_with_environment(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_templates_with_environment(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "index.html")
     with open(path, "w") as file:
         file.write("<html>Hello, <a href='{{ url_for('homepage') }}'>world</a></html>")
@@ -185,9 +171,7 @@ def test_templates_with_environment_options_emit_warning(tmpdir: Path) -> None:
         Jinja2Templates(str(tmpdir), autoescape=True)
 
 
-def test_templates_with_kwargs_only(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_templates_with_kwargs_only(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     # MAINTAINERS: remove after 1.0
     path = os.path.join(tmpdir, "index.html")
     with open(path, "w") as file:
@@ -242,9 +226,7 @@ def test_templates_with_kwargs_only_warns_when_no_request_keyword(
     templates = Jinja2Templates(directory=str(tmpdir))
 
     def page(request: Request) -> Response:
-        return templates.TemplateResponse(
-            name="index.html", context={"request": request}
-        )
+        return templates.TemplateResponse(name="index.html", context={"request": request})
 
     app = Starlette(routes=[Route("/", page)])
     client = test_client_factory(app)
@@ -297,9 +279,7 @@ def test_templates_warns_when_first_argument_isnot_request(
     spy.assert_called()
 
 
-def test_templates_when_first_argument_is_request(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_templates_when_first_argument_is_request(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     # MAINTAINERS: remove after 1.0
     path = os.path.join(tmpdir, "index.html")
     with open(path, "w") as file:

@@ -16,16 +16,15 @@ P = ParamSpec("P")
 T = typing.TypeVar("T")
 
 
-async def run_until_first_complete(*args: tuple[typing.Callable, dict]) -> None:  # type: ignore[type-arg]  # noqa: E501
+async def run_until_first_complete(*args: tuple[typing.Callable, dict]) -> None:  # type: ignore[type-arg]
     warnings.warn(
-        "run_until_first_complete is deprecated "
-        "and will be removed in a future version.",
+        "run_until_first_complete is deprecated and will be removed in a future version.",
         DeprecationWarning,
     )
 
     async with anyio.create_task_group() as task_group:
 
-        async def run(func: typing.Callable[[], typing.Coroutine]) -> None:  # type: ignore[type-arg]  # noqa: E501
+        async def run(func: typing.Callable[[], typing.Coroutine]) -> None:  # type: ignore[type-arg]
             await func()
             task_group.cancel_scope.cancel()
 
@@ -33,9 +32,7 @@ async def run_until_first_complete(*args: tuple[typing.Callable, dict]) -> None:
             task_group.start_soon(run, functools.partial(func, **kwargs))
 
 
-async def run_in_threadpool(
-    func: typing.Callable[P, T], *args: P.args, **kwargs: P.kwargs
-) -> T:
+async def run_in_threadpool(func: typing.Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
     if kwargs:  # pragma: no cover
         # run_sync doesn't accept 'kwargs', so bind them in here
         func = functools.partial(func, **kwargs)

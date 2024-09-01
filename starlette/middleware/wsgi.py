@@ -89,9 +89,7 @@ class WSGIResponder:
         self.scope = scope
         self.status = None
         self.response_headers = None
-        self.stream_send, self.stream_receive = anyio.create_memory_object_stream(
-            math.inf
-        )
+        self.stream_send, self.stream_receive = anyio.create_memory_object_stream(math.inf)
         self.response_started = False
         self.exc_info: typing.Any = None
 
@@ -151,6 +149,4 @@ class WSGIResponder:
                 {"type": "http.response.body", "body": chunk, "more_body": True},
             )
 
-        anyio.from_thread.run(
-            self.stream_send.send, {"type": "http.response.body", "body": b""}
-        )
+        anyio.from_thread.run(self.stream_send.send, {"type": "http.response.body", "body": b""})

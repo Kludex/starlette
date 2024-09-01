@@ -115,9 +115,7 @@ def test_csv() -> None:
 
 
 def test_url_from_scope() -> None:
-    u = URL(
-        scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []}
-    )
+    u = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
     assert u == "/path/to/somewhere?abc=123"
     assert repr(u) == "URL('/path/to/somewhere?abc=123')"
 
@@ -296,13 +294,9 @@ def test_queryparams() -> None:
     assert dict(q) == {"a": "456", "b": "789"}
     assert str(q) == "a=123&a=456&b=789"
     assert repr(q) == "QueryParams('a=123&a=456&b=789')"
-    assert QueryParams({"a": "123", "b": "456"}) == QueryParams(
-        [("a", "123"), ("b", "456")]
-    )
+    assert QueryParams({"a": "123", "b": "456"}) == QueryParams([("a", "123"), ("b", "456")])
     assert QueryParams({"a": "123", "b": "456"}) == QueryParams("a=123&b=456")
-    assert QueryParams({"a": "123", "b": "456"}) == QueryParams(
-        {"b": "456", "a": "123"}
-    )
+    assert QueryParams({"a": "123", "b": "456"}) == QueryParams({"b": "456", "a": "123"})
     assert QueryParams() == QueryParams({})
     assert QueryParams([("a", "123"), ("a", "456")]) == QueryParams("a=123&a=456")
     assert QueryParams({"a": "123", "b": "456"}) != "invalid"
@@ -382,10 +376,7 @@ def test_formdata() -> None:
     assert len(form) == 2
     assert list(form) == ["a", "b"]
     assert dict(form) == {"a": "456", "b": upload}
-    assert (
-        repr(form)
-        == "FormData([('a', '123'), ('a', '456'), ('b', " + repr(upload) + ")])"
-    )
+    assert repr(form) == "FormData([('a', '123'), ('a', '456'), ('b', " + repr(upload) + ")])"
     assert FormData(form) == form
     assert FormData({"a": "123", "b": "789"}) == FormData([("a", "123"), ("b", "789")])
     assert FormData({"a": "123", "b": "789"}) != {"a": "123", "b": "789"}
@@ -402,10 +393,7 @@ async def test_upload_file_repr() -> None:
 async def test_upload_file_repr_headers() -> None:
     stream = io.BytesIO(b"data")
     file = UploadFile(filename="file", file=stream, headers=Headers({"foo": "bar"}))
-    assert (
-        repr(file)
-        == "UploadFile(filename='file', size=None, headers=Headers({'foo': 'bar'}))"
-    )
+    assert repr(file) == "UploadFile(filename='file', size=None, headers=Headers({'foo': 'bar'}))"
 
 
 def test_multidict() -> None:
@@ -425,9 +413,7 @@ def test_multidict() -> None:
     assert dict(q) == {"a": "456", "b": "789"}
     assert str(q) == "MultiDict([('a', '123'), ('a', '456'), ('b', '789')])"
     assert repr(q) == "MultiDict([('a', '123'), ('a', '456'), ('b', '789')])"
-    assert MultiDict({"a": "123", "b": "456"}) == MultiDict(
-        [("a", "123"), ("b", "456")]
-    )
+    assert MultiDict({"a": "123", "b": "456"}) == MultiDict([("a", "123"), ("b", "456")])
     assert MultiDict({"a": "123", "b": "456"}) == MultiDict({"b": "456", "a": "123"})
     assert MultiDict() == MultiDict({})
     assert MultiDict({"a": "123", "b": "456"}) != "invalid"

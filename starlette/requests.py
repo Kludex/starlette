@@ -104,9 +104,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
             # This is used by request.url_for, it might be used inside a Mount which
             # would have its own child scope with its own root_path, but the base URL
             # for url_for should still be the top level app root path.
-            app_root_path = base_url_scope.get(
-                "app_root_path", base_url_scope.get("root_path", "")
-            )
+            app_root_path = base_url_scope.get("app_root_path", base_url_scope.get("root_path", ""))
             path = app_root_path
             if not path.endswith("/"):
                 path += "/"
@@ -153,23 +151,17 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
 
     @property
     def session(self) -> dict[str, typing.Any]:
-        assert (
-            "session" in self.scope
-        ), "SessionMiddleware must be installed to access request.session"
+        assert "session" in self.scope, "SessionMiddleware must be installed to access request.session"
         return self.scope["session"]  # type: ignore[no-any-return]
 
     @property
     def auth(self) -> typing.Any:
-        assert (
-            "auth" in self.scope
-        ), "AuthenticationMiddleware must be installed to access request.auth"
+        assert "auth" in self.scope, "AuthenticationMiddleware must be installed to access request.auth"
         return self.scope["auth"]
 
     @property
     def user(self) -> typing.Any:
-        assert (
-            "user" in self.scope
-        ), "AuthenticationMiddleware must be installed to access request.user"
+        assert "user" in self.scope, "AuthenticationMiddleware must be installed to access request.user"
         return self.scope["user"]
 
     @property
@@ -199,9 +191,7 @@ async def empty_send(message: Message) -> typing.NoReturn:
 class Request(HTTPConnection):
     _form: FormData | None
 
-    def __init__(
-        self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send
-    ):
+    def __init__(self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send):
         super().__init__(scope)
         assert scope["type"] == "http"
         self._receive = receive
@@ -252,9 +242,7 @@ class Request(HTTPConnection):
             self._json = json.loads(body)
         return self._json
 
-    async def _get_form(
-        self, *, max_files: int | float = 1000, max_fields: int | float = 1000
-    ) -> FormData:
+    async def _get_form(self, *, max_files: int | float = 1000, max_fields: int | float = 1000) -> FormData:
         if self._form is None:
             assert (
                 parse_options_header is not None
@@ -285,9 +273,7 @@ class Request(HTTPConnection):
     def form(
         self, *, max_files: int | float = 1000, max_fields: int | float = 1000
     ) -> AwaitableOrContextManager[FormData]:
-        return AwaitableOrContextManagerWrapper(
-            self._get_form(max_files=max_files, max_fields=max_fields)
-        )
+        return AwaitableOrContextManagerWrapper(self._get_form(max_files=max_files, max_fields=max_fields))
 
     async def close(self) -> None:
         if self._form is not None:
@@ -312,9 +298,5 @@ class Request(HTTPConnection):
             raw_headers: list[tuple[bytes, bytes]] = []
             for name in SERVER_PUSH_HEADERS_TO_COPY:
                 for value in self.headers.getlist(name):
-                    raw_headers.append(
-                        (name.encode("latin-1"), value.encode("latin-1"))
-                    )
-            await self._send(
-                {"type": "http.response.push", "path": path, "headers": raw_headers}
-            )
+                    raw_headers.append((name.encode("latin-1"), value.encode("latin-1")))
+            await self._send({"type": "http.response.push", "path": path, "headers": raw_headers})

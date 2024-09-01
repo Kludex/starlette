@@ -19,9 +19,7 @@ class OpenAPIResponse(Response):
 
     def render(self, content: typing.Any) -> bytes:
         assert yaml is not None, "`pyyaml` must be installed to use OpenAPIResponse."
-        assert isinstance(
-            content, dict
-        ), "The schema passed to OpenAPIResponse should be a dictionary."
+        assert isinstance(content, dict), "The schema passed to OpenAPIResponse should be a dictionary."
         return yaml.dump(content, default_flow_style=False).encode("utf-8")
 
 
@@ -73,9 +71,7 @@ class BaseSchemaGenerator:
                 for method in route.methods or ["GET"]:
                     if method == "HEAD":
                         continue
-                    endpoints_info.append(
-                        EndpointInfo(path, method.lower(), route.endpoint)
-                    )
+                    endpoints_info.append(EndpointInfo(path, method.lower(), route.endpoint))
             else:
                 path = self._remove_converter(route.path)
                 for method in ["get", "post", "put", "patch", "delete", "options"]:
@@ -95,9 +91,7 @@ class BaseSchemaGenerator:
         """
         return re.sub(r":\w+}", "}", path)
 
-    def parse_docstring(
-        self, func_or_method: typing.Callable[..., typing.Any]
-    ) -> dict[str, typing.Any]:
+    def parse_docstring(self, func_or_method: typing.Callable[..., typing.Any]) -> dict[str, typing.Any]:
         """
         Given a function, parse the docstring as YAML and return a dictionary of info.
         """

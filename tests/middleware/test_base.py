@@ -1006,16 +1006,29 @@ def test_pr_1519_comment_1236166180_example() -> None:
 
 @pytest.mark.anyio
 async def test_multiple_middlewares_stacked_client_disconnected() -> None:
+    """
+    Tests for:
+    - https://github.com/encode/starlette/issues/2516
+    - https://github.com/encode/starlette/pull/2687
+    """
+    ordered_events: list[str] = []
+    unordered_events: list[str] = []
+
     class MyMiddleware(BaseHTTPMiddleware):
-        def __init__(self, app: ASGIApp, version: int, events: list[str]) -> None:
+        def __init__(self, app: ASGIApp, version: int) -> None:
             self.version = version
-            self.events = events
             super().__init__(app)
 
         async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-            self.events.append(f"{self.version}:STARTED")
+            ordered_events.append(f"{self.version}:STARTED")
             res = await call_next(request)
-            self.events.append(f"{self.version}:COMPLETED")
+            ordered_events.append(f"{self.version}:COMPLETED")
+
+            def background() -> None:
+                unordered_events.append(f"{self.version}:BACKGROUND")
+
+            assert res.background is None
+            res.background = BackgroundTask(background)
             return res
 
     async def sleepy(request: Request) -> Response:
@@ -1027,11 +1040,9 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
             raise AssertionError("Should have raised ClientDisconnect")
         return Response(b"")
 
-    events: list[str] = []
-
     app = Starlette(
         routes=[Route("/", sleepy)],
-        middleware=[Middleware(MyMiddleware, version=_ + 1, events=events) for _ in range(10)],
+        middleware=[Middleware(MyMiddleware, version=_ + 1) for _ in range(10)],
     )
 
     scope = {
@@ -1051,7 +1062,7 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
 
     await app(scope, receive().__anext__, send)
 
-    assert events == [
+    assert ordered_events == [
         "1:STARTED",
         "2:STARTED",
         "3:STARTED",
@@ -1073,6 +1084,21 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
         "2:COMPLETED",
         "1:COMPLETED",
     ]
+
+    assert sorted(unordered_events) == sorted(
+        [
+            "1:BACKGROUND",
+            "2:BACKGROUND",
+            "3:BACKGROUND",
+            "4:BACKGROUND",
+            "5:BACKGROUND",
+            "6:BACKGROUND",
+            "7:BACKGROUND",
+            "8:BACKGROUND",
+            "9:BACKGROUND",
+            "10:BACKGROUND",
+        ]
+    )
 
     assert sent == [
         {

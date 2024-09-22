@@ -784,7 +784,7 @@ class TestClient(httpx.Client):
                 self.task.result()
             return message
 
-        async with self.stream_send:
+        async with self.stream_send, self.stream_receive:
             await self.stream_receive.send({"type": "lifespan.shutdown"})
             message = await receive()
             assert message["type"] in (

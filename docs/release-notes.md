@@ -3,6 +3,12 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.38.6 (September 22, 2024)
+
+#### Fixed
+
+* Close unclosed `MemoryObjectReceiveStream` in `TestClient` [#2693](https://github.com/encode/starlette/pull/2693).
+
 ## 0.38.5 (September 7, 2024)
 
 #### Fixed

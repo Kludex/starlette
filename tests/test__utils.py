@@ -89,6 +89,7 @@ def test_async_nested_partial() -> None:
         ({"path": "/foo-123/bar", "root_path": "/foo"}, "/foo-123/bar"),
         ({"path": "/foo/bar", "root_path": "/foo"}, "/bar"),
         ({"path": "/foo", "root_path": "/foo"}, ""),
+        ({"path": "/foo/bar", "root_path": "/bar"}, "/foo/bar"),
     ],
 )
 def test_get_route_path(scope: Scope, expected_result: str) -> None:

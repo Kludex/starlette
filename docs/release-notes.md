@@ -3,6 +3,13 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.39.0 (September 23, 2024)
+
+#### Added
+
+* Add support for [HTTP Range](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests) to
+  `FileResponse` [#2697](https://github.com/encode/starlette/pull/2697).
+
 ## 0.38.6 (September 22, 2024)
 
 #### Fixed

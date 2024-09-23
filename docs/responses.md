@@ -183,12 +183,16 @@ async def app(scope, receive, send):
     await response(scope, receive, send)
 ```
 
+File responses also supports [HTTP range requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
+
+The `Accept-Ranges: bytes` header will be included in the response if the file exists. For now, only the `bytes`
+range unit is supported.
+
+If the request includes a `Range` header, and the file exists, the response will be a `206 Partial Content` response
+with the requested range of bytes. If the range is invalid, the response will be a `416 Range Not Satisfiable` response.
+
 ## Third party responses
 
 #### [EventSourceResponse](https://github.com/sysid/sse-starlette)
 
 A response class that implements [Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html). It enables event streaming from the server to the client without the complexity of websockets.
-
-#### [baize.asgi.FileResponse](https://baize.aber.sh/asgi#fileresponse)
-
-As a smooth replacement for Starlette [`FileResponse`](https://www.starlette.io/responses/#fileresponse), it will automatically handle [Head method](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD) and [Range requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).

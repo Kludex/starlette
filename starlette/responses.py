@@ -12,7 +12,6 @@ from email.utils import format_datetime, formatdate
 from functools import partial
 from mimetypes import guess_type
 from random import choices as random_choices
-from typing import Mapping
 from urllib.parse import quote
 
 import anyio
@@ -280,7 +279,7 @@ class FileResponse(Response):
         self,
         path: str | os.PathLike[str],
         status_code: int = 200,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
         filename: str | None = None,

@@ -425,7 +425,7 @@ def test_cookies_edge_cases(
         # Browsers don't send extra whitespace or semicolons in Cookie headers,
         # but cookie_parser() should parse whitespace the same way
         # document.cookie parses whitespace.
-        # ("  =  b  ;  ;  =  ;   c  =  ;  ", {"": "b", "c": ""}),
+        ("  =  b  ;  ;  =  ;   c  =  ;  ", {"": "b", "c": ""}),
     ],
 )
 def test_cookies_invalid(

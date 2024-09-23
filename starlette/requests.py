@@ -93,7 +93,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
 
     @property
     def url(self) -> URL:
-        if not hasattr(self, "_url"):
+        if not hasattr(self, "_url"):  # pragma: no branch
             self._url = URL(scope=self.scope)
         return self._url
 
@@ -122,7 +122,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
 
     @property
     def query_params(self) -> QueryParams:
-        if not hasattr(self, "_query_params"):
+        if not hasattr(self, "_query_params"):  # pragma: no branch
             self._query_params = QueryParams(self.scope["query_string"])
         return self._query_params
 
@@ -237,7 +237,7 @@ class Request(HTTPConnection):
         return self._body
 
     async def json(self) -> typing.Any:
-        if not hasattr(self, "_json"):
+        if not hasattr(self, "_json"):  # pragma: no branch
             body = await self.body()
             self._json = json.loads(body)
         return self._json
@@ -276,7 +276,7 @@ class Request(HTTPConnection):
         return AwaitableOrContextManagerWrapper(self._get_form(max_files=max_files, max_fields=max_fields))
 
     async def close(self) -> None:
-        if self._form is not None:
+        if self._form is not None:  # pragma: no branch
             await self._form.close()
 
     async def is_disconnected(self) -> bool:

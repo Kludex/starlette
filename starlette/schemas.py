@@ -29,6 +29,9 @@ class EndpointInfo(typing.NamedTuple):
     func: typing.Callable[..., typing.Any]
 
 
+_remove_converter_pattern = re.compile(r":\w+}")
+
+
 class BaseSchemaGenerator:
     def get_schema(self, routes: list[BaseRoute]) -> dict[str, typing.Any]:
         raise NotImplementedError()  # pragma: no cover
@@ -89,7 +92,7 @@ class BaseSchemaGenerator:
             Route("/users/{id:int}", endpoint=get_user, methods=["GET"])
         Should be represented as `/users/{id}` in the OpenAPI schema.
         """
-        return re.sub(r":\w+}", "}", path)
+        return _remove_converter_pattern.sub("}", path)
 
     def parse_docstring(self, func_or_method: typing.Callable[..., typing.Any]) -> dict[str, typing.Any]:
         """

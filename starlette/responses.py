@@ -272,6 +272,9 @@ class RangeNotSatisfiable(Exception):
         self.max_size = max_size
 
 
+_RANGE_PATTERN = re.compile(r"(\d*)-(\d*)")
+
+
 class FileResponse(Response):
     chunk_size = 64 * 1024
 
@@ -453,7 +456,7 @@ class FileResponse(Response):
                 int(_[0]) if _[0] else file_size - int(_[1]),
                 int(_[1]) + 1 if _[0] and _[1] and int(_[1]) < file_size else file_size,
             )
-            for _ in re.findall(r"(\d*)-(\d*)", range_)
+            for _ in _RANGE_PATTERN.findall(range_)
             if _ != ("", "")
         ]
 

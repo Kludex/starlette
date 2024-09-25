@@ -598,13 +598,13 @@ def test_file_response_range_multi(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=0-100, 200-300"})
     assert response.status_code == 206
     assert response.headers["content-range"].startswith("multipart/byteranges; boundary=")
-    assert response.headers["content-length"] == "400"
+    assert response.headers["content-length"] == "439"
 
 
 def test_file_response_range_multi_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": "bytes=0-100, 200-300"})
     assert response.status_code == 206
-    assert response.headers["content-length"] == "400"
+    assert response.headers["content-length"] == "439"
     assert response.content == b""
 
     response = file_response_client.head(

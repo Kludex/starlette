@@ -3,6 +3,16 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.39.1 (September 25, 2024)
+
+#### Fixed
+
+- Avoid regex re-compilation in `responses.py` and `schemas.py` [#2700](https://github.com/encode/starlette/pull/2700).
+- Improve performance of `get_route_path` by removing regular expression usage
+  [#2701](https://github.com/encode/starlette/pull/2701).
+- Consider `FileResponse.chunk_size` when handling multiple ranges [#2703](https://github.com/encode/starlette/pull/2703).
+- Use `token_hex` for generating multipart boundary strings [#2702](https://github.com/encode/starlette/pull/2702).
+
 ## 0.39.0 (September 23, 2024)
 
 #### Added

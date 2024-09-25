@@ -4,7 +4,7 @@ import datetime as dt
 import time
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import AsyncIterator, Iterator
+from typing import Any, AsyncIterator, Iterator
 
 import anyio
 import pytest
@@ -681,4 +681,59 @@ def test_file_response_insert_ranges(file_response_client: TestClient) -> None:
         "ds required in the Web framework. No redundant implementation means that you can freely customize fun",
         "",
         f"--{boundary}--",
+    ]
+
+
+@pytest.mark.anyio
+async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
+    class SmallChunkSizeFileResponse(FileResponse):
+        chunk_size = 10
+
+    app = SmallChunkSizeFileResponse(path=str(readme_file))
+
+    received_chunks: list[bytes] = []
+    start_message: dict[str, Any] = {}
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.start":
+            start_message.update(message)
+        elif message["type"] == "http.response.body":
+            received_chunks.append(message["body"])
+
+    await app({"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-15,20-35,35-50")]}, receive, send)
+    assert start_message["status"] == 206
+
+    headers = Headers(raw=start_message["headers"])
+    assert headers.get("content-type") == "text/plain; charset=utf-8"
+    assert headers.get("accept-ranges") == "bytes"
+    assert "content-length" in headers
+    assert "last-modified" in headers
+    assert "etag" in headers
+    assert headers["content-range"].startswith("multipart/byteranges; boundary=")
+    boundary = headers["content-range"].split("boundary=")[1]
+
+    assert received_chunks == [
+        # Send the part headers.
+        f"--{boundary}\nContent-Type: text/plain; charset=utf-8\nContent-Range: bytes 0-15/526\n\n".encode(),
+        # Send the first chunk (10 bytes).
+        b"# B\xc3\xa1iZ\xc3\xa9\n",
+        # Send the second chunk (6 bytes).
+        b"\nPower",
+        # Send the new line to separate the parts.
+        b"\n",
+        # Send the part headers. We merge the ranges 20-35 and 35-50 into a single part.
+        f"--{boundary}\nContent-Type: text/plain; charset=utf-8\nContent-Range: bytes 20-50/526\n\n".encode(),
+        # Send the first chunk (10 bytes).
+        b"and exquis",
+        # Send the second chunk (10 bytes).
+        b"ite WSGI/A",
+        # Send the third chunk (10 bytes).
+        b"SGI framew",
+        # Send the last chunk (1 byte).
+        b"o",
+        b"\n",
+        f"\n--{boundary}--\n".encode(),
     ]

@@ -289,7 +289,7 @@ async def test_run_background_tasks_even_if_client_disconnects() -> None:
     }
 
     async def receive() -> Message:
-        raise NotImplementedError("Should not be called!")  # pragma: no cover
+        raise NotImplementedError("Should not be called!")
 
     async def send(message: Message) -> None:
         if message["type"] == "http.response.body":
@@ -330,7 +330,7 @@ async def test_do_not_block_on_background_tasks() -> None:
     }
 
     async def receive() -> Message:
-        raise NotImplementedError("Should not be called!")  # pragma: no cover
+        raise NotImplementedError("Should not be called!")
 
     async def send(message: Message) -> None:
         if message["type"] == "http.response.body":
@@ -403,7 +403,7 @@ async def test_run_context_manager_exit_even_if_client_disconnects() -> None:
     }
 
     async def receive() -> Message:
-        raise NotImplementedError("Should not be called!")  # pragma: no cover
+        raise NotImplementedError("Should not be called!")
 
     async def send(message: Message) -> None:
         if message["type"] == "http.response.body":

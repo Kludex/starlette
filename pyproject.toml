@@ -103,4 +103,5 @@ exclude_lines = [
     "pragma: nocover",
     "if typing.TYPE_CHECKING:",
     "@typing.overload",
+    "raise NotImplementedError",
 ]

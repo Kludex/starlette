@@ -3,6 +3,13 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.39.2 (September 29, 2024)
+
+#### Fixed
+
+- Allow use of `request.url_for` when only "app" scope is available [#2672](https://github.com/encode/starlette/pull/2672).
+- Fix internal type hints to support `python-multipart==0.0.12` [#2708](https://github.com/encode/starlette/pull/2708).
+
 ## 0.39.1 (September 25, 2024)
 
 #### Fixed

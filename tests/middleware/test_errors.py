@@ -77,7 +77,7 @@ def test_debug_not_http(test_client_factory: TestClientFactory) -> None:
     with pytest.raises(RuntimeError):
         client = test_client_factory(app)
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_background_task(test_client_factory: TestClientFactory) -> None:

@@ -111,7 +111,7 @@ def test_with_headers(client: TestClient) -> None:
 def test_websockets_should_raise(client: TestClient) -> None:
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/runtime_error"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_handled_exc_after_response(

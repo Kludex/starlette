@@ -211,7 +211,7 @@ def test_invalid_decorator_usage() -> None:
 
         @requires("authenticated")
         def foo() -> None:
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_user_interface(test_client_factory: TestClientFactory) -> None:
@@ -281,11 +281,11 @@ def test_websocket_authentication_required(
     with test_client_factory(app) as client:
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws"):
-                pass  # pragma: nocover
+                pass  # pragma: no cover
 
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws", headers={"Authorization": "basic foobar"}):
-                pass  # pragma: nocover
+                pass  # pragma: no cover
 
         with client.websocket_connect("/ws", auth=("tomchristie", "example")) as websocket:
             data = websocket.receive_json()
@@ -293,11 +293,11 @@ def test_websocket_authentication_required(
 
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws/decorated"):
-                pass  # pragma: nocover
+                pass  # pragma: no cover
 
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws/decorated", headers={"Authorization": "basic foobar"}):
-                pass  # pragma: nocover
+                pass  # pragma: no cover
 
         with client.websocket_connect("/ws/decorated", auth=("tomchristie", "example")) as websocket:
             data = websocket.receive_json()

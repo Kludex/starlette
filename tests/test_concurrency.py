@@ -22,8 +22,8 @@ async def test_run_until_first_complete() -> None:
 
     async def task2() -> None:
         await task1_finished.wait()
-        await anyio.sleep(0)  # pragma: nocover
-        task2_finished.set()  # pragma: nocover
+        await anyio.sleep(0)  # pragma: no cover
+        task2_finished.set()  # pragma: no cover
 
     await run_until_first_complete((task1, {}), (task2, {}))
     assert task1_finished.is_set()

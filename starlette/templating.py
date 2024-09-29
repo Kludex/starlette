@@ -19,9 +19,9 @@ try:
     # adding a type ignore for mypy to let us access an attribute that may not exist
     if hasattr(jinja2, "pass_context"):
         pass_context = jinja2.pass_context
-    else:  # pragma: nocover
+    else:  # pragma: no cover
         pass_context = jinja2.contextfunction  # type: ignore[attr-defined]
-except ModuleNotFoundError:  # pragma: nocover
+except ModuleNotFoundError:  # pragma: no cover
     jinja2 = None  # type: ignore[assignment]
 
 

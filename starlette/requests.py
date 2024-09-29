@@ -14,8 +14,8 @@ from starlette.types import Message, Receive, Scope, Send
 
 try:
     from multipart.multipart import parse_options_header
-except ModuleNotFoundError:  # pragma: nocover
-    parse_options_header = None
+except ModuleNotFoundError:  # pragma: no cover
+    parse_options_header = None  # type: ignore
 
 
 if typing.TYPE_CHECKING:

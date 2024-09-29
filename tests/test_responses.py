@@ -83,7 +83,7 @@ def test_redirect_response_content_length_header(
 ) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         if scope["path"] == "/":
-            response = Response("hello", media_type="text/plain")  # pragma: nocover
+            response = Response("hello", media_type="text/plain")  # pragma: no cover
         else:
             response = RedirectResponse("/")
         await response(scope, receive, send)

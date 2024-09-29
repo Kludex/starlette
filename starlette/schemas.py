@@ -10,7 +10,7 @@ from starlette.routing import BaseRoute, Host, Mount, Route
 
 try:
     import yaml
-except ModuleNotFoundError:  # pragma: nocover
+except ModuleNotFoundError:  # pragma: no cover
     yaml = None  # type: ignore[assignment]
 
 

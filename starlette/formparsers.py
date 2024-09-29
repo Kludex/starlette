@@ -11,9 +11,12 @@ from starlette.datastructures import FormData, Headers, UploadFile
 try:
     import multipart
     from multipart.multipart import parse_options_header
-except ModuleNotFoundError:  # pragma: nocover
-    parse_options_header = None
-    multipart = None
+except ModuleNotFoundError:  # pragma: no cover
+    parse_options_header = None  # type: ignore
+    multipart = None  # type: ignore
+
+if typing.TYPE_CHECKING:
+    from multipart.multipart import MultipartCallbacks, QuerystringCallbacks
 
 
 class FormMessage(Enum):
@@ -74,7 +77,7 @@ class FormParser:
 
     async def parse(self) -> FormData:
         # Callbacks dictionary.
-        callbacks = {
+        callbacks: QuerystringCallbacks = {
             "on_field_start": self.on_field_start,
             "on_field_name": self.on_field_name,
             "on_field_data": self.on_field_data,
@@ -220,7 +223,7 @@ class MultiPartParser:
             raise MultiPartException("Missing boundary in multipart.")
 
         # Callbacks dictionary.
-        callbacks = {
+        callbacks: MultipartCallbacks = {
             "on_part_begin": self.on_part_begin,
             "on_part_data": self.on_part_data,
             "on_part_end": self.on_part_end,

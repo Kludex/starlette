@@ -529,7 +529,7 @@ def test_receive_json_invalid_mode(test_client_factory: TestClientFactory) -> No
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_receive_text_before_accept(test_client_factory: TestClientFactory) -> None:
@@ -540,7 +540,7 @@ def test_receive_text_before_accept(test_client_factory: TestClientFactory) -> N
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_receive_bytes_before_accept(test_client_factory: TestClientFactory) -> None:
@@ -551,7 +551,7 @@ def test_receive_bytes_before_accept(test_client_factory: TestClientFactory) -> 
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_receive_json_before_accept(test_client_factory: TestClientFactory) -> None:
@@ -573,7 +573,7 @@ def test_send_before_accept(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_send_wrong_message_type(test_client_factory: TestClientFactory) -> None:

@@ -2,12 +2,7 @@ from __future__ import annotations
 
 import contextvars
 from contextlib import AsyncExitStack
-from typing import (
-    Any,
-    AsyncGenerator,
-    AsyncIterator,
-    Generator,
-)
+from typing import Any, AsyncGenerator, AsyncIterator, Generator
 
 import anyio
 import pytest

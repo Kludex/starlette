@@ -6,7 +6,7 @@ from typing import Any, Iterator
 import anyio
 import pytest
 
-from starlette.datastructures import Address, State
+from starlette.datastructures import URL, Address, State
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
@@ -592,3 +592,44 @@ async def test_request_stream_called_twice() -> None:
         assert await s2.__anext__()
     with pytest.raises(StopAsyncIteration):
         await s1.__anext__()
+
+
+def test_request_url_outside_starlette_context(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        request.url_for("index")
+
+    client = test_client_factory(app)
+    with pytest.raises(
+        RuntimeError,
+        match="The `url_for` method can only be used inside a Starlette application or with a router.",
+    ):
+        client.get("/")
+
+
+def test_request_url_starlette_context(test_client_factory: TestClientFactory) -> None:
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.routing import Route
+    from starlette.types import ASGIApp
+
+    url_for = None
+
+    async def homepage(request: Request) -> Response:
+        return PlainTextResponse("Hello, world!")
+
+    class CustomMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            nonlocal url_for
+            request = Request(scope, receive)
+            url_for = request.url_for("homepage")
+            await self.app(scope, receive, send)
+
+    app = Starlette(routes=[Route("/home", homepage)], middleware=[Middleware(CustomMiddleware)])
+
+    client = test_client_factory(app)
+    client.get("/home")
+    assert url_for == URL("http://testserver/home")

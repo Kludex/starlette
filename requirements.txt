@@ -3,21 +3,21 @@
 
 # Testing
 coverage==7.6.1
-importlib-metadata==8.4.0
+importlib-metadata==8.5.0
 mypy==1.11.2
-ruff==0.6.3
+ruff==0.6.8
 typing_extensions==4.12.2
 types-contextvars==2.4.7.3
-types-PyYAML==6.0.12.20240808
+types-PyYAML==6.0.12.20240917
 types-dataclasses==0.6.6
-pytest==8.3.2
+pytest==8.3.3
 trio==0.26.2
 
 # Documentation
 mkdocs==1.6.1
-mkdocs-material==9.5.34
+mkdocs-material==9.5.39
 mkautodoc==0.2.0
 
 # Packaging
-build==1.2.1
+build==1.2.2
 twine==5.1.1

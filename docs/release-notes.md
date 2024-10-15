@@ -3,6 +3,18 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.40.0 (October 15, 2024)
+
+This release fixes a Denial of service (DoS) via `multipart/form-data` requests.
+
+You can view the full security advisory:
+[GHSA-f96h-pmfr-66vw](https://github.com/encode/starlette/security/advisories/GHSA-f96h-pmfr-66vw)
+
+#### Fixed
+
+- Add `max_part_size` to `MultiPartParser` to limit the size of parts in `multipart/form-data`
+  requests [fd038f3](https://github.com/encode/starlette/commit/fd038f3070c302bff17ef7d173dbb0b007617733).
+
 ## 0.39.2 (September 29, 2024)
 
 #### Fixed
@@ -118,7 +130,7 @@ toc_depth: 2
 
 #### Fixed
 
-* Upgrade `python-multipart` to `0.0.7` [13e5c26](13e5c26a27f4903924624736abd6131b2da80cc5).
+* Upgrade `python-multipart` to `0.0.7` [13e5c26](http://github.com/encode/starlette/commit/13e5c26a27f4903924624736abd6131b2da80cc5).
 * Avoid duplicate charset on `Content-Type` [#2443](https://github.com/encode/starlette/2443).
 
 ## 0.36.1 (January 23, 2024)

@@ -3,6 +3,12 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.41.0 (October 15, 2024)
+
+#### Added
+
+- Allow to raise `HTTPException` before `websocket.accept()` [#2725](https://github.com/encode/starlette/pull/2725).
+
 ## 0.40.0 (October 15, 2024)
 
 This release fixes a Denial of service (DoS) via `multipart/form-data` requests.

@@ -115,14 +115,30 @@ In order to deal with this behaviour correctly, the middleware stack of a
 
 ## HTTPException
 
-The `HTTPException` class provides a base class that you can use for any
-handled exceptions. The `ExceptionMiddleware` implementation defaults to
-returning plain-text HTTP responses for any `HTTPException`.
+The `HTTPException` class provides a base class that you can use for any handled exceptions.
+The `ExceptionMiddleware` implementation defaults to returning plain-text HTTP responses for any `HTTPException`.
 
 * `HTTPException(status_code, detail=None, headers=None)`
 
-You should only raise `HTTPException` inside routing or endpoints. Middleware
-classes should instead just return appropriate responses directly.
+You should only raise `HTTPException` inside routing or endpoints.
+Middleware classes should instead just return appropriate responses directly.
+
+You can use an `HTTPException` on a WebSocket endpoint in case it's raised before `websocket.accept()`.
+The connection is not upgraded to a WebSocket connection, and the proper HTTP response is returned.
+
+```python
+from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
+from starlette.routing import WebSocketRoute
+from starlette.websockets import WebSocket
+
+
+async def websocket_endpoint(websocket: WebSocket):
+    raise HTTPException(status_code=400, detail="Bad request")
+
+
+app = Starlette(routes=[WebSocketRoute("/ws", websocket_endpoint)])
+```
 
 ## WebSocketException
 

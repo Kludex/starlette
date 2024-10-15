@@ -178,11 +178,7 @@ class WebSocketTestSession:
                 body.append(message["body"])
                 if not message.get("more_body", False):
                     break
-            raise WebSocketDenialResponse(
-                status_code=status_code,
-                headers=headers,
-                content=b"".join(body),
-            )
+            raise WebSocketDenialResponse(status_code=status_code, headers=headers, content=b"".join(body))
 
     def send(self, message: Message) -> None:
         self._receive_queue.put(message)

@@ -63,11 +63,7 @@ router = Router(
         Route("/with_headers", endpoint=with_headers),
         Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse()),
         WebSocketRoute("/runtime_error", endpoint=raise_runtime_error),
-        Route(
-            "/consume_body_in_endpoint_and_handler",
-            endpoint=read_body_and_raise_exc,
-            methods=["POST"],
-        ),
+        Route("/consume_body_in_endpoint_and_handler", endpoint=read_body_and_raise_exc, methods=["POST"]),
     ]
 )
 
@@ -114,13 +110,10 @@ def test_websockets_should_raise(client: TestClient) -> None:
             pass  # pragma: no cover
 
 
-def test_handled_exc_after_response(
-    test_client_factory: TestClientFactory,
-    client: TestClient,
-) -> None:
+def test_handled_exc_after_response(test_client_factory: TestClientFactory, client: TestClient) -> None:
     # A 406 HttpException is raised *after* the response has already been sent.
     # The exception middleware should raise a RuntimeError.
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Caught handled exception, but response already started."):
         client.get("/handled_exc_after_response")
 
     # If `raise_server_exceptions=False` then the test client will still allow
@@ -132,7 +125,7 @@ def test_handled_exc_after_response(
 
 
 def test_force_500_response(test_client_factory: TestClientFactory) -> None:
-    # use a sentinal variable to make sure we actually
+    # use a sentinel variable to make sure we actually
     # make it into the endpoint and don't get a 500
     # from an incorrect ASGI app signature or something
     called = False

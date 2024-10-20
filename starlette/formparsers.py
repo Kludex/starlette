@@ -9,14 +9,14 @@ from urllib.parse import unquote_plus
 from starlette.datastructures import FormData, Headers, UploadFile
 
 try:
-    import multipart
-    from multipart.multipart import parse_options_header
+    import python_multipart as multipart
+    from python_multipart.multipart import parse_options_header
 except ModuleNotFoundError:  # pragma: no cover
     parse_options_header = None  # type: ignore
     multipart = None  # type: ignore
 
 if typing.TYPE_CHECKING:
-    from multipart.multipart import MultipartCallbacks, QuerystringCallbacks
+    from python_multipart.multipart import MultipartCallbacks, QuerystringCallbacks
 
 
 class FormMessage(Enum):

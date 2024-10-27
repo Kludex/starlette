@@ -8,15 +8,20 @@ from urllib.parse import unquote_plus
 
 from starlette.datastructures import FormData, Headers, UploadFile
 
-try:
-    import python_multipart as multipart
-    from python_multipart.multipart import parse_options_header
-except ModuleNotFoundError:  # pragma: no cover
-    parse_options_header = None  # type: ignore
-    multipart = None  # type: ignore
-
 if typing.TYPE_CHECKING:
-    from python_multipart.multipart import MultipartCallbacks, QuerystringCallbacks
+    import multipart
+    from multipart.multipart import MultipartCallbacks, QuerystringCallbacks, parse_options_header
+else:
+    try:
+        try:
+            import python_multipart as multipart
+            from python_multipart.multipart import parse_options_header
+        except ModuleNotFoundError:  # pragma: no cover
+            import multipart
+            from multipart.multipart import parse_options_header
+    except ModuleNotFoundError:  # pragma: no cover
+        multipart = None
+        parse_options_header = None
 
 
 class FormMessage(Enum):

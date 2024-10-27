@@ -12,15 +12,19 @@ from starlette.exceptions import HTTPException
 from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
 from starlette.types import Message, Receive, Scope, Send
 
-try:
-    from python_multipart.multipart import parse_options_header
-except ModuleNotFoundError:  # pragma: no cover
-    parse_options_header = None  # type: ignore
-
-
 if typing.TYPE_CHECKING:
+    from multipart.multipart import parse_options_header
+
     from starlette.applications import Starlette
     from starlette.routing import Router
+else:
+    try:
+        try:
+            from python_multipart.multipart import parse_options_header
+        except ModuleNotFoundError:  # pragma: no cover
+            from multipart.multipart import parse_options_header
+    except ModuleNotFoundError:  # pragma: no cover
+        parse_options_header = None
 
 
 SERVER_PUSH_HEADERS_TO_COPY = {

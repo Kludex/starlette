@@ -3,6 +3,12 @@ hide: navigation
 toc_depth: 2
 ---
 
+## 0.41.2 (October 27, 2024)
+
+#### Fixed
+
+* Revert bump on `python-multipart` on `starlette[full]` extras [#2737](https://github.com/encode/starlette/pull/2737).
+
 ## 0.41.1 (October 24, 2024)
 
 #### Fixed

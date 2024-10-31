@@ -1,7 +1,3 @@
----
-hide: navigation
----
-
 <p align="center">
   <img width="400px" src="/img/starlette.svg#only-light" alt="starlette"/>
   <img width="400px" src="/img/starlette_dark.svg#only-dark" alt="starlette"/>
@@ -52,18 +48,18 @@ It is production-ready, and gives you the following:
 ## Installation
 
 ```shell
-$ pip install starlette
+pip install starlette
 ```
 
 You'll also want to install an ASGI server, such as [uvicorn](https://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://hypercorn.readthedocs.io/en/latest/).
 
 ```shell
-$ pip install uvicorn
+pip install uvicorn
 ```
 
 ## Example
 
-```python title="example.py"
+```python title="main.py"
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -81,10 +77,8 @@ app = Starlette(debug=True, routes=[
 Then run the application...
 
 ```shell
-$ uvicorn example:app
+uvicorn main:app
 ```
-
-For a more complete example, [see here](https://github.com/encode/starlette-example).
 
 ## Dependencies
 
@@ -103,7 +97,7 @@ You can install all of these with `pip install starlette[full]`.
 Starlette is designed to be used either as a complete framework, or as
 an ASGI toolkit. You can use any of its components independently.
 
-```python
+```python title="main.py"
 from starlette.responses import PlainTextResponse
 
 
@@ -113,10 +107,10 @@ async def app(scope, receive, send):
     await response(scope, receive, send)
 ```
 
-Run the `app` application in `example.py`:
+Run the `app` application in `main.py`:
 
 ```shell
-$ uvicorn example:app
+$ uvicorn main:app
 INFO: Started server process [11509]
 INFO: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```

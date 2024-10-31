@@ -21,7 +21,6 @@ theme:
     repo: fontawesome/brands/github
   features:
     - content.code.copy
-    - navigation.tabs
     - toc.follow
 
 repo_name: encode/starlette
@@ -29,7 +28,7 @@ repo_url: https://github.com/encode/starlette
 edit_uri: edit/master/docs/
 
 nav:
-  - Home: "index.md"
+  - Introduction: "index.md"
   - Features:
       - Applications: "applications.md"
       - Requests: "requests.md"

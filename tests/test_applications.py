@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -531,6 +533,48 @@ def test_middleware_stack_init(test_client_factory: TestClientFactory) -> None:
     test_client_factory(app).get("/foo")
 
     assert SimpleInitializableMiddleware.counter == 2
+
+
+def test_middleware_args(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+
+    class MiddlewareWithArgs:
+        def __init__(self, app: ASGIApp, arg: str) -> None:
+            self.app = app
+            self.arg = arg
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            calls.append(self.arg)
+            await self.app(scope, receive, send)
+
+    app = Starlette()
+    app.add_middleware(MiddlewareWithArgs, "foo")
+    app.add_middleware(MiddlewareWithArgs, "bar")
+
+    with test_client_factory(app):
+        pass
+
+    assert calls == ["bar", "foo"]
+
+
+def test_middleware_factory(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+
+    def _middleware_factory(app: ASGIApp, arg: str) -> ASGIApp:
+        async def _app(scope: Scope, receive: Receive, send: Send) -> None:
+            calls.append(arg)
+            await app(scope, receive, send)
+
+        return _app
+
+    app = Starlette()
+    app.add_middleware(_middleware_factory, arg="foo")
+    app.add_middleware(_middleware_factory, arg="bar")
+
+    with test_client_factory(app):
+        pass
+
+    assert calls == ["bar", "foo"]
 
 
 def test_lifespan_app_subclass() -> None:

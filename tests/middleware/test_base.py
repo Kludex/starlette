@@ -10,7 +10,7 @@ from anyio.abc import TaskStatus
 
 from starlette.applications import Starlette
 from starlette.background import BackgroundTask
-from starlette.middleware import Middleware, _MiddlewareClass
+from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import PlainTextResponse, Response, StreamingResponse
@@ -232,7 +232,7 @@ class CustomMiddlewareUsingBaseHTTPMiddleware(BaseHTTPMiddleware):
 )
 def test_contextvars(
     test_client_factory: TestClientFactory,
-    middleware_cls: type[_MiddlewareClass[Any]],
+    middleware_cls: _MiddlewareFactory[Any],
 ) -> None:
     # this has to be an async endpoint because Starlette calls run_in_threadpool
     # on sync endpoints which has it's own set of peculiarities w.r.t propagating

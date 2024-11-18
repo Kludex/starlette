@@ -33,10 +33,8 @@ async def run_until_first_complete(*args: tuple[typing.Callable, dict]) -> None:
 
 
 async def run_in_threadpool(func: typing.Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
-    if kwargs:  # pragma: no cover
-        # run_sync doesn't accept 'kwargs', so bind them in here
-        func = functools.partial(func, **kwargs)
-    return await anyio.to_thread.run_sync(func, *args)
+    func = functools.partial(func, *args, **kwargs)
+    return await anyio.to_thread.run_sync(func)
 
 
 class _StopIteration(Exception):

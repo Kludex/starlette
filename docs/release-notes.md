@@ -2,6 +2,14 @@
 toc_depth: 2
 ---
 
+## 0.41.3 (November 18, 2024)
+
+#### Fixed
+
+* Exclude the query parameters from the `scope[raw_path]` on the `TestClient` [#2716](https://github.com/encode/starlette/pull/2716).
+* Replace `dict` by `Mapping` on `HTTPException.headers` [#2749](https://github.com/encode/starlette/pull/2749).
+* Correct middleware argument passing and improve factory pattern [#2752](https://github.com/encode/starlette/2752).
+
 ## 0.41.2 (October 27, 2024)
 
 #### Fixed

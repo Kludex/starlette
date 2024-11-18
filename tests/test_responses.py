@@ -4,7 +4,7 @@ import datetime as dt
 import time
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterator
+from typing import Any, AsyncGenerator, AsyncIterator, Iterator
 
 import anyio
 import pytest
@@ -12,7 +12,7 @@ import pytest
 from starlette import status
 from starlette.background import BackgroundTask
 from starlette.datastructures import Headers
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.testclient import TestClient
 from starlette.types import Message, Receive, Scope, Send
@@ -540,6 +540,39 @@ async def test_streaming_response_stops_if_receiving_http_disconnect() -> None:
     with anyio.move_on_after(1) as cancel_scope:
         await response({}, receive_disconnect, send)
     assert not cancel_scope.cancel_called, "Content streaming should stop itself."
+
+
+@pytest.mark.anyio
+async def test_streaming_response_on_client_disconnects() -> None:
+    chunks = bytearray()
+    streamed = False
+
+    async def receive_disconnect() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        nonlocal streamed
+        if message["type"] == "http.response.body":
+            if not streamed:
+                chunks.extend(message.get("body", b""))
+                streamed = True
+            else:
+                raise OSError
+
+    async def stream_indefinitely() -> AsyncGenerator[bytes, None]:
+        while True:
+            await anyio.sleep(0)
+            yield b"chunk"
+
+    stream = stream_indefinitely()
+    response = StreamingResponse(content=stream)
+
+    with anyio.move_on_after(1) as cancel_scope:
+        with pytest.raises(ClientDisconnect):
+            await response({"asgi": {"spec_version": "2.4"}}, receive_disconnect, send)
+    assert not cancel_scope.cancel_called, "Content streaming should stop itself."
+    assert chunks == b"chunk"
+    await stream.aclose()
 
 
 README = """\

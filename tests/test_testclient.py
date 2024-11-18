@@ -378,3 +378,27 @@ def test_merge_url(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app, base_url="http://testserver/api/v1/")
     response = client.get("/bar")
     assert response.text == "/api/v1/bar"
+
+
+def test_raw_path_with_querystring(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response(scope.get("raw_path"))
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/hello-world", params={"foo": "bar"})
+    assert response.content == b"/hello-world"
+
+
+def test_websocket_raw_path_without_params(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        await websocket.accept()
+        raw_path = scope.get("raw_path")
+        assert raw_path is not None
+        await websocket.send_bytes(raw_path)
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/hello-world", params={"foo": "bar"}) as websocket:
+        data = websocket.receive_bytes()
+        assert data == b"/hello-world"

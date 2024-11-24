@@ -27,7 +27,7 @@ async def websocket_endpoint(websocket):
     await websocket.send_text('Hello, websocket!')
     await websocket.close()
 
-@asyncontextmanager
+@asynccontextmanager
 async def lifespan(app):
     print('Startup')
     yield

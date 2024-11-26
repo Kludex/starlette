@@ -14,7 +14,7 @@ P = ParamSpec("P")
 
 
 class _MiddlewareFactory(Protocol[P]):
-    def __call__(self, app: ASGIApp, *args: P.args, **kwargs: P.kwargs) -> ASGIApp: ...  # pragma: no cover
+    def __call__(self, app: ASGIApp, /, *args: P.args, **kwargs: P.kwargs) -> ASGIApp: ...  # pragma: no cover
 
 
 class Middleware:

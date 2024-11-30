@@ -77,7 +77,7 @@ def test_wsgi_post(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.post("/", json={"example": 123})
     assert response.status_code == 200
-    assert response.text == '{"example": 123}'
+    assert response.text == '{"example":123}'
 
 
 def test_wsgi_exception(test_client_factory: TestClientFactory) -> None:

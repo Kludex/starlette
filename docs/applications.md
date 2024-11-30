@@ -45,10 +45,14 @@ routes = [
 app = Starlette(debug=True, routes=routes, lifespan=lifespan)
 ```
 
-### Instantiating the application
-
-::: starlette.applications.Starlette
-    :docstring:
+??? abstract "API Reference"
+    ::: starlette.applications.Starlette
+        options:
+            parameter_headings: false
+            show_root_heading: true
+            heading_level: 3
+            filters:
+                - "__init__"
 
 ### Storing state on the app instance
 

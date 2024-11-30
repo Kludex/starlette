@@ -25,34 +25,7 @@ P = ParamSpec("P")
 
 
 class Starlette:
-    """
-    Creates an application instance.
-
-    **Parameters:**
-
-    * **debug** - Boolean indicating if debug tracebacks should be returned on errors.
-    * **routes** - A list of routes to serve incoming HTTP and WebSocket requests.
-    * **middleware** - A list of middleware to run for every request. A starlette
-    application will always automatically include two middleware classes.
-    `ServerErrorMiddleware` is added as the very outermost middleware, to handle
-    any uncaught errors occurring anywhere in the entire stack.
-    `ExceptionMiddleware` is added as the very innermost middleware, to deal
-    with handled exception cases occurring in the routing or endpoints.
-    * **exception_handlers** - A mapping of either integer status codes,
-    or exception class types onto callables which handle the exceptions.
-    Exception handler callables should be of the form
-    `handler(request, exc) -> response` and may be either standard functions, or
-    async functions.
-    * **on_startup** - A list of callables to run on application startup.
-    Startup handler callables do not take any arguments, and may be either
-    standard functions, or async functions.
-    * **on_shutdown** - A list of callables to run on application shutdown.
-    Shutdown handler callables do not take any arguments, and may be either
-    standard functions, or async functions.
-    * **lifespan** - A lifespan context function, which can be used to perform
-    startup and shutdown tasks. This is a newer style that replaces the
-    `on_startup` and `on_shutdown` handlers. Use one or the other, not both.
-    """
+    """Creates an Starlette application."""
 
     def __init__(
         self: AppType,
@@ -64,6 +37,32 @@ class Starlette:
         on_shutdown: typing.Sequence[typing.Callable[[], typing.Any]] | None = None,
         lifespan: Lifespan[AppType] | None = None,
     ) -> None:
+        """Initializes the application.
+
+        Parameters:
+            debug: Boolean indicating if debug tracebacks should be returned on errors.
+            routes: A list of routes to serve incoming HTTP and WebSocket requests.
+            middleware: A list of middleware to run for every request. A starlette
+                application will always automatically include two middleware classes.
+                `ServerErrorMiddleware` is added as the very outermost middleware, to handle
+                any uncaught errors occurring anywhere in the entire stack.
+                `ExceptionMiddleware` is added as the very innermost middleware, to deal
+                with handled exception cases occurring in the routing or endpoints.
+            exception_handlers: A mapping of either integer status codes,
+                or exception class types onto callables which handle the exceptions.
+                Exception handler callables should be of the form
+                `handler(request, exc) -> response` and may be either standard functions, or
+                async functions.
+            on_startup: A list of callables to run on application startup.
+                Startup handler callables do not take any arguments, and may be either
+                standard functions, or async functions.
+            on_shutdown: A list of callables to run on application shutdown.
+                Shutdown handler callables do not take any arguments, and may be either
+                standard functions, or async functions.
+            lifespan: A lifespan context function, which can be used to perform
+                startup and shutdown tasks. This is a newer style that replaces the
+                `on_startup` and `on_shutdown` handlers. Use one or the other, not both.
+        """
         # The lifespan context function is a newer style that replaces
         # on_startup / on_shutdown handlers. Use one or the other, not both.
         assert lifespan is None or (

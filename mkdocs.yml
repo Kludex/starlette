@@ -55,9 +55,32 @@ nav:
       - Contributing: "contributing.md"
 
 markdown_extensions:
-  - mkautodoc
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
+
+watch:
+  - starlette
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_section_style: list
+            show_root_toc_entry: false
+            members_order: source
+            separate_signature: true
+            filters: ["!^_"]
+            docstring_options:
+              ignore_init_summary: true
+            merge_init_into_class: true
+            parameter_headings: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+          import:
+            - url: https://docs.python.org/3/objects.inv

@@ -155,7 +155,7 @@ class StaticFiles:
                 full_path = os.path.abspath(joined_path)
             else:
                 full_path = os.path.realpath(joined_path)
-            directory = os.path.realpath(directory)
+                directory = os.path.realpath(directory)
             if os.path.commonpath([full_path, directory]) != directory:
                 # Don't allow misbehaving clients to break out of the static files
                 # directory.

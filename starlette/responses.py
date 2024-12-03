@@ -353,7 +353,7 @@ class FileResponse(Response):
         http_range = headers.get("range")
         http_if_range = headers.get("if-range")
 
-        if http_range is None or (http_if_range is not None and not self._should_use_range(http_if_range, stat_result)):
+        if http_range is None or (http_if_range is not None and not self._should_use_range(http_if_range)):
             await self._handle_simple(send, send_header_only)
         else:
             try:
@@ -438,11 +438,8 @@ class FileResponse(Response):
                     }
                 )
 
-    @classmethod
-    def _should_use_range(cls, http_if_range: str, stat_result: os.stat_result) -> bool:
-        etag_base = str(stat_result.st_mtime) + "-" + str(stat_result.st_size)
-        etag = f'"{md5_hexdigest(etag_base.encode(), usedforsecurity=False)}"'
-        return http_if_range == formatdate(stat_result.st_mtime, usegmt=True) or http_if_range == etag
+    def _should_use_range(self, http_if_range: str) -> bool:
+        return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]
 
     @staticmethod
     def _parse_range_header(http_range: str, file_size: int) -> list[tuple[int, int]]:

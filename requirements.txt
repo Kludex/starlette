@@ -5,20 +5,20 @@
 coverage==7.6.1
 importlib-metadata==8.5.0
 mypy==1.13.0
-ruff==0.7.2
+ruff==0.8.1
 typing_extensions==4.12.2
 types-contextvars==2.4.7.3
 types-PyYAML==6.0.12.20240917
 types-dataclasses==0.6.6
-pytest==8.3.3
+pytest==8.3.4
 trio==0.27.0
 
 # Documentation
 mkdocs==1.6.1
-mkdocs-material==9.5.43
+mkdocs-material==9.5.47
 mkdocstrings-python<1.12.0; python_version < "3.9"
 mkdocstrings-python==1.12.2; python_version >= "3.9"
 
 # Packaging
 build==1.2.2.post1
-twine==5.1.1
+twine==6.0.1

@@ -133,7 +133,7 @@ in isolation.
 [asgi]: https://asgi.readthedocs.io/en/latest/
 [httpx]: https://www.python-httpx.org/
 [jinja2]: https://jinja.palletsprojects.com/
-[python-multipart]: https://andrew-d.github.io/python-multipart/
+[python-multipart]: https://multipart.fastapiexpert.com/
 [itsdangerous]: https://itsdangerous.palletsprojects.com/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation

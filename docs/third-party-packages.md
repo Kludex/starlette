@@ -7,10 +7,10 @@ Here are some of those third party packages:
 
 ### Apitally
 
-<a href="https://github.com/apitally/python-client" target="_blank">GitHub</a> |
+<a href="https://github.com/apitally/apitally-py" target="_blank">GitHub</a> |
 <a href="https://docs.apitally.io/frameworks/starlette" target="_blank">Documentation</a>
 
-Simple traffic, error and response time monitoring plus API key and permission management for Starlette (and other frameworks).
+Analytics, request logging and monitoring for REST APIs built with Starlette (and other frameworks).
 
 ### Authlib
 

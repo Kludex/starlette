@@ -98,7 +98,7 @@ class Jinja2Templates:
         self.context_processors = context_processors or []
         if directory is not None:
             self.env = self._create_env(directory, **env_options)
-        elif env is not None:
+        elif env is not None:  # pragma: no branch
             self.env = env
 
         self._setup_env_defaults(self.env)

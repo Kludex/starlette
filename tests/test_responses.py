@@ -265,7 +265,7 @@ async def test_file_response_on_head_method(tmp_path: Path) -> None:
             assert "content-disposition" in headers
             assert "last-modified" in headers
             assert "etag" in headers
-        elif message["type"] == "http.response.body":
+        elif message["type"] == "http.response.body":  # pragma: no branch
             assert message["body"] == b""
             assert message["more_body"] is False
 
@@ -749,7 +749,7 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
     async def send(message: Message) -> None:
         if message["type"] == "http.response.start":
             start_message.update(message)
-        elif message["type"] == "http.response.body":
+        elif message["type"] == "http.response.body":  # pragma: no branch
             received_chunks.append(message["body"])
 
     await app({"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-15,20-35,35-50")]}, receive, send)

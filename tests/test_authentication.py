@@ -210,8 +210,8 @@ def test_invalid_decorator_usage() -> None:
     with pytest.raises(Exception):
 
         @requires("authenticated")
-        def foo() -> None:
-            pass  # pragma: no cover
+        def foo() -> None:  # pragma: no cover
+            pass
 
 
 def test_user_interface(test_client_factory: TestClientFactory) -> None:

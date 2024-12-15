@@ -797,7 +797,7 @@ def test_raise_on_startup(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         async def _send(message: Message) -> None:
             nonlocal startup_failed
-            if message["type"] == "lifespan.startup.failed":
+            if message["type"] == "lifespan.startup.failed":  # pragma: no branch
                 startup_failed = True
             return await send(message)
 

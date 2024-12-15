@@ -73,7 +73,7 @@ def test_multi_tasks_failure_avoids_next_execution(
     def increment() -> None:
         nonlocal TASK_COUNTER
         TASK_COUNTER += 1
-        if TASK_COUNTER == 1:
+        if TASK_COUNTER == 1:  # pragma: no branch
             raise Exception("task failed")
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:

@@ -1,6 +1,11 @@
 <p align="center">
-  <a href="https://www.starlette.io/"><img width="420px" src="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette.svg" alt='starlette'></a>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette_dark.svg" width="420px">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette.svg" width="420px">
+    <img alt="starlette-logo" src="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette_dark.svg">
+  </picture>
 </p>
+
 <p align="center">
     <em>✨ The little ASGI framework that shines. ✨</em>
 </p>

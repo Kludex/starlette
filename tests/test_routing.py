@@ -883,7 +883,7 @@ class Endpoint:
             id="staticmethod",
         ),
         pytest.param(Endpoint(), "Endpoint", id="object"),
-        pytest.param(lambda request: ..., "<lambda>", id="lambda"),
+        pytest.param(lambda request: ..., "<lambda>", id="lambda"),  # pragma: no branch
     ],
 )
 def test_route_name(endpoint: typing.Callable[..., Response], expected_name: str) -> None:

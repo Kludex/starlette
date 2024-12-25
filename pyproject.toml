@@ -87,7 +87,6 @@ filterwarnings = [
     "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: path is deprecated.*:DeprecationWarning:certifi",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
-    "ignore: The `allow_redirects` argument is deprecated. Use `follow_redirects` instead.:DeprecationWarning",
     "ignore: 'cgi' is deprecated and slated for removal in Python 3.13:DeprecationWarning",
     "ignore: You seem to already have a custom sys.excepthook handler installed. I'll skip installing Trio's custom handler, but this means MultiErrors will not show full tracebacks.:RuntimeWarning",
     # TODO: This warning appeared when we bumped anyio to 4.4.0.

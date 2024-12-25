@@ -216,6 +216,21 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     assert second_resp.content == b""
 
 
+def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    first_resp = client.get("/example.txt")
+    assert first_resp.status_code == 200
+    assert first_resp.headers["etag"] != '"123"'
+    second_resp = client.get("/example.txt", headers={"if-none-match": '"123"'})
+    assert second_resp.status_code == 200
+    assert second_resp.content == b"<file content>"
+
+
 def test_staticfiles_304_with_last_modified_compare_last_req(
     tmpdir: Path, test_client_factory: TestClientFactory
 ) -> None:

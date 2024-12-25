@@ -74,7 +74,7 @@ class WebSocketEndpoint:
                 if message["type"] == "websocket.receive":
                     data = await self.decode(websocket, message)
                     await self.on_receive(websocket, data)
-                elif message["type"] == "websocket.disconnect":
+                elif message["type"] == "websocket.disconnect":  # pragma: no branch
                     close_code = int(message.get("code") or status.WS_1000_NORMAL_CLOSURE)
                     break
         except Exception as exc:

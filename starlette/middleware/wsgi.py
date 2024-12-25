@@ -121,7 +121,7 @@ class WSGIResponder:
         exc_info: typing.Any = None,
     ) -> None:
         self.exc_info = exc_info
-        if not self.response_started:
+        if not self.response_started:  # pragma: no branch
             self.response_started = True
             status_code_string, _ = status.split(" ", 1)
             status_code = int(status_code_string)

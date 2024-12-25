@@ -2,6 +2,16 @@
 toc_depth: 2
 ---
 
+## 0.43.0 (December 25, 2024)
+
+#### Removed
+
+* Remove deprecated `allow_redirects` argument from `TestClient` [#2808](https://github.com/encode/starlette/pull/2808).
+
+#### Added
+
+* Make UUID path parameter conversion more flexible [#2806](https://github.com/encode/starlette/pull/2806).
+
 ## 0.42.0 (December 14, 2024)
 
 #### Added

@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Iterator
+from uuid import UUID
 
 import pytest
 
@@ -66,6 +67,29 @@ def test_default_float_convertor(test_client_factory: TestClientFactory, param: 
         return JSONResponse({"float": param})
 
     app = Router(routes=[Route("/{param:float}", endpoint=float_convertor)])
+
+    client = test_client_factory(app)
+    response = client.get(f"/{param}")
+    assert response.status_code == status_code
+
+
+@pytest.mark.parametrize(
+    "param, status_code",
+    [
+        ("00000000-aaaa-ffff-9999-000000000000", 200),
+        ("00000000aaaaffff9999000000000000", 200),
+        ("00000000-AAAA-FFFF-9999-000000000000", 200),
+        ("00000000AAAAFFFF9999000000000000", 200),
+        ("not-a-uuid", 404),
+    ],
+)
+def test_default_uuid_convertor(test_client_factory: TestClientFactory, param: str, status_code: int) -> None:
+    def uuid_convertor(request: Request) -> JSONResponse:
+        param = request.path_params["param"]
+        assert isinstance(param, UUID)
+        return JSONResponse("ok")
+
+    app = Router(routes=[Route("/{param:uuid}", endpoint=uuid_convertor)])
 
     client = test_client_factory(app)
     response = client.get(f"/{param}")

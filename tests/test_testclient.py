@@ -282,6 +282,19 @@ def test_client(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"host": "testclient", "port": 50000}
 
 
+def test_client_custom_client(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        client = scope.get("client")
+        assert client is not None
+        host, port = client
+        response = JSONResponse({"host": host, "port": port})
+        await response(scope, receive, send)
+
+    client = test_client_factory(app, client=("192.168.0.1", 3000))
+    response = client.get("/")
+    assert response.json() == {"host": "192.168.0.1", "port": 3000}
+
+
 @pytest.mark.parametrize("param", ("2020-07-14T00:00:00+00:00", "España", "voilà"))
 def test_query_params(test_client_factory: TestClientFactory, param: str) -> None:
     def homepage(request: Request) -> Response:

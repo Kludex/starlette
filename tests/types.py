@@ -19,6 +19,7 @@ if TYPE_CHECKING:
             cookies: httpx._types.CookieTypes | None = None,
             headers: dict[str, str] | None = None,
             follow_redirects: bool = True,
+            client: tuple[str, int] = ("testclient", 50000),
         ) -> TestClient: ...
 else:  # pragma: no cover
 

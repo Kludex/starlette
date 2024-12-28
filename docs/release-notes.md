@@ -2,6 +2,13 @@
 toc_depth: 2
 ---
 
+## 0.44.0 (December 28, 2024)
+
+#### Added
+
+* Add `client` parameter to `TestClient` [#2810](https://github.com/encode/starlette/pull/2810).
+* Add `max_part_size` parameter to `Request.form()` [#2815](https://github.com/encode/starlette/pull/2815).
+
 ## 0.43.0 (December 25, 2024)
 
 #### Removed

@@ -1,4 +1,13 @@
 
+??? abstract "API Reference"
+    ::: starlette.applications.Starlette
+        options:
+            parameter_headings: false
+            show_root_heading: true
+            heading_level: 3
+            filters:
+                - "__init__"
+
 Starlette includes an application class `Starlette` that nicely ties together all of
 its other functionality.
 
@@ -44,15 +53,6 @@ routes = [
 
 app = Starlette(debug=True, routes=routes, lifespan=lifespan)
 ```
-
-??? abstract "API Reference"
-    ::: starlette.applications.Starlette
-        options:
-            parameter_headings: false
-            show_root_heading: true
-            heading_level: 3
-            filters:
-                - "__init__"
 
 ### Storing state on the app instance
 

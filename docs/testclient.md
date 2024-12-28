@@ -3,6 +3,7 @@
     ::: starlette.testclient.TestClient
         options:
             parameter_headings: false
+            show_bases: false
             show_root_heading: true
             heading_level: 3
             filters:

@@ -9,15 +9,11 @@ which provides SQLAlchemy core support against a range of different database dri
 Here's a complete example, that includes table definitions, configuring a `database.Database`
 instance, and a couple of endpoints that interact with the database.
 
-**.env**
-
-```ini
+```ini title=".env"
 DATABASE_URL=sqlite:///test.db
 ```
 
-**app.py**
-
-```python
+```python title="app.py"
 import contextlib
 
 import databases

@@ -81,6 +81,7 @@ plugins:
             merge_init_into_class: true
             parameter_headings: true
             show_signature_annotations: true
+            show_source: false
             signature_crossrefs: true
           import:
             - url: https://docs.python.org/3/objects.inv

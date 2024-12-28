@@ -123,8 +123,8 @@ The `ExceptionMiddleware` implementation defaults to returning plain-text HTTP r
 You should only raise `HTTPException` inside routing or endpoints.
 Middleware classes should instead just return appropriate responses directly.
 
-You can use an `HTTPException` on a WebSocket endpoint in case it's raised before `websocket.accept()`.
-The connection is not upgraded to a WebSocket connection, and the proper HTTP response is returned.
+You can use an `HTTPException` on a WebSocket endpoint. In case it's raised before `websocket.accept()`
+the connection is not upgraded to a WebSocket connection, and the proper HTTP response is returned.
 
 ```python
 from starlette.applications import Starlette

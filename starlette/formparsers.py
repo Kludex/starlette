@@ -9,8 +9,8 @@ from urllib.parse import unquote_plus
 from starlette.datastructures import FormData, Headers, UploadFile
 
 if typing.TYPE_CHECKING:
-    import multipart
-    from multipart.multipart import MultipartCallbacks, QuerystringCallbacks, parse_options_header
+    import python_multipart as multipart
+    from python_multipart.multipart import MultipartCallbacks, QuerystringCallbacks, parse_options_header
 else:
     try:
         try:

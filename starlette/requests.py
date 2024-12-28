@@ -13,7 +13,7 @@ from starlette.formparsers import FormParser, MultiPartException, MultiPartParse
 from starlette.types import Message, Receive, Scope, Send
 
 if typing.TYPE_CHECKING:
-    from multipart.multipart import parse_options_header
+    from python_multipart.multipart import parse_options_header
 
     from starlette.applications import Starlette
     from starlette.routing import Router

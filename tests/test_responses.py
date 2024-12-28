@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import datetime as dt
 import time
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import Any, AsyncGenerator, AsyncIterator, Iterator
+from typing import Any
 
 import anyio
 import pytest

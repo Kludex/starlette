@@ -1,5 +1,5 @@
+from collections.abc import Iterator
 from contextvars import ContextVar
-from typing import Iterator
 
 import anyio
 import pytest

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import contextvars
+from collections.abc import AsyncGenerator, AsyncIterator, Generator
 from contextlib import AsyncExitStack
-from typing import Any, AsyncGenerator, AsyncIterator, Generator
+from typing import Any
 
 import anyio
 import pytest

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import http.cookies
 import json
 import os
@@ -17,7 +18,6 @@ from urllib.parse import quote
 import anyio
 import anyio.to_thread
 
-from starlette._compat import md5_hexdigest
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
@@ -328,7 +328,7 @@ class FileResponse(Response):
         content_length = str(stat_result.st_size)
         last_modified = formatdate(stat_result.st_mtime, usegmt=True)
         etag_base = str(stat_result.st_mtime) + "-" + str(stat_result.st_size)
-        etag = f'"{md5_hexdigest(etag_base.encode(), usedforsecurity=False)}"'
+        etag = f'"{hashlib.md5(etag_base.encode(), usedforsecurity=False).hexdigest()}"'
 
         self.headers.setdefault("content-length", content_length)
         self.headers.setdefault("last-modified", last_modified)

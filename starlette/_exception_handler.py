@@ -9,8 +9,8 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, ExceptionHandler, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
-ExceptionHandlers = typing.Dict[typing.Any, ExceptionHandler]
-StatusHandlers = typing.Dict[int, ExceptionHandler]
+ExceptionHandlers = dict[typing.Any, ExceptionHandler]
+StatusHandlers = dict[int, ExceptionHandler]
 
 
 def _lookup_exception_handler(exc_handlers: ExceptionHandlers, exc: Exception) -> ExceptionHandler | None:

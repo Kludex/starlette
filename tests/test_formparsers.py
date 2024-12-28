@@ -17,7 +17,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
-class ForceMultipartDict(typing.Dict[typing.Any, typing.Any]):
+class ForceMultipartDict(dict[typing.Any, typing.Any]):
     def __bool__(self) -> bool:
         return True
 

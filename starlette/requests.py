@@ -230,7 +230,7 @@ class Request(HTTPConnection):
                     self._stream_consumed = True
                 if body:
                     yield body
-            elif message["type"] == "http.disconnect":
+            elif message["type"] == "http.disconnect":  # pragma: no branch
                 self._is_disconnected = True
                 raise ClientDisconnect()
         yield b""
@@ -250,7 +250,7 @@ class Request(HTTPConnection):
         return self._json
 
     async def _get_form(self, *, max_files: int | float = 1000, max_fields: int | float = 1000) -> FormData:
-        if self._form is None:
+        if self._form is None:  # pragma: no branch
             assert (
                 parse_options_header is not None
             ), "The `python-multipart` library must be installed to use form parsing."

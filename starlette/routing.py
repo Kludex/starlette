@@ -196,7 +196,7 @@ class BaseRoute:
             if scope["type"] == "http":
                 response = PlainTextResponse("Not Found", status_code=404)
                 await response(scope, receive, send)
-            elif scope["type"] == "websocket":
+            elif scope["type"] == "websocket":  # pragma: no branch
                 websocket_close = WebSocketClose()
                 await websocket_close(scope, receive, send)
             return
@@ -398,7 +398,7 @@ class Mount(BaseRoute):
 
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
         path_params: dict[str, typing.Any]
-        if scope["type"] in ("http", "websocket"):
+        if scope["type"] in ("http", "websocket"):  # pragma: no branch
             root_path = scope.get("root_path", "")
             route_path = get_route_path(scope)
             match = self.path_regex.match(route_path)
@@ -481,7 +481,7 @@ class Host(BaseRoute):
         return getattr(self.app, "routes", [])
 
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
-        if scope["type"] in ("http", "websocket"):
+        if scope["type"] in ("http", "websocket"):  # pragma:no branch
             headers = Headers(scope=scope)
             host = headers.get("host", "").split(":")[0]
             match = self.host_regex.match(host)

@@ -13,7 +13,7 @@ class GZipMiddleware:
         self.compresslevel = compresslevel
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "http":
+        if scope["type"] == "http":  # pragma: no branch
             headers = Headers(scope=scope)
             if "gzip" in headers.get("Accept-Encoding", ""):
                 responder = GZipResponder(self.app, self.minimum_size, compresslevel=self.compresslevel)
@@ -88,7 +88,7 @@ class GZipResponder:
                 await self.send(self.initial_message)
                 await self.send(message)
 
-        elif message_type == "http.response.body":
+        elif message_type == "http.response.body":  # pragma: no branch
             # Remaining body in streaming GZip response.
             body = message.get("body", b"")
             more_body = message.get("more_body", False)

@@ -113,12 +113,12 @@ state with `disconnected = await request.is_disconnected()`.
 
 Request files are normally sent as multipart form data (`multipart/form-data`).
 
-Signature: `request.form(max_files=1000, max_fields=1000)`
+Signature: `request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024)`
 
-You can configure the number of maximum fields or files with the parameters `max_files` and `max_fields`:
+You can configure the number of maximum fields or files with the parameters `max_files` and `max_fields`; and part size using `max_part_size`:
 
 ```python
-async with request.form(max_files=1000, max_fields=1000):
+async with request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024):
     ...
 ```
 

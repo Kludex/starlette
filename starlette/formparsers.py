@@ -123,7 +123,6 @@ class FormParser:
 
 class MultiPartParser:
     max_file_size = 1024 * 1024  # 1MB
-    max_part_size = 1024 * 1024  # 1MB
 
     def __init__(
         self,
@@ -132,6 +131,7 @@ class MultiPartParser:
         *,
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
+        max_part_size: int = 1024 * 1024,  # 1MB
     ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
@@ -148,6 +148,7 @@ class MultiPartParser:
         self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: list[MultipartPart] = []
         self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
+        self.max_part_size = max_part_size
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()

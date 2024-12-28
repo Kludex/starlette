@@ -1,4 +1,13 @@
 
+??? abstract "API Reference"
+    ::: starlette.testclient.TestClient
+        options:
+            parameter_headings: false
+            show_root_heading: true
+            heading_level: 3
+            filters:
+                - "__init__"
+
 The test client allows you to make requests against your ASGI application,
 using the `httpx` library.
 
@@ -69,10 +78,21 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
     not be triggered when the `TestClient` is instantiated. You can learn more about it
     [here](lifespan.md#running-lifespan-in-tests).
 
+### Change client address
+
+By default, the TestClient will set the client host to `"testserver"` and the port to `50000`.
+
+You can change the client address by setting the `client` attribute of the `TestClient` instance:
+
+```python
+client = TestClient(app, client=('http://localhost', 8000))
+```
+
 ### Selecting the Async backend
 
 `TestClient` takes arguments `backend` (a string) and `backend_options` (a dictionary).
-These options are passed to `anyio.start_blocking_portal()`. See the [anyio documentation](https://anyio.readthedocs.io/en/stable/basics.html#backend-options)
+These options are passed to `anyio.start_blocking_portal()`.
+See the [anyio documentation](https://anyio.readthedocs.io/en/stable/basics.html#backend-options)
 for more information about the accepted backend options.
 By default, `asyncio` is used with default options.
 

@@ -11,7 +11,10 @@ if [ -z $GITHUB_ACTIONS ]; then
     scripts/check
 fi
 
-${PREFIX}coverage run -m pytest $@
+# TODO: Remove this custom logic, and add `branch = true` to the `[coverage.run]` when we drop support for Python 3.9.
+# See https://github.com/encode/starlette/issues/2452.
+branch_option=$(python -c 'import sys; print("--branch" if sys.version_info >= (3, 10) else "")')
+${PREFIX}coverage run $branch_option -m pytest $@
 
 if [ -z $GITHUB_ACTIONS ]; then
     scripts/coverage

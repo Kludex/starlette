@@ -255,19 +255,25 @@ def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> N
 
 
 def test_websocket_not_block_on_close(test_client_factory: TestClientFactory) -> None:
+    cancelled = False
+
     def app(scope: Scope) -> ASGIInstance:
         async def asgi(receive: Receive, send: Send) -> None:
-            websocket = WebSocket(scope, receive=receive, send=send)
-            await websocket.accept()
-            while True:
-                await anyio.sleep(0.1)
+            nonlocal cancelled
+            try:
+                websocket = WebSocket(scope, receive=receive, send=send)
+                await websocket.accept()
+                await anyio.sleep_forever()
+            except anyio.get_cancelled_exc_class():
+                cancelled = True
+                raise
 
         return asgi
 
     client = test_client_factory(app)  # type: ignore
-    with client.websocket_connect("/") as websocket:
+    with client.websocket_connect("/"):
         ...
-    assert websocket.should_close.is_set()
+    assert cancelled
 
 
 def test_client(test_client_factory: TestClientFactory) -> None:

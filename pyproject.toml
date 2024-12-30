@@ -68,7 +68,6 @@ combine-as-imports = true
 
 [tool.mypy]
 strict = true
-python_version = "3.9"
 
 [[tool.mypy.overrides]]
 module = "starlette.testclient.*"

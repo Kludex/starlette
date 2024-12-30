@@ -2,6 +2,17 @@
 toc_depth: 2
 ---
 
+## 0.45.1 (December 30, 2024)
+
+#### Fixed
+
+* Close `MemoryObjectReceiveStream` left unclosed upon exception in `BaseHTTPMiddleware` children [#2813](https://github.com/encode/starlette/pull/2813).
+* Collect errors more reliably from the WebSocket logic on the `TestClient` [#2814](https://github.com/encode/starlette/pull/2814).
+
+#### Refactor
+
+* Use a pair of memory object streams instead of two queues on the `TestClient` [#2829](https://github.com/encode/starlette/pull/2829).
+
 ## 0.45.0 (December 29, 2024)
 
 #### Removed

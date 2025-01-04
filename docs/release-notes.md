@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 0.45.2 (January 4, 2025)
+
+#### Fixed
+
+* Make `create_memory_object_stream` compatible with old anyio versions once again, and bump anyio minimum version to 3.6.2 [#2833](https://github.com/encode/starlette/pull/2833).
+
 ## 0.45.1 (December 30, 2024)
 
 #### Fixed

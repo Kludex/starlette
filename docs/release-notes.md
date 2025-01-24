@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 0.45.3 (January 24, 2025)
+
+#### Fixed
+
+* Turn directory into string on `lookup_path` on commonpath comparison [#2851](https://github.com/encode/starlette/pull/2851).
+
 ## 0.45.2 (January 4, 2025)
 
 #### Fixed

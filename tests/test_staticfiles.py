@@ -576,16 +576,15 @@ def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
     assert exc_info.value.detail == "Not Found"
 
 
-def test_staticfiles_self_symlinks(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
-    statics_path = os.path.join(tmpdir, "statics")
-    os.mkdir(statics_path)
+def test_staticfiles_self_symlinks(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    statics_path = tmp_path / "statics"
+    statics_path.mkdir()
 
-    source_file_path = os.path.join(statics_path, "index.html")
-    with open(source_file_path, "w") as file:
-        file.write("<h1>Hello</h1>")
+    source_file_path = statics_path / "index.html"
+    source_file_path.write_text("<h1>Hello</h1>", encoding="utf-8")
 
-    statics_symlink_path = os.path.join(tmpdir, "statics_symlink")
-    os.symlink(statics_path, statics_symlink_path)
+    statics_symlink_path = tmp_path / "statics_symlink"
+    statics_symlink_path.symlink_to(statics_path)
 
     app = StaticFiles(directory=statics_symlink_path, follow_symlink=True)
     client = test_client_factory(app)

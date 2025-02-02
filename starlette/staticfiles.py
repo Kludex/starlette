@@ -77,9 +77,9 @@ class StaticFiles:
             assert spec is not None, f"Package {package!r} could not be found."
             assert spec.origin is not None, f"Package {package!r} could not be found."
             package_directory = os.path.normpath(os.path.join(spec.origin, "..", statics_dir))
-            assert os.path.isdir(
-                package_directory
-            ), f"Directory '{statics_dir!r}' in package {package!r} could not be found."
+            assert os.path.isdir(package_directory), (
+                f"Directory '{statics_dir!r}' in package {package!r} could not be found."
+            )
             directories.append(package_directory)
 
         return directories

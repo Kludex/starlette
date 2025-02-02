@@ -65,9 +65,9 @@ class Starlette:
         """
         # The lifespan context function is a newer style that replaces
         # on_startup / on_shutdown handlers. Use one or the other, not both.
-        assert lifespan is None or (
-            on_startup is None and on_shutdown is None
-        ), "Use either 'lifespan' or 'on_startup'/'on_shutdown', not both."
+        assert lifespan is None or (on_startup is None and on_shutdown is None), (
+            "Use either 'lifespan' or 'on_startup'/'on_shutdown', not both."
+        )
 
         self.debug = debug
         self.state = State()

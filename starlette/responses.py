@@ -529,9 +529,6 @@ class FileResponse(Response):
         return (
             content_length,
             lambda start, end: (
-                f"--{boundary}\n"
-                f"Content-Type: {content_type}\n"
-                f"Content-Range: bytes {start}-{end-1}/{max_size}\n"
-                "\n"
+                f"--{boundary}\nContent-Type: {content_type}\nContent-Range: bytes {start}-{end - 1}/{max_size}\n\n"
             ).encode("latin-1"),
         )

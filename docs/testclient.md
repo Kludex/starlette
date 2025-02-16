@@ -86,7 +86,7 @@ By default, the TestClient will set the client host to `"testserver"` and the po
 You can change the client address by setting the `client` attribute of the `TestClient` instance:
 
 ```python
-client = TestClient(app, client=('http://localhost', 8000))
+client = TestClient(app, client=('localhost', 8000))
 ```
 
 ### Selecting the Async backend

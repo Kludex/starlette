@@ -18,6 +18,7 @@ from urllib.parse import quote
 import anyio
 import anyio.to_thread
 
+from starlette._utils import collapse_excgroups
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
@@ -258,14 +259,15 @@ class StreamingResponse(Response):
             except OSError:
                 raise ClientDisconnect()
         else:
-            async with anyio.create_task_group() as task_group:
+            with collapse_excgroups():
+                async with anyio.create_task_group() as task_group:
 
-                async def wrap(func: typing.Callable[[], typing.Awaitable[None]]) -> None:
-                    await func()
-                    task_group.cancel_scope.cancel()
+                    async def wrap(func: typing.Callable[[], typing.Awaitable[None]]) -> None:
+                        await func()
+                        task_group.cancel_scope.cancel()
 
-                task_group.start_soon(wrap, partial(self.stream_response, send))
-                await wrap(partial(self.listen_for_disconnect, receive))
+                    task_group.start_soon(wrap, partial(self.stream_response, send))
+                    await wrap(partial(self.listen_for_disconnect, receive))
 
         if self.background is not None:
             await self.background()

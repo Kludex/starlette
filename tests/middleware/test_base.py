@@ -297,6 +297,29 @@ async def test_run_background_tasks_even_if_client_disconnects() -> None:
     assert background_task_run.is_set()
 
 
+def test_run_background_tasks_raise_exceptions(test_client_factory: TestClientFactory) -> None:
+    # test for https://github.com/encode/starlette/issues/2625
+
+    async def sleep_and_set() -> None:
+        await anyio.sleep(0.1)
+        raise ValueError("TEST")
+
+    async def endpoint_with_background_task(_: Request) -> PlainTextResponse:
+        return PlainTextResponse(background=BackgroundTask(sleep_and_set))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", endpoint_with_background_task)],
+    )
+
+    client = test_client_factory(app)
+    with pytest.raises(ValueError, match="TEST"):
+        client.get("/")
+
+
 @pytest.mark.anyio
 async def test_do_not_block_on_background_tasks() -> None:
     response_complete = anyio.Event()

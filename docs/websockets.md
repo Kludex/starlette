@@ -123,3 +123,38 @@ and then close the connection.
 
 This requires the ASGI server to support the WebSocket Denial Response
 extension. If it is not supported a `RuntimeError` will be raised.
+
+In the context of `Starlette`, you can also use the `HTTPException` to achieve the same result.
+
+```python
+from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
+from starlette.routing import WebSocketRoute
+from starlette.websockets import WebSocket
+
+
+def is_authorized(subprotocols: list[str]):
+    if len(subprotocols) != 2:
+        return False
+    if subprotocols[0] != "Authorization":
+        return False
+    # Here we are hard coding the token, in a real application you would validate the token
+    # against a database or an external service.
+    if subprotocols[1] != "token":
+        return False
+    return True
+
+
+async def websocket_endpoint(websocket: WebSocket):
+    subprotocols = websocket.scope["subprotocols"]
+    if not is_authorized(subprotocols):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    await websocket.accept("Authorization")
+    await websocket.send_text("Hello, world!")
+    await websocket.close()
+
+
+app = Starlette(debug=True, routes=[WebSocketRoute("/ws", websocket_endpoint)])
+```
+
+<!-- Test the above with `npx wscat -c ws://localhost:8000/ws -s Authorization -s token` -->

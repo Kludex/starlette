@@ -16,7 +16,7 @@ trio==0.28.0
 # Documentation
 black==25.1.0
 mkdocs==1.6.1
-mkdocs-material==9.6.1
+mkdocs-material==9.6.5
 mkdocstrings-python==1.13.0
 
 # Packaging

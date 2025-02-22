@@ -48,6 +48,7 @@ nav:
       - Server Push: "server-push.md"
       - Exceptions: "exceptions.md"
       - Configuration: "config.md"
+      - Thread Pool: "threadpool.md"
       - Test Client: "testclient.md"
   - Release Notes: "release-notes.md"
   - Community:

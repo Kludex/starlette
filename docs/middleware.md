@@ -178,6 +178,14 @@ Handles GZip responses for any request that includes `"gzip"` in the `Accept-Enc
 
 The middleware will handle both standard and streaming responses.
 
+??? info "Buffer on streaming responses"
+    On streaming responses, the middleware will buffer the response before compressing it.
+
+    The idea is that we don't want to compress every small chunk of data, as it would be inefficient.
+    Instead, we buffer the response until it reaches a certain size, and then compress it.
+
+    This may cause a delay in the response, as the middleware waits for the buffer to fill up before compressing it.
+
 ```python
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -198,7 +206,8 @@ The following arguments are supported:
 * `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
 * `compresslevel` - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to `9`. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.
 
-The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being encoded twice.
+The middleware won't GZip responses that already have either a `Content-Encoding` set, to prevent them from
+being encoded twice, or a `Content-Type` set to `text/event-stream`, to avoid compressing server-sent events.
 
 ## BaseHTTPMiddleware
 

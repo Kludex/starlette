@@ -5,6 +5,8 @@ import typing
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
+
 
 class GZipMiddleware:
     def __init__(self, app: ASGIApp, minimum_size: int = 500, compresslevel: int = 9) -> None:
@@ -30,6 +32,7 @@ class GZipResponder:
         self.initial_message: Message = {}
         self.started = False
         self.content_encoding_set = False
+        self.content_type_is_excluded = False
         self.gzip_buffer = io.BytesIO()
         self.gzip_file = gzip.GzipFile(mode="wb", fileobj=self.gzip_buffer, compresslevel=compresslevel)
 
@@ -46,7 +49,8 @@ class GZipResponder:
             self.initial_message = message
             headers = Headers(raw=self.initial_message["headers"])
             self.content_encoding_set = "content-encoding" in headers
-        elif message_type == "http.response.body" and self.content_encoding_set:
+            self.content_type_is_excluded = headers.get("content-type", "").startswith(DEFAULT_EXCLUDED_CONTENT_TYPES)
+        elif message_type == "http.response.body" and (self.content_encoding_set or self.content_type_is_excluded):
             if not self.started:
                 self.started = True
                 await self.send(self.initial_message)

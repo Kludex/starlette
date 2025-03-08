@@ -58,7 +58,7 @@ $ pip install uvicorn
 
 ## Example
 
-```python title="example.py"
+```python title="main.py"
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -77,10 +77,8 @@ app = Starlette(debug=True, routes=routes)
 Then run the application using Uvicorn:
 
 ```shell
-$ uvicorn example:app
+$ uvicorn main:app
 ```
-
-For a more complete example, see [encode/starlette-example](https://github.com/encode/starlette-example).
 
 ## Dependencies
 

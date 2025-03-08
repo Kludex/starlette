@@ -77,9 +77,9 @@ class StaticFiles:
             assert spec is not None, f"Package {package!r} could not be found."
             assert spec.origin is not None, f"Package {package!r} could not be found."
             package_directory = os.path.normpath(os.path.join(spec.origin, "..", statics_dir))
-            assert os.path.isdir(
-                package_directory
-            ), f"Directory '{statics_dir!r}' in package {package!r} could not be found."
+            assert os.path.isdir(package_directory), (
+                f"Directory '{statics_dir!r}' in package {package!r} could not be found."
+            )
             directories.append(package_directory)
 
         return directories
@@ -153,12 +153,12 @@ class StaticFiles:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:
                 full_path = os.path.abspath(joined_path)
+                directory = os.path.abspath(directory)
             else:
                 full_path = os.path.realpath(joined_path)
                 directory = os.path.realpath(directory)
-            if os.path.commonpath([full_path, directory]) != directory:
-                # Don't allow misbehaving clients to break out of the static files
-                # directory.
+            if os.path.commonpath([full_path, directory]) != str(directory):
+                # Don't allow misbehaving clients to break out of the static files directory.
                 continue
             try:
                 return full_path, os.stat(full_path)

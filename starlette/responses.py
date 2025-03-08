@@ -261,12 +261,12 @@ class StreamingResponse(Response):
         else:
             async with create_collapsing_task_group() as task_group:
 
-                async def wrap(func: typing.Callable[[], typing.Awaitable[None]]) -> None:
-                    await func()
-                    task_group.cancel_scope.cancel()
+                    async def wrap(func: typing.Callable[[], typing.Awaitable[None]]) -> None:
+                        await func()
+                        task_group.cancel_scope.cancel()
 
-                task_group.start_soon(wrap, partial(self.stream_response, send))
-                await wrap(partial(self.listen_for_disconnect, receive))
+                    task_group.start_soon(wrap, partial(self.stream_response, send))
+                    await wrap(partial(self.listen_for_disconnect, receive))
 
         if self.background is not None:
             await self.background()
@@ -530,9 +530,6 @@ class FileResponse(Response):
         return (
             content_length,
             lambda start, end: (
-                f"--{boundary}\n"
-                f"Content-Type: {content_type}\n"
-                f"Content-Range: bytes {start}-{end-1}/{max_size}\n"
-                "\n"
+                f"--{boundary}\nContent-Type: {content_type}\nContent-Range: bytes {start}-{end - 1}/{max_size}\n\n"
             ).encode("latin-1"),
         )

@@ -122,7 +122,10 @@ class FormParser:
 
 
 class MultiPartParser:
-    max_file_size = 1024 * 1024  # 1MB
+    spool_max_size = 1024 * 1024  # 1MB
+    """The maximum size of the spooled temporary file used to store file data."""
+    max_part_size = 1024 * 1024  # 1MB
+    """The maximum size of a part in the multipart request."""
 
     def __init__(
         self,
@@ -202,7 +205,7 @@ class MultiPartParser:
             if self._current_files > self.max_files:
                 raise MultiPartException(f"Too many files. Maximum number of files is {self.max_files}.")
             filename = _user_safe_decode(options[b"filename"], self._charset)
-            tempfile = SpooledTemporaryFile(max_size=self.max_file_size)
+            tempfile = SpooledTemporaryFile(max_size=self.spool_max_size)
             self._files_to_close_on_error.append(tempfile)
             self._current_part.file = UploadFile(
                 file=tempfile,  # type: ignore[arg-type]

@@ -2,6 +2,37 @@
 toc_depth: 2
 ---
 
+## 0.46.0 (February 22, 2025)
+
+#### Added
+
+* `GZipMiddleware`: Make sure `Vary` header is always added if a response can be compressed [#2865](https://github.com/encode/starlette/pull/2865).
+
+#### Fixed
+
+* Raise exception from background task on BaseHTTPMiddleware [#2812](https://github.com/encode/starlette/pull/2812).
+* `GZipMiddleware`: Don't compress on server sent events [#2871](https://github.com/encode/starlette/pull/2871).
+
+#### Changed
+
+* `MultiPartParser`: Rename `max_file_size` to `spool_max_size` [#2780](https://github.com/encode/starlette/pull/2780).
+
+#### Deprecated
+
+* Add deprecated warning to `TestClient(timeout=...)` [#2840](https://github.com/encode/starlette/pull/2840).
+
+## 0.45.3 (January 24, 2025)
+
+#### Fixed
+
+* Turn directory into string on `lookup_path` on commonpath comparison [#2851](https://github.com/encode/starlette/pull/2851).
+
+## 0.45.2 (January 4, 2025)
+
+#### Fixed
+
+* Make `create_memory_object_stream` compatible with old anyio versions once again, and bump anyio minimum version to 3.6.2 [#2833](https://github.com/encode/starlette/pull/2833).
+
 ## 0.45.1 (December 30, 2024)
 
 #### Fixed

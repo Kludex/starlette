@@ -257,9 +257,9 @@ class Request(HTTPConnection):
         max_part_size: int = 1024 * 1024,
     ) -> FormData:
         if self._form is None:  # pragma: no branch
-            assert (
-                parse_options_header is not None
-            ), "The `python-multipart` library must be installed to use form parsing."
+            assert parse_options_header is not None, (
+                "The `python-multipart` library must be installed to use form parsing."
+            )
             content_type_header = self.headers.get("Content-Type")
             content_type: bytes
             content_type, _ = parse_options_header(content_type_header)

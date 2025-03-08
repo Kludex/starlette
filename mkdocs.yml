@@ -48,19 +48,25 @@ nav:
       - Server Push: "server-push.md"
       - Exceptions: "exceptions.md"
       - Configuration: "config.md"
+      - Thread Pool: "threadpool.md"
       - Test Client: "testclient.md"
   - Release Notes: "release-notes.md"
   - Community:
       - Third Party Packages: "third-party-packages.md"
       - Contributing: "contributing.md"
+  - Sponsorship: "sponsorship.md"
 
 markdown_extensions:
+  - attr_list
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 watch:
   - starlette

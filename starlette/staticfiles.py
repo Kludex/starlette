@@ -153,6 +153,7 @@ class StaticFiles:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:
                 full_path = os.path.abspath(joined_path)
+                directory = os.path.abspath(directory)
             else:
                 full_path = os.path.realpath(joined_path)
                 directory = os.path.realpath(directory)

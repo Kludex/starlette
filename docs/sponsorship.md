@@ -109,7 +109,7 @@ We currently manage sponsorships *exclusively* through **GitHub Sponsors**. This
 
 <div style="text-align: center; margin: 2rem 0;">
     <h3>🤝 Custom Sponsor</h3>
-    <p>Looking for something different? <a href="mailto:your-email@example.com">Contact us</a> to discuss custom sponsorship options!</p>
+    <p>Looking for something different? <a href="mailto:marcelotryle@gmail.com">Contact us</a> to discuss custom sponsorship options!</p>
 </div>
 
 ## Current Sponsors

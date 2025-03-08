@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 0.46.1 (March 8, 2025)
+
+#### Fixed
+
+* Allow relative directory path when `follow_symlinks=True` [#2896](https://github.com/encode/starlette/pull/2896).
+
 ## 0.46.0 (February 22, 2025)
 
 #### Added

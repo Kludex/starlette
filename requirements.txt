@@ -2,22 +2,22 @@
 -e .[full]
 
 # Testing
-coverage==7.6.12
+coverage==7.8.0
 importlib-metadata==8.6.1
 mypy==1.15.0
-ruff==0.9.9
+ruff==0.11.2
 typing_extensions==4.12.2
 types-contextvars==2.4.7.3
-types-PyYAML==6.0.12.20241230
+types-PyYAML==6.0.12.20250326
 types-dataclasses==0.6.6
-pytest==8.3.4
+pytest==8.3.5
 trio==0.29.0
 
 # Documentation
 black==25.1.0
 mkdocs==1.6.1
-mkdocs-material==9.6.6
-mkdocstrings-python==1.16.2
+mkdocs-material==9.6.11
+mkdocstrings-python==1.16.8
 
 # Packaging
 build==1.2.2.post1

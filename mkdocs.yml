@@ -2,6 +2,12 @@ site_name: Starlette
 site_description: The little ASGI library that shines.
 site_url: https://www.starlette.io
 
+repo_name: encode/starlette
+repo_url: https://github.com/encode/starlette
+edit_uri: edit/master/docs/
+
+strict: true
+
 theme:
   name: "material"
   custom_dir: docs/overrides
@@ -22,10 +28,6 @@ theme:
   features:
     - content.code.copy
     - toc.follow
-
-repo_name: encode/starlette
-repo_url: https://github.com/encode/starlette
-edit_uri: edit/master/docs/
 
 nav:
   - Introduction: "index.md"

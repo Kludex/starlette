@@ -48,7 +48,7 @@ It is production-ready, and gives you the following:
 
 ## Sponsorship
 
-Starlette is an open-source project that relies on community support. You can help us maintain and improve the framework by [becoming a sponsor](/sponsorship).
+Starlette is an open-source project that relies on community support. You can help us maintain and improve the framework by [becoming a sponsor](sponsorship.md).
 
 <div style="text-align: center; margin: 2rem 0;">
     <h4 style="color: #ffd700; margin-bottom: 1rem;">🏆 Our Gold Sponsor</h4>

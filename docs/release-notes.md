@@ -2,6 +2,13 @@
 toc_depth: 2
 ---
 
+## 0.46.2 (April 13, 2025)
+
+#### Fixed
+
+* Prevents reraising of exception from BaseHttpMiddleware [#2911](https://github.com/encode/starlette/pull/2911)
+* Use correct index on backwards compatible logic in `TemplateResponse` [#2909](https://github.com/encode/starlette/pull/2909).
+
 ## 0.46.1 (March 8, 2025)
 
 #### Fixed

@@ -320,6 +320,27 @@ def test_run_background_tasks_raise_exceptions(test_client_factory: TestClientFa
         client.get("/")
 
 
+def test_exception_can_be_caught(test_client_factory: TestClientFactory) -> None:
+    async def error_endpoint(_: Request) -> None:
+        raise ValueError("TEST")
+
+    async def catches_error(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        try:
+            return await call_next(request)
+        except ValueError as exc:
+            return PlainTextResponse(content=str(exc), status_code=400)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=catches_error)],
+        routes=[Route("/", error_endpoint)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.status_code == 400
+    assert response.text == "TEST"
+
+
 @pytest.mark.anyio
 async def test_do_not_block_on_background_tasks() -> None:
     response_complete = anyio.Event()

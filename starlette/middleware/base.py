@@ -104,6 +104,7 @@ class BaseHTTPMiddleware:
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
         app_exc: Exception | None = None
+        exception_already_raised = False
 
         async def call_next(request: Request) -> Response:
             async def receive_or_disconnect() -> Message:
@@ -150,6 +151,8 @@ class BaseHTTPMiddleware:
                     message = await recv_stream.receive()
             except anyio.EndOfStream:
                 if app_exc is not None:
+                    nonlocal exception_already_raised
+                    exception_already_raised = True
                     raise app_exc
                 raise RuntimeError("No response returned.")
 
@@ -176,8 +179,7 @@ class BaseHTTPMiddleware:
                 await response(scope, wrapped_receive, send)
                 response_sent.set()
                 recv_stream.close()
-
-        if app_exc is not None:
+        if app_exc is not None and not exception_already_raised:
             raise app_exc
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:

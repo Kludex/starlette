@@ -61,7 +61,7 @@ class ExceptionMiddleware:
 
         await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
 
-    def http_exception(self, request: Request, exc: Exception) -> Response:
+    async def http_exception(self, request: Request, exc: Exception) -> Response:
         assert isinstance(exc, HTTPException)
         if exc.status_code in {204, 304}:
             return Response(status_code=exc.status_code, headers=exc.headers)

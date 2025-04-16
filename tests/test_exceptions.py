@@ -1,6 +1,8 @@
+import typing
 from collections.abc import Generator
 
 import pytest
+from pytest import MonkeyPatch
 
 from starlette.exceptions import HTTPException, WebSocketException
 from starlette.middleware.exceptions import ExceptionMiddleware
@@ -184,3 +186,22 @@ def test_request_in_app_and_handler_is_the_same_object(client: TestClient) -> No
     response = client.post("/consume_body_in_endpoint_and_handler", content=b"Hello!")
     assert response.status_code == 422
     assert response.json() == {"body": "Hello!"}
+
+
+def test_http_exception_does_not_use_threadpool(client: TestClient, monkeypatch: MonkeyPatch) -> None:
+    """
+    Verify that handling HTTPException does not invoke run_in_threadpool,
+    confirming the handler correctly runs in the main async context.
+    """
+    from starlette import _exception_handler
+
+    # Replace run_in_threadpool with a function that raises an error
+    def mock_run_in_threadpool(*args: typing.Any, **kwargs: typing.Any) -> None:
+        pytest.fail("run_in_threadpool should not be called for HTTP exceptions")  # pragma: no cover
+
+    # Apply the monkeypatch only during this test
+    monkeypatch.setattr(_exception_handler, "run_in_threadpool", mock_run_in_threadpool)
+
+    # This should succeed because http_exception is async and won't use run_in_threadpool
+    response = client.get("/not_acceptable")
+    assert response.status_code == 406

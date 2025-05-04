@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import sys
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from http.cookies import SimpleCookie
@@ -370,16 +371,35 @@ def test_set_cookie(test_client_factory: TestClientFactory, monkeypatch: pytest.
             secure=True,
             httponly=True,
             samesite="none",
+            partitioned=True if sys.version_info >= (3, 14) else False,
         )
         await response(scope, receive, send)
+
+    partitioned_text = "Partitioned; " if sys.version_info >= (3, 14) else ""
 
     client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
     assert (
         response.headers["set-cookie"] == "mycookie=myvalue; Domain=localhost; expires=Thu, 22 Jan 2037 12:00:10 GMT; "
-        "HttpOnly; Max-Age=10; Path=/; SameSite=none; Secure"
+        f"HttpOnly; Max-Age=10; {partitioned_text}Path=/; SameSite=none; Secure"
     )
+
+
+@pytest.mark.skipif(sys.version_info >= (3, 14), reason="Only relevant for <3.14")
+def test_set_cookie_raises_for_invalid_python_version(
+    test_client_factory: TestClientFactory,
+) -> None:  # pragma: no cover
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response("Hello, world!", media_type="text/plain")
+        with pytest.raises(ValueError):
+            response.set_cookie("mycookie", "myvalue", partitioned=True)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+    assert response.headers.get("set-cookie") is None
 
 
 def test_set_cookie_path_none(test_client_factory: TestClientFactory) -> None:

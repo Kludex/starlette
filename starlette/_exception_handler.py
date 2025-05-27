@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import typing
+from typing import Any
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, ExceptionHandler, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
-ExceptionHandlers = dict[typing.Any, ExceptionHandler]
+ExceptionHandlers = dict[Any, ExceptionHandler]
 StatusHandlers = dict[int, ExceptionHandler]
 
 

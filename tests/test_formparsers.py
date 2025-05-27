@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
-import typing
-from contextlib import nullcontext as does_not_raise
+from contextlib import AbstractContextManager, nullcontext as does_not_raise
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -17,7 +17,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
-class ForceMultipartDict(dict[typing.Any, typing.Any]):
+class ForceMultipartDict(dict[Any, Any]):
     def __bool__(self) -> bool:
         return True
 
@@ -29,7 +29,7 @@ FORCE_MULTIPART = ForceMultipartDict()
 async def app(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: dict[str, typing.Any] = {}
+    output: dict[str, Any] = {}
     for key, value in data.items():
         if isinstance(value, UploadFile):
             content = await value.read()
@@ -49,7 +49,7 @@ async def app(scope: Scope, receive: Receive, send: Send) -> None:
 async def multi_items_app(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: dict[str, list[typing.Any]] = {}
+    output: dict[str, list[Any]] = {}
     for key, value in data.multi_items():
         if key not in output:
             output[key] = []
@@ -73,7 +73,7 @@ async def multi_items_app(scope: Scope, receive: Receive, send: Send) -> None:
 async def app_with_headers(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: dict[str, typing.Any] = {}
+    output: dict[str, Any] = {}
     for key, value in data.items():
         if isinstance(value, UploadFile):
             content = await value.read()
@@ -108,7 +108,7 @@ def make_app_max_parts(max_files: int = 1000, max_fields: int = 1000, max_part_s
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         data = await request.form(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size)
-        output: dict[str, typing.Any] = {}
+        output: dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, UploadFile):
                 content = await value.read()
@@ -422,7 +422,7 @@ def test_user_safe_decode_ignores_wrong_charset() -> None:
 )
 def test_missing_boundary_parameter(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -450,7 +450,7 @@ def test_missing_boundary_parameter(
 )
 def test_missing_name_parameter_on_content_disposition(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -478,7 +478,7 @@ def test_missing_name_parameter_on_content_disposition(
 )
 def test_too_many_fields_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -505,7 +505,7 @@ def test_too_many_fields_raise(
 )
 def test_too_many_files_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -532,7 +532,7 @@ def test_too_many_files_raise(
 )
 def test_too_many_files_single_field_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -561,7 +561,7 @@ def test_too_many_files_single_field_raise(
 )
 def test_too_many_files_and_fields_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -592,7 +592,7 @@ def test_too_many_files_and_fields_raise(
 )
 def test_max_fields_is_customizable_low_raises(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -622,7 +622,7 @@ def test_max_fields_is_customizable_low_raises(
 )
 def test_max_files_is_customizable_low_raises(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -673,7 +673,7 @@ def test_max_fields_is_customizable_high(test_client_factory: TestClientFactory)
 )
 def test_max_part_size_exceeds_limit(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -713,7 +713,7 @@ def test_max_part_size_exceeds_limit(
 )
 def test_max_part_size_exceeds_custom_limit(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)

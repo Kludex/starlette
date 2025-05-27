@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import typing
+from collections.abc import AsyncGenerator, Awaitable, Mapping
+from typing import Any, Callable, TypeVar
 
 import anyio
 
@@ -9,9 +10,9 @@ from starlette.requests import ClientDisconnect, Request
 from starlette.responses import AsyncContentStream, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
-DispatchFunction = typing.Callable[[Request, RequestResponseEndpoint], typing.Awaitable[Response]]
-T = typing.TypeVar("T")
+RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
+DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
+T = TypeVar("T")
 
 
 class _CachedRequest(Request):
@@ -113,7 +114,7 @@ class BaseHTTPMiddleware:
 
                 async with anyio.create_task_group() as task_group:
 
-                    async def wrap(func: typing.Callable[[], typing.Awaitable[T]]) -> T:
+                    async def wrap(func: Callable[[], Awaitable[T]]) -> T:
                         result = await func()
                         task_group.cancel_scope.cancel()
                         return result
@@ -158,7 +159,7 @@ class BaseHTTPMiddleware:
 
             assert message["type"] == "http.response.start"
 
-            async def body_stream() -> typing.AsyncGenerator[bytes, None]:
+            async def body_stream() -> AsyncGenerator[bytes, None]:
                 async for message in recv_stream:
                     assert message["type"] == "http.response.body"
                     body = message.get("body", b"")
@@ -191,9 +192,9 @@ class _StreamingResponse(Response):
         self,
         content: AsyncContentStream,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
-        info: typing.Mapping[str, typing.Any] | None = None,
+        info: Mapping[str, Any] | None = None,
     ) -> None:
         self.info = info
         self.body_iterator = content

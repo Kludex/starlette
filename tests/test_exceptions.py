@@ -1,5 +1,5 @@
-import typing
 from collections.abc import Generator
+from typing import Any
 
 import pytest
 from pytest import MonkeyPatch
@@ -196,7 +196,7 @@ def test_http_exception_does_not_use_threadpool(client: TestClient, monkeypatch:
     from starlette import _exception_handler
 
     # Replace run_in_threadpool with a function that raises an error
-    def mock_run_in_threadpool(*args: typing.Any, **kwargs: typing.Any) -> None:
+    def mock_run_in_threadpool(*args: Any, **kwargs: Any) -> None:
         pytest.fail("run_in_threadpool should not be called for HTTP exceptions")  # pragma: no cover
 
     # Apply the monkeypatch only during this test

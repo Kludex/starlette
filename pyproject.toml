@@ -91,7 +91,7 @@ source_pkgs = ["starlette", "tests"]
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
-    "if typing.TYPE_CHECKING:",
-    "@typing.overload",
+    "if TYPE_CHECKING:",
+    "@overload",
     "raise NotImplementedError",
 ]

@@ -6,10 +6,19 @@ import io
 import json
 import math
 import sys
-import typing
 import warnings
+from collections.abc import Awaitable, Generator, Iterable, Mapping, MutableMapping, Sequence
 from concurrent.futures import Future
+from contextlib import AbstractContextManager
 from types import GeneratorType
+from typing import (
+    Any,
+    Callable,
+    Literal,
+    TypedDict,
+    Union,
+    cast,
+)
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -34,14 +43,14 @@ except ModuleNotFoundError:  # pragma: no cover
         "You can install this with:\n"
         "    $ pip install httpx\n"
     )
-_PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+_PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
-ASGIInstance = typing.Callable[[Receive, Send], typing.Awaitable[None]]
-ASGI2App = typing.Callable[[Scope], ASGIInstance]
-ASGI3App = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
+ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
+ASGI2App = Callable[[Scope], ASGIInstance]
+ASGI3App = Callable[[Scope, Receive, Send], Awaitable[None]]
 
 
-_RequestData = typing.Mapping[str, typing.Union[str, typing.Iterable[str], bytes]]
+_RequestData = Mapping[str, Union[str, Iterable[str], bytes]]
 
 
 def _is_asgi3(app: ASGI2App | ASGI3App) -> TypeGuard[ASGI3App]:
@@ -63,9 +72,9 @@ class _WrapASGI2:
         await instance(receive, send)
 
 
-class _AsyncBackend(typing.TypedDict):
+class _AsyncBackend(TypedDict):
     backend: str
-    backend_options: dict[str, typing.Any]
+    backend_options: dict[str, Any]
 
 
 class _Upgrade(Exception):
@@ -111,7 +120,7 @@ class WebSocketTestSession:
             self.exit_stack = stack.pop_all()
             return self
 
-    def __exit__(self, *args: typing.Any) -> bool | None:
+    def __exit__(self, *args: Any) -> bool | None:
         return self.exit_stack.__exit__(*args)
 
     async def _run(self, *, task_status: anyio.abc.TaskStatus[anyio.CancelScope]) -> None:
@@ -155,7 +164,7 @@ class WebSocketTestSession:
     def send_bytes(self, data: bytes) -> None:
         self.send({"type": "websocket.receive", "bytes": data})
 
-    def send_json(self, data: typing.Any, mode: typing.Literal["text", "binary"] = "text") -> None:
+    def send_json(self, data: Any, mode: Literal["text", "binary"] = "text") -> None:
         text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
         if mode == "text":
             self.send({"type": "websocket.receive", "text": text})
@@ -171,14 +180,14 @@ class WebSocketTestSession:
     def receive_text(self) -> str:
         message = self.receive()
         self._raise_on_close(message)
-        return typing.cast(str, message["text"])
+        return cast(str, message["text"])
 
     def receive_bytes(self) -> bytes:
         message = self.receive()
         self._raise_on_close(message)
-        return typing.cast(bytes, message["bytes"])
+        return cast(bytes, message["bytes"])
 
-    def receive_json(self, mode: typing.Literal["text", "binary"] = "text") -> typing.Any:
+    def receive_json(self, mode: Literal["text", "binary"] = "text") -> Any:
         message = self.receive()
         self._raise_on_close(message)
         if mode == "text":
@@ -197,7 +206,7 @@ class _TestClientTransport(httpx.BaseTransport):
         root_path: str = "",
         *,
         client: tuple[str, int],
-        app_state: dict[str, typing.Any],
+        app_state: dict[str, Any],
     ) -> None:
         self.app = app
         self.raise_server_exceptions = raise_server_exceptions
@@ -233,12 +242,12 @@ class _TestClientTransport(httpx.BaseTransport):
         # Include other request headers.
         headers += [(key.lower().encode(), value.encode()) for key, value in request.headers.multi_items()]
 
-        scope: dict[str, typing.Any]
+        scope: dict[str, Any]
 
         if scheme in {"ws", "wss"}:
             subprotocol = request.headers.get("sec-websocket-protocol", None)
             if subprotocol is None:
-                subprotocols: typing.Sequence[str] = []
+                subprotocols: Sequence[str] = []
             else:
                 subprotocols = [value.strip() for value in subprotocol.split(",")]
             scope = {
@@ -277,7 +286,7 @@ class _TestClientTransport(httpx.BaseTransport):
         request_complete = False
         response_started = False
         response_complete: anyio.Event
-        raw_kwargs: dict[str, typing.Any] = {"stream": io.BytesIO()}
+        raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
         template = None
         context = None
 
@@ -368,8 +377,8 @@ class TestClient(httpx.Client):
         base_url: str = "http://testserver",
         raise_server_exceptions: bool = True,
         root_path: str = "",
-        backend: typing.Literal["asyncio", "trio"] = "asyncio",
-        backend_options: dict[str, typing.Any] | None = None,
+        backend: Literal["asyncio", "trio"] = "asyncio",
+        backend_options: dict[str, Any] | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         headers: dict[str, str] | None = None,
         follow_redirects: bool = True,
@@ -379,10 +388,10 @@ class TestClient(httpx.Client):
         if _is_asgi3(app):
             asgi_app = app
         else:
-            app = typing.cast(ASGI2App, app)  # type: ignore[assignment]
+            app = cast(ASGI2App, app)  # type: ignore[assignment]
             asgi_app = _WrapASGI2(app)  # type: ignore[arg-type]
         self.app = asgi_app
-        self.app_state: dict[str, typing.Any] = {}
+        self.app_state: dict[str, Any] = {}
         transport = _TestClientTransport(
             self.app,
             portal_factory=self._portal_factory,
@@ -403,7 +412,7 @@ class TestClient(httpx.Client):
         )
 
     @contextlib.contextmanager
-    def _portal_factory(self) -> typing.Generator[anyio.abc.BlockingPortal, None, None]:
+    def _portal_factory(self) -> Generator[anyio.abc.BlockingPortal, None, None]:
         if self.portal is not None:
             yield self.portal
         else:
@@ -418,14 +427,14 @@ class TestClient(httpx.Client):
         content: httpx._types.RequestContent | None = None,
         data: _RequestData | None = None,
         files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
+        json: Any = None,
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         if timeout is not httpx.USE_CLIENT_DEFAULT:
             warnings.warn(
@@ -460,7 +469,7 @@ class TestClient(httpx.Client):
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().get(
             url,
@@ -483,7 +492,7 @@ class TestClient(httpx.Client):
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().options(
             url,
@@ -506,7 +515,7 @@ class TestClient(httpx.Client):
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().head(
             url,
@@ -526,14 +535,14 @@ class TestClient(httpx.Client):
         content: httpx._types.RequestContent | None = None,
         data: _RequestData | None = None,
         files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
+        json: Any = None,
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().post(
             url,
@@ -557,14 +566,14 @@ class TestClient(httpx.Client):
         content: httpx._types.RequestContent | None = None,
         data: _RequestData | None = None,
         files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
+        json: Any = None,
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().put(
             url,
@@ -588,14 +597,14 @@ class TestClient(httpx.Client):
         content: httpx._types.RequestContent | None = None,
         data: _RequestData | None = None,
         files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
+        json: Any = None,
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().patch(
             url,
@@ -622,7 +631,7 @@ class TestClient(httpx.Client):
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().delete(
             url,
@@ -638,8 +647,8 @@ class TestClient(httpx.Client):
     def websocket_connect(
         self,
         url: str,
-        subprotocols: typing.Sequence[str] | None = None,
-        **kwargs: typing.Any,
+        subprotocols: Sequence[str] | None = None,
+        **kwargs: Any,
     ) -> WebSocketTestSession:
         url = urljoin("ws://testserver", url)
         headers = kwargs.get("headers", {})
@@ -666,11 +675,11 @@ class TestClient(httpx.Client):
             def reset_portal() -> None:
                 self.portal = None
 
-            send: anyio.create_memory_object_stream[typing.MutableMapping[str, typing.Any] | None] = (
+            send: anyio.create_memory_object_stream[MutableMapping[str, Any] | None] = (
                 anyio.create_memory_object_stream(math.inf)
             )
-            receive: anyio.create_memory_object_stream[typing.MutableMapping[str, typing.Any]] = (
-                anyio.create_memory_object_stream(math.inf)
+            receive: anyio.create_memory_object_stream[MutableMapping[str, Any]] = anyio.create_memory_object_stream(
+                math.inf
             )
             for channel in (*send, *receive):
                 stack.callback(channel.close)
@@ -687,7 +696,7 @@ class TestClient(httpx.Client):
 
         return self
 
-    def __exit__(self, *args: typing.Any) -> None:
+    def __exit__(self, *args: Any) -> None:
         self.exit_stack.close()
 
     async def lifespan(self) -> None:
@@ -700,7 +709,7 @@ class TestClient(httpx.Client):
     async def wait_startup(self) -> None:
         await self.stream_receive.send({"type": "lifespan.startup"})
 
-        async def receive() -> typing.Any:
+        async def receive() -> Any:
             message = await self.stream_send.receive()
             if message is None:
                 self.task.result()
@@ -715,7 +724,7 @@ class TestClient(httpx.Client):
             await receive()
 
     async def wait_shutdown(self) -> None:
-        async def receive() -> typing.Any:
+        async def receive() -> Any:
             message = await self.stream_send.receive()
             if message is None:
                 self.task.result()

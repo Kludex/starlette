@@ -2,11 +2,30 @@
 toc_depth: 2
 ---
 
+## 0.47.0 (May 29, 2025)
+
+#### Added
+
+* Add support for ASGI `pathsend` extension [#2671](https://github.com/encode/starlette/pull/2671).
+* Add `partitioned` attribute to `Response.set_cookie` [#2501](https://github.com/encode/starlette/pull/2501).
+
+#### Changed
+
+* Change `methods` parameter type from `list[str]` to `Collection[str]`
+  [#2903](https://github.com/encode/starlette/pull/2903).
+* Replace `import typing` by `from typing import ...` in the whole codebase
+  [#2867](https://github.com/encode/starlette/pull/2867).
+
+#### Fixed
+
+* Mark `ExceptionMiddleware.http_exception` as async to prevent thread creation
+  [#2922](https://github.com/encode/starlette/pull/2922).
+
 ## 0.46.2 (April 13, 2025)
 
 #### Fixed
 
-* Prevents reraising of exception from BaseHttpMiddleware [#2911](https://github.com/encode/starlette/pull/2911)
+* Prevents reraising of exception from BaseHttpMiddleware [#2911](https://github.com/encode/starlette/pull/2911).
 * Use correct index on backwards compatible logic in `TemplateResponse` [#2909](https://github.com/encode/starlette/pull/2909).
 
 ## 0.46.1 (March 8, 2025)

@@ -7,7 +7,7 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Generator, Sequence
+from collections.abc import Awaitable, Collection, Generator, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
@@ -213,7 +213,7 @@ class Route(BaseRoute):
         path: str,
         endpoint: Callable[..., Any],
         *,
-        methods: list[str] | None = None,
+        methods: Collection[str] | None = None,
         name: str | None = None,
         include_in_schema: bool = True,
         middleware: Sequence[Middleware] | None = None,
@@ -780,7 +780,7 @@ class Router:
         self,
         path: str,
         endpoint: Callable[[Request], Awaitable[Response] | Response],
-        methods: list[str] | None = None,
+        methods: Collection[str] | None = None,
         name: str | None = None,
         include_in_schema: bool = True,
     ) -> None:  # pragma: no cover
@@ -805,7 +805,7 @@ class Router:
     def route(
         self,
         path: str,
-        methods: list[str] | None = None,
+        methods: Collection[str] | None = None,
         name: str | None = None,
         include_in_schema: bool = True,
     ) -> Callable:  # type: ignore[type-arg]

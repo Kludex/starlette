@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
-from starlette.responses import ContentStream, PlainTextResponse, StreamingResponse
+from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
+from starlette.types import Message
 from tests.types import TestClientFactory
 
 
@@ -156,3 +161,42 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
     assert response.text == "x" * 4000
     assert "Content-Encoding" not in response.headers
     assert "Content-Length" not in response.headers
+
+
+@pytest.mark.anyio
+async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
+    path = tmpdir / "example.txt"
+    with path.open("w") as file:
+        file.write("<file content>")
+
+    events: list[Message] = []
+
+    async def endpoint_with_pathsend(request: Request) -> FileResponse:
+        _ = await request.body()
+        return FileResponse(path)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint_with_pathsend)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"accept-encoding", b"gzip, text")],
+        "extensions": {"http.response.pathsend": {}},
+    }
+
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    await app(scope, receive, send)
+
+    assert len(events) == 2
+    assert events[0]["type"] == "http.response.start"
+    assert events[1]["type"] == "http.response.pathsend"

@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Awaitable, Mapping
-from typing import Any, Callable, TypeVar
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Mapping, MutableMapping
+from typing import Any, Callable, TypeVar, Union
 
 import anyio
 
 from starlette._utils import collapse_excgroups
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import AsyncContentStream, Response
+from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
 DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
+BodyStreamGenerator = AsyncGenerator[Union[bytes, MutableMapping[str, Any]], None]
+AsyncContentStream = AsyncIterable[Union[str, bytes, memoryview, MutableMapping[str, Any]]]
 T = TypeVar("T")
 
 
@@ -159,9 +161,12 @@ class BaseHTTPMiddleware:
 
             assert message["type"] == "http.response.start"
 
-            async def body_stream() -> AsyncGenerator[bytes, None]:
+            async def body_stream() -> BodyStreamGenerator:
                 async for message in recv_stream:
-                    assert message["type"] == "http.response.body"
+                    if message["type"] == "http.response.pathsend":
+                        yield message
+                        break
+                    assert message["type"] == "http.response.body", f"Unexpected message: {message}"
                     body = message.get("body", b"")
                     if body:
                         yield body
@@ -214,10 +219,17 @@ class _StreamingResponse(Response):
             }
         )
 
+        should_close_body = True
         async for chunk in self.body_iterator:
+            if isinstance(chunk, dict):
+                # We got an ASGI message which is not response body (eg: pathsend)
+                should_close_body = False
+                await send(chunk)
+                continue
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
 
-        await send({"type": "http.response.body", "body": b"", "more_body": False})
+        if should_close_body:
+            await send({"type": "http.response.body", "body": b"", "more_body": False})
 
         if self.background:
             await self.background()

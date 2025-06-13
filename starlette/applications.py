@@ -80,7 +80,7 @@ class Starlette:
     def build_middleware_stack(self) -> ASGIApp:
         debug = self.debug
         error_handler = None
-        exception_handlers: dict[Any, Callable[[Request, Exception], Response]] = {}
+        exception_handlers: dict[Any, ExceptionHandler] = {}
 
         for key, value in self.exception_handlers.items():
             if key in (500, Exception):

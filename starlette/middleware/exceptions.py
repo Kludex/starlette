@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Callable
+from typing import Any
 
 from starlette._exception_handler import (
     ExceptionHandlers,
@@ -11,7 +11,7 @@ from starlette._exception_handler import (
 from starlette.exceptions import HTTPException, WebSocketException
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, ExceptionHandler, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
 
@@ -19,7 +19,7 @@ class ExceptionMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        handlers: Mapping[Any, Callable[[Request, Exception], Response]] | None = None,
+        handlers: Mapping[Any, ExceptionHandler] | None = None,
         debug: bool = False,
     ) -> None:
         self.app = app
@@ -36,7 +36,7 @@ class ExceptionMiddleware:
     def add_exception_handler(
         self,
         exc_class_or_status_code: int | type[Exception],
-        handler: Callable[[Request, Exception], Response],
+        handler: ExceptionHandler,
     ) -> None:
         if isinstance(exc_class_or_status_code, int):
             self._status_handlers[exc_class_or_status_code] = handler

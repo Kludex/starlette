@@ -9,10 +9,10 @@ from typing import Any, Callable, Generic, Protocol, TypeVar, overload
 
 from starlette.types import Scope
 
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import TypeGuard
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from typing import TypeIs
 else:  # pragma: no cover
-    from typing_extensions import TypeGuard
+    from typing_extensions import TypeIs
 
 has_exceptiongroups = True
 if sys.version_info < (3, 11):  # pragma: no cover
@@ -26,11 +26,11 @@ AwaitableCallable = Callable[..., Awaitable[T]]
 
 
 @overload
-def is_async_callable(obj: AwaitableCallable[T]) -> TypeGuard[AwaitableCallable[T]]: ...
+def is_async_callable(obj: AwaitableCallable[T]) -> TypeIs[AwaitableCallable[T]]: ...
 
 
 @overload
-def is_async_callable(obj: Any) -> TypeGuard[AwaitableCallable[Any]]: ...
+def is_async_callable(obj: Any) -> TypeIs[AwaitableCallable[Any]]: ...
 
 
 def is_async_callable(obj: Any) -> Any:

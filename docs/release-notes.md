@@ -2,6 +2,13 @@
 toc_depth: 2
 ---
 
+## 0.47.1 (June 21, 2025)
+
+#### Fixed
+
+* Use `Self` in `TestClient.__enter__` [#2951](https://github.com/encode/starlette/pull/2951).
+* Allow async exception handlers to type-check [#2949](https://github.com/encode/starlette/pull/2949).
+
 ## 0.47.0 (May 29, 2025)
 
 #### Added

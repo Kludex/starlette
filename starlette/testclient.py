@@ -35,6 +35,11 @@ if sys.version_info >= (3, 10):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import TypeGuard
 
+if sys.version_info >= (3, 11):  # pragma: no cover
+    from typing import Self
+else:  # pragma: no cover
+    from typing_extensions import Self
+
 try:
     import httpx
 except ModuleNotFoundError:  # pragma: no cover
@@ -667,7 +672,7 @@ class TestClient(httpx.Client):
 
         return session
 
-    def __enter__(self) -> TestClient:
+    def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
             self.portal = portal = stack.enter_context(anyio.from_thread.start_blocking_portal(**self.async_backend))
 

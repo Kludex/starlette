@@ -58,6 +58,11 @@ nav:
       - Contributing: "contributing.md"
   - Sponsorship: "sponsorship.md"
 
+extra:
+  analytics:
+    provider: google
+    property: G-Z37GTYBR6M
+
 markdown_extensions:
   - attr_list
   - admonition

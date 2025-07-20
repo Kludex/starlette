@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 0.47.2 (July 20, 2025)
+
+#### Fixed
+
+* Make `UploadFile` check for future rollover [#2962](https://github.com/encode/starlette/pull/2962).
+
 ## 0.47.1 (June 21, 2025)
 
 #### Fixed

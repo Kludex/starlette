@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 0.47.3 (August 24, 2025)
+
+#### Fixed
+
+* Use `asyncio.iscoroutinefunction` for Python 3.12 and older [#2984](https://github.com/encode/starlette/pull/2984).
+
 ## 0.47.2 (July 20, 2025)
 
 #### Fixed

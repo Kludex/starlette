@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import inspect
 import sys
 from collections.abc import Awaitable, Generator
 from contextlib import AbstractAsyncContextManager, contextmanager
@@ -10,8 +9,11 @@ from typing import Any, Callable, Generic, Protocol, TypeVar, overload
 from starlette.types import Scope
 
 if sys.version_info >= (3, 13):  # pragma: no cover
+    from inspect import iscoroutinefunction
     from typing import TypeIs
 else:  # pragma: no cover
+    from asyncio import iscoroutinefunction
+
     from typing_extensions import TypeIs
 
 has_exceptiongroups = True
@@ -37,7 +39,7 @@ def is_async_callable(obj: Any) -> Any:
     while isinstance(obj, functools.partial):
         obj = obj.func
 
-    return inspect.iscoroutinefunction(obj) or (callable(obj) and inspect.iscoroutinefunction(obj.__call__))
+    return iscoroutinefunction(obj) or (callable(obj) and iscoroutinefunction(obj.__call__))
 
 
 T_co = TypeVar("T_co", covariant=True)

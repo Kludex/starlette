@@ -4,20 +4,19 @@
 # Testing
 coverage==7.8.2
 importlib-metadata==8.7.0
-mypy==1.16.0
-ruff==0.11.12
-typing_extensions==4.13.2
+mypy==1.16.1
+ruff==0.12.1
 types-contextvars==2.4.7.3
 types-PyYAML==6.0.12.20250516
 types-dataclasses==0.6.6
-pytest==8.3.5
+pytest==8.4.1
 trio==0.30.0
 
 # Documentation
 black==25.1.0
 mkdocs==1.6.1
-mkdocs-material==9.6.14
-mkdocstrings-python==1.16.11
+mkdocs-material==9.6.15
+mkdocstrings-python==1.16.12
 
 # Packaging
 build==1.2.2.post1

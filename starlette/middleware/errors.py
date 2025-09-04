@@ -4,13 +4,12 @@ import html
 import inspect
 import sys
 import traceback
-from typing import Any, Callable
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, ExceptionHandler, Message, Receive, Scope, Send
 
 STYLES = """
 p {
@@ -140,7 +139,7 @@ class ServerErrorMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        handler: Callable[[Request, Exception], Any] | None = None,
+        handler: ExceptionHandler | None = None,
         debug: bool = False,
     ) -> None:
         self.app = app

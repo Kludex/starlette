@@ -2,6 +2,25 @@
 toc_depth: 2
 ---
 
+## 0.47.3 (August 24, 2025)
+
+#### Fixed
+
+* Use `asyncio.iscoroutinefunction` for Python 3.12 and older [#2984](https://github.com/encode/starlette/pull/2984).
+
+## 0.47.2 (July 20, 2025)
+
+#### Fixed
+
+* Make `UploadFile` check for future rollover [#2962](https://github.com/encode/starlette/pull/2962).
+
+## 0.47.1 (June 21, 2025)
+
+#### Fixed
+
+* Use `Self` in `TestClient.__enter__` [#2951](https://github.com/encode/starlette/pull/2951).
+* Allow async exception handlers to type-check [#2949](https://github.com/encode/starlette/pull/2949).
+
 ## 0.47.0 (May 29, 2025)
 
 #### Added

@@ -205,3 +205,20 @@ def test_http_exception_does_not_use_threadpool(client: TestClient, monkeypatch:
     # This should succeed because http_exception is async and won't use run_in_threadpool
     response = client.get("/not_acceptable")
     assert response.status_code == 406
+
+
+def test_handlers_annotations() -> None:
+    """Check that async exception handlers are accepted by type checkers.
+
+    We annotate the handlers' exceptions with plain `Exception` to avoid variance issues
+    when using other exception types.
+    """
+
+    async def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:
+        raise NotImplementedError
+
+    def sync_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:
+        raise NotImplementedError
+
+    ExceptionMiddleware(router, handlers={Exception: sync_catch_all_handler})
+    ExceptionMiddleware(router, handlers={Exception: async_catch_all_handler})

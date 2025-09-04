@@ -58,7 +58,7 @@ def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASG
             if is_async_callable(handler):
                 response = await handler(conn, exc)
             else:
-                response = await run_in_threadpool(handler, conn, exc)  # type: ignore
+                response = await run_in_threadpool(handler, conn, exc)
             if response is not None:
                 await response(scope, receive, sender)
 

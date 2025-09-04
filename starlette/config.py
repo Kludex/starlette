@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import os
 import warnings
 from collections.abc import Iterator, Mapping, MutableMapping
@@ -108,19 +107,16 @@ class Config:
             return self._perform_cast(key, default, cast)
         raise KeyError(f"Config '{key}' is missing, and has no default.")
 
-    def _read_file(self, file_name: str | Path) -> dict[str, str]:
+    def _read_file(self, file_name: str | Path, encoding: str = "utf-8") -> dict[str, str]:
         file_values: dict[str, str] = {}
-        encodings: list[str] = ["utf-8", "euc-kr", "gbk", "cp949", "latin1"]
-        for encoding in encodings:
-            with contextlib.suppress(UnicodeDecodeError):
-                with open(file_name, encoding=encoding) as input_file:
-                    for line in input_file.readlines():
-                        line = line.strip()
-                        if "=" in line and not line.startswith("#"):
-                            key, value = line.split("=", 1)
-                            key = key.strip()
-                            value = value.strip().strip("\"'")
-                            file_values[key] = value
+        with open(file_name, encoding=encoding) as input_file:
+            for line in input_file.readlines():
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip().strip("\"'")
+                    file_values[key] = value
         return file_values
 
     def _perform_cast(

@@ -38,71 +38,68 @@ def test_config_types() -> None:
 
 
 def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    encodings = ["utf-8", "euc-kr", "gbk", "cp949", "latin1"]
+    path = os.path.join(tmpdir, ".env")
+    with open(path, "w") as file:
+        file.write("# Do not commit to source control\n")
+        file.write("DATABASE_URL=postgres://user:pass@localhost/dbname\n")
+        file.write("REQUEST_HOSTNAME=example.com\n")
+        file.write("SECRET_KEY=12345\n")
+        file.write("BOOL_AS_INT=0\n")
+        file.write("\n")
+        file.write("\n")
 
-    for encoding in encodings:
-        path = os.path.join(tmpdir, f".env_{encoding}")
-        with open(path, "w", encoding=encoding) as file:
-            file.write("# Do not commit to source control\n")
-            file.write("DATABASE_URL=postgres://user:pass@localhost/dbname\n")
-            file.write("REQUEST_HOSTNAME=example.com\n")
-            file.write("SECRET_KEY=12345\n")
-            file.write("BOOL_AS_INT=0\n")
-            file.write("\n")
-            file.write("\n")
+    config = Config(path, environ={"DEBUG": "true"})
 
-        config = Config(path, environ={"DEBUG": "true"})
+    def cast_to_int(v: Any) -> int:
+        return int(v)
 
-        def cast_to_int(v: Any) -> int:
-            return int(v)
+    DEBUG = config("DEBUG", cast=bool)
+    DATABASE_URL = config("DATABASE_URL", cast=URL)
+    REQUEST_TIMEOUT = config("REQUEST_TIMEOUT", cast=int, default=10)
+    REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
+    MAIL_HOSTNAME = config("MAIL_HOSTNAME", default=None)
+    SECRET_KEY = config("SECRET_KEY", cast=Secret)
+    UNSET_SECRET = config("UNSET_SECRET", cast=Secret, default=None)
+    EMPTY_SECRET = config("EMPTY_SECRET", cast=Secret, default="")
+    assert config("BOOL_AS_INT", cast=bool) is False
+    assert config("BOOL_AS_INT", cast=cast_to_int) == 0
+    assert config("DEFAULTED_BOOL", cast=cast_to_int, default=True) == 1
 
-        DEBUG = config("DEBUG", cast=bool)
-        DATABASE_URL = config("DATABASE_URL", cast=URL)
-        REQUEST_TIMEOUT = config("REQUEST_TIMEOUT", cast=int, default=10)
-        REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
-        MAIL_HOSTNAME = config("MAIL_HOSTNAME", default=None)
-        SECRET_KEY = config("SECRET_KEY", cast=Secret)
-        UNSET_SECRET = config("UNSET_SECRET", cast=Secret, default=None)
-        EMPTY_SECRET = config("EMPTY_SECRET", cast=Secret, default="")
-        assert config("BOOL_AS_INT", cast=bool) is False
-        assert config("BOOL_AS_INT", cast=cast_to_int) == 0
-        assert config("DEFAULTED_BOOL", cast=cast_to_int, default=True) == 1
+    assert DEBUG is True
+    assert DATABASE_URL.path == "/dbname"
+    assert DATABASE_URL.password == "pass"
+    assert DATABASE_URL.username == "user"
+    assert REQUEST_TIMEOUT == 10
+    assert REQUEST_HOSTNAME == "example.com"
+    assert MAIL_HOSTNAME is None
+    assert repr(SECRET_KEY) == "Secret('**********')"
+    assert str(SECRET_KEY) == "12345"
+    assert bool(SECRET_KEY)
+    assert not bool(EMPTY_SECRET)
+    assert not bool(UNSET_SECRET)
 
-        assert DEBUG is True
-        assert DATABASE_URL.path == "/dbname"
-        assert DATABASE_URL.password == "pass"
-        assert DATABASE_URL.username == "user"
-        assert REQUEST_TIMEOUT == 10
-        assert REQUEST_HOSTNAME == "example.com"
-        assert MAIL_HOSTNAME is None
-        assert repr(SECRET_KEY) == "Secret('**********')"
-        assert str(SECRET_KEY) == "12345"
-        assert bool(SECRET_KEY)
-        assert not bool(EMPTY_SECRET)
-        assert not bool(UNSET_SECRET)
+    with pytest.raises(KeyError):
+        config.get("MISSING")
 
-        with pytest.raises(KeyError):
-            config.get("MISSING")
+    with pytest.raises(ValueError):
+        config.get("DEBUG", cast=int)
 
-        with pytest.raises(ValueError):
-            config.get("DEBUG", cast=int)
+    with pytest.raises(ValueError):
+        config.get("REQUEST_HOSTNAME", cast=bool)
 
-        with pytest.raises(ValueError):
-            config.get("REQUEST_HOSTNAME", cast=bool)
+    config = Config(Path(path))
+    REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
+    assert REQUEST_HOSTNAME == "example.com"
 
-        config = Config(Path(path))
-        REQUEST_HOSTNAME = config("REQUEST_HOSTNAME")
-        assert REQUEST_HOSTNAME == "example.com"
+    config = Config()
+    monkeypatch.setenv("STARLETTE_EXAMPLE_TEST", "123")
+    monkeypatch.setenv("BOOL_AS_INT", "1")
+    assert config.get("STARLETTE_EXAMPLE_TEST", cast=int) == 123
+    assert config.get("BOOL_AS_INT", cast=bool) is True
 
-        config = Config()
-        monkeypatch.setenv("STARLETTE_EXAMPLE_TEST", "123")
-        monkeypatch.setenv("BOOL_AS_INT", "1")
-        assert config.get("STARLETTE_EXAMPLE_TEST", cast=int) == 123
-        assert config.get("BOOL_AS_INT", cast=bool) is True
-
-        monkeypatch.setenv("BOOL_AS_INT", "2")
-        with pytest.raises(ValueError):
-            config.get("BOOL_AS_INT", cast=bool)
+    monkeypatch.setenv("BOOL_AS_INT", "2")
+    with pytest.raises(ValueError):
+        config.get("BOOL_AS_INT", cast=bool)
 
 
 def test_missing_env_file_raises(tmpdir: Path) -> None:

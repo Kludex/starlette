@@ -11,6 +11,7 @@ types-PyYAML==6.0.12.20250516
 types-dataclasses==0.6.6
 pytest==8.4.1
 trio==0.30.0
+exceptiongroup; python_version<'3.11'
 
 # Documentation
 black==25.1.0

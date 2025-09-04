@@ -5,8 +5,15 @@ from typing import Any, Literal
 
 import pytest
 
-from starlette.testclient import TestClient
-from tests.types import TestClientFactory
+from starlette.testclient import AsyncTestClient, TestClient
+from tests.types import AsyncTestClientFactory, TestClientFactory
+
+
+@pytest.fixture
+def async_test_client_factory() -> AsyncTestClientFactory:
+    return functools.partial(
+        AsyncTestClient,
+    )
 
 
 @pytest.fixture

@@ -845,7 +845,7 @@ Middleware and decorator for detecting and denying [TLSv1.3 early data](https://
 
 A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...
 
-#### [ProxyHeadersMiddleware](https://github.com/encode/uvicorn/blob/master/uvicorn/middleware/proxy_headers.py)
+#### [ProxyHeadersMiddleware](https://github.com/encode/uvicorn/blob/main/uvicorn/middleware/proxy_headers.py)
 
 Uvicorn includes a middleware class for determining the client IP address,
 when proxy servers are being used, based on the `X-Forwarded-Proto` and `X-Forwarded-For` headers. For more complex proxy configurations, you might want to adapt this middleware.

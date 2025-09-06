@@ -297,7 +297,7 @@ around explicitly, rather than mutating the middleware instance.
 
 Currently, the `BaseHTTPMiddleware` has some known limitations:
 
-- Using `BaseHTTPMiddleware` will prevent changes to [`contextvars.ContextVar`](https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar)s from propagating upwards. That is, if you set a value for a `ContextVar` in your endpoint and try to read it from a middleware you will find that the value is not the same value you set in your endpoint (see [this test](https://github.com/Kludex/starlette/blob/621abc747a6604825190b93467918a0ec6456a24/tests/middleware/test_base.py#L192-L223) for an example of this behavior).
+- Using `BaseHTTPMiddleware` will prevent changes to [`contextvars.ContextVar`](https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar)s from propagating upwards. That is, if you set a value for a `ContextVar` in your endpoint and try to read it from a middleware you will find that the value is not the same value you set in your endpoint (see [this test](https://github.com/Kludex/starlette/blob/621abc747a6604825190b93467918a0ec6456a24/tests/middleware/test_base.py#L192-L223) for an example of this behavior). Importantly, this also means that if a `BaseHTTPMiddleware` is positioned earlier in the middleware stack, it will disrupt `contextvars` propagation for any subsequent Pure ASGI Middleware that relies on them.
 
 To overcome these limitations, use [pure ASGI middleware](#pure-asgi-middleware), as shown below.
 

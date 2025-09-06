@@ -1,14 +1,10 @@
 #!/bin/sh -e
 
-export PREFIX=""
-if [ -d 'venv' ] ; then
-    export PREFIX="venv/bin/"
-fi
 export SOURCE_FILES="starlette tests"
 
 set -x
 
 ./scripts/sync-version
-${PREFIX}ruff format --check --diff $SOURCE_FILES
-${PREFIX}mypy $SOURCE_FILES
-${PREFIX}ruff check $SOURCE_FILES
+uv run ruff format --check --diff $SOURCE_FILES
+uv run mypy $SOURCE_FILES
+uv run ruff check $SOURCE_FILES

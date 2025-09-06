@@ -45,7 +45,7 @@ def test_staticfiles_with_pathlib(tmp_path: Path, test_client_factory: TestClien
 
 def test_staticfiles_head_with_middleware(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     """
-    see https://github.com/encode/starlette/pull/935
+    see https://github.com/Kludex/starlette/pull/935
     """
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:

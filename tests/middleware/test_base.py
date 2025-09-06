@@ -174,7 +174,7 @@ def test_app_middleware_argument(test_client_factory: TestClientFactory) -> None
 
 
 def test_fully_evaluated_response(test_client_factory: TestClientFactory) -> None:
-    # Test for https://github.com/encode/starlette/issues/1022
+    # Test for https://github.com/Kludex/starlette/issues/1022
     class CustomMiddleware(BaseHTTPMiddleware):
         async def dispatch(
             self,
@@ -253,7 +253,7 @@ def test_contextvars(
 
 @pytest.mark.anyio
 async def test_run_background_tasks_even_if_client_disconnects() -> None:
-    # test for https://github.com/encode/starlette/issues/1438
+    # test for https://github.com/Kludex/starlette/issues/1438
     response_complete = anyio.Event()
     background_task_run = anyio.Event()
 
@@ -299,7 +299,7 @@ async def test_run_background_tasks_even_if_client_disconnects() -> None:
 
 
 def test_run_background_tasks_raise_exceptions(test_client_factory: TestClientFactory) -> None:
-    # test for https://github.com/encode/starlette/issues/2625
+    # test for https://github.com/Kludex/starlette/issues/2625
 
     async def sleep_and_set() -> None:
         await anyio.sleep(0.1)
@@ -399,7 +399,7 @@ async def test_do_not_block_on_background_tasks() -> None:
 
 @pytest.mark.anyio
 async def test_run_context_manager_exit_even_if_client_disconnects() -> None:
-    # test for https://github.com/encode/starlette/issues/1678#issuecomment-1172916042
+    # test for https://github.com/Kludex/starlette/issues/1678#issuecomment-1172916042
     response_complete = anyio.Event()
     context_manager_exited = anyio.Event()
 
@@ -1005,7 +1005,7 @@ def test_downstream_middleware_modifies_receive(
 
 def test_pr_1519_comment_1236166180_example() -> None:
     """
-    https://github.com/encode/starlette/pull/1519#issuecomment-1236166180
+    https://github.com/Kludex/starlette/pull/1519#issuecomment-1236166180
     """
     bodies: list[bytes] = []
 
@@ -1049,8 +1049,8 @@ def test_pr_1519_comment_1236166180_example() -> None:
 async def test_multiple_middlewares_stacked_client_disconnected() -> None:
     """
     Tests for:
-    - https://github.com/encode/starlette/issues/2516
-    - https://github.com/encode/starlette/pull/2687
+    - https://github.com/Kludex/starlette/issues/2516
+    - https://github.com/Kludex/starlette/pull/2687
     """
     ordered_events: list[str] = []
     unordered_events: list[str] = []

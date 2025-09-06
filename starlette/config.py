@@ -52,6 +52,7 @@ class Config:
         env_file: str | Path | None = None,
         environ: Mapping[str, str] = environ,
         env_prefix: str = "",
+        encoding: str = "utf-8",
     ) -> None:
         self.environ = environ
         self.env_prefix = env_prefix
@@ -60,7 +61,7 @@ class Config:
             if not os.path.isfile(env_file):
                 warnings.warn(f"Config file '{env_file}' not found.")
             else:
-                self.file_values = self._read_file(env_file)
+                self.file_values = self._read_file(env_file, encoding)
 
     @overload
     def __call__(self, key: str, *, default: None) -> str | None: ...

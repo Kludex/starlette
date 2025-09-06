@@ -64,11 +64,11 @@ docs = [
 default-groups = ["dev", "docs"]
 
 [project.urls]
-Homepage = "https://github.com/encode/starlette"
+Homepage = "https://github.com/Kludex/starlette"
 Documentation = "https://www.starlette.io/"
 Changelog = "https://www.starlette.io/release-notes/"
-Funding = "https://github.com/sponsors/encode"
-Source = "https://github.com/encode/starlette"
+Funding = "https://github.com/sponsors/Kludex"
+Source = "https://github.com/Kludex/starlette"
 
 [tool.hatch.version]
 path = "starlette/__init__.py"

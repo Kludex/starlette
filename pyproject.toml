@@ -39,12 +39,36 @@ full = [
     "httpx>=0.27.0,<0.29.0",
 ]
 
+[dependency-groups]
+dev = [
+    # We add starlette[full] so `uv sync` considers the extras.
+    "starlette[full]",
+    "coverage==7.8.2",
+    "importlib-metadata==8.7.0",
+    "mypy==1.16.1",
+    "ruff==0.12.1",
+    "types-PyYAML==6.0.12.20250516",
+    "pytest==8.4.1",
+    "trio==0.30.0",
+    # Check dist
+    "twine==6.1.0"
+]
+docs = [
+    "black==25.1.0",
+    "mkdocs==1.6.1",
+    "mkdocs-material==9.6.15",
+    "mkdocstrings-python==1.16.12",
+]
+
+[tool.uv]
+default-groups = ["dev", "docs"]
+
 [project.urls]
-Homepage = "https://github.com/encode/starlette"
+Homepage = "https://github.com/Kludex/starlette"
 Documentation = "https://www.starlette.io/"
 Changelog = "https://www.starlette.io/release-notes/"
-Funding = "https://github.com/sponsors/encode"
-Source = "https://github.com/encode/starlette"
+Funding = "https://github.com/sponsors/Kludex"
+Source = "https://github.com/Kludex/starlette"
 
 [tool.hatch.version]
 path = "starlette/__init__.py"

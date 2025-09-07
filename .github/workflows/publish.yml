@@ -14,16 +14,22 @@ jobs:
       name: deploy
 
     steps:
-      - uses: "actions/checkout@v5"
-      - uses: "actions/setup-python@v5"
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
+          enable-cache: true
+
       - name: "Install dependencies"
-        run: "scripts/install"
+        run: scripts/install
+
       - name: "Build package & docs"
-        run: "scripts/build"
+        run: scripts/build
+
       - name: "Publish to PyPI & deploy docs"
-        run: "scripts/publish"
+        run: scripts/publish
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

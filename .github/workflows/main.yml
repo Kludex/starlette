@@ -3,36 +3,43 @@ name: Test Suite
 
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
   pull_request:
-    branches: ["master"]
+    branches: ["main"]
 
 jobs:
   tests:
     name: "Python ${{ matrix.python-version }}"
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
-      - uses: "actions/checkout@v5"
-      - uses: "actions/setup-python@v5"
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: "${{ matrix.python-version }}"
-          allow-prereleases: true
-      - name: "Install dependencies"
-        run: "scripts/install"
-      - name: "Run linting checks"
-        run: "scripts/check"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      - name: Install dependencies
+        run: scripts/install
+
+      - name: Run linting checks
+        run: scripts/check
         if: ${{ matrix.python-version != '3.14' }}
+
       - name: "Build package & docs"
-        run: "scripts/build"
+        run: scripts/build
+
       - name: "Run tests"
-        run: "scripts/test"
+        run: scripts/test
+
       - name: "Enforce coverage"
-        run: "scripts/coverage"
+        run: scripts/coverage
 
   # https://github.com/marketplace/actions/alls-green#why
   check:

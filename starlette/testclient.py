@@ -444,7 +444,7 @@ class TestClient(httpx.Client):
         if timeout is not httpx.USE_CLIENT_DEFAULT:
             warnings.warn(
                 "You should not use the 'timeout' argument with the TestClient. "
-                "See https://github.com/encode/starlette/issues/1108 for more information.",
+                "See https://github.com/Kludex/starlette/issues/1108 for more information.",
                 DeprecationWarning,
             )
         url = self._merge_url(url)

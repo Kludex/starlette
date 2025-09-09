@@ -11,8 +11,7 @@ from typing import (
 )
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 
-import anyio
-
+from starlette._fileio import AsyncFileIO
 from starlette.types import Scope
 
 
@@ -417,7 +416,7 @@ class UploadFile:
 
     def __init__(
         self,
-        file: anyio.SpooledTemporaryFile[bytes],
+        file: AsyncFileIO,
         *,
         size: int | None = None,
         filename: str | None = None,
@@ -427,10 +426,6 @@ class UploadFile:
         self.file = file
         self.size = size
         self.headers = headers or Headers()
-
-        # Capture max size from SpooledTemporaryFile if one is provided. This slightly speeds up future checks.
-        # Note 0 means unlimited mirroring SpooledTemporaryFile's __init__
-        self._max_mem_size = getattr(self.file, "_max_size", 0)
 
     @property
     def content_type(self) -> str | None:

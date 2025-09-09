@@ -4,7 +4,6 @@ from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, Mu
 from shlex import shlex
 from typing import (
     Any,
-    BinaryIO,
     NamedTuple,
     TypeVar,
     Union,
@@ -436,9 +435,8 @@ class UploadFile:
     @property
     def content_type(self) -> str | None:
         return self.headers.get("content-type", None)
-      
+
     async def write(self, data: bytes) -> None:
-        new_data_len = len(data)
         if self.size is not None:
             self.size += len(data)
         await self.file.write(data)

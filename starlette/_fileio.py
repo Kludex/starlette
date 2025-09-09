@@ -4,7 +4,7 @@ import os
 from typing import Protocol, runtime_checkable
 
 
-@runtime_checkable
+@runtime_checkable  # pragma: no cover
 class AsyncFileIO(Protocol):
     async def read(self, size: int = -1) -> bytes: ...
     async def write(self, data: bytes) -> int: ...

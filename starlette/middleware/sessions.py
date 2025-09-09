@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import typing
 from base64 import b64decode, b64encode
+from typing import Literal
 
 import itsdangerous
 from itsdangerous.exc import BadSignature
@@ -20,7 +20,7 @@ class SessionMiddleware:
         session_cookie: str = "session",
         max_age: int | None = 14 * 24 * 60 * 60,  # 14 days, in seconds
         path: str = "/",
-        same_site: typing.Literal["lax", "strict", "none"] = "lax",
+        same_site: Literal["lax", "strict", "none"] = "lax",
         https_only: bool = False,
         domain: str | None = None,
     ) -> None:

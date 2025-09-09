@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import typing
+from typing import Callable
 
 from starlette.authentication import (
     AuthCredentials,
@@ -18,11 +18,11 @@ class AuthenticationMiddleware:
         self,
         app: ASGIApp,
         backend: AuthenticationBackend,
-        on_error: typing.Callable[[HTTPConnection, AuthenticationError], Response] | None = None,
+        on_error: Callable[[HTTPConnection, AuthenticationError], Response] | None = None,
     ) -> None:
         self.app = app
         self.backend = backend
-        self.on_error: typing.Callable[[HTTPConnection, AuthenticationError], Response] = (
+        self.on_error: Callable[[HTTPConnection, AuthenticationError], Response] = (
             on_error if on_error is not None else self.default_on_error
         )
 

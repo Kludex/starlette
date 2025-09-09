@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
-import typing
 import warnings
+from collections.abc import Iterator, Mapping, MutableMapping
 from pathlib import Path
+from typing import Any, Callable, TypeVar, overload
 
 
 class undefined:
@@ -14,8 +15,8 @@ class EnvironError(Exception):
     pass
 
 
-class Environ(typing.MutableMapping[str, str]):
-    def __init__(self, environ: typing.MutableMapping[str, str] = os.environ):
+class Environ(MutableMapping[str, str]):
+    def __init__(self, environ: MutableMapping[str, str] = os.environ):
         self._environ = environ
         self._has_been_read: set[str] = set()
 
@@ -33,7 +34,7 @@ class Environ(typing.MutableMapping[str, str]):
             raise EnvironError(f"Attempting to delete environ['{key}'], but the value has already been read.")
         self._environ.__delitem__(key)
 
-    def __iter__(self) -> typing.Iterator[str]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self._environ)
 
     def __len__(self) -> int:
@@ -42,14 +43,14 @@ class Environ(typing.MutableMapping[str, str]):
 
 environ = Environ()
 
-T = typing.TypeVar("T")
+T = TypeVar("T")
 
 
 class Config:
     def __init__(
         self,
         env_file: str | Path | None = None,
-        environ: typing.Mapping[str, str] = environ,
+        environ: Mapping[str, str] = environ,
         env_prefix: str = "",
     ) -> None:
         self.environ = environ
@@ -61,40 +62,40 @@ class Config:
             else:
                 self.file_values = self._read_file(env_file)
 
-    @typing.overload
+    @overload
     def __call__(self, key: str, *, default: None) -> str | None: ...
 
-    @typing.overload
+    @overload
     def __call__(self, key: str, cast: type[T], default: T = ...) -> T: ...
 
-    @typing.overload
+    @overload
     def __call__(self, key: str, cast: type[str] = ..., default: str = ...) -> str: ...
 
-    @typing.overload
+    @overload
     def __call__(
         self,
         key: str,
-        cast: typing.Callable[[typing.Any], T] = ...,
-        default: typing.Any = ...,
+        cast: Callable[[Any], T] = ...,
+        default: Any = ...,
     ) -> T: ...
 
-    @typing.overload
+    @overload
     def __call__(self, key: str, cast: type[str] = ..., default: T = ...) -> T | str: ...
 
     def __call__(
         self,
         key: str,
-        cast: typing.Callable[[typing.Any], typing.Any] | None = None,
-        default: typing.Any = undefined,
-    ) -> typing.Any:
+        cast: Callable[[Any], Any] | None = None,
+        default: Any = undefined,
+    ) -> Any:
         return self.get(key, cast, default)
 
     def get(
         self,
         key: str,
-        cast: typing.Callable[[typing.Any], typing.Any] | None = None,
-        default: typing.Any = undefined,
-    ) -> typing.Any:
+        cast: Callable[[Any], Any] | None = None,
+        default: Any = undefined,
+    ) -> Any:
         key = self.env_prefix + key
         if key in self.environ:
             value = self.environ[key]
@@ -121,9 +122,9 @@ class Config:
     def _perform_cast(
         self,
         key: str,
-        value: typing.Any,
-        cast: typing.Callable[[typing.Any], typing.Any] | None = None,
-    ) -> typing.Any:
+        value: Any,
+        cast: Callable[[Any], Any] | None = None,
+    ) -> Any:
         if cast is None or value is None:
             return value
         elif cast is bool and isinstance(value, str):

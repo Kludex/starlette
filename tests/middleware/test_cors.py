@@ -198,7 +198,7 @@ def test_cors_disallowed_preflight(
     assert response.text == "Disallowed CORS origin, method, headers"
     assert "access-control-allow-origin" not in response.headers
 
-    # Bug specific test, https://github.com/encode/starlette/pull/1199
+    # Bug specific test, https://github.com/Kludex/starlette/pull/1199
     # Test preflight response text with multiple disallowed headers
     headers = {
         "Origin": "https://example.org",

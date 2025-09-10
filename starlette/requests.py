@@ -140,10 +140,12 @@ class HTTPConnection(Mapping[str, Any]):
     def cookies(self) -> dict[str, str]:
         if not hasattr(self, "_cookies"):
             cookies: dict[str, str] = {}
-            cookie_header = self.headers.get("cookie")
+            cookie_headers = self.headers.getlist("cookie")
 
-            if cookie_header:
-                cookies = cookie_parser(cookie_header)
+            if cookie_headers:
+                joined = "; ".join(value.rstrip("; ") for value in cookie_headers if value)
+                cookies = cookie_parser(joined)
+
             self._cookies = cookies
         return self._cookies
 

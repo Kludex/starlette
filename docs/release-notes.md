@@ -2,6 +2,16 @@
 toc_depth: 2
 ---
 
+## 0.48.0 (September 13, 2025)
+
+#### Added
+
+* Add official Python 3.14 support [#3013](https://github.com/Kludex/starlette/pull/3013).
+
+#### Changed
+
+* Implement [RFC9110](https://www.rfc-editor.org/rfc/rfc9110) http status names [#2939](https://github.com/Kludex/starlette/pull/2939).
+
 ## 0.47.3 (August 24, 2025)
 
 #### Fixed

@@ -98,5 +98,5 @@ plugins:
             show_signature_annotations: true
             show_source: false
             signature_crossrefs: true
-          import:
+          inventories:
             - url: https://docs.python.org/3/objects.inv

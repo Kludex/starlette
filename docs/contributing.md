@@ -166,5 +166,3 @@ Once the release PR is merged, create a
 
 Once created this release will be automatically uploaded to PyPI.
 
-If something goes wrong with the PyPI job the release can be published using the
-`scripts/publish` script.

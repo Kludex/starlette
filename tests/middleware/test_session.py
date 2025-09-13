@@ -1,3 +1,4 @@
+import hashlib
 import re
 
 from starlette.applications import Starlette
@@ -33,6 +34,40 @@ def test_session(test_client_factory: TestClientFactory) -> None:
             Route("/clear_session", endpoint=clear_session, methods=["POST"]),
         ],
         middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {}}
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+
+    # check cookie max-age
+    set_cookie = response.headers["set-cookie"]
+    max_age_matches = re.search(r"; Max-Age=([0-9]+);", set_cookie)
+    assert max_age_matches is not None
+    assert int(max_age_matches[1]) == 14 * 24 * 3600
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {"some": "data"}}
+
+    response = client.post("/clear_session")
+    assert response.json() == {"session": {}}
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {}}
+
+
+def test_session_sha256(test_client_factory: TestClientFactory) -> None:
+    """test session with sha256 signed session"""
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/clear_session", endpoint=clear_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", digest_method=hashlib.sha256)],
     )
     client = test_client_factory(app)
 

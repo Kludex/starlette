@@ -256,6 +256,7 @@ class Request(HTTPConnection):
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,
+        max_spool_size: int = 1024 * 1024,
     ) -> FormData:
         if self._form is None:  # pragma: no branch
             assert parse_options_header is not None, (
@@ -272,6 +273,7 @@ class Request(HTTPConnection):
                         max_files=max_files,
                         max_fields=max_fields,
                         max_part_size=max_part_size,
+                        max_spool_size=max_spool_size,
                     )
                     self._form = await multipart_parser.parse()
                 except MultiPartException as exc:
@@ -291,9 +293,15 @@ class Request(HTTPConnection):
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,
+        max_spool_size: int = 1024 * 1024,
     ) -> AwaitableOrContextManager[FormData]:
         return AwaitableOrContextManagerWrapper(
-            self._get_form(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size)
+            self._get_form(
+                max_files=max_files,
+                max_fields=max_fields,
+                max_part_size=max_part_size,
+                max_spool_size=max_spool_size,
+            )
         )
 
     async def close(self) -> None:

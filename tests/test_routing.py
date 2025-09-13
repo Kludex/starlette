@@ -34,6 +34,16 @@ def user(request: Request) -> Response:
     return Response(content, media_type="text/plain")
 
 
+def user_greet(request: Request) -> Response:
+    content = "User " + request.path_params["username"] + " greeted"
+    return Response(content, media_type="text/plain")
+
+
+def user_action(request: Request) -> Response:
+    content = "User " + request.path_params["username"] + " action " + request.path_params["action"]
+    return Response(content, media_type="text/plain")
+
+
 def user_me(request: Request) -> Response:
     content = "User fixed me"
     return Response(content, media_type="text/plain")
@@ -125,6 +135,8 @@ app = Router(
                 Route("/", endpoint=users),
                 Route("/me", endpoint=user_me),
                 Route("/{username}", endpoint=user),
+                Route("/{username}/greet", endpoint=user_greet),
+                Route("/{username}/{action}", endpoint=user_action),
                 Route("/{username}:disable", endpoint=disable_user, methods=["PUT"]),
                 Route("/nomatch", endpoint=user_no_match),
             ],
@@ -213,9 +225,21 @@ def test_router(client: TestClient) -> None:
     assert response.url == "http://testserver/users/tomchristie:disable"
     assert response.text == "User tomchristie disabled"
 
+    response = client.get("/users/notmatch")
+    assert response.status_code == 200
+    assert response.text == "User notmatch"
+
     response = client.get("/users/nomatch")
     assert response.status_code == 200
-    assert response.text == "User nomatch"
+    assert response.text == "User fixed no match"
+
+    response = client.get("/users/nomatch/greet")
+    assert response.status_code == 200
+    assert response.text == "User nomatch greeted"
+
+    response = client.get("/users/nomatch/complimented")
+    assert response.status_code == 200
+    assert response.text == "User nomatch action complimented"
 
     response = client.get("/static/123")
     assert response.status_code == 200

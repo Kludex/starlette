@@ -155,6 +155,7 @@ HTTP_508_LOOP_DETECTED = 508
 HTTP_510_NOT_EXTENDED = 510
 HTTP_511_NETWORK_AUTHENTICATION_REQUIRED = 511
 
+
 """
 WebSocket codes
 https://www.iana.org/assignments/websocket/websocket.xml#close-code-number

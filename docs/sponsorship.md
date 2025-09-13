@@ -153,7 +153,7 @@ We currently manage sponsorships *exclusively* through **GitHub Sponsors**. This
     <p>We are currently evaluating whether to expand our sponsorship options beyond GitHub Sponsors. If your company would be interested in sponsoring Starlette and Uvicorn but prefers to use a different platform (e.g., Open Collective, direct invoicing), please let us know!</p>
     <p>Your feedback is invaluable in helping us make sponsorship as accessible as possible. Share your thoughts by:</p>
     <ul>
-        <li>Opening a discussion on our <a href="https://github.com/encode/starlette/discussions">GitHub repository</a></li>
+        <li>Opening a discussion on our <a href="https://github.com/Kludex/starlette/discussions">GitHub repository</a></li>
         <li>Contacting us directly at <a href="mailto:marcelotryle@gmail.com">marcelotryle@gmail.com</a></li>
     </ul>
 </div>
@@ -176,7 +176,7 @@ Special thanks to some of our most impactful contributors:
 
 If you want your name removed from the list above, or if I forgot a significant contributor, please let me know.
 You can view all contributors on GitHub:
-[Starlette Contributors](https://github.com/encode/starlette/graphs/contributors) / [Uvicorn Contributors](https://github.com/encode/uvicorn/graphs/contributors).
+[Starlette Contributors](https://github.com/Kludex/starlette/graphs/contributors) / [Uvicorn Contributors](https://github.com/encode/uvicorn/graphs/contributors).
 
 While the current sponsorship program directly supports Marcelo's maintenance work, we are exploring ways
 to distribute funding to other key contributors in the future. This initiative is still in early planning

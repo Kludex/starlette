@@ -1,5 +1,4 @@
 import os
-import typing
 from pathlib import Path
 from typing import Any, Optional
 
@@ -51,7 +50,7 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
     config = Config(path, environ={"DEBUG": "true"})
 
-    def cast_to_int(v: typing.Any) -> int:
+    def cast_to_int(v: Any) -> int:
         return int(v)
 
     DEBUG = config("DEBUG", cast=bool)

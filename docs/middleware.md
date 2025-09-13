@@ -297,7 +297,7 @@ around explicitly, rather than mutating the middleware instance.
 
 Currently, the `BaseHTTPMiddleware` has some known limitations:
 
-- Using `BaseHTTPMiddleware` will prevent changes to [`contextvars.ContextVar`](https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar)s from propagating upwards. That is, if you set a value for a `ContextVar` in your endpoint and try to read it from a middleware you will find that the value is not the same value you set in your endpoint (see [this test](https://github.com/encode/starlette/blob/621abc747a6604825190b93467918a0ec6456a24/tests/middleware/test_base.py#L192-L223) for an example of this behavior).
+- Using `BaseHTTPMiddleware` will prevent changes to [`contextvars.ContextVar`](https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar)s from propagating upwards. That is, if you set a value for a `ContextVar` in your endpoint and try to read it from a middleware you will find that the value is not the same value you set in your endpoint (see [this test](https://github.com/Kludex/starlette/blob/621abc747a6604825190b93467918a0ec6456a24/tests/middleware/test_base.py#L192-L223) for an example of this behavior). Importantly, this also means that if a `BaseHTTPMiddleware` is positioned earlier in the middleware stack, it will disrupt `contextvars` propagation for any subsequent Pure ASGI Middleware that relies on them.
 
 To overcome these limitations, use [pure ASGI middleware](#pure-asgi-middleware), as shown below.
 
@@ -714,7 +714,7 @@ As an example, this would conditionally replace the response body, if an `X-Mock
             await self.app(scope, receive, maybe_send_with_mock_content)
     ```
 
-See also [`GZipMiddleware`](https://github.com/encode/starlette/blob/9ef1b91c9c043197da6c3f38aa153fd874b95527/starlette/middleware/gzip.py) for a full example implementation that navigates this potential gotcha.
+See also [`GZipMiddleware`](https://github.com/Kludex/starlette/blob/9ef1b91c9c043197da6c3f38aa153fd874b95527/starlette/middleware/gzip.py) for a full example implementation that navigates this potential gotcha.
 
 ### Further reading
 
@@ -845,7 +845,7 @@ Middleware and decorator for detecting and denying [TLSv1.3 early data](https://
 
 A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...
 
-#### [ProxyHeadersMiddleware](https://github.com/encode/uvicorn/blob/master/uvicorn/middleware/proxy_headers.py)
+#### [ProxyHeadersMiddleware](https://github.com/encode/uvicorn/blob/main/uvicorn/middleware/proxy_headers.py)
 
 Uvicorn includes a middleware class for determining the client IP address,
 when proxy servers are being used, based on the `X-Forwarded-Proto` and `X-Forwarded-For` headers. For more complex proxy configurations, you might want to adapt this middleware.

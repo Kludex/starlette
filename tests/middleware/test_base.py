@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextvars
 from collections.abc import AsyncGenerator, AsyncIterator, Generator
 from contextlib import AsyncExitStack
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -14,7 +15,7 @@ from starlette.background import BackgroundTask
 from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import PlainTextResponse, Response, StreamingResponse
+from starlette.responses import FileResponse, PlainTextResponse, Response, StreamingResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -173,7 +174,7 @@ def test_app_middleware_argument(test_client_factory: TestClientFactory) -> None
 
 
 def test_fully_evaluated_response(test_client_factory: TestClientFactory) -> None:
-    # Test for https://github.com/encode/starlette/issues/1022
+    # Test for https://github.com/Kludex/starlette/issues/1022
     class CustomMiddleware(BaseHTTPMiddleware):
         async def dispatch(
             self,
@@ -252,7 +253,7 @@ def test_contextvars(
 
 @pytest.mark.anyio
 async def test_run_background_tasks_even_if_client_disconnects() -> None:
-    # test for https://github.com/encode/starlette/issues/1438
+    # test for https://github.com/Kludex/starlette/issues/1438
     response_complete = anyio.Event()
     background_task_run = anyio.Event()
 
@@ -298,7 +299,7 @@ async def test_run_background_tasks_even_if_client_disconnects() -> None:
 
 
 def test_run_background_tasks_raise_exceptions(test_client_factory: TestClientFactory) -> None:
-    # test for https://github.com/encode/starlette/issues/2625
+    # test for https://github.com/Kludex/starlette/issues/2625
 
     async def sleep_and_set() -> None:
         await anyio.sleep(0.1)
@@ -398,7 +399,7 @@ async def test_do_not_block_on_background_tasks() -> None:
 
 @pytest.mark.anyio
 async def test_run_context_manager_exit_even_if_client_disconnects() -> None:
-    # test for https://github.com/encode/starlette/issues/1678#issuecomment-1172916042
+    # test for https://github.com/Kludex/starlette/issues/1678#issuecomment-1172916042
     response_complete = anyio.Event()
     context_manager_exited = anyio.Event()
 
@@ -1004,7 +1005,7 @@ def test_downstream_middleware_modifies_receive(
 
 def test_pr_1519_comment_1236166180_example() -> None:
     """
-    https://github.com/encode/starlette/pull/1519#issuecomment-1236166180
+    https://github.com/Kludex/starlette/pull/1519#issuecomment-1236166180
     """
     bodies: list[bytes] = []
 
@@ -1048,8 +1049,8 @@ def test_pr_1519_comment_1236166180_example() -> None:
 async def test_multiple_middlewares_stacked_client_disconnected() -> None:
     """
     Tests for:
-    - https://github.com/encode/starlette/issues/2516
-    - https://github.com/encode/starlette/pull/2687
+    - https://github.com/Kludex/starlette/issues/2516
+    - https://github.com/Kludex/starlette/pull/2687
     """
     ordered_events: list[str] = []
     unordered_events: list[str] = []
@@ -1198,3 +1199,47 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
         {"type": "http.response.body", "body": b"good!", "more_body": True},
         {"type": "http.response.body", "body": b"", "more_body": False},
     ]
+
+
+@pytest.mark.anyio
+async def test_asgi_pathsend_events(tmpdir: Path) -> None:
+    path = tmpdir / "example.txt"
+    with path.open("w") as file:
+        file.write("<file content>")
+
+    response_complete = anyio.Event()
+    events: list[Message] = []
+
+    async def endpoint_with_pathsend(_: Request) -> FileResponse:
+        return FileResponse(path)
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", endpoint_with_pathsend)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "extensions": {"http.response.pathsend": {}},
+    }
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        events.append(message)
+        if message["type"] == "http.response.pathsend":
+            response_complete.set()
+
+    await app(scope, receive, send)
+
+    assert len(events) == 2
+    assert events[0]["type"] == "http.response.start"
+    assert events[1]["type"] == "http.response.pathsend"

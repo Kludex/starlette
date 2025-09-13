@@ -2,9 +2,9 @@ site_name: Starlette
 site_description: The little ASGI library that shines.
 site_url: https://www.starlette.io
 
-repo_name: encode/starlette
-repo_url: https://github.com/encode/starlette
-edit_uri: edit/master/docs/
+repo_name: Kludex/starlette
+repo_url: https://github.com/Kludex/starlette
+edit_uri: edit/main/docs/
 
 strict: true
 
@@ -57,6 +57,11 @@ nav:
       - Third Party Packages: "third-party-packages.md"
       - Contributing: "contributing.md"
   - Sponsorship: "sponsorship.md"
+
+extra:
+  analytics:
+    provider: google
+    property: G-Z37GTYBR6M
 
 markdown_extensions:
   - attr_list

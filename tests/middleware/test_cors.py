@@ -425,6 +425,29 @@ def test_cors_credentialed_requests_return_specific_origin(
     assert "access-control-allow-credentials" not in response.headers
 
 
+def test_cors_credentialed_requests_return_specific_origin_without_initial_cookie(
+    test_client_factory: TestClientFactory,
+) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        response = PlainTextResponse("Homepage", status_code=200)
+        response.set_cookie("mycookie", "myvalue", path=None)
+        return response
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=["*"])],
+    )
+    client = test_client_factory(app)
+
+    # Test credentialed request
+    headers = {"Origin": "https://example.org"}
+    response = client.get("/", headers=headers)
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["access-control-allow-origin"] == "https://example.org"
+    assert "access-control-allow-credentials" in response.headers
+
+
 def test_cors_vary_header_defaults_to_origin(
     test_client_factory: TestClientFactory,
 ) -> None:

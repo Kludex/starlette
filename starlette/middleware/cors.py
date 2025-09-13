@@ -71,6 +71,7 @@ class CORSMiddleware:
         self.allow_origin_regex = compiled_allow_origin_regex
         self.simple_headers = simple_headers
         self.preflight_headers = preflight_headers
+        self.allow_credentials = allow_credentials
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":  # pragma: no cover
@@ -153,11 +154,13 @@ class CORSMiddleware:
         headers.update(self.simple_headers)
         origin = request_headers["Origin"]
         has_cookie = "cookie" in request_headers
+        has_authorization = "Authorization" in request_headers
 
         # If request includes any cookie headers, then we must respond
         # with the specific origin instead of '*'.
-        if self.allow_all_origins and has_cookie:
-            self.allow_explicit_origin(headers, origin)
+        if self.allow_all_origins:
+            if self.allow_credentials and has_authorization or has_cookie:
+                self.allow_explicit_origin(headers, origin)
 
         # If we only allow specific origins, then we have to mirror back
         # the Origin header in the response.

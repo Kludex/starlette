@@ -65,6 +65,7 @@ docs = [
 
 [tool.uv]
 default-groups = ["dev", "docs"]
+required-version = ">=0.8.6"
 
 [project.urls]
 Homepage = "https://github.com/Kludex/starlette"

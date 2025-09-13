@@ -9,7 +9,10 @@ description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
-authors = [{ name = "Tom Christie", email = "tom@tomchristie.com" }]
+authors = [
+    { name = "Tom Christie", email = "tom@tomchristie.com" },
+    { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" }
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",

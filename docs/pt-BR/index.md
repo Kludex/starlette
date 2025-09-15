@@ -32,12 +32,12 @@ ideal para criar serviços web assíncronos em Python.
 
 Ele já está pronto para produção e oferece os seguintes recursos:
 
-* Uma estrutura web HTTP leve e de baixa complexidade.
+* Uma leve estrutura web HTTP e de baixa complexidade.
 * Suporte a WebSocket.
-* Processos em tarefas de segundo plano.
+* Processos de tarefas em segundo plano.
 * Eventos de inicialização e desligamento.
 * Cliente de teste desenvolvido em `httpx`.
-* CORS, GZip, Arquivos Estáticos, Streaming.
+* CORS, GZip, Arquivos Estáticos, Transmissão.
 * Suporte a sessões e cookies.
 * 100% de testes cobertos.
 * Base de código 100% anotada por tipo.
@@ -51,32 +51,32 @@ Ele já está pronto para produção e oferece os seguintes recursos:
 O Starlette é um projeto de código aberto que depende do apoio da comunidade. Você pode nos ajudar a manter e melhorar a estrutura [tornando-se um patrocinador](sponsorship.md).
 
 <div style="text-align: center; margin: 2rem 0;">
-    <h4 style="color: #ffd700; margin-bottom: 1rem;">🏆 Our Gold Sponsor</h4>
+    <h4 style="color: #ffd700; margin-bottom: 1rem;">🏆 Patrocinadores Ouro.</h4>
     <a href="https://fastapi.tiangolo.com" style="text-decoration: none;">
         <div style="width: 200px; background: #f6f8fa; border-radius: 8px; padding: 1rem; text-align: center; margin: 0 auto;">
             <div style="height: 100px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
                 <img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="FastAPI" style="max-width: 100%; max-height: 100%; object-fit: contain;">
             </div>
-            <p style="margin: 0; color: #57606a; font-size: 0.9em;">Modern, fast web framework for building APIs with Python 3.8+</p>
+            <p style="margin: 0; color: #57606a; font-size: 0.9em;">Estrutura web moderna e rápida para criar APIs com Python 3.8+</p>
         </div>
     </a>
 </div>
 
 
 
-## Installation
+## Instalação
 
 ```shell
 pip install starlette
 ```
 
-You'll also want to install an ASGI server, such as [uvicorn](https://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://hypercorn.readthedocs.io/en/latest/).
+Você também necessitará de um servidor ASGI, como: [uvicorn](https://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://hypercorn.readthedocs.io/en/latest/).
 
 ```shell
 pip install uvicorn
 ```
 
-## Example
+## Exemplo
 
 ```python title="main.py"
 from starlette.applications import Starlette
@@ -85,7 +85,7 @@ from starlette.routing import Route
 
 
 async def homepage(request):
-    return JSONResponse({'hello': 'world'})
+    return JSONResponse({'Olá': 'Mundo'})
 
 
 app = Starlette(debug=True, routes=[
@@ -93,25 +93,25 @@ app = Starlette(debug=True, routes=[
 ])
 ```
 
-Then run the application...
+Então rode a aplicação...
 
 ```shell
 uvicorn main:app
 ```
 
-## Dependencies
+## Dependências
 
-Starlette only requires `anyio`, and the following dependencies are optional:
+Starlette só necessita da `anyio`, e todas as outras dependências são opcionais.
 
-* [`httpx`][httpx] - Required if you want to use the `TestClient`.
-* [`jinja2`][jinja2] - Required if you want to use `Jinja2Templates`.
-* [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
-* [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
-* [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
+* [`httpx`][httpx] - Necessária se você for usar `TestClient`.
+* [`jinja2`][jinja2] - Necessária se você for usar `Jinja2Templates`.
+* [`python-multipart`][python-multipart] - Necessário se você deseja oferecer suporte à formulários, com `request.form()`.
+* [`itsdangerous`][itsdangerous] - Necessária se você for suportar `SessionMiddleware`.
+* [`pyyaml`][pyyaml] - Necessária para o suporte à `SchemaGenerator`.
 
-You can install all of these with `pip install starlette[full]`.
+Você pode instalar todas elas com: `pip install starlette[full]`.
 
-## Framework or Toolkit
+## Framework e Ferramentas
 
 Starlette is designed to be used either as a complete framework, or as
 an ASGI toolkit. You can use any of its components independently.

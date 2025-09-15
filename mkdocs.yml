@@ -10,7 +10,7 @@ strict: true
 
 theme:
   name: "material"
-  # custom_dir: docs/overrides
+  custom_dir: docs/overrides
   palette:
     - scheme: "default"
       media: "(prefers-color-scheme: light)"
@@ -102,6 +102,7 @@ plugins:
           inventories:
             - url: https://docs.python.org/3/objects.inv
   - i18n:
+      docs_structure: folder
       languages:
         - locale: en
           default: true
@@ -110,3 +111,4 @@ plugins:
         - locale: pt-BR
           name: Português (Brasil)
           build: true
+          

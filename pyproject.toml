@@ -9,7 +9,10 @@ description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
-authors = [{ name = "Tom Christie", email = "tom@tomchristie.com" }]
+authors = [
+    { name = "Tom Christie", email = "tom@tomchristie.com" },
+    { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" }
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",
@@ -23,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
@@ -62,6 +66,7 @@ docs = [
 
 [tool.uv]
 default-groups = ["dev", "docs"]
+required-version = ">=0.8.6"
 
 [project.urls]
 Homepage = "https://github.com/Kludex/starlette"

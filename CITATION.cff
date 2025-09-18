@@ -15,7 +15,7 @@ authors:
     family-names: Christie
     email: tom@tomchristie.com
 repository-code: "https://github.com/Kludex/starlette"
-url: "https://www.starlette.io/"
+url: "https://www.starlette.dev/"
 abstract: Starlette is an ASGI web framework for Python.
 keywords:
   - asgi

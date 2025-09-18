@@ -731,7 +731,7 @@ changes have occurred. Another significant change with this release is the
 ### Removed
 
 * `UJSONResponse` was removed (this change was intended to be included in 0.14.0). Please see the
-  [documentation](https://www.starlette.io/responses/#custom-json-serialization) for how to
+  [documentation](https://www.starlette.dev/responses/#custom-json-serialization) for how to
   implement responses using custom JSON serialization -
   [#1074](https://github.com/Kludex/starlette/pull/1047).
 

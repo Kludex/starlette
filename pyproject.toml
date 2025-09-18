@@ -70,8 +70,8 @@ required-version = ">=0.8.6"
 
 [project.urls]
 Homepage = "https://github.com/Kludex/starlette"
-Documentation = "https://www.starlette.io/"
-Changelog = "https://www.starlette.io/release-notes/"
+Documentation = "https://www.starlette.dev/"
+Changelog = "https://www.starlette.dev/release-notes/"
 Funding = "https://github.com/sponsors/Kludex"
 Source = "https://github.com/Kludex/starlette"
 

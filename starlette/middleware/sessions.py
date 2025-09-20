@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from base64 import b64decode, b64encode
-from typing import Literal
+from typing import Any, Literal
 
 import itsdangerous
 from itsdangerous.exc import BadSignature
@@ -23,9 +23,11 @@ class SessionMiddleware:
         same_site: Literal["lax", "strict", "none"] = "lax",
         https_only: bool = False,
         domain: str | None = None,
+        digest_method: Any | None = None,
     ) -> None:
         self.app = app
-        self.signer = itsdangerous.TimestampSigner(str(secret_key))
+        self.digest_method = digest_method
+        self.signer = itsdangerous.TimestampSigner(str(secret_key), digest_method=self.digest_method)
         self.session_cookie = session_cookie
         self.max_age = max_age
         self.path = path

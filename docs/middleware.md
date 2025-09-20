@@ -132,17 +132,19 @@ The following arguments are supported:
 * `path` - The path set for the session cookie. Defaults to `'/'`.
 * `https_only` - Indicate that Secure flag should be set (can be used with HTTPS only). Defaults to `False`.
 * `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains ([reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute)).
+* `digest_method` - Hash function to use when generating the HMAC signature for the session.  This defaults to SHA1 (will fail on systems that enforce use of FIPS algorithms), but can be changed to any other function in the hashlib module. ([reference](https://docs.python.org/3/library/hashlib.html#hash-algorithms))
 
 
 ```python
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
+import hashlib
 
 routes = ...
 
 middleware = [
-    Middleware(SessionMiddleware, secret_key=..., https_only=True)
+    Middleware(SessionMiddleware, secret_key=..., https_only=True, digest_method=hashlib.sha256)
 ]
 
 app = Starlette(routes=routes, middleware=middleware)

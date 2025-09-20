@@ -4,36 +4,18 @@ import errno
 import importlib.util
 import os
 import stat
-from email.utils import parsedate
 from typing import Union
 
 import anyio
 import anyio.to_thread
 
 from starlette._utils import get_route_path
-from starlette.datastructures import URL, Headers
+from starlette.datastructures import URL
 from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
 
 PathLike = Union[str, "os.PathLike[str]"]
-
-
-class NotModifiedResponse(Response):
-    NOT_MODIFIED_HEADERS = (
-        "cache-control",
-        "content-location",
-        "date",
-        "etag",
-        "expires",
-        "vary",
-    )
-
-    def __init__(self, headers: Headers):
-        super().__init__(
-            status_code=304,
-            headers={name: value for name, value in headers.items() if name in self.NOT_MODIFIED_HEADERS},
-        )
 
 
 class StaticFiles:
@@ -126,7 +108,7 @@ class StaticFiles:
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
-            return self.file_response(full_path, stat_result, scope)
+            return FileResponse(full_path, stat_result=stat_result)
 
         elif stat_result and stat.S_ISDIR(stat_result.st_mode) and self.html:
             # We're in HTML mode, and have got a directory URL.
@@ -139,7 +121,7 @@ class StaticFiles:
                     url = URL(scope=scope)
                     url = url.replace(path=url.path + "/")
                     return RedirectResponse(url=url)
-                return self.file_response(full_path, stat_result, scope)
+                return FileResponse(full_path, stat_result=stat_result)
 
         if self.html:
             # Check for '404.html' if we're in HTML mode.
@@ -166,20 +148,6 @@ class StaticFiles:
                 continue
         return "", None
 
-    def file_response(
-        self,
-        full_path: PathLike,
-        stat_result: os.stat_result,
-        scope: Scope,
-        status_code: int = 200,
-    ) -> Response:
-        request_headers = Headers(scope=scope)
-
-        response = FileResponse(full_path, status_code=status_code, stat_result=stat_result)
-        if self.is_not_modified(response.headers, request_headers):
-            return NotModifiedResponse(response.headers)
-        return response
-
     async def check_config(self) -> None:
         """
         Perform a one-off configuration check that StaticFiles is actually
@@ -195,26 +163,3 @@ class StaticFiles:
             raise RuntimeError(f"StaticFiles directory '{self.directory}' does not exist.")
         if not (stat.S_ISDIR(stat_result.st_mode) or stat.S_ISLNK(stat_result.st_mode)):
             raise RuntimeError(f"StaticFiles path '{self.directory}' is not a directory.")
-
-    def is_not_modified(self, response_headers: Headers, request_headers: Headers) -> bool:
-        """
-        Given the request and response headers, return `True` if an HTTP
-        "Not Modified" response could be returned instead.
-        """
-        try:
-            if_none_match = request_headers["if-none-match"]
-            etag = response_headers["etag"]
-            if etag in [tag.strip(" W/") for tag in if_none_match.split(",")]:
-                return True
-        except KeyError:
-            pass
-
-        try:
-            if_modified_since = parsedate(request_headers["if-modified-since"])
-            last_modified = parsedate(response_headers["last-modified"])
-            if if_modified_since is not None and last_modified is not None and if_modified_since >= last_modified:
-                return True
-        except KeyError:
-            pass
-
-        return False

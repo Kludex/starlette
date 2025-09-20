@@ -142,9 +142,9 @@ class HTTPConnection(Mapping[str, Any]):
             cookies: dict[str, str] = {}
             cookie_headers = self.headers.getlist("cookie")
 
-            if cookie_headers:
-                for header in cookie_headers:
-                    cookies.update(cookie_parser(header))
+            for header in cookie_headers:
+                cookies.update(cookie_parser(header))
+
             self._cookies = cookies
         return self._cookies
 

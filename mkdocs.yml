@@ -1,6 +1,6 @@
 site_name: Starlette
 site_description: The little ASGI library that shines.
-site_url: https://www.starlette.dev
+site_url: https://starlette.dev
 
 repo_name: Kludex/starlette
 repo_url: https://github.com/Kludex/starlette

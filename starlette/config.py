@@ -108,7 +108,7 @@ class Config:
             return self._perform_cast(key, default, cast)
         raise KeyError(f"Config '{key}' is missing, and has no default.")
 
-    def _read_file(self, file_name: str | Path, encoding: str = "utf-8") -> dict[str, str]:
+    def _read_file(self, file_name: str | Path, encoding: str) -> dict[str, str]:
         file_values: dict[str, str] = {}
         with open(file_name, encoding=encoding) as input_file:
             for line in input_file.readlines():

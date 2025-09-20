@@ -726,18 +726,44 @@ class Router:
             return
 
         partial = None
+        full_match_route = None
+        full_match_best_number_of_path_params = None
 
         for route in self.routes:
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
-                scope.update(child_scope)
-                await route.handle(scope, receive, send)
-                return
+                number_of_path_params = len(child_scope["path_params"])
+                if number_of_path_params == 0:
+                    scope.update(child_scope)
+                    await route.handle(scope, receive, send)
+                    return
+                # in case we have 2 routes that fully match the requested URL
+                # we need to check which one is a stricter match.
+                # Example:
+                # we have 2 endpoints:
+                # /user/{user_id}
+                # /user/myself
+                # if the requested URL is /user/myself, then both endpoints are
+                # a full match, however the last one is a more appropriate choice
+                # in case of ambiguity
+                if full_match_route is None or (
+                    full_match_best_number_of_path_params is not None
+                    and number_of_path_params < full_match_best_number_of_path_params
+                ):
+                    full_match_route = route
+                    full_match_scope = child_scope
+                    full_match_best_number_of_path_params = number_of_path_params
+
             elif match == Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
+
+        if full_match_route is not None:
+            scope.update(full_match_scope)
+            await full_match_route.handle(scope, receive, send)
+            return
 
         if partial is not None:
             #  Handle partial matches. These are cases where an endpoint is

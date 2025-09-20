@@ -1041,7 +1041,7 @@ def test_exception_on_mounted_apps(
 def test_mounted_middleware_does_not_catch_exception(
     test_client_factory: Callable[..., TestClient],
 ) -> None:
-    # https://github.com/encode/starlette/pull/1649#discussion_r960236107
+    # https://github.com/Kludex/starlette/pull/1649#discussion_r960236107
     def exc(request: Request) -> Response:
         raise HTTPException(status_code=403, detail="auth")
 

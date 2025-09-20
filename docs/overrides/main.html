@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  <script>
+    // Redirect starlette.io to starlette.dev
+    if (window.location.hostname === 'www.starlette.io' || window.location.hostname === 'starlette.io') {
+      const newUrl = window.location.href.replace(/^https?:\/\/(www\.)?starlette\.io/, 'https://starlette.dev');
+      window.location.replace(newUrl);
+    }
+  </script>
+{% endblock %}

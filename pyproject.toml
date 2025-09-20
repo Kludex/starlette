@@ -9,7 +9,10 @@ description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
-authors = [{ name = "Tom Christie", email = "tom@tomchristie.com" }]
+authors = [
+    { name = "Tom Christie", email = "tom@tomchristie.com" },
+    { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" }
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",
@@ -23,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
@@ -39,12 +43,37 @@ full = [
     "httpx>=0.27.0,<0.29.0",
 ]
 
+[dependency-groups]
+dev = [
+    # We add starlette[full] so `uv sync` considers the extras.
+    "starlette[full]",
+    "coverage==7.8.2",
+    "importlib-metadata==8.7.0",
+    "mypy==1.16.1",
+    "ruff==0.12.1",
+    "types-PyYAML==6.0.12.20250516",
+    "pytest==8.4.1",
+    "trio==0.30.0",
+    # Check dist
+    "twine==6.1.0"
+]
+docs = [
+    "black==25.1.0",
+    "mkdocs==1.6.1",
+    "mkdocs-material==9.6.15",
+    "mkdocstrings-python==1.16.12",
+]
+
+[tool.uv]
+default-groups = ["dev", "docs"]
+required-version = ">=0.8.6"
+
 [project.urls]
-Homepage = "https://github.com/encode/starlette"
-Documentation = "https://www.starlette.io/"
-Changelog = "https://www.starlette.io/release-notes/"
-Funding = "https://github.com/sponsors/encode"
-Source = "https://github.com/encode/starlette"
+Homepage = "https://github.com/Kludex/starlette"
+Documentation = "https://starlette.dev/"
+Changelog = "https://starlette.dev/release-notes/"
+Funding = "https://github.com/sponsors/Kludex"
+Source = "https://github.com/Kludex/starlette"
 
 [tool.hatch.version]
 path = "starlette/__init__.py"

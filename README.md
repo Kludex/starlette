@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette_dark.svg" width="420px">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette.svg" width="420px">
-    <img alt="starlette-logo" src="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette_dark.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette_dark.svg" width="420px">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette.svg" width="420px">
+    <img alt="starlette-logo" src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette_dark.svg">
   </picture>
 </p>
 
@@ -12,15 +12,15 @@
 
 ---
 
-[![Build Status](https://github.com/encode/starlette/workflows/Test%20Suite/badge.svg)](https://github.com/encode/starlette/actions)
+[![Build Status](https://github.com/Kludex/starlette/workflows/Test%20Suite/badge.svg)](https://github.com/Kludex/starlette/actions)
 [![Package version](https://badge.fury.io/py/starlette.svg)](https://pypi.python.org/pypi/starlette)
 [![Supported Python Version](https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058)](https://pypi.org/project/starlette)
 
 ---
 
-**Documentation**: <a href="https://www.starlette.io/" target="_blank">https://www.starlette.io</a>
+**Documentation**: <a href="https://starlette.dev/" target="_blank">https://starlette.dev</a>
 
-**Source Code**: <a href="https://github.com/encode/starlette" target="_blank">https://github.com/encode/starlette</a>
+**Source Code**: <a href="https://github.com/Kludex/starlette" target="_blank">https://github.com/Kludex/starlette</a>
 
 ---
 
@@ -128,7 +128,7 @@ in isolation.
 
 ---
 
-<p align="center"><i>Starlette is <a href="https://github.com/encode/starlette/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
+<p align="center"><i>Starlette is <a href="https://github.com/Kludex/starlette/blob/main/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
 
 [asgi]: https://asgi.readthedocs.io/en/latest/
 [httpx]: https://www.python-httpx.org/

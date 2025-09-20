@@ -450,6 +450,34 @@ def test_cookies_invalid(
     assert result["cookies"] == expected
 
 
+@pytest.mark.parametrize(
+    "headers,expected_cookies",
+    [
+        ([(b"cookie", b"a=abc"), (b"cookie", b"b=def"), (b"cookie", b"c=ghi")], {"a": "abc", "b": "def", "c": "ghi"}),
+        (
+            [(b"cookie", b"a=abc;"), (b"cookie", b"b=def;"), (b"cookie", b"c=ghi;")],
+            {"a": "abc", "b": "def", "c": "ghi"},
+        ),
+    ],
+)
+def test_request_multiple_cookie_headers(
+    test_client_factory: TestClientFactory,
+    headers: list[tuple[bytes, bytes]],
+    expected_cookies: dict[str, str],
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        scope["headers"] = headers
+        request = Request(scope, receive)
+        response = JSONResponse({"cookies": request.cookies})
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    data = response.json()
+
+    assert data["cookies"] == expected_cookies
+
+
 def test_chunked_encoding(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)

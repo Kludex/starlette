@@ -156,7 +156,16 @@ class BaseHTTPMiddleware:
                 if app_exc is not None:
                     nonlocal exception_already_raised
                     exception_already_raised = True
-                    raise app_exc
+                    # Prevent `anyio.EndOfStream` from polluting app exception context.
+                    # If both cause and context are None then the context is suppressed
+                    # and `anyio.EndOfStream` is not present in the exception traceback.
+                    # If exception cause is not None then it is propagated with
+                    # reraising here.
+                    # If exception has no cause but has context set then the context is
+                    # propagated as a cause with the reraise. This is necessary in order
+                    # to prevent `anyio.EndOfStream` from polluting the exception
+                    # context.
+                    raise app_exc from app_exc.__cause__ or app_exc.__context__
                 raise RuntimeError("No response returned.")
 
             assert message["type"] == "http.response.start"

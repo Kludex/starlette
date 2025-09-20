@@ -23,6 +23,14 @@ class WebSocketDisconnect(Exception):
         self.reason = reason or ""
 
 
+class WebSocketDisconnected(RuntimeError):
+    """
+    Raised when attempting to use a disconnected WebSocket.
+    """
+
+    pass
+
+
 class WebSocket(HTTPConnection):
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         super().__init__(scope)
@@ -54,7 +62,7 @@ class WebSocket(HTTPConnection):
                 self.client_state = WebSocketState.DISCONNECTED
             return message
         else:
-            raise RuntimeError('Cannot call "receive" once a disconnect message has been received.')
+            raise WebSocketDisconnected('Cannot call "receive" once a disconnect message has been received.')
 
     async def send(self, message: Message) -> None:
         """
@@ -95,7 +103,7 @@ class WebSocket(HTTPConnection):
                 self.application_state = WebSocketState.DISCONNECTED
             await self._send(message)
         else:
-            raise RuntimeError('Cannot call "send" once a close message has been sent.')
+            raise WebSocketDisconnected('Cannot call "send" once a close message has been sent.')
 
     async def accept(
         self,
@@ -115,14 +123,14 @@ class WebSocket(HTTPConnection):
 
     async def receive_text(self) -> str:
         if self.application_state != WebSocketState.CONNECTED:
-            raise RuntimeError('WebSocket is not connected. Need to call "accept" first.')
+            raise WebSocketDisconnected('WebSocket is not connected. Need to call "accept" first.')
         message = await self.receive()
         self._raise_on_disconnect(message)
         return cast(str, message["text"])
 
     async def receive_bytes(self) -> bytes:
         if self.application_state != WebSocketState.CONNECTED:
-            raise RuntimeError('WebSocket is not connected. Need to call "accept" first.')
+            raise WebSocketDisconnected('WebSocket is not connected. Need to call "accept" first.')
         message = await self.receive()
         self._raise_on_disconnect(message)
         return cast(bytes, message["bytes"])
@@ -131,7 +139,7 @@ class WebSocket(HTTPConnection):
         if mode not in {"text", "binary"}:
             raise RuntimeError('The "mode" argument should be "text" or "binary".')
         if self.application_state != WebSocketState.CONNECTED:
-            raise RuntimeError('WebSocket is not connected. Need to call "accept" first.')
+            raise WebSocketDisconnected('WebSocket is not connected. Need to call "accept" first.')
         message = await self.receive()
         self._raise_on_disconnect(message)
 

@@ -19,7 +19,7 @@
 
 ---
 
-**Documentation**: <a href="https://www.starlette.io/" target="_blank">https://www.starlette.io</a>
+**Documentation**: <a href="https://www.starlette.dev/" target="_blank">https://www.starlette.dev</a>
 
 **Source Code**: <a href="https://github.com/Kludex/starlette" target="_blank">https://github.com/Kludex/starlette</a>
 

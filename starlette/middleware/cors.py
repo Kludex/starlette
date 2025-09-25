@@ -20,6 +20,7 @@ class CORSMiddleware:
         allow_methods: Sequence[str] = ("GET",),
         allow_headers: Sequence[str] = (),
         allow_credentials: bool = False,
+        allow_private_network: bool = False,
         allow_origin_regex: str | None = None,
         expose_headers: Sequence[str] = (),
         max_age: int = 600,
@@ -40,6 +41,8 @@ class CORSMiddleware:
             simple_headers["Access-Control-Allow-Origin"] = "*"
         if allow_credentials:
             simple_headers["Access-Control-Allow-Credentials"] = "true"
+        if allow_private_network:
+            simple_headers["Access-Control-Allow-Private-Network"] = "true"
         if expose_headers:
             simple_headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
 
@@ -52,6 +55,7 @@ class CORSMiddleware:
         preflight_headers.update(
             {
                 "Access-Control-Allow-Methods": ", ".join(allow_methods),
+                "Access-Control-Allow-Private-Network": "true" if allow_private_network else "false",
                 "Access-Control-Max-Age": str(max_age),
             }
         )
@@ -68,6 +72,7 @@ class CORSMiddleware:
         self.allow_all_origins = allow_all_origins
         self.allow_all_headers = allow_all_headers
         self.preflight_explicit_allow_origin = preflight_explicit_allow_origin
+        self.allow_private_network = allow_private_network
         self.allow_origin_regex = compiled_allow_origin_regex
         self.simple_headers = simple_headers
         self.preflight_headers = preflight_headers

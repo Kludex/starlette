@@ -8,6 +8,7 @@ dynamic = ["version"]
 description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
+license-files = ["LICENSE.md"]
 requires-python = ">=3.9"
 authors = [
     { name = "Tom Christie", email = "tom@tomchristie.com" },
@@ -18,7 +19,6 @@ classifiers = [
     "Environment :: Web Environment",
     "Framework :: AnyIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",

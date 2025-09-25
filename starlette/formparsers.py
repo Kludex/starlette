@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from enum import Enum
-from tempfile import SpooledTemporaryFile
 from typing import TYPE_CHECKING
 from urllib.parse import unquote_plus
+
+from anyio import SpooledTemporaryFile
 
 from starlette.datastructures import FormData, Headers, UploadFile
 
@@ -151,7 +153,7 @@ class MultiPartParser:
         self._charset = ""
         self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: list[MultipartPart] = []
-        self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
+        self._files_to_close_on_error: AsyncExitStack = AsyncExitStack()
         self.max_part_size = max_part_size
 
     def on_part_begin(self) -> None:
@@ -207,9 +209,9 @@ class MultiPartParser:
                 raise MultiPartException(f"Too many files. Maximum number of files is {self.max_files}.")
             filename = _user_safe_decode(options[b"filename"], self._charset)
             tempfile = SpooledTemporaryFile(max_size=self.spool_max_size)
-            self._files_to_close_on_error.append(tempfile)
+            self._files_to_close_on_error.push_async_callback(tempfile.aclose)
             self._current_part.file = UploadFile(
-                file=tempfile,  # type: ignore[arg-type]
+                file=tempfile,
                 size=0,
                 filename=filename,
                 headers=Headers(raw=self._current_part.item_headers),
@@ -266,10 +268,9 @@ class MultiPartParser:
                     await part.file.seek(0)
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()
-        except MultiPartException as exc:
+        except BaseException as exc:
             # Close all the files if there was an error.
-            for file in self._files_to_close_on_error:
-                file.close()
+            await self._files_to_close_on_error.aclose()
             raise exc
 
         parser.finalize()

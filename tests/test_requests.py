@@ -450,6 +450,19 @@ def test_cookies_invalid(
     assert result["cookies"] == expected
 
 
+def test_multiple_cookie_headers(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        scope["headers"] = [(b"cookie", b"a=abc"), (b"cookie", b"b=def"), (b"cookie", b"c=ghi")]
+        request = Request(scope, receive)
+        response = JSONResponse({"cookies": request.cookies})
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    result = response.json()
+    assert result["cookies"] == {"a": "abc", "b": "def", "c": "ghi"}
+
+
 def test_chunked_encoding(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)

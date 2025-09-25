@@ -251,6 +251,30 @@ def test_staticfiles_304_with_last_modified_compare_last_req(
     assert response.status_code == 200
     assert response.content == b"<file content>"
 
+def test_staticfiles_200_with_etag_mismatched_and_last_modified_compare_last_req(
+    tmpdir: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = os.path.join(tmpdir, "example.txt")
+    file_last_modified_time = time.mktime(
+        time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S")
+    )
+    with open(path, "w") as file:
+        file.write("<file content>")
+    os.utime(path, (file_last_modified_time, file_last_modified_time))
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    # last modified less than last request, 304
+    response = client.get(
+        "/example.txt",
+        headers={
+            "If-Modified-Since": "Thu, 11 Oct 2013 15:30:19 GMT",
+            "if-none-match": '"123"',
+        },
+    )
+    assert response.status_code == 200
+    assert response.content == b"<file content>"
+
 
 def test_staticfiles_html_normal(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "404.html")

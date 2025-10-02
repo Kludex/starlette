@@ -15,6 +15,9 @@
 <a href="https://pypi.org/project/starlette" target="_blank">
     <img src="https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058" alt="Supported Python versions">
 </a>
+<a href="https://discord.gg/RxKUF5JuHs">
+    <img src="https://img.shields.io/discord/1051468649518616576?logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2" alt="Discord">
+</a>
 </p>
 
 ---

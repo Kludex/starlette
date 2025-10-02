@@ -12,7 +12,9 @@ license-files = ["LICENSE.md"]
 requires-python = ">=3.9"
 authors = [
     { name = "Tom Christie", email = "tom@tomchristie.com" },
-    { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" }
+]
+maintainers = [
+    { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

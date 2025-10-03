@@ -300,9 +300,8 @@ def test_file_response_with_missing_file_raises_error(tmp_path: Path, test_clien
     path = tmp_path / "404.txt"
     app = FileResponse(path=path, filename="404.txt")
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(FileNotFoundError):
         client.get("/")
-    assert "does not exist" in str(exc_info.value)
 
 
 def test_file_response_with_chinese_filename(tmp_path: Path, test_client_factory: TestClientFactory) -> None:

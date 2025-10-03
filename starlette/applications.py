@@ -26,7 +26,11 @@ P = ParamSpec("P")
 
 
 class Starlette:
-    """Creates an Starlette application."""
+    """Creates a Starlette application."""
+
+    # This is the default router class used by Starlette. if you want to customized router have to
+    # override this variable in your subclass.
+    router_class = Router
 
     def __init__(
         self: AppType,
@@ -72,7 +76,7 @@ class Starlette:
 
         self.debug = debug
         self.state = State()
-        self.router = Router(routes, on_startup=on_startup, on_shutdown=on_shutdown, lifespan=lifespan)
+        self.router = self.router_class(routes, on_startup=on_startup, on_shutdown=on_shutdown, lifespan=lifespan)
         self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
         self.user_middleware = [] if middleware is None else list(middleware)
         self.middleware_stack: ASGIApp | None = None

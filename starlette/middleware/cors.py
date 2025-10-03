@@ -152,9 +152,9 @@ class CORSMiddleware:
         headers = MutableHeaders(scope=message)
         headers.update(self.simple_headers)
         origin = request_headers["Origin"]
-        has_cookie = "cookie" in request_headers
+        has_cookie = "cookie" in request_headers or "set-cookie" in headers
 
-        # If request includes any cookie headers, then we must respond
+        # If request or response includes any cookie headers, then we must respond
         # with the specific origin instead of '*'.
         if self.allow_all_origins and has_cookie:
             self.allow_explicit_origin(headers, origin)

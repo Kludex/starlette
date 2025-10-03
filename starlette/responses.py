@@ -10,7 +10,7 @@ import sys
 import warnings
 from collections.abc import AsyncIterable, Awaitable, Iterable, Mapping, Sequence
 from datetime import datetime
-from email.utils import format_datetime, formatdate
+from email.utils import format_datetime, formatdate, parsedate
 from functools import partial
 from mimetypes import guess_type
 from secrets import token_hex
@@ -297,6 +297,15 @@ _RANGE_PATTERN = re.compile(r"(\d*)-(\d*)")
 class FileResponse(Response):
     chunk_size = 64 * 1024
 
+    NOT_MODIFIED_HEADERS = {
+        b"cache-control",
+        b"content-location",
+        b"date",
+        b"etag",
+        b"expires",
+        b"vary",
+    }
+
     def __init__(
         self,
         path: str | os.PathLike[str],
@@ -362,12 +371,14 @@ class FileResponse(Response):
             stat_result = self.stat_result
 
         headers = Headers(scope=scope)
+        http_if_none_match = headers.get("if-none-match")
+        http_if_modified_since = headers.get("if-modified-since")
         http_range = headers.get("range")
         http_if_range = headers.get("if-range")
 
-        if http_range is None or (http_if_range is not None and not self._should_use_range(http_if_range)):
-            await self._handle_simple(send, send_header_only, send_pathsend)
-        else:
+        if self.status_code == 200 and self._is_not_modified(http_if_none_match, http_if_modified_since):
+            await self._handle_not_modified(send)
+        elif self.status_code == 200 and http_range is not None and self._should_use_range(http_if_range):
             try:
                 ranges = self._parse_range_header(http_range, stat_result.st_size)
             except MalformedRangeHeader as exc:
@@ -381,6 +392,8 @@ class FileResponse(Response):
                 await self._handle_single_range(send, start, end, stat_result.st_size, send_header_only)
             else:
                 await self._handle_multiple_ranges(send, ranges, stat_result.st_size, send_header_only)
+        else:
+            await self._handle_simple(send, send_header_only, send_pathsend)
 
         if self.background is not None:
             await self.background()
@@ -398,6 +411,11 @@ class FileResponse(Response):
                     chunk = await file.read(self.chunk_size)
                     more_body = len(chunk) == self.chunk_size
                     await send({"type": "http.response.body", "body": chunk, "more_body": more_body})
+
+    async def _handle_not_modified(self, send: Send) -> None:
+        headers = [(k, v) for k, v in self.raw_headers if k in FileResponse.NOT_MODIFIED_HEADERS]
+        await send({"type": "http.response.start", "status": 304, "headers": headers})
+        await send({"type": "http.response.body", "body": b"", "more_body": False})
 
     async def _handle_single_range(
         self, send: Send, start: int, end: int, file_size: int, send_header_only: bool
@@ -452,8 +470,30 @@ class FileResponse(Response):
                     }
                 )
 
-    def _should_use_range(self, http_if_range: str) -> bool:
-        return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]
+    def _is_not_modified(self, http_if_none_match: str | None, http_if_modified_since: str | None) -> bool:
+        """
+        Given the request and response headers, return `True` if an HTTP
+        "Not Modified" response could be returned instead.
+        """
+        if http_if_none_match is not None:
+            match = [tag.strip(" W/") for tag in http_if_none_match.split(",")]
+            etag = self.headers["etag"]
+            return etag in match  # Client already has the version with current tag
+
+        if http_if_modified_since:
+            since = parsedate(http_if_modified_since)
+            last_modified = parsedate(self.headers["last-modified"])
+            if since is not None and last_modified is not None:
+                return since >= last_modified
+
+        return False
+
+    def _should_use_range(self, http_if_range: str | None) -> bool:
+        return http_if_range in (
+            None,
+            self.headers["last-modified"],
+            self.headers["etag"],
+        )
 
     @staticmethod
     def _parse_range_header(http_range: str, file_size: int) -> list[tuple[int, int]]:

@@ -43,6 +43,7 @@ full = [
     "python-multipart>=0.0.18",
     "pyyaml",
     "httpx>=0.27.0,<0.29.0",
+    "backports.zstd; python_version < '3.14'",
 ]
 
 [dependency-groups]
@@ -56,6 +57,7 @@ dev = [
     "types-PyYAML==6.0.12.20250516",
     "pytest==8.4.1",
     "trio==0.30.0",
+    "zstandard>=0.25.0",
     # Check dist
     "twine==6.1.0"
 ]

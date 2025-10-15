@@ -349,7 +349,7 @@ class FileResponse(Response):
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         send_header_only: bool = scope["method"].upper() == "HEAD"
-        send_pathsend: bool = "http.response.pathsend" in scope.get("extensions", {})
+        send_pathsend: bool = self.file is None and "http.response.pathsend" in scope.get("extensions", {})
 
         if self.stat_result is None:
             try:
@@ -398,7 +398,7 @@ class FileResponse(Response):
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
-        elif send_pathsend and self.file is None:
+        elif send_pathsend:
             await send({"type": "http.response.pathsend", "path": str(self.path)})
         else:
             async with await self._open_file() as file:

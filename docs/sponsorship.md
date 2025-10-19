@@ -59,8 +59,8 @@ We currently manage sponsorships *exclusively* through **GitHub Sponsors**. This
 
 ## Sponsorship Tiers 🎁
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
-    <div style="padding: 1.5rem; border: 1px solid #e1e4e8; border-radius: 6px; background: #fff; display: flex; flex-direction: column;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 2rem 0; color: #fff">
+    <div style="padding: 1.5rem; border: 1px solid #e1e4e8; border-radius: 6px; background: linear-gradient(135deg, #6e5494, #24292e); display: flex; flex-direction: column;">
         <h3 style="color: #cd7f32;">🥉 Bronze Sponsor</h3>
         <div style="font-size: 1.5em; margin: 1rem 0;">$100<span style="font-size: 0.6em;">/month</span></div>
         <ul style="list-style: none; padding: 0; margin-bottom: 1rem; min-height: 90px;">
@@ -74,7 +74,7 @@ We currently manage sponsorships *exclusively* through **GitHub Sponsors**. This
             </a>
         </div>
     </div>
-    <div style="padding: 1.5rem; border: 1px solid #e1e4e8; border-radius: 6px; background: #fff; display: flex; flex-direction: column;">
+    <div style="padding: 1.5rem; border: 1px solid #e1e4e8; border-radius: 6px; background: linear-gradient(135deg, #6e5494, #24292e); display: flex; flex-direction: column;">
         <h3 style="color: #c0c0c0;">🥈 Silver Sponsor</h3>
         <div style="font-size: 1.5em; margin: 1rem 0;">$250<span style="font-size: 0.6em;">/month</span></div>
         <ul style="list-style: none; padding: 0; margin-bottom: 1rem; min-height: 90px;">
@@ -88,7 +88,7 @@ We currently manage sponsorships *exclusively* through **GitHub Sponsors**. This
             </a>
         </div>
     </div>
-    <div style="padding: 1.5rem; border: 1px solid #e1e4e8; border-radius: 6px; background: #fff; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+    <div style="padding: 1.5rem; border: 1px solid #e1e4e8; border-radius: 6px; background: linear-gradient(135deg, #6e5494, #24292e); position: relative; overflow: hidden; display: flex; flex-direction: column;">
         <div style="position: absolute; top: 10px; right: -25px; background: #238636; color: white; padding: 5px 30px; transform: rotate(45deg);">
             Popular
         </div>
@@ -148,7 +148,7 @@ We currently manage sponsorships *exclusively* through **GitHub Sponsors**. This
 
 ## Alternative Sponsorship Platforms
 
-<div style="background: #f6f8fa; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+<div style="background: linear-gradient(135deg, var(--md-default-fg-color--lighter), var(--md-default-fg-color--lightest)); padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
     <h3>📢 We Want Your Input!</h3>
     <p>We are currently evaluating whether to expand our sponsorship options beyond GitHub Sponsors. If your company would be interested in sponsoring Starlette and Uvicorn but prefers to use a different platform (e.g., Open Collective, direct invoicing), please let us know!</p>
     <p>Your feedback is invaluable in helping us make sponsorship as accessible as possible. Share your thoughts by:</p>

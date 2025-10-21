@@ -15,11 +15,14 @@
 <a href="https://pypi.org/project/starlette" target="_blank">
     <img src="https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058" alt="Supported Python versions">
 </a>
+<a href="https://discord.gg/RxKUF5JuHs">
+    <img src="https://img.shields.io/discord/1051468649518616576?logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2" alt="Discord">
+</a>
 </p>
 
 ---
 
-**Documentation**: <a href="https://www.starlette.io/" target="_blank">https://www.starlette.io</a>
+**Documentation**: <a href="https://starlette.dev/" target="_blank">https://starlette.dev</a>
 
 **Source Code**: <a href="https://github.com/Kludex/starlette" target="_blank">https://github.com/Kludex/starlette</a>
 

@@ -15,10 +15,11 @@
 [![Build Status](https://github.com/Kludex/starlette/workflows/Test%20Suite/badge.svg)](https://github.com/Kludex/starlette/actions)
 [![Package version](https://badge.fury.io/py/starlette.svg)](https://pypi.python.org/pypi/starlette)
 [![Supported Python Version](https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058)](https://pypi.org/project/starlette)
+[![Discord](https://img.shields.io/discord/1051468649518616576?logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/RxKUF5JuHs)
 
 ---
 
-**Documentation**: <a href="https://www.starlette.io/" target="_blank">https://www.starlette.io</a>
+**Documentation**: <a href="https://starlette.dev/" target="_blank">https://starlette.dev</a>
 
 **Source Code**: <a href="https://github.com/Kludex/starlette" target="_blank">https://github.com/Kludex/starlette</a>
 

@@ -601,7 +601,7 @@ class Router:
             warnings.warn(
                 "The on_startup and on_shutdown parameters are deprecated, and they "
                 "will be removed on version 1.0. Use the lifespan parameter instead. "
-                "See more about it on https://www.starlette.io/lifespan/.",
+                "See more about it on https://starlette.dev/lifespan/.",
                 DeprecationWarning,
             )
             if lifespan:
@@ -818,7 +818,7 @@ class Router:
         """
         warnings.warn(
             "The `route` decorator is deprecated, and will be removed in version 1.0.0."
-            "Refer to https://www.starlette.io/routing/#http-routing for the recommended approach.",
+            "Refer to https://starlette.dev/routing/#http-routing for the recommended approach.",
             DeprecationWarning,
         )
 
@@ -844,7 +844,7 @@ class Router:
         """
         warnings.warn(
             "The `websocket_route` decorator is deprecated, and will be removed in version 1.0.0. Refer to "
-            "https://www.starlette.io/routing/#websocket-routing for the recommended approach.",
+            "https://starlette.dev/routing/#websocket-routing for the recommended approach.",
             DeprecationWarning,
         )
 
@@ -865,7 +865,7 @@ class Router:
     def on_event(self, event_type: str) -> Callable:  # type: ignore[type-arg]
         warnings.warn(
             "The `on_event` decorator is deprecated, and will be removed in version 1.0.0. "
-            "Refer to https://www.starlette.io/lifespan/ for recommended approach.",
+            "Refer to https://starlette.dev/lifespan/ for recommended approach.",
             DeprecationWarning,
         )
 

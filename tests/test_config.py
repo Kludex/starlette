@@ -140,3 +140,10 @@ def test_config_with_env_prefix(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(KeyError):
         config.get("ENVIRONMENT")
+
+
+def test_config_with_encoding(tmpdir: Path) -> None:
+    path = tmpdir / ".env"
+    path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
+    config = Config(path, encoding="utf-8")
+    assert config.get("MESSAGE") == "Hello 世界"

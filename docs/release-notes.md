@@ -2,6 +2,18 @@
 toc_depth: 2
 ---
 
+## 0.49.0 (October 28, 2025)
+
+#### Added
+
+* Add `encoding` parameter to `Config` class [#2996](https://github.com/Kludex/starlette/pull/2996).
+* Support multiple cookie headers in `Request.cookies` [#3029](https://github.com/Kludex/starlette/pull/3029).
+* Use `Literal` type for `WebSocketEndpoint` encoding values [#3027](https://github.com/Kludex/starlette/pull/3027).
+
+#### Changed
+
+* Do not pollute exception context in `Middleware` when using `BaseHTTPMiddleware` [#2976](https://github.com/Kludex/starlette/pull/2976).
+
 ## 0.48.0 (September 13, 2025)
 
 #### Added

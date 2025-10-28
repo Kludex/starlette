@@ -2,6 +2,16 @@
 toc_depth: 2
 ---
 
+## 0.49.1 (October 28, 2025)
+
+This release fixes a security vulnerability in the parsing logic of the `Range` header in `FileResponse`.
+
+You can view the full security advisory: [GHSA-7f5h-v6xp-fcq8](https://github.com/Kludex/starlette/security/advisories/GHSA-7f5h-v6xp-fcq8)
+
+#### Fixed
+
+* Optimize the HTTP ranges parsing logic [4ea6e22b489ec388d6004cfbca52dd5b147127c5](https://github.com/Kludex/starlette/commit/4ea6e22b489ec388d6004cfbca52dd5b147127c5)
+
 ## 0.49.0 (October 28, 2025)
 
 #### Added

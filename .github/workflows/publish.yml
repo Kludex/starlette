@@ -4,26 +4,114 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
 
 jobs:
-  publish:
-    name: "Publish release"
-    runs-on: "ubuntu-latest"
-
-    environment:
-      name: deploy
+  build:
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: "actions/checkout@v4"
-      - uses: "actions/setup-python@v5"
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.11"
-      - name: "Install dependencies"
-        run: "scripts/install"
-      - name: "Build package & docs"
-        run: "scripts/build"
-      - name: "Publish to PyPI & deploy docs"
-        run: "scripts/publish"
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          enable-cache: true
+
+      - name: Install dependencies
+        run: scripts/install
+
+      - name: Build package & docs
+        run: scripts/build
+
+      - name: Upload package distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: package-distributions
+          path: dist/
+
+      - name: Upload documentation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: documentation
+          path: site/
+
+  pypi-publish:
+    runs-on: ubuntu-latest
+    needs: build
+    if: success() && startsWith(github.ref, 'refs/tags/')
+
+    permissions:
+      id-token: write
+
+    environment:
+      name: pypi
+      url: https://pypi.org/project/starlette
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: package-distributions
+          path: dist/
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+
+  docs-publish:
+    runs-on: ubuntu-latest
+    needs: build
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Download artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: documentation
+          path: site/
+
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: scripts/install
+
+      - name: Publish documentation 📚 to GitHub Pages
+        run: uv run mkdocs gh-deploy --force
+
+  docs-cloudflare:
+    runs-on: ubuntu-latest
+    needs: build
+
+    environment:
+      name: cloudflare
+      url: https://starlette.dev
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Download artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: documentation
+          path: site/
+
+      - uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: >
+            pages deploy ./site
+            --project-name starlette
+            --commit-hash ${{ github.sha }}
+            --branch main

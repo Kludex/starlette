@@ -6,8 +6,8 @@
     <em>✨ The little ASGI framework that shines. ✨</em>
 </p>
 <p align="center">
-<a href="https://github.com/encode/starlette/actions">
-    <img src="https://github.com/encode/starlette/workflows/Test%20Suite/badge.svg" alt="Build Status">
+<a href="https://github.com/Kludex/starlette/actions">
+    <img src="https://github.com/Kludex/starlette/workflows/Test%20Suite/badge.svg" alt="Build Status">
 </a>
 <a href="https://pypi.org/project/starlette/">
     <img src="https://badge.fury.io/py/starlette.svg" alt="Package version">
@@ -15,13 +15,16 @@
 <a href="https://pypi.org/project/starlette" target="_blank">
     <img src="https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058" alt="Supported Python versions">
 </a>
+<a href="https://discord.gg/RxKUF5JuHs">
+    <img src="https://img.shields.io/discord/1051468649518616576?logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2" alt="Discord">
+</a>
 </p>
 
 ---
 
-**Documentation**: <a href="https://www.starlette.io/" target="_blank">https://www.starlette.io</a>
+**Documentation**: <a href="https://starlette.dev/" target="_blank">https://starlette.dev</a>
 
-**Source Code**: <a href="https://github.com/encode/starlette" target="_blank">https://github.com/encode/starlette</a>
+**Source Code**: <a href="https://github.com/Kludex/starlette" target="_blank">https://github.com/Kludex/starlette</a>
 
 ---
 
@@ -147,7 +150,7 @@ in isolation.
 
 ---
 
-<p align="center"><i>Starlette is <a href="https://github.com/encode/starlette/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
+<p align="center"><i>Starlette is <a href="https://github.com/Kludex/starlette/blob/main/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
 
 [asgi]: https://asgi.readthedocs.io/en/latest/
 [httpx]: https://www.python-httpx.org/

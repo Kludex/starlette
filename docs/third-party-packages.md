@@ -252,7 +252,7 @@ Provides translations, localization, and timezone support via Babel integration.
 
 <a href="https://github.com/DavidVentura/starlette-static-resources" target="_blank">GitHub</a>
 
-Allows mounting [package resources](https://docs.python.org/3/library/importlib.resources.html#module-importlib.resources) for static data, similar to [StaticFiles](https://www.starlette.io/staticfiles/).
+Allows mounting [package resources](https://docs.python.org/3/library/importlib.resources.html#module-importlib.resources) for static data, similar to [StaticFiles](staticfiles.md).
 
 ### Sentry
 
@@ -266,4 +266,4 @@ Sentry is a software error detection tool. It offers actionable insights for res
 <a href="https://github.com/posit-dev/py-shiny" target="_blank">GitHub</a> |
 <a href="https://shiny.posit.co/py/" target="_blank">Documentation</a>
 
-Leveraging Starlette and asyncio, Shiny allows developers to create effortless Python web applications using the power of reactive programming. Shiny eliminates the hassle of manual state management, automatically determining the best execution path for your app at runtime while simultaneously minimizing re-rendering. This means that Shiny can support everything from the simplest dashboard to full-featured web apps.   
+Leveraging Starlette and asyncio, Shiny allows developers to create effortless Python web applications using the power of reactive programming. Shiny eliminates the hassle of manual state management, automatically determining the best execution path for your app at runtime while simultaneously minimizing re-rendering. This means that Shiny can support everything from the simplest dashboard to full-featured web apps.

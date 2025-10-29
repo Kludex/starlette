@@ -297,10 +297,24 @@ def test_request_state_object() -> None:
     s.new = "value"
     assert s.new == "value"
 
-    del s.new
+    s["item"] = "baar"
+    assert s["item"] == "baar"
 
+    assert len(s) == 3
+
+    assert "item" in s
+
+    assert "old" in s
+
+    assert "new" in s
+
+    del s.new
     with pytest.raises(AttributeError):
         s.new
+
+    del s["item"]
+    with pytest.raises(KeyError):
+        s["item"]
 
 
 def test_request_state(test_client_factory: TestClientFactory) -> None:

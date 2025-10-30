@@ -190,8 +190,11 @@ class WebSocket(HTTPConnection):
     @staticmethod
     def _send_wrap(send: Send, is_websocket_denial: bool) -> Send:
         async def wrapped(message: Message) -> None:
+            message_type = message["type"]
             if is_websocket_denial:
-                message["type"] = "websocket." + message["type"]
+                if not message_type.startswith("websocket."):
+                    message["type"] = "websocket." + message_type
+
             await send(message)
 
         return wrapped

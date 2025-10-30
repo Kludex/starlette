@@ -188,8 +188,8 @@ class WebSocket(HTTPConnection):
             raise RuntimeError("The server doesn't support the Websocket Denial Response extension.")
 
     @staticmethod
-    def _send_wrap(send: Send, is_websocket_denial: bool):
-        async def wrapped(message: Message):
+    def _send_wrap(send: Send, is_websocket_denial: bool) -> Send:
+        async def wrapped(message: Message) -> None:
             if is_websocket_denial:
                 message["type"] = "websocket." + message["type"]
             await send(message)

@@ -206,6 +206,8 @@ class StaticFiles:
             etag = response_headers["etag"]
             if etag in [tag.strip(" W/") for tag in if_none_match.split(",")]:
                 return True
+            else:
+                return False
         except KeyError:
             pass
 

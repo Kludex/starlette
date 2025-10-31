@@ -56,6 +56,7 @@ dev = [
     "types-PyYAML==6.0.12.20250516",
     "pytest==8.4.1",
     "trio==0.30.0",
+    "typing_extensions>=4.10.0",
     # Check dist
     "twine==6.1.0"
 ]

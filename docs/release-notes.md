@@ -2,6 +2,14 @@
 toc_depth: 2
 ---
 
+## 0.49.3 (November 1, 2025)
+
+This is the last release that supports Python 3.9, which will be dropped in the next minor release.
+
+#### Fixed
+
+* Relax strictness on `Middleware` type [#3059](https://github.com/Kludex/starlette/pull/3059).
+
 ## 0.49.2 (November 1, 2025)
 
 #### Fixed

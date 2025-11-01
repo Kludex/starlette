@@ -2,8 +2,8 @@ import os
 import stat
 import tempfile
 import time
-import typing
 from pathlib import Path
+from typing import Any
 
 import anyio
 import pytest
@@ -45,7 +45,7 @@ def test_staticfiles_with_pathlib(tmp_path: Path, test_client_factory: TestClien
 
 def test_staticfiles_head_with_middleware(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     """
-    see https://github.com/encode/starlette/pull/935
+    see https://github.com/Kludex/starlette/pull/935
     """
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
@@ -482,7 +482,7 @@ def test_staticfiles_unhandled_os_error_returns_500(
     test_client_factory: TestClientFactory,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def mock_timeout(*args: typing.Any, **kwargs: typing.Any) -> None:
+    def mock_timeout(*args: Any, **kwargs: Any) -> None:
         raise TimeoutError
 
     path = os.path.join(tmpdir, "example.txt")
@@ -617,3 +617,11 @@ def test_staticfiles_self_symlinks(tmp_path: Path, test_client_factory: TestClie
     assert response.url == "http://testserver/index.html"
     assert response.status_code == 200
     assert response.text == "<h1>Hello</h1>"
+
+
+def test_staticfiles_relative_directory_symlinks(test_client_factory: TestClientFactory) -> None:
+    app = StaticFiles(directory="tests/statics", follow_symlink=True)
+    client = test_client_factory(app)
+    response = client.get("/example.txt")
+    assert response.status_code == 200
+    assert response.text == "123\n"

@@ -1,5 +1,4 @@
 import os
-import typing
 from pathlib import Path
 from typing import Any, Optional
 
@@ -51,7 +50,7 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
     config = Config(path, environ={"DEBUG": "true"})
 
-    def cast_to_int(v: typing.Any) -> int:
+    def cast_to_int(v: Any) -> int:
         return int(v)
 
     DEBUG = config("DEBUG", cast=bool)
@@ -141,3 +140,10 @@ def test_config_with_env_prefix(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(KeyError):
         config.get("ENVIRONMENT")
+
+
+def test_config_with_encoding(tmpdir: Path) -> None:
+    path = tmpdir / ".env"
+    path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
+    config = Config(path, encoding="utf-8")
+    assert config.get("MESSAGE") == "Hello 世界"

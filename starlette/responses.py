@@ -4,15 +4,16 @@ import hashlib
 import http.cookies
 import json
 import os
-import re
 import stat
-import typing
+import sys
 import warnings
+from collections.abc import AsyncIterable, Awaitable, Iterable, Mapping, Sequence
 from datetime import datetime
 from email.utils import format_datetime, formatdate
 from functools import partial
 from mimetypes import guess_type
 from secrets import token_hex
+from typing import Any, Callable, Literal, Union
 from urllib.parse import quote
 
 import anyio
@@ -32,9 +33,9 @@ class Response:
 
     def __init__(
         self,
-        content: typing.Any = None,
+        content: Any = None,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
     ) -> None:
@@ -45,14 +46,14 @@ class Response:
         self.body = self.render(content)
         self.init_headers(headers)
 
-    def render(self, content: typing.Any) -> bytes | memoryview:
+    def render(self, content: Any) -> bytes | memoryview:
         if content is None:
             return b""
         if isinstance(content, (bytes, memoryview)):
             return content
         return content.encode(self.charset)  # type: ignore
 
-    def init_headers(self, headers: typing.Mapping[str, str] | None = None) -> None:
+    def init_headers(self, headers: Mapping[str, str] | None = None) -> None:
         if headers is None:
             raw_headers: list[tuple[bytes, bytes]] = []
             populate_content_length = True
@@ -96,7 +97,8 @@ class Response:
         domain: str | None = None,
         secure: bool = False,
         httponly: bool = False,
-        samesite: typing.Literal["lax", "strict", "none"] | None = "lax",
+        samesite: Literal["lax", "strict", "none"] | None = "lax",
+        partitioned: bool = False,
     ) -> None:
         cookie: http.cookies.BaseCookie[str] = http.cookies.SimpleCookie()
         cookie[key] = value
@@ -122,6 +124,11 @@ class Response:
                 "none",
             ], "samesite must be either 'strict', 'lax' or 'none'"
             cookie[key]["samesite"] = samesite
+        if partitioned:
+            if sys.version_info < (3, 14):
+                raise ValueError("Partitioned cookies are only supported in Python 3.14 and above.")  # pragma: no cover
+            cookie[key]["partitioned"] = True  # pragma: no cover
+
         cookie_val = cookie.output(header="").strip()
         self.raw_headers.append((b"set-cookie", cookie_val.encode("latin-1")))
 
@@ -132,7 +139,7 @@ class Response:
         domain: str | None = None,
         secure: bool = False,
         httponly: bool = False,
-        samesite: typing.Literal["lax", "strict", "none"] | None = "lax",
+        samesite: Literal["lax", "strict", "none"] | None = "lax",
     ) -> None:
         self.set_cookie(
             key,
@@ -173,15 +180,15 @@ class JSONResponse(Response):
 
     def __init__(
         self,
-        content: typing.Any,
+        content: Any,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
     ) -> None:
         super().__init__(content, status_code, headers, media_type, background)
 
-    def render(self, content: typing.Any) -> bytes:
+    def render(self, content: Any) -> bytes:
         return json.dumps(
             content,
             ensure_ascii=False,
@@ -196,17 +203,17 @@ class RedirectResponse(Response):
         self,
         url: str | URL,
         status_code: int = 307,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         background: BackgroundTask | None = None,
     ) -> None:
         super().__init__(content=b"", status_code=status_code, headers=headers, background=background)
         self.headers["location"] = quote(str(url), safe=":/%#?=@[]!$&'()*+,;")
 
 
-Content = typing.Union[str, bytes, memoryview]
-SyncContentStream = typing.Iterable[Content]
-AsyncContentStream = typing.AsyncIterable[Content]
-ContentStream = typing.Union[AsyncContentStream, SyncContentStream]
+Content = Union[str, bytes, memoryview]
+SyncContentStream = Iterable[Content]
+AsyncContentStream = AsyncIterable[Content]
+ContentStream = Union[AsyncContentStream, SyncContentStream]
 
 
 class StreamingResponse(Response):
@@ -216,11 +223,11 @@ class StreamingResponse(Response):
         self,
         content: ContentStream,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
     ) -> None:
-        if isinstance(content, typing.AsyncIterable):
+        if isinstance(content, AsyncIterable):
             self.body_iterator = content
         else:
             self.body_iterator = iterate_in_threadpool(content)
@@ -262,7 +269,7 @@ class StreamingResponse(Response):
             with collapse_excgroups():
                 async with anyio.create_task_group() as task_group:
 
-                    async def wrap(func: typing.Callable[[], typing.Awaitable[None]]) -> None:
+                    async def wrap(func: Callable[[], Awaitable[None]]) -> None:
                         await func()
                         task_group.cancel_scope.cancel()
 
@@ -283,9 +290,6 @@ class RangeNotSatisfiable(Exception):
         self.max_size = max_size
 
 
-_RANGE_PATTERN = re.compile(r"(\d*)-(\d*)")
-
-
 class FileResponse(Response):
     chunk_size = 64 * 1024
 
@@ -293,7 +297,7 @@ class FileResponse(Response):
         self,
         path: str | os.PathLike[str],
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
         filename: str | None = None,
@@ -338,6 +342,8 @@ class FileResponse(Response):
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         send_header_only: bool = scope["method"].upper() == "HEAD"
+        send_pathsend: bool = "http.response.pathsend" in scope.get("extensions", {})
+
         if self.stat_result is None:
             try:
                 stat_result = await anyio.to_thread.run_sync(os.stat, self.path)
@@ -356,7 +362,7 @@ class FileResponse(Response):
         http_if_range = headers.get("if-range")
 
         if http_range is None or (http_if_range is not None and not self._should_use_range(http_if_range)):
-            await self._handle_simple(send, send_header_only)
+            await self._handle_simple(send, send_header_only, send_pathsend)
         else:
             try:
                 ranges = self._parse_range_header(http_range, stat_result.st_size)
@@ -375,10 +381,12 @@ class FileResponse(Response):
         if self.background is not None:
             await self.background()
 
-    async def _handle_simple(self, send: Send, send_header_only: bool) -> None:
+    async def _handle_simple(self, send: Send, send_header_only: bool, send_pathsend: bool) -> None:
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
+        elif send_pathsend:
+            await send({"type": "http.response.pathsend", "path": str(self.path)})
         else:
             async with await anyio.open_file(self.path, mode="rb") as file:
                 more_body = True
@@ -443,8 +451,8 @@ class FileResponse(Response):
     def _should_use_range(self, http_if_range: str) -> bool:
         return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]
 
-    @staticmethod
-    def _parse_range_header(http_range: str, file_size: int) -> list[tuple[int, int]]:
+    @classmethod
+    def _parse_range_header(cls, http_range: str, file_size: int) -> list[tuple[int, int]]:
         ranges: list[tuple[int, int]] = []
         try:
             units, range_ = http_range.split("=", 1)
@@ -456,14 +464,7 @@ class FileResponse(Response):
         if units != "bytes":
             raise MalformedRangeHeader("Only support bytes range")
 
-        ranges = [
-            (
-                int(_[0]) if _[0] else file_size - int(_[1]),
-                int(_[1]) + 1 if _[0] and _[1] and int(_[1]) < file_size else file_size,
-            )
-            for _ in _RANGE_PATTERN.findall(range_)
-            if _ != ("", "")
-        ]
+        ranges = cls._parse_ranges(range_, file_size)
 
         if len(ranges) == 0:
             raise MalformedRangeHeader("Range header: range must be requested")
@@ -495,13 +496,42 @@ class FileResponse(Response):
 
         return result
 
+    @classmethod
+    def _parse_ranges(cls, range_: str, file_size: int) -> list[tuple[int, int]]:
+        ranges: list[tuple[int, int]] = []
+
+        for part in range_.split(","):
+            part = part.strip()
+
+            # If the range is empty or a single dash, we ignore it.
+            if not part or part == "-":
+                continue
+
+            # If the range is not in the format "start-end", we ignore it.
+            if "-" not in part:
+                continue
+
+            start_str, end_str = part.split("-", 1)
+            start_str = start_str.strip()
+            end_str = end_str.strip()
+
+            try:
+                start = int(start_str) if start_str else file_size - int(end_str)
+                end = int(end_str) + 1 if start_str and end_str and int(end_str) < file_size else file_size
+                ranges.append((start, end))
+            except ValueError:
+                # If the range is not numeric, we ignore it.
+                continue
+
+        return ranges
+
     def generate_multipart(
         self,
-        ranges: typing.Sequence[tuple[int, int]],
+        ranges: Sequence[tuple[int, int]],
         boundary: str,
         max_size: int,
         content_type: str,
-    ) -> tuple[int, typing.Callable[[int, int], bytes]]:
+    ) -> tuple[int, Callable[[int, int], bytes]]:
         r"""
         Multipart response headers generator.
 

@@ -4,8 +4,8 @@ import errno
 import importlib.util
 import os
 import stat
-import typing
 from email.utils import parsedate
+from typing import Union
 
 import anyio
 import anyio.to_thread
@@ -16,7 +16,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
 
-PathLike = typing.Union[str, "os.PathLike[str]"]
+PathLike = Union[str, "os.PathLike[str]"]
 
 
 class NotModifiedResponse(Response):
@@ -153,6 +153,7 @@ class StaticFiles:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:
                 full_path = os.path.abspath(joined_path)
+                directory = os.path.abspath(directory)
             else:
                 full_path = os.path.realpath(joined_path)
                 directory = os.path.realpath(directory)

@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import typing
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
 from tempfile import SpooledTemporaryFile
+from typing import TYPE_CHECKING
 from urllib.parse import unquote_plus
 
 from starlette.datastructures import FormData, Headers, UploadFile
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     import python_multipart as multipart
     from python_multipart.multipart import MultipartCallbacks, QuerystringCallbacks, parse_options_header
 else:
@@ -54,7 +55,7 @@ class MultiPartException(Exception):
 
 
 class FormParser:
-    def __init__(self, headers: Headers, stream: typing.AsyncGenerator[bytes, None]) -> None:
+    def __init__(self, headers: Headers, stream: AsyncGenerator[bytes, None]) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
@@ -130,7 +131,7 @@ class MultiPartParser:
     def __init__(
         self,
         headers: Headers,
-        stream: typing.AsyncGenerator[bytes, None],
+        stream: AsyncGenerator[bytes, None],
         *,
         max_files: int | float = 1000,
         max_fields: int | float = 1000,

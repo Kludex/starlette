@@ -1,6 +1,12 @@
 site_name: Starlette
 site_description: The little ASGI library that shines.
-site_url: https://www.starlette.io
+site_url: https://starlette.dev
+
+repo_name: Kludex/starlette
+repo_url: https://github.com/Kludex/starlette
+edit_uri: edit/main/docs/
+
+strict: true
 
 theme:
   name: "material"
@@ -22,10 +28,6 @@ theme:
   features:
     - content.code.copy
     - toc.follow
-
-repo_name: encode/starlette
-repo_url: https://github.com/encode/starlette
-edit_uri: edit/master/docs/
 
 nav:
   - Introduction: "index.md"
@@ -56,6 +58,22 @@ nav:
       - Contributing: "contributing.md"
   - Sponsorship: "sponsorship.md"
 
+extra:
+  analytics:
+    provider: google
+    property: G-Z37GTYBR6M
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/Kludex/starlette
+    - icon: fontawesome/brands/discord
+      link: https://discord.com/invite/RxKUF5JuHs
+    - icon: fontawesome/brands/twitter
+      link: https://x.com/marcelotryle
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/marcelotryle
+    - icon: fontawesome/solid/globe
+      link: https://fastapiexpert.com
+
 markdown_extensions:
   - attr_list
   - admonition
@@ -67,6 +85,8 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
 
 watch:
   - starlette
@@ -89,5 +109,5 @@ plugins:
             show_signature_annotations: true
             show_source: false
             signature_crossrefs: true
-          import:
+          inventories:
             - url: https://docs.python.org/3/objects.inv

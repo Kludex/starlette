@@ -275,6 +275,11 @@ def test_staticfiles_200_with_etag_mismatched_and_last_modified_compare_last_req
     assert response.content == b"<file content>"
 
 
+def test_staticfiles_missing_etag(tmpdir) -> None:
+    app = StaticFiles(directory=tmpdir)
+    assert app.is_not_modified({}, {"If-none-match": "with-non-computed-etag"}) is False
+
+
 def test_staticfiles_html_normal(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "404.html")
     with open(path, "w") as file:

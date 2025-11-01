@@ -487,7 +487,8 @@ class TestClient(httpx.Client):
         timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
-        if timeout is not USE_CLIENT_DEFAULT:
+        _timeout = _normalize_client_default(timeout)
+        if _timeout is not httpx.USE_CLIENT_DEFAULT:
             warnings.warn(
                 "You should not use the 'timeout' argument with the TestClient. "
                 "See https://github.com/Kludex/starlette/issues/1108 for more information.",
@@ -506,7 +507,7 @@ class TestClient(httpx.Client):
             cookies=cookies,
             auth=_normalize_client_default(auth),
             follow_redirects=_normalize_client_default(follow_redirects),
-            timeout=_normalize_client_default(timeout),
+            timeout=_timeout,
             extensions=extensions,
         )
 

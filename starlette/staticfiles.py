@@ -201,13 +201,9 @@ class StaticFiles:
         Given the request and response headers, return `True` if an HTTP
         "Not Modified" response could be returned instead.
         """
-        try:
-            if_none_match = request_headers["if-none-match"]
+        if if_none_match := request_headers.get("if-none-match"):
             etag = response_headers["etag"]
-            if etag in [tag.strip(" W/") for tag in if_none_match.split(",")]:
-                return True
-        except KeyError:
-            pass
+            return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])

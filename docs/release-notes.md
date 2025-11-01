@@ -4,7 +4,7 @@ toc_depth: 2
 
 ## 0.49.3 (November 1, 2025)
 
-This is the last release that supports Python 3.9. We will drop support for Python 3.9 in the next minor release.
+This is the last release that supports Python 3.9, which will be dropped in the next minor release.
 
 #### Fixed
 

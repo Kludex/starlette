@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Mapping, MutableMapping
-from typing import Any, Callable, TypeVar, Union
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
+from typing import Any, TypeVar
 
 import anyio
 
@@ -12,8 +12,8 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
 DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
-BodyStreamGenerator = AsyncGenerator[Union[bytes, MutableMapping[str, Any]], None]
-AsyncContentStream = AsyncIterable[Union[str, bytes, memoryview, MutableMapping[str, Any]]]
+BodyStreamGenerator = AsyncGenerator[bytes | MutableMapping[str, Any], None]
+AsyncContentStream = AsyncIterable[str | bytes | memoryview | MutableMapping[str, Any]]
 T = TypeVar("T")
 
 

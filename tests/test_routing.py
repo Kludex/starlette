@@ -4,8 +4,8 @@ import contextlib
 import functools
 import json
 import uuid
-from collections.abc import AsyncGenerator, AsyncIterator, Generator
-from typing import Callable, TypedDict
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
+from typing import TypedDict
 
 import pytest
 

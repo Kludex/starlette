@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncGenerator, AsyncIterator, Generator
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Callable
 
 import anyio.from_thread
 import pytest

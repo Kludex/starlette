@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import functools
 import sys
-from collections.abc import Awaitable, Generator
+from collections.abc import Awaitable, Callable, Generator
 from contextlib import AbstractAsyncContextManager, contextmanager
-from typing import Any, Callable, Generic, Protocol, TypeVar, overload
+from typing import Any, Generic, Protocol, TypeVar, overload
 
 from starlette.types import Scope
 

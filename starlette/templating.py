@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from os import PathLike
-from typing import Any, Callable, cast, overload
+from typing import Any, cast, overload
 
 from starlette.background import BackgroundTask
 from starlette.datastructures import URL

@@ -7,13 +7,13 @@ import os
 import stat
 import sys
 import warnings
-from collections.abc import AsyncIterable, Awaitable, Iterable, Mapping, Sequence
+from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Mapping, Sequence
 from datetime import datetime
 from email.utils import format_datetime, formatdate
 from functools import partial
 from mimetypes import guess_type
 from secrets import token_hex
-from typing import Any, Callable, Literal, Union
+from typing import Any, Literal
 from urllib.parse import quote
 
 import anyio
@@ -49,7 +49,7 @@ class Response:
     def render(self, content: Any) -> bytes | memoryview:
         if content is None:
             return b""
-        if isinstance(content, (bytes, memoryview)):
+        if isinstance(content, bytes | memoryview):
             return content
         return content.encode(self.charset)  # type: ignore
 
@@ -210,10 +210,10 @@ class RedirectResponse(Response):
         self.headers["location"] = quote(str(url), safe=":/%#?=@[]!$&'()*+,;")
 
 
-Content = Union[str, bytes, memoryview]
+Content = str | bytes | memoryview
 SyncContentStream = Iterable[Content]
 AsyncContentStream = AsyncIterable[Content]
-ContentStream = Union[AsyncContentStream, SyncContentStream]
+ContentStream = AsyncContentStream | SyncContentStream
 
 
 class StreamingResponse(Response):
@@ -251,7 +251,7 @@ class StreamingResponse(Response):
             }
         )
         async for chunk in self.body_iterator:
-            if not isinstance(chunk, (bytes, memoryview)):
+            if not isinstance(chunk, bytes | memoryview):
                 chunk = chunk.encode(self.charset)
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
 

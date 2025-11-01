@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 0.49.2 (November 1, 2025)
+
+#### Fixed
+
+* Ignore `if-modified-since` header if `if-none-match` is present in `StaticFiles` [#3044](https://github.com/Kludex/starlette/pull/3044).
+
 ## 0.49.1 (October 28, 2025)
 
 This release fixes a security vulnerability in the parsing logic of the `Range` header in `FileResponse`.

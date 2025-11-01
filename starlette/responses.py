@@ -13,7 +13,7 @@ from email.utils import format_datetime, formatdate
 from functools import partial
 from mimetypes import guess_type
 from secrets import token_hex
-from typing import Any, Callable, Literal, Union
+from typing import IO, Any, Callable, Literal, Union
 from urllib.parse import quote
 
 import anyio
@@ -304,6 +304,7 @@ class FileResponse(Response):
         stat_result: os.stat_result | None = None,
         method: str | None = None,
         content_disposition_type: str = "attachment",
+        file: IO[bytes] | None = None,
     ) -> None:
         self.path = path
         self.status_code = status_code
@@ -330,6 +331,8 @@ class FileResponse(Response):
         if stat_result is not None:
             self.set_stat_headers(stat_result)
 
+        self.file = file
+
     def set_stat_headers(self, stat_result: os.stat_result) -> None:
         content_length = str(stat_result.st_size)
         last_modified = formatdate(stat_result.st_mtime, usegmt=True)
@@ -342,7 +345,7 @@ class FileResponse(Response):
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         send_header_only: bool = scope["method"].upper() == "HEAD"
-        send_pathsend: bool = "http.response.pathsend" in scope.get("extensions", {})
+        send_pathsend: bool = self.file is None and "http.response.pathsend" in scope.get("extensions", {})
 
         if self.stat_result is None:
             try:
@@ -381,6 +384,12 @@ class FileResponse(Response):
         if self.background is not None:
             await self.background()
 
+    async def _open_file(self) -> anyio.AsyncFile[bytes]:
+        if self.file is not None:
+            return anyio.wrap_file(self.file)
+        else:
+            return await anyio.open_file(self.path, mode="rb")
+
     async def _handle_simple(self, send: Send, send_header_only: bool, send_pathsend: bool) -> None:
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         if send_header_only:
@@ -388,7 +397,7 @@ class FileResponse(Response):
         elif send_pathsend:
             await send({"type": "http.response.pathsend", "path": str(self.path)})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            async with await self._open_file() as file:
                 more_body = True
                 while more_body:
                     chunk = await file.read(self.chunk_size)
@@ -404,7 +413,7 @@ class FileResponse(Response):
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            async with await self._open_file() as file:
                 await file.seek(start)
                 more_body = True
                 while more_body:
@@ -431,7 +440,7 @@ class FileResponse(Response):
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            async with await self._open_file() as file:
                 for start, end in ranges:
                     await send({"type": "http.response.body", "body": header_generator(start, end), "more_body": True})
                     await file.seek(start)

@@ -251,13 +251,12 @@ def test_staticfiles_304_with_last_modified_compare_last_req(
     assert response.status_code == 200
     assert response.content == b"<file content>"
 
+
 def test_staticfiles_200_with_etag_mismatched_and_last_modified_compare_last_req(
     tmpdir: Path, test_client_factory: TestClientFactory
 ) -> None:
     path = os.path.join(tmpdir, "example.txt")
-    file_last_modified_time = time.mktime(
-        time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S")
-    )
+    file_last_modified_time = time.mktime(time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S"))
     with open(path, "w") as file:
         file.write("<file content>")
     os.utime(path, (file_last_modified_time, file_last_modified_time))

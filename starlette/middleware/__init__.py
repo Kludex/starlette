@@ -16,8 +16,9 @@ P = ParamSpec("P")
 _Scope = Any
 _Receive = Callable[[], Awaitable[Any]]
 _Send = Callable[[Any], Awaitable[None]]
+# Since `starlette.types.ASGIApp` type differs from `ASGIApplication` from `asgiref`
+# we need to define a more permissive version of ASGIApp that doesn't cause type errors.
 _ASGIApp = Callable[[_Scope, _Receive, _Send], Awaitable[None]]
-"""A more permissive version of ASGIApp that doesn't cause type errors."""
 
 
 class _MiddlewareFactory(Protocol[P]):

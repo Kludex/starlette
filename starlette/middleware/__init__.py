@@ -1,14 +1,7 @@
 from __future__ import annotations
 
-import sys
-from collections.abc import Awaitable, Iterator
-from typing import Any, Callable, Protocol
-
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import ParamSpec
-else:  # pragma: no cover
-    from typing_extensions import ParamSpec
-
+from collections.abc import Awaitable, Callable, Iterator
+from typing import Any, ParamSpec, Protocol
 
 P = ParamSpec("P")
 

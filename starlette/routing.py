@@ -7,11 +7,11 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Collection, Generator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable

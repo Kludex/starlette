@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Generator
-from typing import Any, Callable, Literal
+from collections.abc import Callable, Generator
+from typing import Any, Literal
 
 from starlette import status
 from starlette._utils import is_async_callable

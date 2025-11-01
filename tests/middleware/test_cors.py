@@ -574,7 +574,7 @@ def test_cors_private_network_access_allowed(test_client_factory: TestClientFact
 
 
 def test_cors_private_network_access_disallowed(test_client_factory: TestClientFactory) -> None:
-    def homepage(request: Request) -> None: ...
+    def homepage(request: Request) -> None: ...  # pragma: no cover
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],

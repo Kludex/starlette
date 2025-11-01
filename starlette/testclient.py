@@ -12,17 +12,7 @@ from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from http.cookiejar import CookieJar
 from types import GeneratorType
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Literal,
-    TypeAlias,
-    TypedDict,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import IO, Any, Callable, Literal, TypedDict, TypeVar, Union, cast
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -111,7 +101,7 @@ class _UseClientDefault:
 
 USE_CLIENT_DEFAULT = _UseClientDefault()
 
-_WithDefault: TypeAlias = Union[_T, _UseClientDefault, httpx._client.UseClientDefault]
+_WithDefault = Union[_T, _UseClientDefault, httpx._client.UseClientDefault]
 
 
 def _is_asgi3(app: ASGI2App | ASGI3App) -> TypeGuard[ASGI3App]:

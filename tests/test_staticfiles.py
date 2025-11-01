@@ -231,6 +231,24 @@ def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: T
     assert second_resp.content == b"<file content>"
 
 
+def test_staticfiles_200_with_etag_mismatch_and_timestamp_match(
+    tmpdir: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = tmpdir / "example.txt"
+    path.write_text("<file content>", encoding="utf-8")
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    first_resp = client.get("/example.txt")
+    assert first_resp.status_code == 200
+    assert first_resp.headers["etag"] != '"123"'
+    last_modified = first_resp.headers["last-modified"]
+    # If `if-none-match` is present, `if-modified-since` is ignored.
+    second_resp = client.get("/example.txt", headers={"if-none-match": '"123"', "if-modified-since": last_modified})
+    assert second_resp.status_code == 200
+    assert second_resp.content == b"<file content>"
+
+
 def test_staticfiles_304_with_last_modified_compare_last_req(
     tmpdir: Path, test_client_factory: TestClientFactory
 ) -> None:

@@ -2,6 +2,10 @@
 toc_depth: 2
 ---
 
+## 0.50.0 (November 1, 2025)
+
+* Drop Python 3.9 support [#3061](https://github.com/Kludex/starlette/pull/3061).
+
 ## 0.49.3 (November 1, 2025)
 
 This is the last release that supports Python 3.9, which will be dropped in the next minor release.

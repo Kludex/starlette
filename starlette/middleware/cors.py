@@ -133,7 +133,6 @@ class CORSMiddleware:
                     failures.append("headers")
                     break
 
-        # Handle Private Network Access
         if requested_private_network is not None:
             if self.allow_private_network:
                 headers["Access-Control-Allow-Private-Network"] = "true"

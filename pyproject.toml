@@ -100,10 +100,6 @@ combine-as-imports = true
 [tool.mypy]
 strict = true
 
-[[tool.mypy.overrides]]
-module = "starlette.testclient.*"
-implicit_optional = true
-
 [tool.pytest.ini_options]
 addopts = "-rXs --strict-config --strict-markers"
 xfail_strict = true

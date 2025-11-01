@@ -7,15 +7,19 @@ import json
 import math
 import sys
 import warnings
-from collections.abc import Awaitable, Generator, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import AsyncIterable, Awaitable, Generator, Iterable, Mapping, MutableMapping, Sequence
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
+from http.cookiejar import CookieJar
 from types import GeneratorType
 from typing import (
+    IO,
     Any,
     Callable,
     Literal,
+    TypeAlias,
     TypedDict,
+    TypeVar,
     Union,
     cast,
 )
@@ -48,14 +52,66 @@ except ModuleNotFoundError:  # pragma: no cover
         "You can install this with:\n"
         "    $ pip install httpx\n"
     )
+
+_T = TypeVar("_T")
+
 _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
 ASGI2App = Callable[[Scope], ASGIInstance]
 ASGI3App = Callable[[Scope, Receive, Send], Awaitable[None]]
 
-
+_CookieTypes = Union[httpx.Cookies, CookieJar, "dict[str, str]", "list[tuple[str, str]]"]
+_URLTypes = Union[httpx.URL, str]
+_RequestContent = Union[str, bytes, Iterable[bytes], AsyncIterable[bytes]]
+_FileContent = Union[IO[bytes], bytes, str]
+_FileTypes = Union[
+    # file (or bytes)
+    _FileContent,
+    # (filename, file (or bytes))
+    tuple[Union[str, None], _FileContent],
+    # (filename, file (or bytes), content_type)
+    tuple[Union[str, None], _FileContent, Union[str, None]],
+    # (filename, file (or bytes), content_type, headers)
+    tuple[Union[str, None], _FileContent, Union[str, None], "dict[str, str]"],
+]
+_RequestFiles = Union[Mapping[str, _FileTypes], Sequence[tuple[str, _FileTypes]]]
 _RequestData = Mapping[str, Union[str, Iterable[str], bytes]]
+_PrimitiveData = Union[str, int, float, bool, None]
+_QueryParamTypes = Union[
+    httpx.QueryParams,
+    Mapping[str, Union[_PrimitiveData, Sequence[_PrimitiveData]]],
+    "list[tuple[str, _PrimitiveData]]",
+    "tuple[tuple[str, _PrimitiveData], ...]",
+    str,
+    bytes,
+]
+_HeaderTypes = Union[
+    httpx.Headers,
+    Mapping[str, str],
+    Mapping[bytes, bytes],
+    Sequence["tuple[str, str]"],
+    Sequence["tuple[bytes, bytes]"],
+]
+_AuthTypes = Union[
+    "tuple[Union[str, bytes], Union[str, bytes]]",
+    Callable[[httpx.Request], httpx.Request],
+    httpx.Auth,
+]
+_TimeoutTypes = Union[
+    Union[float, None],
+    "tuple[Union[float, None], Union[float, None], Union[float, None], Union[float, None]]",
+    httpx.Timeout,
+]
+
+
+class _UseClientDefault:
+    """Sentinel value for the `UseClientDefault` parameter."""
+
+
+USE_CLIENT_DEFAULT = _UseClientDefault()
+
+_WithDefault: TypeAlias = Union[_T, _UseClientDefault, httpx._client.UseClientDefault]
 
 
 def _is_asgi3(app: ASGI2App | ASGI3App) -> TypeGuard[ASGI3App]:
@@ -384,7 +440,7 @@ class TestClient(httpx.Client):
         root_path: str = "",
         backend: Literal["asyncio", "trio"] = "asyncio",
         backend_options: dict[str, Any] | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
+        cookies: _CookieTypes | None = None,
         headers: dict[str, str] | None = None,
         follow_redirects: bool = True,
         client: tuple[str, int] = ("testclient", 50000),
@@ -427,21 +483,21 @@ class TestClient(httpx.Client):
     def request(  # type: ignore[override]
         self,
         method: str,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        content: httpx._types.RequestContent | None = None,
+        content: _RequestContent | None = None,
         data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
+        files: _RequestFiles | None = None,
         json: Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
-        if timeout is not httpx.USE_CLIENT_DEFAULT:
+        if timeout is not USE_CLIENT_DEFAULT:
             warnings.warn(
                 "You should not use the 'timeout' argument with the TestClient. "
                 "See https://github.com/Kludex/starlette/issues/1108 for more information.",
@@ -458,22 +514,22 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
     def get(  # type: ignore[override]
         self,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().get(
@@ -481,22 +537,22 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
     def options(  # type: ignore[override]
         self,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().options(
@@ -504,22 +560,22 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
     def head(  # type: ignore[override]
         self,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().head(
@@ -527,26 +583,26 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
     def post(  # type: ignore[override]
         self,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        content: httpx._types.RequestContent | None = None,
+        content: _RequestContent | None = None,
         data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
+        files: _RequestFiles | None = None,
         json: Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().post(
@@ -558,26 +614,26 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
     def put(  # type: ignore[override]
         self,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        content: httpx._types.RequestContent | None = None,
+        content: _RequestContent | None = None,
         data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
+        files: _RequestFiles | None = None,
         json: Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().put(
@@ -589,26 +645,26 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
     def patch(  # type: ignore[override]
         self,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        content: httpx._types.RequestContent | None = None,
+        content: _RequestContent | None = None,
         data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
+        files: _RequestFiles | None = None,
         json: Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().patch(
@@ -620,22 +676,22 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
     def delete(  # type: ignore[override]
         self,
-        url: httpx._types.URLTypes,
+        url: _URLTypes,
         *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
+        params: _QueryParamTypes | None = None,
+        headers: _HeaderTypes | None = None,
+        cookies: _CookieTypes | None = None,
+        auth: _WithDefault[_AuthTypes] = USE_CLIENT_DEFAULT,
+        follow_redirects: _WithDefault[bool] = USE_CLIENT_DEFAULT,
+        timeout: _WithDefault[_TimeoutTypes] = USE_CLIENT_DEFAULT,
         extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         return super().delete(
@@ -643,9 +699,9 @@ class TestClient(httpx.Client):
             params=params,
             headers=headers,
             cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
+            auth=_normalize_client_default(auth),
+            follow_redirects=_normalize_client_default(follow_redirects),
+            timeout=_normalize_client_default(timeout),
             extensions=extensions,
         )
 
@@ -743,3 +799,16 @@ class TestClient(httpx.Client):
         )
         if message["type"] == "lifespan.shutdown.failed":
             await receive()
+
+
+def _normalize_client_default(value: _WithDefault[_T]) -> _T | httpx._client.UseClientDefault:
+    if isinstance(value, _UseClientDefault):
+        return httpx.USE_CLIENT_DEFAULT
+    if isinstance(value, httpx._client.UseClientDefault):
+        warnings.warn(
+            "The use of `httpx._client.UseClientDefault` is deprecated. Use `_UseClientDefault` from "
+            "`starlette.testclient` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    return value

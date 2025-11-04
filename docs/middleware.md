@@ -76,6 +76,7 @@ The following arguments are supported:
 * `allow_methods` - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to `['GET']`. You can use `['*']` to allow all standard methods.
 * `allow_headers` - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to `[]`. You can use `['*']` to allow all headers. The `Accept`, `Accept-Language`, `Content-Language` and `Content-Type` headers are always allowed for CORS requests.
 * `allow_credentials` - Indicate that cookies should be supported for cross-origin requests. Defaults to `False`. Also, `allow_origins`, `allow_methods` and `allow_headers` cannot be set to `['*']` for credentials to be allowed, all of them must be explicitly specified.
+* `allow_private_network` - Indicates whether to accept cross-origin requests over a private network. Defaults to `False`.
 * `expose_headers` - Indicate any response headers that should be made accessible to the browser. Defaults to `[]`.
 * `max_age` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to `600`.
 
@@ -91,6 +92,14 @@ appropriate CORS headers, and either a 200 or 400 response for informational pur
 
 Any request with an `Origin` header. In this case the middleware will pass the
 request through as normal, but will include appropriate CORS headers on the response.
+
+#### Private Network Access (PNA)
+
+Private Network Access is a browser security feature that restricts websites from public networks from accessing servers on private networks.
+
+When a website attempts to make such a cross-network request, the browser will send a `Access-Control-Request-Private-Network: true` header in the
+pre-flight request. If the `allow_private_network` flag is set to `True`, the middleware will include the `Access-Control-Allow-Private-Network: true`
+header in the response, allowing the request. If set to `False`, the middleware will return a 400 response, blocking the request.
 
 ### CORSMiddleware Global Enforcement
 

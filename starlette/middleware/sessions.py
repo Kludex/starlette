@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import json
-from base64 import b64decode, b64encode
 from typing import Literal
-
-import itsdangerous
-from itsdangerous.exc import BadSignature
 
 from starlette.datastructures import MutableHeaders, Secret
 from starlette.requests import HTTPConnection
+from starlette.signing import TimestampSigner
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
@@ -25,7 +22,7 @@ class SessionMiddleware:
         domain: str | None = None,
     ) -> None:
         self.app = app
-        self.signer = itsdangerous.TimestampSigner(str(secret_key))
+        self.signer = TimestampSigner(secret_key)
         self.session_cookie = session_cookie
         self.max_age = max_age
         self.path = path
@@ -45,11 +42,11 @@ class SessionMiddleware:
 
         if self.session_cookie in connection.cookies:
             data = connection.cookies[self.session_cookie].encode("utf-8")
-            try:
-                data = self.signer.unsign(data, max_age=self.max_age)
-                scope["session"] = json.loads(b64decode(data))
+            payload = self.signer.unsign(data, max_age=self.max_age)
+            if payload is not None:
+                scope["session"] = json.loads(payload)
                 initial_session_was_empty = False
-            except BadSignature:
+            else:
                 scope["session"] = {}
         else:
             scope["session"] = {}
@@ -58,7 +55,7 @@ class SessionMiddleware:
             if message["type"] == "http.response.start":
                 if scope["session"]:
                     # We have session data to persist.
-                    data = b64encode(json.dumps(scope["session"]).encode("utf-8"))
+                    data = json.dumps(scope["session"]).encode("utf-8")
                     data = self.signer.sign(data)
                     headers = MutableHeaders(scope=message)
                     header_value = "{session_cookie}={data}; path={path}; {max_age}{security_flags}".format(

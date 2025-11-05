@@ -109,7 +109,6 @@ Starlette only requires `anyio`, and the following dependencies are optional:
 * [`httpx`][httpx] - Required if you want to use the `TestClient`.
 * [`jinja2`][jinja2] - Required if you want to use `Jinja2Templates`.
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
-* [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
 
 You can install all of these with `pip install starlette[full]`.
@@ -156,7 +155,6 @@ in isolation.
 [httpx]: https://www.python-httpx.org/
 [jinja2]: https://jinja.palletsprojects.com/
 [python-multipart]: https://multipart.fastapiexpert.com/
-[itsdangerous]: https://itsdangerous.palletsprojects.com/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation
 [techempower]: https://www.techempower.com/benchmarks/#hw=ph&test=fortune&l=zijzen-sf

@@ -44,7 +44,7 @@ class TimestampSigner:
 
         return combined_encoded + (signature_encoded + b"_")
 
-    def unsign(self, signed_data: bytes, max_age: int | None = None) -> bytes | None:
+    def unsign(self, signed_data: bytes, max_age: int | None = None) -> tuple[bytes, int] | None:
         """
         Verify and extract data from signed token.
 
@@ -53,7 +53,7 @@ class TimestampSigner:
             max_age: Maximum age in seconds (optional)
 
         Returns:
-            Payload bytes on success, None on failure
+            Tuple of (payload bytes, timestamp) on success, None on failure
         """
         # Quick pre-checks
         if len(signed_data) < 30 or signed_data[-1] != 95:
@@ -73,15 +73,16 @@ class TimestampSigner:
         if combined is None:  # pragma: no cover
             return None
 
+        timestamp_bytes = combined[-5:]
+        timestamp = int.from_bytes(timestamp_bytes, "big")
+
         # Check timestamp age if max_age is set
         if max_age is not None:
-            timestamp_bytes = combined[-5:]
-            timestamp = int.from_bytes(timestamp_bytes, "big")
             if time.time() - timestamp > max_age:
                 return None
 
         data = combined[:-5]
-        return data
+        return (data, timestamp)
 
 
 def _b64_encode(data: bytes) -> bytes:

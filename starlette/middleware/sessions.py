@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Literal
 
 from starlette.datastructures import MutableHeaders, Secret
@@ -38,35 +39,44 @@ class SessionMiddleware:
             return
 
         connection = HTTPConnection(scope)
-        initial_session_was_empty = True
+        initial_payload: bytes | None = None
+        initial_timestamp: int | None = None
 
         if self.session_cookie in connection.cookies:
             data = connection.cookies[self.session_cookie].encode("utf-8")
-            payload = self.signer.unsign(data, max_age=self.max_age)
-            if payload is not None:
-                scope["session"] = json.loads(payload)
-                initial_session_was_empty = False
-            else:
-                scope["session"] = {}
-        else:
+            result = self.signer.unsign(data, max_age=self.max_age)
+            if result is not None:
+                initial_payload, initial_timestamp = result
+                scope["session"] = json.loads(initial_payload)
+
+        if initial_payload is None:
             scope["session"] = {}
 
         async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
                 if scope["session"]:
                     # We have session data to persist.
-                    data = json.dumps(scope["session"]).encode("utf-8")
-                    data = self.signer.sign(data)
-                    headers = MutableHeaders(scope=message)
-                    header_value = "{session_cookie}={data}; path={path}; {max_age}{security_flags}".format(
-                        session_cookie=self.session_cookie,
-                        data=data.decode("utf-8"),
-                        path=self.path,
-                        max_age=f"Max-Age={self.max_age}; " if self.max_age else "",
-                        security_flags=self.security_flags,
-                    )
-                    headers.append("Set-Cookie", header_value)
-                elif not initial_session_was_empty:
+                    current_payload = json.dumps(scope["session"]).encode("utf-8")
+                    needs_cookie = False
+
+                    if current_payload != initial_payload:
+                        needs_cookie = True
+                    elif self.max_age is not None and initial_timestamp is not None:
+                        if time.time() - initial_timestamp > self.max_age / 4:
+                            needs_cookie = True
+
+                    if needs_cookie:
+                        data = self.signer.sign(current_payload)
+                        headers = MutableHeaders(scope=message)
+                        header_value = "{session_cookie}={data}; path={path}; {max_age}{security_flags}".format(
+                            session_cookie=self.session_cookie,
+                            data=data.decode("utf-8"),
+                            path=self.path,
+                            max_age=f"Max-Age={self.max_age}; " if self.max_age is not None else "",
+                            security_flags=self.security_flags,
+                        )
+                        headers.append("Set-Cookie", header_value)
+                elif initial_payload is not None:
                     # The session has been cleared.
                     headers = MutableHeaders(scope=message)
                     header_value = "{session_cookie}={data}; path={path}; {expires}{security_flags}".format(

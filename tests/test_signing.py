@@ -24,8 +24,11 @@ class TestTimestampSigner:
         ]
         for data in test_cases:
             signed = signer.sign(data)
-            unsigned = signer.unsign(signed)
-            assert unsigned == data
+            result = signer.unsign(signed)
+            assert result is not None
+            payload, timestamp = result
+            assert payload == data
+            assert isinstance(timestamp, int)
 
     def test_output_is_ascii(self) -> None:
         signer = TimestampSigner("secret")
@@ -61,8 +64,12 @@ class TestTimestampValidation:
     def test_unsign_with_valid_max_age(self) -> None:
         signer = TimestampSigner("secret")
         signed = signer.sign(b"data")
-        assert signer.unsign(signed, max_age=10) == b"data"
-        assert signer.unsign(signed, max_age=1000) == b"data"
+        result = signer.unsign(signed, max_age=10)
+        assert result is not None
+        assert result[0] == b"data"
+        result = signer.unsign(signed, max_age=1000)
+        assert result is not None
+        assert result[0] == b"data"
 
     def test_unsign_with_expired_max_age(self) -> None:
         signer = TimestampSigner("secret")
@@ -73,7 +80,9 @@ class TestTimestampValidation:
             assert signer.unsign(signed, max_age=1) is None
             assert signer.unsign(signed, max_age=0) is None
 
-        assert signer.unsign(signed, max_age=None) == b"data"
+        result = signer.unsign(signed, max_age=None)
+        assert result is not None
+        assert result[0] == b"data"
 
 
 class TestSecurityAttacks:

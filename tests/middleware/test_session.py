@@ -1,4 +1,5 @@
 import re
+from unittest import mock
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -198,3 +199,87 @@ def test_domain_cookie(test_client_factory: TestClientFactory) -> None:
     client.cookies.delete("session")
     response = client.get("/view_session")
     assert response.json() == {"session": {}}
+
+
+def test_session_no_cookie_when_unchanged(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+    assert "set-cookie" in response.headers
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {"some": "data"}}
+    assert "set-cookie" not in response.headers
+
+
+def test_session_cookie_when_modified(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+    assert "set-cookie" in response.headers
+
+    response = client.post("/update_session", json={"some": "data", "more": "values"})
+    assert response.json() == {"session": {"some": "data", "more": "values"}}
+    assert "set-cookie" in response.headers
+
+
+def test_session_cookie_refresh_when_stale(test_client_factory: TestClientFactory) -> None:
+    max_age = 60
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", max_age=max_age)],
+    )
+    client = test_client_factory(app)
+
+    with mock.patch("time.time", return_value=1000):
+        response = client.post("/update_session", json={"some": "data"})
+        assert response.json() == {"session": {"some": "data"}}
+        assert "set-cookie" in response.headers
+
+    with mock.patch("time.time", return_value=1000):
+        response = client.get("/view_session")
+        assert response.json() == {"session": {"some": "data"}}
+        assert "set-cookie" not in response.headers
+
+    with mock.patch("time.time", return_value=1000 + max_age / 4 + 1):
+        response = client.get("/view_session")
+        assert response.json() == {"session": {"some": "data"}}
+        assert "set-cookie" in response.headers
+
+
+def test_session_no_cookie_when_max_age_none(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", max_age=None)],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+    assert "set-cookie" in response.headers
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {"some": "data"}}
+    assert "set-cookie" not in response.headers

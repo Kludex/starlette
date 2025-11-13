@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import warnings
-from collections.abc import Iterator, Mapping, MutableMapping
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from pathlib import Path
-from typing import Any, Callable, TypeVar, overload
+from typing import Any, TypeVar, overload
 
 
 class undefined:

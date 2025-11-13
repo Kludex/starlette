@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 from typing_extensions import assert_type
@@ -18,13 +18,13 @@ def test_config_types() -> None:
     assert_type(config("STR"), str)
     assert_type(config("STR_DEFAULT", default=""), str)
     assert_type(config("STR_CAST", cast=str), str)
-    assert_type(config("STR_NONE", default=None), Optional[str])
-    assert_type(config("STR_CAST_NONE", cast=str, default=None), Optional[str])
+    assert_type(config("STR_NONE", default=None), str | None)
+    assert_type(config("STR_CAST_NONE", cast=str, default=None), str | None)
     assert_type(config("STR_CAST_STR", cast=str, default=""), str)
 
     assert_type(config("BOOL", cast=bool), bool)
     assert_type(config("BOOL_DEFAULT", cast=bool, default=False), bool)
-    assert_type(config("BOOL_NONE", cast=bool, default=None), Optional[bool])
+    assert_type(config("BOOL_NONE", cast=bool, default=None), bool | None)
 
     def cast_to_int(v: Any) -> int:
         return int(v)

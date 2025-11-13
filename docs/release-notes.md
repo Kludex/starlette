@@ -2,6 +2,24 @@
 toc_depth: 2
 ---
 
+## 0.50.0 (November 1, 2025)
+
+* Drop Python 3.9 support [#3061](https://github.com/Kludex/starlette/pull/3061).
+
+## 0.49.3 (November 1, 2025)
+
+This is the last release that supports Python 3.9, which will be dropped in the next minor release.
+
+#### Fixed
+
+* Relax strictness on `Middleware` type [#3059](https://github.com/Kludex/starlette/pull/3059).
+
+## 0.49.2 (November 1, 2025)
+
+#### Fixed
+
+* Ignore `if-modified-since` header if `if-none-match` is present in `StaticFiles` [#3044](https://github.com/Kludex/starlette/pull/3044).
+
 ## 0.49.1 (October 28, 2025)
 
 This release fixes a security vulnerability in the parsing logic of the `Range` header in `FileResponse`.

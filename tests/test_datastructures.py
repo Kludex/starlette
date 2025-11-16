@@ -170,6 +170,7 @@ def test_headers() -> None:
     assert h.get("a") == "123"
     assert h.get("nope", default=None) is None
     assert h.getlist("a") == ["123", "456"]
+    assert h.get_raw_list("a") == [b"123", b"456"]
     assert h.keys() == ["a", "a", "b"]
     assert h.values() == ["123", "456", "789"]
     assert h.items() == [("a", "123"), ("a", "456"), ("b", "789")]

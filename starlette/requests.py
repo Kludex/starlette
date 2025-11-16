@@ -319,6 +319,7 @@ class Request(HTTPConnection):
         if "http.response.push" in self.scope.get("extensions", {}):
             raw_headers: list[tuple[bytes, bytes]] = []
             for name in SERVER_PUSH_HEADERS_TO_COPY:
-                for value in self.headers.getlist(name):
-                    raw_headers.append((name.encode("latin-1"), value.encode("latin-1")))
+                name_encoded = name.encode("latin-1")
+                for value_encoded in self.headers.get_raw_list(name):
+                    raw_headers.append((name_encoded, value_encoded))
             await self._send({"type": "http.response.push", "path": path, "headers": raw_headers})

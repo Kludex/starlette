@@ -54,7 +54,9 @@ class WebSocket(HTTPConnection):
                 self.client_state = WebSocketState.DISCONNECTED
             return message
         else:
-            raise WebSocketDisconnect(code=1006, reason='Cannot call "receive" once a disconnect message has been received.')
+            raise WebSocketDisconnect(
+                code=1006, reason='Cannot call "receive" once a disconnect message has been received.'
+            )
 
     async def send(self, message: Message) -> None:
         """

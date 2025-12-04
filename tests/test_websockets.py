@@ -449,9 +449,10 @@ def test_duplicate_close(test_client_factory: TestClientFactory) -> None:
         await websocket.close()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnect) as exc:
         with client.websocket_connect("/"):
             pass  # pragma: no cover
+    assert exc.value.code == 1006
 
 
 def test_duplicate_disconnect(test_client_factory: TestClientFactory) -> None:
@@ -463,9 +464,10 @@ def test_duplicate_disconnect(test_client_factory: TestClientFactory) -> None:
         message = await websocket.receive()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnect) as exc:
         with client.websocket_connect("/") as websocket:
             websocket.close()
+    assert exc.value.code == 1006
 
 
 def test_websocket_scope_interface() -> None:

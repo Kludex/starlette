@@ -124,6 +124,25 @@ CENTER_LINE = """
 """
 
 
+class _SendWrapper:
+    """Wrapper for send that tracks if response has started.
+
+    Using a class instead of a closure avoids reference cycles between
+    the closure cells, frames, and exception tracebacks.
+    """
+
+    __slots__ = ("send", "response_started")
+
+    def __init__(self, send: Send) -> None:
+        self.send = send
+        self.response_started = False
+
+    async def __call__(self, message: Message) -> None:
+        if message["type"] == "http.response.start":
+            self.response_started = True
+        await self.send(message)
+
+
 class ServerErrorMiddleware:
     """
     Handles returning 500 responses when a server error occurs.
@@ -151,17 +170,10 @@ class ServerErrorMiddleware:
             await self.app(scope, receive, send)
             return
 
-        response_started = False
-
-        async def _send(message: Message) -> None:
-            nonlocal response_started, send
-
-            if message["type"] == "http.response.start":
-                response_started = True
-            await send(message)
+        send_wrapper = _SendWrapper(send)
 
         try:
-            await self.app(scope, receive, _send)
+            await self.app(scope, receive, send_wrapper)
         except Exception as exc:
             request = Request(scope)
             if self.debug:
@@ -177,7 +189,7 @@ class ServerErrorMiddleware:
                 else:
                     response = await run_in_threadpool(self.handler, request, exc)
 
-            if not response_started:
+            if not send_wrapper.response_started:
                 await response(scope, receive, send)
 
             # We always continue to raise the exception.

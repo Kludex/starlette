@@ -20,6 +20,25 @@ def _lookup_exception_handler(exc_handlers: ExceptionHandlers, exc: Exception) -
     return None
 
 
+class _ResponseSender:
+    """Wrapper for send that tracks if response has started.
+
+    Using a class instead of a closure avoids reference cycles between
+    the closure cells, frames, and exception tracebacks.
+    """
+
+    __slots__ = ("send", "response_started")
+
+    def __init__(self, send: Send) -> None:
+        self.send = send
+        self.response_started = False
+
+    async def __call__(self, message: Message) -> None:
+        if message["type"] == "http.response.start":
+            self.response_started = True
+        await self.send(message)
+
+
 def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASGIApp:
     exception_handlers: ExceptionHandlers
     status_handlers: StatusHandlers
@@ -29,14 +48,7 @@ def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASG
         exception_handlers, status_handlers = {}, {}
 
     async def wrapped_app(scope: Scope, receive: Receive, send: Send) -> None:
-        response_started = False
-
-        async def sender(message: Message) -> None:
-            nonlocal response_started
-
-            if message["type"] == "http.response.start":
-                response_started = True
-            await send(message)
+        sender = _ResponseSender(send)
 
         try:
             await app(scope, receive, sender)
@@ -52,7 +64,7 @@ def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASG
             if handler is None:
                 raise exc
 
-            if response_started:
+            if sender.response_started:
                 raise RuntimeError("Caught handled exception, but response already started.") from exc
 
             if is_async_callable(handler):

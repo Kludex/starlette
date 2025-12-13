@@ -257,6 +257,18 @@ class StreamingResponse(Response):
 
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
+    @staticmethod
+    async def _wrap_and_cancel(
+        func: Callable[[], Awaitable[None]],
+        cancel_scope: anyio.CancelScope,
+    ) -> None:
+        """Run func and cancel the scope when done.
+
+        Defined as a static method to avoid closure cycles with task_group.
+        """
+        await func()
+        cancel_scope.cancel()
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
@@ -268,13 +280,15 @@ class StreamingResponse(Response):
         else:
             with collapse_excgroups():
                 async with anyio.create_task_group() as task_group:
-
-                    async def wrap(func: Callable[[], Awaitable[None]]) -> None:
-                        await func()
-                        task_group.cancel_scope.cancel()
-
-                    task_group.start_soon(wrap, partial(self.stream_response, send))
-                    await wrap(partial(self.listen_for_disconnect, receive))
+                    task_group.start_soon(
+                        self._wrap_and_cancel,
+                        partial(self.stream_response, send),
+                        task_group.cancel_scope,
+                    )
+                    await self._wrap_and_cancel(
+                        partial(self.listen_for_disconnect, receive),
+                        task_group.cancel_scope,
+                    )
 
         if self.background is not None:
             await self.background()

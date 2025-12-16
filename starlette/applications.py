@@ -79,8 +79,7 @@ class Starlette:
         for key, value in self.exception_handlers.items():
             if key in (500, Exception):
                 error_handler = value
-            else:
-                exception_handlers[key] = value
+            exception_handlers[key] = value
 
         middleware = (
             [Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug)]

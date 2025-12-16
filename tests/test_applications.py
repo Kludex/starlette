@@ -216,6 +216,29 @@ def test_500(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"detail": "Server Error"}
 
 
+def test_500_status_handler(test_client_factory: TestClientFactory) -> None:
+    """
+    Test that a custom 500 status handler is invoked by ExceptionMiddleware
+    when an HTTPException with status_code=500 is raised.
+    """
+
+    async def custom_500_handler(request: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse({"detail": "Custom 500"}, status_code=500)
+
+    async def raise_http_500(request: Request) -> None:
+        raise HTTPException(status_code=500, detail="Server Error")
+
+    app = Starlette(
+        routes=[Route("/http-500", endpoint=raise_http_500)],
+        exception_handlers={500: custom_500_handler},
+    )
+
+    client = test_client_factory(app, raise_server_exceptions=False)
+    response = client.get("/http-500")
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Custom 500"}
+
+
 def test_websocket_raise_websocket_exception(client: TestClient) -> None:
     with client.websocket_connect("/ws-raise-websocket") as session:
         response = session.receive()

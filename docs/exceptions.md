@@ -99,6 +99,9 @@ exception_handlers = {
 }
 ```
 
+These handlers are passed to both `ServerErrorMiddleware` and `ExceptionMiddleware`, meaning they
+handle unhandled exceptions (e.g., `RuntimeError`) as well as `HTTPException(status_code=500)`.
+
 It's important to notice that in case a [`BackgroundTask`](background.md) raises an exception,
 it will be handled by the `handle_error` function, but at that point, the response was already sent. In other words,
 the response created by `handle_error` will be discarded. In case the error happens before the response was sent, then

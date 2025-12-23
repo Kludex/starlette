@@ -16,6 +16,7 @@ warnings.warn(
     "starlette.middleware.wsgi is deprecated and will be removed in a future release. "
     "Please refer to https://github.com/abersheeran/a2wsgi as a replacement.",
     DeprecationWarning,
+    stacklevel=2,
 )
 
 

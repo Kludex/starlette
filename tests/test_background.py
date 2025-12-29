@@ -87,3 +87,22 @@ def test_multi_tasks_failure_avoids_next_execution(
     with pytest.raises(Exception):
         client.get("/")
     assert TASK_COUNTER == 1
+
+
+def test_tasks_removed_after_execution(test_client_factory: TestClientFactory) -> None:
+    tasks = BackgroundTasks()
+
+    def noop() -> None:
+        pass
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        tasks.add_task(noop)
+        tasks.add_task(noop)
+        tasks.add_task(noop)
+        assert len(tasks.tasks) == 3
+        response = Response("tasks initiated", media_type="text/plain", background=tasks)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    client.get("/")
+    assert len(tasks.tasks) == 0

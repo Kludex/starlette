@@ -32,5 +32,6 @@ class BackgroundTasks(BackgroundTask):
         self.tasks.append(task)
 
     async def __call__(self) -> None:
-        for task in self.tasks:
+        while self.tasks:
+            task = self.tasks.pop(0)
             await task()

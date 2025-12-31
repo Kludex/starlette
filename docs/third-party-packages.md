@@ -21,10 +21,10 @@ The ultimate Python library in building OAuth and OpenID Connect clients and ser
 
 ### ChannelBox
 
-<a href="https://github.com/Sobolev5/channel-box" target="_blank">GitHub</a>
+<a href="https://github.com/Sobolev5/channel-box" target="_blank">GitHub Repository</a>
 
-Another solution for websocket broadcast. Send messages to channel groups from any part of your code.
-Checkout <a href="https://channel-box.andrey-sobolev.ru/" target="_blank">MySimpleChat</a>, a simple chat application built using `channel-box` and `starlette`.
+ChannelBox is a lightweight solution for WebSocket broadcasting in ASGI applications.
+It allows sending messages to named WebSocket channel groups and integrates with Starlette and FastAPI.
 
 ### Imia
 

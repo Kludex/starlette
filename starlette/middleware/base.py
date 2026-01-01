@@ -92,9 +92,7 @@ class _CachedRequest(Request):
                     stream = self.stream()
                     self._wrapped_rcv_stream = stream
 
-                print(1)
                 chunk = await stream.__anext__()
-                print(2)
                 self._wrapped_rcv_consumed = self._stream_consumed
                 return {
                     "type": "http.request",
@@ -116,9 +114,7 @@ class BaseHTTPMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request: _CachedRequest = scope.setdefault(
-            "__starlette_CachedRequest__", _CachedRequest(scope, receive)
-        )
+        request: _CachedRequest = scope.setdefault("__starlette_CachedRequest__", _CachedRequest(scope, receive))
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
         app_exc: Exception | None = None
@@ -190,24 +186,18 @@ class BaseHTTPMiddleware:
                     if message["type"] == "http.response.pathsend":
                         yield message
                         break
-                    assert (
-                        message["type"] == "http.response.body"
-                    ), f"Unexpected message: {message}"
+                    assert message["type"] == "http.response.body", f"Unexpected message: {message}"
                     body = message.get("body", b"")
                     if body:
                         yield body
                     if not message.get("more_body", False):
                         break
 
-            response = _StreamingResponse(
-                status_code=message["status"], content=body_stream(), info=info
-            )
+            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
             response.raw_headers = message["headers"]
             return response
 
-        streams: anyio.create_memory_object_stream[Message] = (
-            anyio.create_memory_object_stream()
-        )
+        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
         send_stream, recv_stream = streams
         with recv_stream, send_stream, collapse_excgroups():
             async with anyio.create_task_group() as task_group:
@@ -218,9 +208,7 @@ class BaseHTTPMiddleware:
         if app_exc is not None and not exception_already_raised:
             raise app_exc
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         raise NotImplementedError()  # pragma: no cover
 
 

@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    Mapping,
+    MutableMapping,
+)
 from typing import Any, TypeVar
 
 import anyio
@@ -29,7 +36,7 @@ class _CachedRequest(Request):
         super().__init__(scope, receive)
         self._wrapped_rcv_disconnected = False
         self._wrapped_rcv_consumed = False
-        self._wrapped_rc_stream = self.stream()
+        self._wrapped_rcv_stream: AsyncGenerator[bytes, None] | None = None
 
     async def wrapped_receive(self) -> Message:
         # wrapped_rcv state 1: disconnected
@@ -80,7 +87,11 @@ class _CachedRequest(Request):
         else:
             # body() was never called and stream() wasn't consumed
             try:
-                stream = self.stream()
+                stream = self._wrapped_rcv_stream
+                if stream is None:
+                    stream = self.stream()
+                    self._wrapped_rcv_stream = stream
+
                 chunk = await stream.__anext__()
                 self._wrapped_rcv_consumed = self._stream_consumed
                 return {
@@ -175,18 +186,24 @@ class BaseHTTPMiddleware:
                     if message["type"] == "http.response.pathsend":
                         yield message
                         break
-                    assert message["type"] == "http.response.body", f"Unexpected message: {message}"
+                    assert (
+                        message["type"] == "http.response.body"
+                    ), f"Unexpected message: {message}"
                     body = message.get("body", b"")
                     if body:
                         yield body
                     if not message.get("more_body", False):
                         break
 
-            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
+            response = _StreamingResponse(
+                status_code=message["status"], content=body_stream(), info=info
+            )
             response.raw_headers = message["headers"]
             return response
 
-        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
+        streams: anyio.create_memory_object_stream[Message] = (
+            anyio.create_memory_object_stream()
+        )
         send_stream, recv_stream = streams
         with recv_stream, send_stream, collapse_excgroups():
             async with anyio.create_task_group() as task_group:
@@ -197,7 +214,9 @@ class BaseHTTPMiddleware:
         if app_exc is not None and not exception_already_raised:
             raise app_exc
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
         raise NotImplementedError()  # pragma: no cover
 
 

@@ -111,6 +111,72 @@ def test_custom_middleware(test_client_factory: TestClientFactory) -> None:
         assert text == "Hello, world!"
 
 
+@pytest.mark.anyio
+async def test_streaming_request(
+    test_client_factory: TestClientFactory,
+) -> None:
+    async def echo(request: Request) -> Response:
+        body = await request.body()
+        return Response(
+            body,
+            status_code=200,
+            media_type=request.headers.get("Content-Type", "text/plain"),
+        )
+
+    async def skip_dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        routes=[Route("/echo", echo)],
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=skip_dispatch)],
+    )
+
+    async def receive_generator() -> AsyncGenerator[Message, None]:
+        yield {"type": "http.request", "body": b"first chunk\n", "more_body": True}
+        yield {"type": "http.request", "body": b"second chunk", "more_body": False}
+        yield {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    sent: list[Message] = []
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/echo",
+        "headers": [[b"Content-Type", "text/plain"]],
+    }
+
+    receive = receive_generator().__anext__
+
+    await app(scope, receive, send)
+
+    assert sent == [
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-length", b"24"),
+                (b"content-type", b"text/plain; charset=utf-8"),
+            ],
+        },
+        {
+            "type": "http.response.body",
+            "more_body": True,
+            "body": b"first chunk\nsecond chunk",
+        },
+        # BaseHTTPMiddleware converts responses into StreamingResponses that yield b"" at end
+        {"type": "http.response.body", "more_body": False, "body": b""},
+    ]
+
+    assert await receive() == {"type": "http.disconnect"}
+
+    with pytest.raises(StopAsyncIteration):
+        await receive()
+
+
 def test_state_data_across_multiple_middlewares(
     test_client_factory: TestClientFactory,
 ) -> None:

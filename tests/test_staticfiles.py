@@ -2,8 +2,8 @@ import os
 import stat
 import tempfile
 import time
-import typing
 from pathlib import Path
+from typing import Any
 
 import anyio
 import pytest
@@ -45,7 +45,7 @@ def test_staticfiles_with_pathlib(tmp_path: Path, test_client_factory: TestClien
 
 def test_staticfiles_head_with_middleware(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     """
-    see https://github.com/encode/starlette/pull/935
+    see https://github.com/Kludex/starlette/pull/935
     """
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
@@ -227,6 +227,24 @@ def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: T
     assert first_resp.status_code == 200
     assert first_resp.headers["etag"] != '"123"'
     second_resp = client.get("/example.txt", headers={"if-none-match": '"123"'})
+    assert second_resp.status_code == 200
+    assert second_resp.content == b"<file content>"
+
+
+def test_staticfiles_200_with_etag_mismatch_and_timestamp_match(
+    tmpdir: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = tmpdir / "example.txt"
+    path.write_text("<file content>", encoding="utf-8")
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    first_resp = client.get("/example.txt")
+    assert first_resp.status_code == 200
+    assert first_resp.headers["etag"] != '"123"'
+    last_modified = first_resp.headers["last-modified"]
+    # If `if-none-match` is present, `if-modified-since` is ignored.
+    second_resp = client.get("/example.txt", headers={"if-none-match": '"123"', "if-modified-since": last_modified})
     assert second_resp.status_code == 200
     assert second_resp.content == b"<file content>"
 
@@ -458,7 +476,7 @@ def test_staticfiles_unhandled_os_error_returns_500(
     test_client_factory: TestClientFactory,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def mock_timeout(*args: typing.Any, **kwargs: typing.Any) -> None:
+    def mock_timeout(*args: Any, **kwargs: Any) -> None:
         raise TimeoutError
 
     path = os.path.join(tmpdir, "example.txt")

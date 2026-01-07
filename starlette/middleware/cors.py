@@ -170,7 +170,6 @@ class CORSMiddleware:
         if self.allow_all_origins and (has_cookie or has_authorization):
             self.allow_explicit_origin(headers, origin)
 
-
         # If we only allow specific origins, then we have to mirror back
         # the Origin header in the response.
         elif not self.allow_all_origins and self.is_allowed_origin(origin=origin):

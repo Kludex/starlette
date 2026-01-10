@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import base64
 import binascii
-from collections.abc import Awaitable
-from typing import Any, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 from urllib.parse import urlencode
 
 import pytest

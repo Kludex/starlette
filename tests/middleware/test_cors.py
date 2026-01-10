@@ -396,7 +396,7 @@ def test_cors_allow_origin_regex_fullmatch(
     assert response.headers["access-control-allow-origin"] == "https://subdomain.example.org"
     assert "access-control-allow-credentials" not in response.headers
 
-    # Test diallowed standard response
+    # Test disallowed standard response
     headers = {"Origin": "https://subdomain.example.org.hacker.com"}
     response = client.get("/", headers=headers)
     assert response.status_code == 200
@@ -530,3 +530,78 @@ def test_cors_allowed_origin_does_not_leak_between_credentialed_requests(
     response = client.get("/", headers={"Origin": "https://someplace.org"})
     assert response.headers["access-control-allow-origin"] == "*"
     assert "access-control-allow-credentials" not in response.headers
+
+
+def test_cors_private_network_access_allowed(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_methods=["*"],
+                allow_private_network=True,
+            )
+        ],
+    )
+
+    client = test_client_factory(app)
+
+    headers_without_pna = {"Origin": "https://example.org", "Access-Control-Request-Method": "GET"}
+    headers_with_pna = {**headers_without_pna, "Access-Control-Request-Private-Network": "true"}
+
+    # Test preflight with Private Network Access request
+    response = client.options("/", headers=headers_with_pna)
+    assert response.status_code == 200
+    assert response.text == "OK"
+    assert response.headers["access-control-allow-private-network"] == "true"
+
+    # Test preflight without Private Network Access request
+    response = client.options("/", headers=headers_without_pna)
+    assert response.status_code == 200
+    assert response.text == "OK"
+    assert "access-control-allow-private-network" not in response.headers
+
+    # The access-control-allow-private-network header is not set for non-preflight requests
+    response = client.get("/", headers=headers_with_pna)
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert "access-control-allow-private-network" not in response.headers
+    assert "access-control-allow-origin" in response.headers
+
+
+def test_cors_private_network_access_disallowed(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> None: ...  # pragma: no cover
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_methods=["*"],
+                allow_private_network=False,
+            )
+        ],
+    )
+
+    client = test_client_factory(app)
+
+    # Test preflight with Private Network Access request when not allowed
+    headers_without_pna = {"Origin": "https://example.org", "Access-Control-Request-Method": "GET"}
+    headers_with_pna = {**headers_without_pna, "Access-Control-Request-Private-Network": "true"}
+
+    response = client.options("/", headers=headers_without_pna)
+    assert response.status_code == 200
+    assert response.text == "OK"
+    assert "access-control-allow-private-network" not in response.headers
+
+    # If the request includes a Private Network Access header, but the middleware is configured to disallow it, the
+    # request should be denied with a 400 response.
+    response = client.options("/", headers=headers_with_pna)
+    assert response.status_code == 400
+    assert response.text == "Disallowed CORS private-network"
+    assert "access-control-allow-private-network" not in response.headers

@@ -21,3 +21,11 @@ def test_deprecated_types(constant: str, msg: str) -> None:
         getattr(importlib.import_module("starlette.status"), constant)
         assert len(record) == 1
         assert msg in str(record.list[0])
+
+
+def test_unknown_status() -> None:
+    with pytest.raises(
+        AttributeError,
+        match="module 'starlette.status' has no attribute 'HTTP_999_UNKNOWN_STATUS_CODE'",
+    ):
+        getattr(importlib.import_module("starlette.status"), "HTTP_999_UNKNOWN_STATUS_CODE")

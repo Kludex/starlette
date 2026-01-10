@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import warnings
-from collections.abc import Iterator, Mapping, MutableMapping
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from pathlib import Path
-from typing import Any, Callable, TypeVar, overload
+from typing import Any, TypeVar, overload
 
 
 class undefined:
@@ -52,6 +52,7 @@ class Config:
         env_file: str | Path | None = None,
         environ: Mapping[str, str] = environ,
         env_prefix: str = "",
+        encoding: str = "utf-8",
     ) -> None:
         self.environ = environ
         self.env_prefix = env_prefix
@@ -60,7 +61,7 @@ class Config:
             if not os.path.isfile(env_file):
                 warnings.warn(f"Config file '{env_file}' not found.")
             else:
-                self.file_values = self._read_file(env_file)
+                self.file_values = self._read_file(env_file, encoding)
 
     @overload
     def __call__(self, key: str, *, default: None) -> str | None: ...
@@ -107,9 +108,9 @@ class Config:
             return self._perform_cast(key, default, cast)
         raise KeyError(f"Config '{key}' is missing, and has no default.")
 
-    def _read_file(self, file_name: str | Path) -> dict[str, str]:
+    def _read_file(self, file_name: str | Path, encoding: str) -> dict[str, str]:
         file_values: dict[str, str] = {}
-        with open(file_name) as input_file:
+        with open(file_name, encoding=encoding) as input_file:
             for line in input_file.readlines():
                 line = line.strip()
                 if "=" in line and not line.startswith("#"):

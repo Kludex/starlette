@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Mapping, MutableMapping
-from typing import Any, Callable, TypeVar, Union
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
+from typing import Any, TypeVar
 
 import anyio
 
@@ -12,8 +12,8 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
 DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
-BodyStreamGenerator = AsyncGenerator[Union[bytes, MutableMapping[str, Any]], None]
-AsyncContentStream = AsyncIterable[Union[str, bytes, memoryview, MutableMapping[str, Any]]]
+BodyStreamGenerator = AsyncGenerator[bytes | MutableMapping[str, Any], None]
+AsyncContentStream = AsyncIterable[str | bytes | memoryview | MutableMapping[str, Any]]
 T = TypeVar("T")
 
 
@@ -156,7 +156,16 @@ class BaseHTTPMiddleware:
                 if app_exc is not None:
                     nonlocal exception_already_raised
                     exception_already_raised = True
-                    raise app_exc
+                    # Prevent `anyio.EndOfStream` from polluting app exception context.
+                    # If both cause and context are None then the context is suppressed
+                    # and `anyio.EndOfStream` is not present in the exception traceback.
+                    # If exception cause is not None then it is propagated with
+                    # reraising here.
+                    # If exception has no cause but has context set then the context is
+                    # propagated as a cause with the reraise. This is necessary in order
+                    # to prevent `anyio.EndOfStream` from polluting the exception
+                    # context.
+                    raise app_exc from app_exc.__cause__ or app_exc.__context__
                 raise RuntimeError("No response returned.")
 
             assert message["type"] == "http.response.start"

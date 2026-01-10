@@ -2,7 +2,19 @@
 toc_depth: 2
 ---
 
+## 0.51.0 (January 10, 2026)
+
+#### Added
+
+* Add `allow_private_network` in `CORSMiddleware` [#3065](https://github.com/Kludex/starlette/pull/3065).
+
+#### Changed
+
+* Increase warning stacklevel on `DeprecationWarning` for wsgi module [#3082](https://github.com/Kludex/starlette/pull/3082).
+
 ## 0.50.0 (November 1, 2025)
+
+#### Removed
 
 * Drop Python 3.9 support [#3061](https://github.com/Kludex/starlette/pull/3061).
 

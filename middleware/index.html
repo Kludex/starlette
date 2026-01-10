@@ -1,0 +1,3016 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The little ASGI library that shines.">
+      
+      
+      
+        <link rel="canonical" href="https://starlette.dev/middleware/">
+      
+      
+        <link rel="prev" href="../endpoints/">
+      
+      
+        <link rel="next" href="../staticfiles/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>Middleware - Starlette</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-Z37GTYBR6M"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-Z37GTYBR6M",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-Z37GTYBR6M",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+    
+  
+  <script>
+    // Redirect starlette.io to starlette.dev
+    if (window.location.hostname === 'www.starlette.io' || window.location.hostname === 'starlette.io') {
+      const newUrl = window.location.href.replace(/^https?:\/\/(www\.)?starlette\.io/, 'https://starlette.dev');
+      window.location.replace(newUrl);
+    }
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#using-middleware" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Starlette" class="md-header__button md-logo" aria-label="Starlette" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Starlette
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Middleware
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Kludex/starlette" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Kludex/starlette
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Starlette" class="md-nav__button md-logo" aria-label="Starlette" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Starlette
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Kludex/starlette" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Kludex/starlette
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introduction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Applications
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../requests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Requests
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../responses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Responses
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../websockets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    WebSockets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Routing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../endpoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Endpoints
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Middleware
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Middleware
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#using-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Using middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#corsmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        CORSMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="CORSMiddleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#cors-preflight-requests" class="md-nav__link">
+    <span class="md-ellipsis">
+        CORS preflight requests
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#simple-requests" class="md-nav__link">
+    <span class="md-ellipsis">
+        Simple requests
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#private-network-access-pna" class="md-nav__link">
+    <span class="md-ellipsis">
+        Private Network Access (PNA)
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#corsmiddleware-global-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+        CORSMiddleware Global Enforcement
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#sessionmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        SessionMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#httpsredirectmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        HTTPSRedirectMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#trustedhostmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        TrustedHostMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#gzipmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        GZipMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#basehttpmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        BaseHTTPMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="BaseHTTPMiddleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+        Usage
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+        Limitations
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#pure-asgi-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Pure ASGI Middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Pure ASGI Middleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#writing-pure-asgi-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Writing pure ASGI middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#using-pure-asgi-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Using pure ASGI middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#type-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+        Type annotations
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#common-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+        Common patterns
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Common patterns">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#processing-certain-requests-only" class="md-nav__link">
+    <span class="md-ellipsis">
+        Processing certain requests only
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#reusing-starlette-components" class="md-nav__link">
+    <span class="md-ellipsis">
+        Reusing Starlette components
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#sending-eager-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+        Sending eager responses
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#inspecting-or-modifying-the-request" class="md-nav__link">
+    <span class="md-ellipsis">
+        Inspecting or modifying the request
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#inspecting-or-modifying-the-response" class="md-nav__link">
+    <span class="md-ellipsis">
+        Inspecting or modifying the response
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#passing-information-to-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+        Passing information to endpoints
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#cleanup-and-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+        Cleanup and error handling
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+        Gotchas
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Gotchas">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#asgi-middleware-should-be-stateless" class="md-nav__link">
+    <span class="md-ellipsis">
+        ASGI middleware should be stateless
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#further-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+        Further reading
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#using-middleware-in-other-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+        Using middleware in other frameworks
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#applying-middleware-to-groups-of-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+        Applying middleware to groups of routes
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#third-party-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Third party middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Third party middleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#asgi-auth-github" class="md-nav__link">
+    <span class="md-ellipsis">
+        asgi-auth-github
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#asgi-csrf" class="md-nav__link">
+    <span class="md-ellipsis">
+        asgi-csrf
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#authlibmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        AuthlibMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#bugsnagmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        BugsnagMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#csrfmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        CSRFMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#earlydatamiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        EarlyDataMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#prometheusmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        PrometheusMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#proxyheadersmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        ProxyHeadersMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#ratelimitmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        RateLimitMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#requestidmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        RequestIdMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#rollbarmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        RollbarMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#starletteopentracing" class="md-nav__link">
+    <span class="md-ellipsis">
+        StarletteOpentracing
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#securecookiesmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        SecureCookiesMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#timingmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        TimingMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#wsgimiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        WSGIMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../staticfiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Static Files
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Templates
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../database/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Database
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Schemas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lifespan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lifespan
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../background/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Background Tasks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../server-push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Server Push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Exceptions
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../threadpool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Thread Pool
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testclient/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Test Client
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Release Notes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Community
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Community
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../third-party-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Third Party Packages
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sponsorship/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sponsorship
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#using-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Using middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#corsmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        CORSMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="CORSMiddleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#cors-preflight-requests" class="md-nav__link">
+    <span class="md-ellipsis">
+        CORS preflight requests
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#simple-requests" class="md-nav__link">
+    <span class="md-ellipsis">
+        Simple requests
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#private-network-access-pna" class="md-nav__link">
+    <span class="md-ellipsis">
+        Private Network Access (PNA)
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#corsmiddleware-global-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+        CORSMiddleware Global Enforcement
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#sessionmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        SessionMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#httpsredirectmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        HTTPSRedirectMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#trustedhostmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        TrustedHostMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#gzipmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        GZipMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#basehttpmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        BaseHTTPMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="BaseHTTPMiddleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+        Usage
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+        Limitations
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#pure-asgi-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Pure ASGI Middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Pure ASGI Middleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#writing-pure-asgi-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Writing pure ASGI middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#using-pure-asgi-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Using pure ASGI middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#type-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+        Type annotations
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#common-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+        Common patterns
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Common patterns">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#processing-certain-requests-only" class="md-nav__link">
+    <span class="md-ellipsis">
+        Processing certain requests only
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#reusing-starlette-components" class="md-nav__link">
+    <span class="md-ellipsis">
+        Reusing Starlette components
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#sending-eager-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+        Sending eager responses
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#inspecting-or-modifying-the-request" class="md-nav__link">
+    <span class="md-ellipsis">
+        Inspecting or modifying the request
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#inspecting-or-modifying-the-response" class="md-nav__link">
+    <span class="md-ellipsis">
+        Inspecting or modifying the response
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#passing-information-to-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+        Passing information to endpoints
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#cleanup-and-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+        Cleanup and error handling
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+        Gotchas
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Gotchas">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#asgi-middleware-should-be-stateless" class="md-nav__link">
+    <span class="md-ellipsis">
+        ASGI middleware should be stateless
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#further-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+        Further reading
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#using-middleware-in-other-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+        Using middleware in other frameworks
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#applying-middleware-to-groups-of-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+        Applying middleware to groups of routes
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+      
+        <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#third-party-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        Third party middleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+<nav class="md-nav" aria-label="Third party middleware">
+    <ul class="md-nav__list">
+        
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#asgi-auth-github" class="md-nav__link">
+    <span class="md-ellipsis">
+        asgi-auth-github
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#asgi-csrf" class="md-nav__link">
+    <span class="md-ellipsis">
+        asgi-csrf
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#authlibmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        AuthlibMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#bugsnagmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        BugsnagMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#csrfmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        CSRFMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#earlydatamiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        EarlyDataMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#prometheusmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        PrometheusMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#proxyheadersmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        ProxyHeadersMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#ratelimitmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        RateLimitMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#requestidmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        RequestIdMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#rollbarmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        RollbarMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#starletteopentracing" class="md-nav__link">
+    <span class="md-ellipsis">
+        StarletteOpentracing
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#securecookiesmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        SecureCookiesMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#timingmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        TimingMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+             
+         <!-- Copied from https://github.com/squidfunk/mkdocs-material/issues/4827#issuecomment-1869812019 -->
+<li class="md-nav__item"></li>
+<a href="#wsgimiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+        WSGIMiddleware
+    </span>
+</a>
+
+<!-- Table of contents list -->
+
+</li>
+              </ul>
+</nav>
+
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Middleware</h1>
+
+<p>Starlette includes several middleware classes for adding behavior that is applied across
+your entire application. These are all implemented as standard ASGI
+middleware classes, and can be applied either to Starlette or to any other ASGI application.</p>
+<h2 id="using-middleware">Using middleware</h2>
+<p>The Starlette application class allows you to include the ASGI middleware
+in a way that ensures that it remains wrapped by the exception handler.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.httpsredirect</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPSRedirectMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.trustedhost</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrustedHostMiddleware</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="c1"># Ensure that all requests include an &#39;example.com&#39; or</span>
+<span class="c1"># &#39;*.example.com&#39; host header, and strictly enforce https-only access.</span>
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span>
+        <span class="n">TrustedHostMiddleware</span><span class="p">,</span>
+        <span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;example.com&#39;</span><span class="p">,</span> <span class="s1">&#39;*.example.com&#39;</span><span class="p">],</span>
+    <span class="p">),</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">HTTPSRedirectMiddleware</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>Every Starlette application automatically includes two pieces of middleware by default:</p>
+<ul>
+<li><code>ServerErrorMiddleware</code> - Ensures that application exceptions may return a custom 500 page, or display an application traceback in DEBUG mode. This is <em>always</em> the outermost middleware layer.</li>
+<li><code>ExceptionMiddleware</code> - Adds exception handlers, so that particular types of expected exception cases can be associated with handler functions. For example raising <code>HTTPException(status_code=404)</code> within an endpoint will end up rendering a custom 404 page.</li>
+</ul>
+<p>Middleware is evaluated from top-to-bottom, so the flow of execution in our example
+application would look like this:</p>
+<ul>
+<li>Middleware<ul>
+<li><code>ServerErrorMiddleware</code></li>
+<li><code>TrustedHostMiddleware</code></li>
+<li><code>HTTPSRedirectMiddleware</code></li>
+<li><code>ExceptionMiddleware</code></li>
+</ul>
+</li>
+<li>Routing</li>
+<li>Endpoint</li>
+</ul>
+<p>The following middleware implementations are available in the Starlette package:</p>
+<h2 id="corsmiddleware">CORSMiddleware</h2>
+<p>Adds appropriate <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS headers</a> to outgoing responses in order to allow cross-origin requests from browsers.</p>
+<p>The default parameters used by the CORSMiddleware implementation are restrictive by default,
+so you'll need to explicitly enable particular origins, methods, or headers, in order
+for browsers to be permitted to use them in a Cross-Domain context.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">CORSMiddleware</span><span class="p">,</span> <span class="n">allow_origins</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;*&#39;</span><span class="p">])</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>The following arguments are supported:</p>
+<ul>
+<li><code>allow_origins</code> - A list of origins that should be permitted to make cross-origin requests. eg. <code>['https://example.org', 'https://www.example.org']</code>. You can use <code>['*']</code> to allow any origin.</li>
+<li><code>allow_origin_regex</code> - A regex string to match against origins that should be permitted to make cross-origin requests. eg. <code>'https://.*\.example\.org'</code>.</li>
+<li><code>allow_methods</code> - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to <code>['GET']</code>. You can use <code>['*']</code> to allow all standard methods.</li>
+<li><code>allow_headers</code> - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to <code>[]</code>. You can use <code>['*']</code> to allow all headers. The <code>Accept</code>, <code>Accept-Language</code>, <code>Content-Language</code> and <code>Content-Type</code> headers are always allowed for CORS requests.</li>
+<li><code>allow_credentials</code> - Indicate that cookies should be supported for cross-origin requests. Defaults to <code>False</code>. Also, <code>allow_origins</code>, <code>allow_methods</code> and <code>allow_headers</code> cannot be set to <code>['*']</code> for credentials to be allowed, all of them must be explicitly specified.</li>
+<li><code>allow_private_network</code> - Indicates whether to accept cross-origin requests over a private network. Defaults to <code>False</code>.</li>
+<li><code>expose_headers</code> - Indicate any response headers that should be made accessible to the browser. Defaults to <code>[]</code>.</li>
+<li><code>max_age</code> - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to <code>600</code>.</li>
+</ul>
+<p>The middleware responds to two particular types of HTTP request...</p>
+<h4 id="cors-preflight-requests">CORS preflight requests</h4>
+<p>These are any <code>OPTIONS</code> request with <code>Origin</code> and <code>Access-Control-Request-Method</code> headers.
+In this case the middleware will intercept the incoming request and respond with
+appropriate CORS headers, and either a 200 or 400 response for informational purposes.</p>
+<h4 id="simple-requests">Simple requests</h4>
+<p>Any request with an <code>Origin</code> header. In this case the middleware will pass the
+request through as normal, but will include appropriate CORS headers on the response.</p>
+<h4 id="private-network-access-pna">Private Network Access (PNA)</h4>
+<p>Private Network Access is a browser security feature that restricts websites from public networks from accessing servers on private networks.</p>
+<p>When a website attempts to make such a cross-network request, the browser will send a <code>Access-Control-Request-Private-Network: true</code> header in the
+pre-flight request. If the <code>allow_private_network</code> flag is set to <code>True</code>, the middleware will include the <code>Access-Control-Allow-Private-Network: true</code>
+header in the response, allowing the request. If set to <code>False</code>, the middleware will return a 400 response, blocking the request.</p>
+<h3 id="corsmiddleware-global-enforcement">CORSMiddleware Global Enforcement</h3>
+<p>When using CORSMiddleware with your Starlette application, it's important to ensure that CORS headers are applied even to error responses generated by unhandled exceptions. The recommended solution is to wrap the entire Starlette application with CORSMiddleware. This approach guarantees that even if an exception is caught by ServerErrorMiddleware (or other outer error-handling middleware), the response will still include the proper <code>Access-Control-Allow-Origin</code> header.</p>
+<p>For example, instead of adding CORSMiddleware as an inner <code>middleware</code> via the Starlette middleware parameter, you can wrap your application as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">()</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">CORSMiddleware</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">allow_origins</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">])</span>
+
+<span class="c1"># ... your routes and middleware configuration ...</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+        <span class="n">app</span><span class="p">,</span>
+        <span class="n">host</span><span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span>
+        <span class="n">port</span><span class="o">=</span><span class="mi">8000</span>
+    <span class="p">)</span>
+</code></pre></div>
+<h2 id="sessionmiddleware">SessionMiddleware</h2>
+<p>Adds signed cookie-based HTTP sessions. Session information is readable but not modifiable.</p>
+<p>Access or modify the session data using the <code>request.session</code> dictionary interface.</p>
+<p>The following arguments are supported:</p>
+<ul>
+<li><code>secret_key</code> - Should be a random string.</li>
+<li><code>session_cookie</code> - Defaults to "session".</li>
+<li><code>max_age</code> - Session expiry time in seconds. Defaults to 2 weeks. If set to <code>None</code> then the cookie will last as long as the browser session.</li>
+<li><code>same_site</code> - SameSite flag prevents the browser from sending session cookie along with cross-site requests. Defaults to <code>'lax'</code>.</li>
+<li><code>path</code> - The path set for the session cookie. Defaults to <code>'/'</code>.</li>
+<li><code>https_only</code> - Indicate that Secure flag should be set (can be used with HTTPS only). Defaults to <code>False</code>.</li>
+<li><code>domain</code> - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains (<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute">reference</a>).</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SessionMiddleware</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">SessionMiddleware</span><span class="p">,</span> <span class="n">secret_key</span><span class="o">=...</span><span class="p">,</span> <span class="n">https_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="httpsredirectmiddleware">HTTPSRedirectMiddleware</h2>
+<p>Enforces that all incoming requests must either be <code>https</code> or <code>wss</code>. Any incoming
+requests to <code>http</code> or <code>ws</code> will be redirected to the secure scheme instead.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.httpsredirect</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPSRedirectMiddleware</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">HTTPSRedirectMiddleware</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>There are no configuration options for this middleware class.</p>
+<h2 id="trustedhostmiddleware">TrustedHostMiddleware</h2>
+<p>Enforces that all incoming requests have a correctly set <code>Host</code> header, in order
+to guard against HTTP Host Header attacks.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.trustedhost</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrustedHostMiddleware</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">TrustedHostMiddleware</span><span class="p">,</span> <span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;example.com&#39;</span><span class="p">,</span> <span class="s1">&#39;*.example.com&#39;</span><span class="p">])</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>The following arguments are supported:</p>
+<ul>
+<li><code>allowed_hosts</code> - A list of domain names that should be allowed as hostnames. Wildcard
+domains such as <code>*.example.com</code> are supported for matching subdomains. To allow any
+hostname either use <code>allowed_hosts=["*"]</code> or omit the middleware.</li>
+<li><code>www_redirect</code> - If set to True, requests to non-www versions of the allowed hosts will be redirected to their www counterparts. Defaults to <code>True</code>.</li>
+</ul>
+<p>If an incoming request does not validate correctly then a 400 response will be sent.</p>
+<h2 id="gzipmiddleware">GZipMiddleware</h2>
+<p>Handles GZip responses for any request that includes <code>"gzip"</code> in the <code>Accept-Encoding</code> header.</p>
+<p>The middleware will handle both standard and streaming responses.</p>
+<details class="info">
+<summary>Buffer on streaming responses</summary>
+<p>On streaming responses, the middleware will buffer the response before compressing it.</p>
+<p>The idea is that we don't want to compress every small chunk of data, as it would be inefficient.
+Instead, we buffer the response until it reaches a certain size, and then compress it.</p>
+<p>This may cause a delay in the response, as the middleware waits for the buffer to fill up before compressing it.</p>
+</details>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.gzip</span><span class="w"> </span><span class="kn">import</span> <span class="n">GZipMiddleware</span>
+
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">GZipMiddleware</span><span class="p">,</span> <span class="n">minimum_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">compresslevel</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>The following arguments are supported:</p>
+<ul>
+<li><code>minimum_size</code> - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to <code>500</code>.</li>
+<li><code>compresslevel</code> - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to <code>9</code>. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.</li>
+</ul>
+<p>The middleware won't GZip responses that already have either a <code>Content-Encoding</code> set, to prevent them from
+being encoded twice, or a <code>Content-Type</code> set to <code>text/event-stream</code>, to avoid compressing server-sent events.</p>
+<h2 id="basehttpmiddleware">BaseHTTPMiddleware</h2>
+<p>An abstract class that allows you to write ASGI middleware against a request/response
+interface.</p>
+<h3 id="usage">Usage</h3>
+<p>To implement a middleware class using <code>BaseHTTPMiddleware</code>, you must override the
+<code>async def dispatch(request, call_next)</code> method.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseHTTPMiddleware</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomHeaderMiddleware</span><span class="p">(</span><span class="n">BaseHTTPMiddleware</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;Custom&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Example&#39;</span>
+        <span class="k">return</span> <span class="n">response</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">CustomHeaderMiddleware</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>If you want to provide configuration options to the middleware class you should
+override the <code>__init__</code> method, ensuring that the first argument is <code>app</code>, and
+any remaining arguments are optional keyword arguments. Make sure to set the <code>app</code>
+attribute on the instance if you do this.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CustomHeaderMiddleware</span><span class="p">(</span><span class="n">BaseHTTPMiddleware</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="n">header_value</span><span class="o">=</span><span class="s1">&#39;Example&#39;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">header_value</span> <span class="o">=</span> <span class="n">header_value</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;Custom&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">header_value</span>
+        <span class="k">return</span> <span class="n">response</span>
+
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">CustomHeaderMiddleware</span><span class="p">,</span> <span class="n">header_value</span><span class="o">=</span><span class="s1">&#39;Customized&#39;</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>Middleware classes should not modify their state outside of the <code>__init__</code> method.
+Instead you should keep any state local to the <code>dispatch</code> method, or pass it
+around explicitly, rather than mutating the middleware instance.</p>
+<h3 id="limitations">Limitations</h3>
+<p>Currently, the <code>BaseHTTPMiddleware</code> has some known limitations:</p>
+<ul>
+<li>Using <code>BaseHTTPMiddleware</code> will prevent changes to <a href="https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar"><code>contextvars.ContextVar</code></a>s from propagating upwards. That is, if you set a value for a <code>ContextVar</code> in your endpoint and try to read it from a middleware you will find that the value is not the same value you set in your endpoint (see <a href="https://github.com/Kludex/starlette/blob/621abc747a6604825190b93467918a0ec6456a24/tests/middleware/test_base.py#L192-L223">this test</a> for an example of this behavior). Importantly, this also means that if a <code>BaseHTTPMiddleware</code> is positioned earlier in the middleware stack, it will disrupt <code>contextvars</code> propagation for any subsequent Pure ASGI Middleware that relies on them.</li>
+</ul>
+<p>To overcome these limitations, use <a href="#pure-asgi-middleware">pure ASGI middleware</a>, as shown below.</p>
+<h2 id="pure-asgi-middleware">Pure ASGI Middleware</h2>
+<p>The <a href="https://asgi.readthedocs.io/en/latest/">ASGI spec</a> makes it possible to implement ASGI middleware using the ASGI interface directly, as a chain of ASGI applications that call into the next one. In fact, this is how middleware classes shipped with Starlette are implemented.</p>
+<p>This lower-level approach provides greater control over behavior and enhanced interoperability across frameworks and servers. It also overcomes the <a href="#limitations">limitations of <code>BaseHTTPMiddleware</code></a>.</p>
+<h3 id="writing-pure-asgi-middleware">Writing pure ASGI middleware</h3>
+<p>The most common way to create an ASGI middleware is with a class.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ASGIMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+</code></pre></div>
+<p>The middleware above is the most basic ASGI middleware. It receives a parent ASGI application as an argument for its constructor, and implements an <code>async __call__</code> method which calls into that parent application.</p>
+<p>Some implementations such as <a href="https://github.com/simonw/asgi-cors/blob/10ef64bfcc6cd8d16f3014077f20a0fb8544ec39/asgi_cors.py"><code>asgi-cors</code></a> use an alternative style, using functions:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">asgi_middleware</span><span class="p">():</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">asgi_decorator</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">wrapped_app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+            <span class="k">await</span> <span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wrapped_app</span>
+
+    <span class="k">return</span> <span class="n">asgi_decorator</span>
+</code></pre></div>
+<p>In any case, ASGI middleware must be callables that accept three arguments: <code>scope</code>, <code>receive</code>, and <code>send</code>.</p>
+<ul>
+<li><code>scope</code> is a dict holding information about the connection, where <code>scope["type"]</code> may be:<ul>
+<li><a href="https://asgi.readthedocs.io/en/latest/specs/www.html#http-connection-scope"><code>"http"</code></a>: for HTTP requests.</li>
+<li><a href="https://asgi.readthedocs.io/en/latest/specs/www.html#websocket-connection-scope"><code>"websocket"</code></a>: for WebSocket connections.</li>
+<li><a href="https://asgi.readthedocs.io/en/latest/specs/lifespan.html#scope"><code>"lifespan"</code></a>: for ASGI lifespan messages.</li>
+</ul>
+</li>
+<li><code>receive</code> and <code>send</code> can be used to exchange ASGI event messages with the ASGI server — more on this below. The type and contents of these messages depend on the scope type. Learn more in the <a href="https://asgi.readthedocs.io/en/latest/specs/index.html">ASGI specification</a>.</li>
+</ul>
+<h3 id="using-pure-asgi-middleware">Using pure ASGI middleware</h3>
+<p>Pure ASGI middleware can be used like any other middleware:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASGIMiddleware</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">ASGIMiddleware</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<p>See also <a href="#using-middleware">Using middleware</a>.</p>
+<h3 id="type-annotations">Type annotations</h3>
+<p>There are two ways of annotating a middleware: using Starlette itself or <a href="https://github.com/django/asgiref"><code>asgiref</code></a>.</p>
+<ul>
+<li>Using Starlette: for most common use cases.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASGIApp</span><span class="p">,</span> <span class="n">Message</span><span class="p">,</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">Send</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ASGIMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">:</span> <span class="n">ASGIApp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_wrapper</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># ... Do something</span>
+            <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send_wrapper</span><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li>Using <a href="https://github.com/django/asgiref"><code>asgiref</code></a>: for more rigorous type hinting.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">asgiref.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASGI3Application</span><span class="p">,</span> <span class="n">ASGIReceiveCallable</span><span class="p">,</span> <span class="n">ASGISendCallable</span><span class="p">,</span> <span class="n">Scope</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">asgiref.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASGIReceiveEvent</span><span class="p">,</span> <span class="n">ASGISendEvent</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ASGIMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">:</span> <span class="n">ASGI3Application</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">ASGIReceiveCallable</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">ASGISendCallable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_wrapper</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">ASGISendEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># ... Do something</span>
+            <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send_wrapper</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="common-patterns">Common patterns</h3>
+<h4 id="processing-certain-requests-only">Processing certain requests only</h4>
+<p>ASGI middleware can apply specific behavior according to the contents of <code>scope</code>.</p>
+<p>For example, to only process HTTP requests, write this...</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ASGIMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="o">...</span>  <span class="c1"># Do something here!</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+</code></pre></div>
+<p>Likewise, WebSocket-only middleware would guard on <code>scope["type"] != "websocket"</code>.</p>
+<p>The middleware may also act differently based on the request method, URL, headers, etc.</p>
+<h4 id="reusing-starlette-components">Reusing Starlette components</h4>
+<p>Starlette provides several data structures that accept the ASGI <code>scope</code>, <code>receive</code> and/or <code>send</code> arguments, allowing you to work at a higher level of abstraction. Such data structures include <a href="../requests/#request"><code>Request</code></a>, <a href="../requests/#headers"><code>Headers</code></a>, <a href="../requests/#query-parameters"><code>QueryParams</code></a>, <a href="../requests/#url"><code>URL</code></a>, etc.</p>
+<p>For example, you can instantiate a <code>Request</code> to more easily inspect an HTTP request:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ASGIMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span>
+            <span class="o">...</span> <span class="c1"># Use `request.method`, `request.url`, `request.headers`, etc.</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+</code></pre></div>
+<p>You can also reuse <a href="../responses/">responses</a>, which are ASGI applications as well.</p>
+<h4 id="sending-eager-responses">Sending eager responses</h4>
+<p>Inspecting the connection <code>scope</code> allows you to conditionally call into a different ASGI app. One use case might be sending a response without calling into the app.</p>
+<p>As an example, this middleware uses a dictionary to perform permanent redirects based on the requested path. This could be used to implement ongoing support of legacy URLs in case you need to refactor route URL patterns.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.datastructures</span><span class="w"> </span><span class="kn">import</span> <span class="n">URL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">RedirectResponse</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RedirectsMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="n">path_mapping</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_mapping</span> <span class="o">=</span> <span class="n">path_mapping</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">url</span> <span class="o">=</span> <span class="n">URL</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_mapping</span><span class="p">:</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">url</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">path_mapping</span><span class="p">[</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">])</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RedirectResponse</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">301</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+</code></pre></div>
+<p>Example usage would look like this:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+
+<span class="n">routes</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">redirections</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;/v1/resource/&quot;</span><span class="p">:</span> <span class="s2">&quot;/v2/resource/&quot;</span><span class="p">,</span>
+    <span class="c1"># ...</span>
+<span class="p">}</span>
+
+<span class="n">middleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Middleware</span><span class="p">(</span><span class="n">RedirectsMiddleware</span><span class="p">,</span> <span class="n">path_mapping</span><span class="o">=</span><span class="n">redirections</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="n">middleware</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="inspecting-or-modifying-the-request">Inspecting or modifying the request</h4>
+<p>Request information can be accessed or changed by manipulating the <code>scope</code>. For a full example of this pattern, see Uvicorn's <a href="https://github.com/encode/uvicorn/blob/fd4386fefb8fe8a4568831a7d8b2930d5fb61455/uvicorn/middleware/proxy_headers.py"><code>ProxyHeadersMiddleware</code></a> which inspects and tweaks the <code>scope</code> when serving behind a frontend proxy.</p>
+<p>Besides, wrapping the <code>receive</code> ASGI callable allows you to access or modify the HTTP request body by manipulating <a href="https://asgi.readthedocs.io/en/latest/specs/www.html#request-receive-event"><code>http.request</code></a> ASGI event messages.</p>
+<p>As an example, this middleware computes and logs the size of the incoming request body...</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LoggedRequestBodySizeMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">body_size</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">receive_logging_request_body_size</span><span class="p">():</span>
+            <span class="k">nonlocal</span> <span class="n">body_size</span>
+
+            <span class="n">message</span> <span class="o">=</span> <span class="k">await</span> <span class="n">receive</span><span class="p">()</span>
+            <span class="k">assert</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.request&quot;</span>
+
+            <span class="n">body_size</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;body&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;more_body&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Size of request body was: </span><span class="si">{</span><span class="n">body_size</span><span class="si">}</span><span class="s2"> bytes&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">message</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive_logging_request_body_size</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+</code></pre></div>
+<p>Likewise, WebSocket middleware may manipulate <a href="https://asgi.readthedocs.io/en/latest/specs/www.html#receive-receive-event"><code>websocket.receive</code></a> ASGI event messages to inspect or alter incoming WebSocket data.</p>
+<p>For an example that changes the HTTP request body, see <a href="https://github.com/florimondmanca/msgpack-asgi"><code>msgpack-asgi</code></a>.</p>
+<h4 id="inspecting-or-modifying-the-response">Inspecting or modifying the response</h4>
+<p>Wrapping the <code>send</code> ASGI callable allows you to inspect or modify the HTTP response sent by the underlying application. To do so, react to <a href="https://asgi.readthedocs.io/en/latest/specs/www.html#response-start-send-event"><code>http.response.start</code></a> or <a href="https://asgi.readthedocs.io/en/latest/specs/www.html#response-body-send-event"><code>http.response.body</code></a> ASGI event messages.</p>
+<p>As an example, this middleware adds some fixed extra response headers:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.datastructures</span><span class="w"> </span><span class="kn">import</span> <span class="n">MutableHeaders</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ExtraResponseHeadersMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="n">headers</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_with_extra_headers</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.start&quot;</span><span class="p">:</span>
+                <span class="n">headers</span> <span class="o">=</span> <span class="n">MutableHeaders</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+                    <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+            <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send_with_extra_headers</span><span class="p">)</span>
+</code></pre></div>
+<p>See also <a href="https://github.com/Kludex/asgi-logger/blob/main/asgi_logger/middleware.py"><code>asgi-logger</code></a> for an example that inspects the HTTP response and logs a configurable HTTP access log line.</p>
+<p>Likewise, WebSocket middleware may manipulate <a href="https://asgi.readthedocs.io/en/latest/specs/www.html#send-send-event"><code>websocket.send</code></a> ASGI event messages to inspect or alter outgoing WebSocket data.</p>
+<p>Note that if you change the response body, you will need to update the response <code>Content-Length</code> header to match the new response body length. See <a href="https://github.com/fullonic/brotli-asgi"><code>brotli-asgi</code></a> for a complete example.</p>
+<h4 id="passing-information-to-endpoints">Passing information to endpoints</h4>
+<p>If you need to share information with the underlying app or endpoints, you may store it into the <code>scope</code> dictionary. Note that this is a convention -- for example, Starlette uses this to share routing information with endpoints -- but it is not part of the ASGI specification. If you do so, be sure to avoid conflicts by using keys that have low chances of being used by other middleware or applications.</p>
+<p>For example, when including the middleware below, endpoints would be able to access <code>request.scope["asgi_transaction_id"]</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TransactionIDMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;asgi_transaction_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="cleanup-and-error-handling">Cleanup and error handling</h4>
+<p>You can wrap the application in a <code>try/except/finally</code> block or a context manager to perform cleanup operations or do error handling.</p>
+<p>For example, the following middleware might collect metrics and process application exceptions...</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MonitoringMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="o">...</span>  <span class="c1"># Process the exception</span>
+            <span class="k">raise</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span>
+            <span class="o">...</span>  <span class="c1"># Submit `elapsed` as a metric to a monitoring backend</span>
+</code></pre></div>
+<p>See also <a href="https://github.com/steinnes/timing-asgi"><code>timing-asgi</code></a> for a full example of this pattern.</p>
+<h3 id="gotchas">Gotchas</h3>
+<h4 id="asgi-middleware-should-be-stateless">ASGI middleware should be stateless</h4>
+<p>Because ASGI is designed to handle concurrent requests, any connection-specific state should be scoped to the <code>__call__</code> implementation. Not doing so would typically lead to conflicting variable reads/writes across requests, and most likely bugs.</p>
+<p>As an example, this would conditionally replace the response body, if an <code>X-Mock</code> header is present in the response...</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">✅ Do</label><label for="__tabbed_1_2">❌ Don't</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.datastructures</span><span class="w"> </span><span class="kn">import</span> <span class="n">Headers</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MockResponseBodyMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">content</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># A flag that we will turn `True` if the HTTP response</span>
+        <span class="c1"># has the &#39;X-Mock&#39; header.</span>
+        <span class="c1"># ✅: Scoped to this function.</span>
+        <span class="n">should_mock</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">maybe_send_with_mock_content</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+            <span class="k">nonlocal</span> <span class="n">should_mock</span>
+
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.start&quot;</span><span class="p">:</span>
+                <span class="n">headers</span> <span class="o">=</span> <span class="n">Headers</span><span class="p">(</span><span class="n">raw</span><span class="o">=</span><span class="n">message</span><span class="p">[</span><span class="s2">&quot;headers&quot;</span><span class="p">])</span>
+                <span class="n">should_mock</span> <span class="o">=</span> <span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Mock&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span>
+                <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.body&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">should_mock</span><span class="p">:</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;http.response.body&quot;</span><span class="p">,</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">}</span>
+                <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">maybe_send_with_mock_content</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.datastructures</span><span class="w"> </span><span class="kn">import</span> <span class="n">Headers</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MockResponseBodyMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">content</span>
+<span class="hll">        <span class="c1"># ❌: This variable would be read and written across requests!</span>
+</span><span class="hll">        <span class="bp">self</span><span class="o">.</span><span class="n">should_mock</span> <span class="o">=</span> <span class="kc">False</span>
+</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">maybe_send_with_mock_content</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.start&quot;</span><span class="p">:</span>
+                <span class="n">headers</span> <span class="o">=</span> <span class="n">Headers</span><span class="p">(</span><span class="n">raw</span><span class="o">=</span><span class="n">message</span><span class="p">[</span><span class="s2">&quot;headers&quot;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">should_mock</span> <span class="o">=</span> <span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Mock&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span>
+                <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.body&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_mock</span><span class="p">:</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;http.response.body&quot;</span><span class="p">,</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">}</span>
+                <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">maybe_send_with_mock_content</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>See also <a href="https://github.com/Kludex/starlette/blob/9ef1b91c9c043197da6c3f38aa153fd874b95527/starlette/middleware/gzip.py"><code>GZipMiddleware</code></a> for a full example implementation that navigates this potential gotcha.</p>
+<h3 id="further-reading">Further reading</h3>
+<p>This documentation should be enough to have a good basis on how to create an ASGI middleware.</p>
+<p>Nonetheless, there are great articles about the subject:</p>
+<ul>
+<li><a href="https://florimond.dev/en/posts/2019/08/introduction-to-asgi-async-python-web/">Introduction to ASGI: Emergence of an Async Python Web Ecosystem</a></li>
+<li><a href="https://pgjones.dev/blog/how-to-write-asgi-middleware-2021/">How to write ASGI middleware</a></li>
+</ul>
+<h2 id="using-middleware-in-other-frameworks">Using middleware in other frameworks</h2>
+<p>To wrap ASGI middleware around other ASGI applications, you should use the
+more general pattern of wrapping the application instance:</p>
+<div class="highlight"><pre><span></span><code><span class="n">app</span> <span class="o">=</span> <span class="n">TrustedHostMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;example.com&#39;</span><span class="p">])</span>
+</code></pre></div>
+<p>You can do this with a Starlette application instance too, but it is preferable
+to use the <code>middleware=&lt;List of Middleware instances&gt;</code> style, as it will:</p>
+<ul>
+<li>Ensure that everything remains wrapped in a single outermost <code>ServerErrorMiddleware</code>.</li>
+<li>Preserves the top-level <code>app</code> instance.</li>
+</ul>
+<h2 id="applying-middleware-to-groups-of-routes">Applying middleware to groups of routes</h2>
+<p>Middleware can also be added to <code>Mount</code> instances, which allows you to apply middleware to a group of routes or a sub-application:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.gzip</span><span class="w"> </span><span class="kn">import</span> <span class="n">GZipMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mount</span><span class="p">,</span> <span class="n">Route</span>
+
+
+<span class="n">routes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Mount</span><span class="p">(</span>
+        <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+        <span class="n">routes</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">Route</span><span class="p">(</span>
+                <span class="s2">&quot;/example&quot;</span><span class="p">,</span>
+                <span class="n">endpoint</span><span class="o">=...</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">],</span>
+        <span class="n">middleware</span><span class="o">=</span><span class="p">[</span><span class="n">Middleware</span><span class="p">(</span><span class="n">GZipMiddleware</span><span class="p">)]</span>
+    <span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">)</span>
+</code></pre></div>
+<p>Note that middleware used in this way is <em>not</em> wrapped in exception handling middleware like the middleware applied to the <code>Starlette</code> application is.
+This is often not a problem because it only applies to middleware that inspect or modify the <code>Response</code>, and even then you probably don't want to apply this logic to error responses.
+If you do want to apply the middleware logic to error responses only on some routes you have a couple of options:</p>
+<ul>
+<li>Add an <code>ExceptionMiddleware</code> onto the <code>Mount</code></li>
+<li>Add a <code>try/except</code> block to your middleware and return an error response from there</li>
+<li>Split up marking and processing into two middlewares, one that gets put on <code>Mount</code> which marks the response as needing processing (for example by setting <code>scope["log-response"] = True</code>) and another applied to the <code>Starlette</code> application that does the heavy lifting.</li>
+</ul>
+<p>The <code>Route</code>/<code>WebSocket</code> class also accepts a <code>middleware</code> argument, which allows you to apply middleware to a single route:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.gzip</span><span class="w"> </span><span class="kn">import</span> <span class="n">GZipMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Route</span>
+
+
+<span class="n">routes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Route</span><span class="p">(</span>
+        <span class="s2">&quot;/example&quot;</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="o">=...</span><span class="p">,</span>
+        <span class="n">middleware</span><span class="o">=</span><span class="p">[</span><span class="n">Middleware</span><span class="p">(</span><span class="n">GZipMiddleware</span><span class="p">)]</span>
+    <span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">)</span>
+</code></pre></div>
+<p>You can also apply middleware to the <code>Router</code> class, which allows you to apply middleware to a group of routes:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">Middleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.gzip</span><span class="w"> </span><span class="kn">import</span> <span class="n">GZipMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Route</span><span class="p">,</span> <span class="n">Router</span>
+
+
+<span class="n">routes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/example&quot;</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=...</span><span class="p">),</span>
+    <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/another&quot;</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=...</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">,</span> <span class="n">middleware</span><span class="o">=</span><span class="p">[</span><span class="n">Middleware</span><span class="p">(</span><span class="n">GZipMiddleware</span><span class="p">)])</span>
+</code></pre></div>
+<h2 id="third-party-middleware">Third party middleware</h2>
+<h4 id="asgi-auth-github"><a href="https://github.com/simonw/asgi-auth-github">asgi-auth-github</a></h4>
+<p>This middleware adds authentication to any ASGI application, requiring users to sign in
+using their GitHub account (via <a href="https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/">OAuth</a>).
+Access can be restricted to specific users or to members of specific GitHub organizations or teams.</p>
+<h4 id="asgi-csrf"><a href="https://github.com/simonw/asgi-csrf">asgi-csrf</a></h4>
+<p>Middleware for protecting against CSRF attacks. This middleware implements the Double Submit Cookie pattern, where a cookie is set, then it is compared to a csrftoken hidden form field or an <code>x-csrftoken</code> HTTP header.</p>
+<h4 id="authlibmiddleware"><a href="https://github.com/aogier/starlette-authlib">AuthlibMiddleware</a></h4>
+<p>A drop-in replacement for Starlette session middleware, using <a href="https://docs.authlib.org/en/latest/jose/jwt.html">authlib's jwt</a>
+module.</p>
+<h4 id="bugsnagmiddleware"><a href="https://github.com/ashinabraham/starlette-bugsnag">BugsnagMiddleware</a></h4>
+<p>A middleware class for logging exceptions to <a href="https://www.bugsnag.com/">Bugsnag</a>.</p>
+<h4 id="csrfmiddleware"><a href="https://github.com/frankie567/starlette-csrf">CSRFMiddleware</a></h4>
+<p>Middleware for protecting against CSRF attacks. This middleware implements the Double Submit Cookie pattern, where a cookie is set, then it is compared to an <code>x-csrftoken</code> HTTP header.</p>
+<h4 id="earlydatamiddleware"><a href="https://github.com/HarrySky/starlette-early-data">EarlyDataMiddleware</a></h4>
+<p>Middleware and decorator for detecting and denying <a href="https://tools.ietf.org/html/rfc8470">TLSv1.3 early data</a> requests.</p>
+<h4 id="prometheusmiddleware"><a href="https://github.com/perdy/starlette-prometheus">PrometheusMiddleware</a></h4>
+<p>A middleware class for capturing Prometheus metrics related to requests and responses, including in progress requests, timing...</p>
+<h4 id="proxyheadersmiddleware"><a href="https://github.com/encode/uvicorn/blob/main/uvicorn/middleware/proxy_headers.py">ProxyHeadersMiddleware</a></h4>
+<p>Uvicorn includes a middleware class for determining the client IP address,
+when proxy servers are being used, based on the <code>X-Forwarded-Proto</code> and <code>X-Forwarded-For</code> headers. For more complex proxy configurations, you might want to adapt this middleware.</p>
+<h4 id="ratelimitmiddleware"><a href="https://github.com/abersheeran/asgi-ratelimit">RateLimitMiddleware</a></h4>
+<p>A rate limit middleware. Regular expression matches url; flexible rules; highly customizable. Very easy to use.</p>
+<h4 id="requestidmiddleware"><a href="https://github.com/snok/asgi-correlation-id">RequestIdMiddleware</a></h4>
+<p>A middleware class for reading/generating request IDs and attaching them to application logs.</p>
+<h4 id="rollbarmiddleware"><a href="https://docs.rollbar.com/docs/starlette">RollbarMiddleware</a></h4>
+<p>A middleware class for logging exceptions, errors, and log messages to <a href="https://www.rollbar.com">Rollbar</a>.</p>
+<h4 id="starletteopentracing"><a href="https://github.com/acidjunk/starlette-opentracing">StarletteOpentracing</a></h4>
+<p>A middleware class that emits tracing info to <a href="https://opentracing.io/">OpenTracing.io</a> compatible tracers and
+can be used to profile and monitor distributed applications.</p>
+<h4 id="securecookiesmiddleware"><a href="https://github.com/thearchitector/starlette-securecookies">SecureCookiesMiddleware</a></h4>
+<p>Customizable middleware for adding automatic cookie encryption and decryption to Starlette applications, with
+extra support for existing cookie-based middleware.</p>
+<h4 id="timingmiddleware"><a href="https://github.com/steinnes/timing-asgi">TimingMiddleware</a></h4>
+<p>A middleware class to emit timing information (cpu and wall time) for each request which
+passes through it.  Includes examples for how to emit these timings as statsd metrics.</p>
+<h4 id="wsgimiddleware"><a href="https://github.com/abersheeran/a2wsgi">WSGIMiddleware</a></h4>
+<p>A middleware class in charge of converting a WSGI application into an ASGI one.</p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Kludex/starlette" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M186.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1M480 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2m-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3m-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.com/invite/RxKUF5JuHs" target="_blank" rel="noopener" title="discord.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M524.531 69.836a1.5 1.5 0 0 0-.764-.7A485 485 0 0 0 404.081 32.03a1.82 1.82 0 0 0-1.923.91 338 338 0 0 0-14.9 30.6 447.9 447.9 0 0 0-134.426 0 310 310 0 0 0-15.135-30.6 1.89 1.89 0 0 0-1.924-.91 483.7 483.7 0 0 0-119.688 37.107 1.7 1.7 0 0 0-.788.676C39.068 183.651 18.186 294.69 28.43 404.354a2.02 2.02 0 0 0 .765 1.375 487.7 487.7 0 0 0 146.825 74.189 1.9 1.9 0 0 0 2.063-.676A348 348 0 0 0 208.12 430.4a1.86 1.86 0 0 0-1.019-2.588 321 321 0 0 1-45.868-21.853 1.885 1.885 0 0 1-.185-3.126 251 251 0 0 0 9.109-7.137 1.82 1.82 0 0 1 1.9-.256c96.229 43.917 200.41 43.917 295.5 0a1.81 1.81 0 0 1 1.924.233 235 235 0 0 0 9.132 7.16 1.884 1.884 0 0 1-.162 3.126 301.4 301.4 0 0 1-45.89 21.83 1.875 1.875 0 0 0-1 2.611 391 391 0 0 0 30.014 48.815 1.86 1.86 0 0 0 2.063.7A486 486 0 0 0 610.7 405.729a1.88 1.88 0 0 0 .765-1.352c12.264-126.783-20.532-236.912-86.934-334.541M222.491 337.58c-28.972 0-52.844-26.587-52.844-59.239s23.409-59.241 52.844-59.241c29.665 0 53.306 26.82 52.843 59.239 0 32.654-23.41 59.241-52.843 59.241m195.38 0c-28.971 0-52.843-26.587-52.843-59.239s23.409-59.241 52.843-59.241c29.667 0 53.307 26.82 52.844 59.239 0 32.654-23.177 59.241-52.844 59.241"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://x.com/marcelotryle" target="_blank" rel="noopener" title="x.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/marcelotryle" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5m282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://fastapiexpert.com" target="_blank" rel="noopener" title="fastapiexpert.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.4c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64h185.3c2.2 20.4 3.3 41.8 3.3 64m28.8-64h123.1c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64m112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6 78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7 10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5 11.6 26 20.9 58.2 27 94.7m-209 0H18.6c30-74.1 93.6-130.9 172-151.6-25.5 34.2-45.3 87.7-55.3 151.6M8.1 192h123.1c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64m186.6 254.6c-11.6-26-20.9-58.2-27-94.6h176.6c-6.1 36.4-15.5 68.6-27 94.6-10.5 23.6-22.2 40.7-33.5 51.5-11.2 10.7-20.5 13.9-27.8 13.9s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6-78.4-20.7-142-77.5-172-151.6zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6 25.5-34.2 45.2-87.7 55.3-151.6h116.7z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "toc.follow"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+    
+  </body>
+</html>

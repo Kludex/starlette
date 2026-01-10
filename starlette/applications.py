@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-import sys
 import warnings
-from collections.abc import Awaitable, Mapping, Sequence
-from typing import Any, Callable, TypeVar
-
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import ParamSpec
-else:  # pragma: no cover
-    from typing_extensions import ParamSpec
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from typing import Any, ParamSpec, TypeVar
 
 from starlette.datastructures import State, URLPath
 from starlette.middleware import Middleware, _MiddlewareFactory

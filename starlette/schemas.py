@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import inspect
 import re
-from typing import Any, Callable, NamedTuple
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 from starlette.requests import Request
 from starlette.responses import Response
@@ -50,7 +51,7 @@ class BaseSchemaGenerator:
         endpoints_info: list[EndpointInfo] = []
 
         for route in routes:
-            if isinstance(route, (Mount, Host)):
+            if isinstance(route, Mount | Host):
                 routes = route.routes or []
                 if isinstance(route, Mount):
                     path = self._remove_converter(route.path)

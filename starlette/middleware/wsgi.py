@@ -4,8 +4,8 @@ import io
 import math
 import sys
 import warnings
-from collections.abc import MutableMapping
-from typing import Any, Callable
+from collections.abc import Callable, MutableMapping
+from typing import Any
 
 import anyio
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
@@ -16,6 +16,7 @@ warnings.warn(
     "starlette.middleware.wsgi is deprecated and will be removed in a future release. "
     "Please refer to https://github.com/abersheeran/a2wsgi as a replacement.",
     DeprecationWarning,
+    stacklevel=2,
 )
 
 

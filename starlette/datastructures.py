@@ -7,7 +7,6 @@ from typing import (
     BinaryIO,
     NamedTuple,
     TypeVar,
-    Union,
     cast,
 )
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
@@ -482,7 +481,7 @@ class UploadFile:
         return f"{self.__class__.__name__}(filename={self.filename!r}, size={self.size!r}, headers={self.headers!r})"
 
 
-class FormData(ImmutableMultiDict[str, Union[UploadFile, str]]):
+class FormData(ImmutableMultiDict[str, UploadFile | str]):
     """
     An immutable multidict, containing both file uploads and text input.
     """

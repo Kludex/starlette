@@ -45,7 +45,9 @@ def is_async_callable(obj: Any) -> Any:
 T_co = TypeVar("T_co", covariant=True)
 
 
-class AwaitableOrContextManager(Awaitable[T_co], AbstractAsyncContextManager[T_co], Protocol[T_co]): ...
+class AwaitableOrContextManager(
+    Awaitable[T_co], AbstractAsyncContextManager[T_co], Protocol[T_co]
+): ...  # pragma: no branch
 
 
 class SupportsAsyncClose(Protocol):

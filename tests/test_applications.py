@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncGenerator, AsyncIterator, Generator
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Callable, TypedDict
 
 import anyio.from_thread
 import pytest
@@ -96,7 +95,8 @@ def custom_ws_exception_handler(websocket: WebSocket, exc: CustomWSException) ->
     anyio.from_thread.run(websocket.close, status.WS_1013_TRY_AGAIN_LATER)
 
 
-class ExampleState(TypedDict):
+class ExampleState(
+):
     count: int
 
 

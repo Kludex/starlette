@@ -4,17 +4,16 @@ import hashlib
 import http.cookies
 import json
 import os
-import re
 import stat
 import sys
 import warnings
-from collections.abc import AsyncIterable, Awaitable, Iterable, Mapping, Sequence
+from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Mapping, Sequence
 from datetime import datetime
 from email.utils import format_datetime, formatdate
 from functools import partial
 from mimetypes import guess_type
 from secrets import token_hex
-from typing import Any, Callable, Literal, Union
+from typing import Any, Literal
 from urllib.parse import quote
 
 import anyio
@@ -50,7 +49,7 @@ class Response:
     def render(self, content: Any) -> bytes | memoryview:
         if content is None:
             return b""
-        if isinstance(content, (bytes, memoryview)):
+        if isinstance(content, bytes | memoryview):
             return content
         return content.encode(self.charset)  # type: ignore
 
@@ -211,10 +210,10 @@ class RedirectResponse(Response):
         self.headers["location"] = quote(str(url), safe=":/%#?=@[]!$&'()*+,;")
 
 
-Content = Union[str, bytes, memoryview]
+Content = str | bytes | memoryview
 SyncContentStream = Iterable[Content]
 AsyncContentStream = AsyncIterable[Content]
-ContentStream = Union[AsyncContentStream, SyncContentStream]
+ContentStream = AsyncContentStream | SyncContentStream
 
 
 class StreamingResponse(Response):
@@ -252,7 +251,7 @@ class StreamingResponse(Response):
             }
         )
         async for chunk in self.body_iterator:
-            if not isinstance(chunk, (bytes, memoryview)):
+            if not isinstance(chunk, bytes | memoryview):
                 chunk = chunk.encode(self.charset)
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
 
@@ -289,9 +288,6 @@ class MalformedRangeHeader(Exception):
 class RangeNotSatisfiable(Exception):
     def __init__(self, max_size: int) -> None:
         self.max_size = max_size
-
-
-_RANGE_PATTERN = re.compile(r"(\d*)-(\d*)")
 
 
 class FileResponse(Response):
@@ -455,8 +451,8 @@ class FileResponse(Response):
     def _should_use_range(self, http_if_range: str) -> bool:
         return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]
 
-    @staticmethod
-    def _parse_range_header(http_range: str, file_size: int) -> list[tuple[int, int]]:
+    @classmethod
+    def _parse_range_header(cls, http_range: str, file_size: int) -> list[tuple[int, int]]:
         ranges: list[tuple[int, int]] = []
         try:
             units, range_ = http_range.split("=", 1)
@@ -468,14 +464,7 @@ class FileResponse(Response):
         if units != "bytes":
             raise MalformedRangeHeader("Only support bytes range")
 
-        ranges = [
-            (
-                int(_[0]) if _[0] else file_size - int(_[1]),
-                int(_[1]) + 1 if _[0] and _[1] and int(_[1]) < file_size else file_size,
-            )
-            for _ in _RANGE_PATTERN.findall(range_)
-            if _ != ("", "")
-        ]
+        ranges = cls._parse_ranges(range_, file_size)
 
         if len(ranges) == 0:
             raise MalformedRangeHeader("Range header: range must be requested")
@@ -506,6 +495,35 @@ class FileResponse(Response):
                 result.append((start, end))
 
         return result
+
+    @classmethod
+    def _parse_ranges(cls, range_: str, file_size: int) -> list[tuple[int, int]]:
+        ranges: list[tuple[int, int]] = []
+
+        for part in range_.split(","):
+            part = part.strip()
+
+            # If the range is empty or a single dash, we ignore it.
+            if not part or part == "-":
+                continue
+
+            # If the range is not in the format "start-end", we ignore it.
+            if "-" not in part:
+                continue
+
+            start_str, end_str = part.split("-", 1)
+            start_str = start_str.strip()
+            end_str = end_str.strip()
+
+            try:
+                start = int(start_str) if start_str else file_size - int(end_str)
+                end = int(end_str) + 1 if start_str and end_str and int(end_str) < file_size else file_size
+                ranges.append((start, end))
+            except ValueError:
+                # If the range is not numeric, we ignore it.
+                continue
+
+        return ranges
 
     def generate_multipart(
         self,

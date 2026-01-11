@@ -798,6 +798,34 @@ def test_file_response_insert_ranges(file_response_client: TestClient) -> None:
     ]
 
 
+def test_file_response_range_without_dash(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=100, 0-50"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-50/{len(README.encode('utf8'))}"
+
+
+def test_file_response_range_empty_start_and_end(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes= - , 0-50"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-50/{len(README.encode('utf8'))}"
+
+
+def test_file_response_range_ignore_non_numeric(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=abc-def, 0-50"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-50/{len(README.encode('utf8'))}"
+
+
+def test_file_response_suffix_range(file_response_client: TestClient) -> None:
+    # Test suffix range (last N bytes) - line 523 with empty start_str
+    response = file_response_client.get("/", headers={"Range": "bytes=-100"})
+    assert response.status_code == 206
+    file_size = len(README.encode("utf8"))
+    assert response.headers["content-range"] == f"bytes {file_size - 100}-{file_size - 1}/{file_size}"
+    assert response.headers["content-length"] == "100"
+    assert response.content == README.encode("utf8")[-100:]
+
+
 @pytest.mark.anyio
 async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
     class SmallChunkSizeFileResponse(FileResponse):

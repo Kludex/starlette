@@ -10,7 +10,9 @@ readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE.md"]
 requires-python = ">=3.10"
-authors = [{ name = "Tom Christie", email = "tom@tomchristie.com" }]
+authors = [
+    { name = "Tom Christie", email = "tom@tomchristie.com" }
+]
 maintainers = [
     { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" },
 ]

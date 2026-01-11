@@ -302,6 +302,28 @@ def test_request_state_object() -> None:
     with pytest.raises(AttributeError):
         s.new
 
+    # Test dictionary-style methods
+    # Test __setitem__
+    s["dict_key"] = "dict_value"
+    assert s["dict_key"] == "dict_value"
+    assert s.dict_key == "dict_value"
+
+    # Test __iter__
+    s["another_key"] = "another_value"
+    keys = list(s)
+    assert "old" in keys
+    assert "dict_key" in keys
+    assert "another_key" in keys
+
+    # Test __len__
+    assert len(s) == 3
+
+    # Test __delitem__
+    del s["dict_key"]
+    assert len(s) == 2
+    with pytest.raises(KeyError):
+        s["dict_key"]
+
 
 def test_request_state(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:

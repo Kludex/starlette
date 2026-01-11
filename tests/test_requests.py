@@ -165,7 +165,7 @@ def test_request_stream_then_body(test_client_factory: TestClientFactory) -> Non
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         chunks = b""
-        async for chunk in request.stream():
+        async for chunk in request.stream():  # pragma: no branch
             chunks += chunk
         try:
             body = await request.body()

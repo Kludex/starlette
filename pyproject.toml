@@ -48,7 +48,7 @@ full = [
 dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
-    "coverage==7.8.2",
+    "coverage>=7.8.2",
     "importlib-metadata==8.7.0",
     "mypy==1.16.1",
     "ruff==0.12.1",
@@ -120,9 +120,7 @@ branch = true
 source_pkgs = ["starlette", "tests"]
 
 [tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "if TYPE_CHECKING:",
+exclude_also = [
     "@overload",
     "raise NotImplementedError",
 ]

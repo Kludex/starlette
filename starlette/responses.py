@@ -369,7 +369,7 @@ class FileResponse(Response):
             except MalformedRangeHeader as exc:
                 return await PlainTextResponse(exc.content, status_code=400)(scope, receive, send)
             except RangeNotSatisfiable as exc:
-                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"*/{exc.max_size}"})
+                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
                 return await response(scope, receive, send)
 
             if len(ranges) == 1:

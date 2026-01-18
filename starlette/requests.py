@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections.abc import AsyncGenerator, Iterator, Mapping
 from http import cookies as http_cookies
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
 
 import anyio
-from typing_extensions import TypeVar
 
 from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManagerWrapper
 from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
@@ -28,6 +28,10 @@ else:
     except ModuleNotFoundError:  # pragma: no cover
         parse_options_header = None
 
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from typing import TypeVar
+else:  # pragma: no cover
+    from typing_extensions import TypeVar
 
 SERVER_PUSH_HEADERS_TO_COPY = {
     "accept",

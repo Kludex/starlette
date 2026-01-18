@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 0.52.1 (January 18, 2026)
+
+#### Fixed
+
+* Only use `typing_extensions` in older Python versions [#3109](https://github.com/Kludex/starlette/pull/3109).
+
 ## 0.52.0 (January 18, 2026)
 
 In this release, `State` can be accessed using dictionary-style syntax for improved type

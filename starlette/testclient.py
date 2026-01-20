@@ -81,6 +81,11 @@ class _Upgrade(Exception):
         self.session = session
 
 
+class _WebTransportUpgrade(Exception):
+    def __init__(self, session: WebTransportTestSession) -> None:
+        self.session = session
+
+
 class WebSocketDenialResponse(  # type: ignore[misc]
     httpx.Response,
     WebSocketDisconnect,
@@ -195,6 +200,87 @@ class WebSocketTestSession:
             text = message["bytes"].decode("utf-8")
         return json.loads(text)
 
+class WebTransportTestSession:
+    def __init__(
+        self,
+        app: ASGI3App,
+        scope: Scope,
+        portal_factory: _PortalFactoryType,
+    ) -> None:
+        self.app = app
+        self.scope = scope
+        self.accepted_subprotocol = None
+        self.portal_factory = portal_factory
+
+    def __enter__(self) -> WebTransportTestSession:
+        with contextlib.ExitStack() as stack:
+            self.portal = portal = stack.enter_context(self.portal_factory())
+            fut, cs = portal.start_task(self._run)
+            stack.callback(fut.result)
+            stack.callback(portal.call, cs.cancel)
+            self.send({"type": "webtransport.connect"})
+            
+            # Expect accept or close
+            message = self.receive()
+            if message["type"] == "webtransport.close":
+                self._raise_on_close(message)
+                
+            assert message["type"] == "webtransport.accept"
+            
+            stack.callback(self.close)
+            self.exit_stack = stack.pop_all()
+            return self
+
+    def __exit__(self, *args: Any) -> bool | None:
+        return self.exit_stack.__exit__(*args)
+
+    async def _run(self, *, task_status: anyio.abc.TaskStatus[anyio.CancelScope]) -> None:
+        """
+        The sub-thread in which the webtransport session runs.
+        """
+        send: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream(math.inf)
+        send_tx, send_rx = send
+        receive: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream(math.inf)
+        receive_tx, receive_rx = receive
+        with send_tx, send_rx, receive_tx, receive_rx, anyio.CancelScope() as cs:
+            self._receive_tx = receive_tx
+            self._send_rx = send_rx
+            task_status.started(cs)
+            try:
+                await self.app(self.scope, receive_rx.receive, send_tx.send)
+            except Exception:
+                raise
+            finally:
+                # wait for cs.cancel to be called before closing streams
+                await anyio.sleep_forever()
+
+    def _raise_on_close(self, message: Message) -> None:
+        if message["type"] == "webtransport.close":
+            from starlette.webtransport import WebTransportDisconnect
+            raise WebTransportDisconnect(code=message.get("code", 0), reason=message.get("reason", ""))
+
+    def send(self, message: Message) -> None:
+        self.portal.call(self._receive_tx.send, message)
+
+    def send_datagram(self, data: bytes) -> None:
+        self.send({"type": "webtransport.datagram.receive", "data": data})
+
+    def send_stream_data(self, stream_id: int, data: bytes, end_stream: bool = False) -> None:
+        self.send({
+            "type": "webtransport.stream.receive", 
+            "stream_id": stream_id, 
+            "data": data, 
+            "more_body": not end_stream
+        })
+
+    def close(self, code: int = 0, reason: str = "") -> None:
+        self.send({"type": "webtransport.disconnect"})
+
+    def receive(self) -> Message:
+        return self.portal.call(self._send_rx.receive)
+
+
+
 
 class _TestClientTransport(httpx.BaseTransport):
     def __init__(
@@ -265,6 +351,22 @@ class _TestClientTransport(httpx.BaseTransport):
             }
             session = WebSocketTestSession(self.app, scope, self.portal_factory)
             raise _Upgrade(session)
+            
+        if request.method == "CONNECT" and request.headers.get("protocol") == "webtransport":
+             scope = {
+                "type": "webtransport",
+                "path": unquote(path),
+                "raw_path": raw_path.split(b"?", 1)[0],
+                "root_path": self.root_path,
+                "scheme": "https",
+                "query_string": query.encode(),
+                "headers": headers,
+                "client": self.client,
+                "server": [host, port],
+                "state": self.app_state.copy(),
+            }
+             wt_session = WebTransportTestSession(self.app, scope, self.portal_factory)
+             raise _WebTransportUpgrade(wt_session)
 
         scope = {
             "type": "http",
@@ -664,6 +766,24 @@ class TestClient(httpx.Client):
         else:
             raise RuntimeError("Expected WebSocket upgrade")  # pragma: no cover
 
+        return session
+
+    def webtransport_connect(
+        self,
+        url: str,
+        **kwargs: Any,
+    ) -> WebTransportTestSession:
+        url = urljoin(str(self.base_url), url)
+        headers = kwargs.get("headers", {})
+        headers.setdefault("protocol", "webtransport")
+        kwargs["headers"] = headers
+        try:
+            super().request("CONNECT", url, **kwargs)
+        except _WebTransportUpgrade as exc:
+            session = exc.session
+        else:
+             raise RuntimeError("Expected WebTransport upgrade")
+        
         return session
 
     def __enter__(self) -> Self:

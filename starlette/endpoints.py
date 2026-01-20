@@ -12,6 +12,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
+from starlette.webtransport import WebTransport
 
 
 class HTTPEndpoint:
@@ -121,3 +122,68 @@ class WebSocketEndpoint:
 
     async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
         """Override to handle a disconnecting websocket"""
+
+
+class WebTransportEndpoint:
+    """Base class for WebTransport endpoints.
+    
+    Override the on_connect, on_stream_receive, on_datagram_receive, and
+    on_disconnect methods to handle WebTransport lifecycle events.
+    """
+
+    def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["type"] == "webtransport"
+        self.scope = scope
+        self.receive = receive
+        self.send = send
+
+    def __await__(self) -> Generator[Any, None, None]:
+        return self.dispatch().__await__()
+
+    async def dispatch(self) -> None:
+        session = WebTransport(self.scope, receive=self.receive, send=self.send)
+        await self.on_connect(session)
+
+        try:
+            while True:
+                message = await session.receive()
+                msg_type = message.get("type", "")
+
+                if msg_type == "webtransport.stream.receive":
+                    await self.on_stream_receive(
+                        session,
+                        message["stream_id"],
+                        message.get("data", b""),
+                        not message.get("more_body", True),
+                    )
+                elif msg_type == "webtransport.datagram.receive":
+                    await self.on_datagram_receive(session, message.get("data", b""))
+                elif msg_type == "webtransport.disconnect":
+                    break
+        except Exception:
+            raise
+        finally:
+            await self.on_disconnect(session)
+
+    async def on_connect(self, session: WebTransport) -> None:
+        """Override to handle an incoming WebTransport connection.
+        
+        Default implementation accepts the connection.
+        """
+        await session.accept()
+
+    async def on_stream_receive(
+        self,
+        session: WebTransport,
+        stream_id: int,
+        data: bytes,
+        end_stream: bool,
+    ) -> None:
+        """Override to handle incoming stream data."""
+
+    async def on_datagram_receive(self, session: WebTransport, data: bytes) -> None:
+        """Override to handle incoming datagrams."""
+
+    async def on_disconnect(self, session: WebTransport) -> None:
+        """Override to handle a disconnecting WebTransport session."""
+

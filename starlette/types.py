@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from starlette.requests import Request
     from starlette.responses import Response
     from starlette.websockets import WebSocket
+    from starlette.webtransport import WebTransport
 
 AppType = TypeVar("AppType")
 
@@ -23,4 +24,6 @@ Lifespan = StatelessLifespan[AppType] | StatefulLifespan[AppType]
 
 HTTPExceptionHandler = Callable[["Request", Exception], "Response | Awaitable[Response]"]
 WebSocketExceptionHandler = Callable[["WebSocket", Exception], Awaitable[None]]
+WebTransportExceptionHandler = Callable[["WebTransport", Exception], Awaitable[None]]
 ExceptionHandler = HTTPExceptionHandler | WebSocketExceptionHandler
+

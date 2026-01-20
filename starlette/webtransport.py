@@ -192,7 +192,6 @@ class WebTransport(HTTPConnection):
         try:
             while True:
                 message = await self._receive()
-                print(f"DEBUG: WebTransport reader received: {message['type']}")
                 msg_type = message["type"]
                 
                 if msg_type == "webtransport.datagram.receive":
@@ -202,7 +201,6 @@ class WebTransport(HTTPConnection):
                     stream_id = message["stream_id"]
                     data = message["data"]
                     more_body = message.get("more_body", True)
-                    print(f"DEBUG: Reader stream {stream_id} data len={len(data)} more_body={more_body}")
                     
                     if stream_id not in self._streams:
                         # New stream!

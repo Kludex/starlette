@@ -141,27 +141,42 @@ class WebTransportEndpoint:
         return self.dispatch().__await__()
 
     async def dispatch(self) -> None:
+        import anyio
         session = WebTransport(self.scope, receive=self.receive, send=self.send)
         await self.on_connect(session)
 
-        try:
-            while True:
-                message = await session.receive()
-                msg_type = message.get("type", "")
+        async def datagram_loop():
+            async for data in session.iter_datagrams():
+                await self.on_datagram_receive(session, data)
 
-                if msg_type == "webtransport.stream.receive":
-                    await self.on_stream_receive(
-                        session,
-                        message["stream_id"],
-                        message.get("data", b""),
-                        not message.get("more_body", True),
-                    )
-                elif msg_type == "webtransport.datagram.receive":
-                    await self.on_datagram_receive(session, message.get("data", b""))
-                elif msg_type == "webtransport.disconnect":
+        async def stream_reader(stream):
+            try:
+                while True:
+                    data = await stream.receive_bytes()
+                    await self.on_stream_receive(session, stream.stream_id, data, False)
+            except Exception:
+                # Stream ended or error
+                pass
+            finally:
+                # Signal stream end
+                await self.on_stream_receive(session, stream.stream_id, b"", True)
+
+        async def stream_accept_loop(task_group):
+            while True:
+                try:
+                    stream = await session.accept_stream()
+                    task_group.start_soon(stream_reader, stream)
+                except Exception:
+                    # Connection closed
                     break
+
+        try:
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(datagram_loop)
+                tg.start_soon(stream_accept_loop, tg)
         except Exception:
-            raise
+             # Connection closed or error
+             pass
         finally:
             await self.on_disconnect(session)
 

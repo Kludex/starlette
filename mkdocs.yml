@@ -36,6 +36,7 @@ nav:
       - Requests: "requests.md"
       - Responses: "responses.md"
       - WebSockets: "websockets.md"
+      - WebTransport: "webtransport.md"
       - Routing: "routing.md"
       - Endpoints: "endpoints.md"
       - Middleware: "middleware.md"

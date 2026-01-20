@@ -83,7 +83,7 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
     """
 
     def __init__(self, scope: Scope, receive: Receive | None = None) -> None:
-        assert scope["type"] in ("http", "websocket")
+        assert scope["type"] in ("http", "websocket", "webtransport")
         self.scope = scope
 
     def __getitem__(self, key: str) -> Any:

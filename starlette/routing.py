@@ -24,7 +24,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
-from starlette.webtransport import WebTransport, WebTransportClose
+from starlette.webtransport import WebTransport
 
 
 class NoMatchFound(Exception):
@@ -451,11 +451,7 @@ class WebTransportRoute(BaseRoute):
         await self.app(scope, receive, send)
 
     def __eq__(self, other: Any) -> bool:
-        return (
-            isinstance(other, WebTransportRoute)
-            and self.path == other.path
-            and self.endpoint == other.endpoint
-        )
+        return isinstance(other, WebTransportRoute) and self.path == other.path and self.endpoint == other.endpoint
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(path={self.path!r}, name={self.name!r})"

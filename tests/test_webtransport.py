@@ -1,20 +1,23 @@
+from typing import Any
 
 import pytest
-from starlette.testclient import TestClient
+
 from starlette.types import Receive, Scope, Send
 from starlette.webtransport import WebTransport, WebTransportDisconnect
 
-def test_webtransport_accept(test_client_factory):
+
+def test_webtransport_accept(test_client_factory: Any) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         transport = WebTransport(scope, receive=receive, send=send)
         await transport.accept()
         await transport.close()
 
     client = test_client_factory(app)
-    with client.webtransport_connect("/") as session:
+    with client.webtransport_connect("/"):
         pass
 
-def test_webtransport_datagrams(test_client_factory):
+
+def test_webtransport_datagrams(test_client_factory: Any) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         transport = WebTransport(scope, receive=receive, send=send)
         await transport.accept()
@@ -29,7 +32,8 @@ def test_webtransport_datagrams(test_client_factory):
         assert message["type"] == "webtransport.datagram.send"
         assert message["data"] == b"echo: hello"
 
-def test_webtransport_streams(test_client_factory):
+
+def test_webtransport_streams(test_client_factory: Any) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         transport = WebTransport(scope, receive=receive, send=send)
         await transport.accept()
@@ -42,33 +46,35 @@ def test_webtransport_streams(test_client_factory):
     client = test_client_factory(app)
     with client.webtransport_connect("/") as session:
         session.send_stream_data(stream_id=0, data=b"hello", end_stream=True)
-        
+
         # We might receive multiple chunks if implementing flow control, but for test
         message = session.receive()
         assert message["type"] == "webtransport.stream.send"
         assert message["stream_id"] == 0
         assert message["data"] == b"echo: hello"
-        
+
         # Expect FIN
         message = session.receive()
         assert message["type"] == "webtransport.stream.send"
         assert message["data"] == b""
         assert message["finish"] is True
 
-def test_webtransport_disconnect(test_client_factory):
+
+def test_webtransport_disconnect(test_client_factory: Any) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         transport = WebTransport(scope, receive=receive, send=send)
         await transport.accept()
         try:
             await transport.receive_datagram()
         except WebTransportDisconnect:
-            pass # Expected
-        
+            pass  # Expected
+
     client = test_client_factory(app)
     with client.webtransport_connect("/") as session:
         session.close()
 
-def test_webtransport_reject(test_client_factory):
+
+def test_webtransport_reject(test_client_factory: Any) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         transport = WebTransport(scope, receive=receive, send=send)
         await transport.close(code=403)
@@ -76,5 +82,5 @@ def test_webtransport_reject(test_client_factory):
     client = test_client_factory(app)
     with pytest.raises(WebTransportDisconnect) as exc:
         with client.webtransport_connect("/"):
-             pass
+            pass
     assert exc.value.code == 403

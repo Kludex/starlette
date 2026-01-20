@@ -126,7 +126,7 @@ class WebSocketEndpoint:
 
 class WebTransportEndpoint:
     """Base class for WebTransport endpoints.
-    
+
     Override the on_connect, on_stream_receive, on_datagram_receive, and
     on_disconnect methods to handle WebTransport lifecycle events.
     """
@@ -142,14 +142,15 @@ class WebTransportEndpoint:
 
     async def dispatch(self) -> None:
         import anyio
+
         session = WebTransport(self.scope, receive=self.receive, send=self.send)
         await self.on_connect(session)
 
-        async def datagram_loop():
+        async def datagram_loop() -> None:
             async for data in session.iter_datagrams():
                 await self.on_datagram_receive(session, data)
 
-        async def stream_reader(stream):
+        async def stream_reader(stream: Any) -> None:
             try:
                 while True:
                     data = await stream.receive_bytes()
@@ -161,7 +162,7 @@ class WebTransportEndpoint:
                 # Signal stream end
                 await self.on_stream_receive(session, stream.stream_id, b"", True)
 
-        async def stream_accept_loop(task_group):
+        async def stream_accept_loop(task_group: Any) -> None:
             while True:
                 try:
                     stream = await session.accept_stream()
@@ -175,14 +176,14 @@ class WebTransportEndpoint:
                 tg.start_soon(datagram_loop)
                 tg.start_soon(stream_accept_loop, tg)
         except Exception:
-             # Connection closed or error
-             pass
+            # Connection closed or error
+            pass
         finally:
             await self.on_disconnect(session)
 
     async def on_connect(self, session: WebTransport) -> None:
         """Override to handle an incoming WebTransport connection.
-        
+
         Default implementation accepts the connection.
         """
         await session.accept()
@@ -201,4 +202,3 @@ class WebTransportEndpoint:
 
     async def on_disconnect(self, session: WebTransport) -> None:
         """Override to handle a disconnecting WebTransport session."""
-

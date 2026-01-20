@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
@@ -20,7 +20,11 @@ def _lookup_exception_handler(exc_handlers: ExceptionHandlers, exc: Exception) -
     return None
 
 
-def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASGIApp:
+if TYPE_CHECKING:
+    from starlette.webtransport import WebTransport
+
+
+def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket | WebTransport) -> ASGIApp:
     exception_handlers: ExceptionHandlers
     status_handlers: StatusHandlers
     try:

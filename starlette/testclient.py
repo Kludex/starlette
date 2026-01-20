@@ -200,6 +200,7 @@ class WebSocketTestSession:
             text = message["bytes"].decode("utf-8")
         return json.loads(text)
 
+
 class WebTransportTestSession:
     def __init__(
         self,
@@ -219,14 +220,14 @@ class WebTransportTestSession:
             stack.callback(fut.result)
             stack.callback(portal.call, cs.cancel)
             self.send({"type": "webtransport.connect"})
-            
+
             # Expect accept or close
             message = self.receive()
             if message["type"] == "webtransport.close":
                 self._raise_on_close(message)
-                
+
             assert message["type"] == "webtransport.accept"
-            
+
             stack.callback(self.close)
             self.exit_stack = stack.pop_all()
             return self
@@ -257,6 +258,7 @@ class WebTransportTestSession:
     def _raise_on_close(self, message: Message) -> None:
         if message["type"] == "webtransport.close":
             from starlette.webtransport import WebTransportDisconnect
+
             raise WebTransportDisconnect(code=message.get("code", 0), reason=message.get("reason", ""))
 
     def send(self, message: Message) -> None:
@@ -266,20 +268,15 @@ class WebTransportTestSession:
         self.send({"type": "webtransport.datagram.receive", "data": data})
 
     def send_stream_data(self, stream_id: int, data: bytes, end_stream: bool = False) -> None:
-        self.send({
-            "type": "webtransport.stream.receive", 
-            "stream_id": stream_id, 
-            "data": data, 
-            "more_body": not end_stream
-        })
+        self.send(
+            {"type": "webtransport.stream.receive", "stream_id": stream_id, "data": data, "more_body": not end_stream}
+        )
 
     def close(self, code: int = 0, reason: str = "") -> None:
         self.send({"type": "webtransport.disconnect"})
 
     def receive(self) -> Message:
         return self.portal.call(self._send_rx.receive)
-
-
 
 
 class _TestClientTransport(httpx.BaseTransport):
@@ -351,9 +348,9 @@ class _TestClientTransport(httpx.BaseTransport):
             }
             session = WebSocketTestSession(self.app, scope, self.portal_factory)
             raise _Upgrade(session)
-            
+
         if request.method == "CONNECT" and request.headers.get("protocol") == "webtransport":
-             scope = {
+            scope = {
                 "type": "webtransport",
                 "path": unquote(path),
                 "raw_path": raw_path.split(b"?", 1)[0],
@@ -365,8 +362,8 @@ class _TestClientTransport(httpx.BaseTransport):
                 "server": [host, port],
                 "state": self.app_state.copy(),
             }
-             wt_session = WebTransportTestSession(self.app, scope, self.portal_factory)
-             raise _WebTransportUpgrade(wt_session)
+            wt_session = WebTransportTestSession(self.app, scope, self.portal_factory)
+            raise _WebTransportUpgrade(wt_session)
 
         scope = {
             "type": "http",
@@ -782,8 +779,8 @@ class TestClient(httpx.Client):
         except _WebTransportUpgrade as exc:
             session = exc.session
         else:
-             raise RuntimeError("Expected WebTransport upgrade")
-        
+            raise RuntimeError("Expected WebTransport upgrade")
+
         return session
 
     def __enter__(self) -> Self:

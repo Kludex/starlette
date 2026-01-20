@@ -26,4 +26,3 @@ HTTPExceptionHandler = Callable[["Request", Exception], "Response | Awaitable[Re
 WebSocketExceptionHandler = Callable[["WebSocket", Exception], Awaitable[None]]
 WebTransportExceptionHandler = Callable[["WebTransport", Exception], Awaitable[None]]
 ExceptionHandler = HTTPExceptionHandler | WebSocketExceptionHandler
-

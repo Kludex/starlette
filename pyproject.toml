@@ -60,9 +60,9 @@ dev = [
 ]
 docs = [
     "black==25.1.0",
-    "mkdocstrings>=1.0.0",
+    "mkdocstrings>=1.0.2",
     "mkdocstrings-python>=2.0.1",
-    "zensical>=0.0.15",
+    "zensical>=0.0.19",
 ]
 
 [tool.uv]

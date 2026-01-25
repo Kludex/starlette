@@ -14,6 +14,7 @@ import pytest
 from starlette import status
 from starlette.background import BackgroundTask
 from starlette.datastructures import Headers
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.testclient import TestClient
@@ -334,7 +335,7 @@ def test_file_response_with_inline_disposition(tmp_path: Path, test_client_facto
 
 
 def test_file_response_with_method_warns(tmp_path: Path) -> None:
-    with pytest.warns(DeprecationWarning):
+    with pytest.warns(StarletteDeprecationWarning):
         FileResponse(path=tmp_path, filename="example.png", method="GET")
 
 

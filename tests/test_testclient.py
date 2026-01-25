@@ -14,6 +14,7 @@ import sniffio
 import trio.lowlevel
 
 from starlette.applications import Starlette
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -425,6 +426,8 @@ def test_websocket_raw_path_without_params(test_client_factory: TestClientFactor
 
 
 def test_timeout_deprecation() -> None:
-    with pytest.deprecated_call(match="You should not use the 'timeout' argument with the TestClient."):
+    with pytest.warns(
+        StarletteDeprecationWarning, match="You should not use the 'timeout' argument with the TestClient."
+    ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)

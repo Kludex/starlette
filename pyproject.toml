@@ -109,8 +109,8 @@ xfail_strict = true
 filterwarnings = [
     # Turn warnings that aren't filtered into exceptions
     "error",
-    "ignore: run_until_first_complete is deprecated and will be removed in a future version.:DeprecationWarning",
-    "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:DeprecationWarning",
+    "ignore: run_until_first_complete is deprecated and will be removed in a future version.:starlette.exceptions.StarletteDeprecationWarning",
+    "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:starlette.exceptions.StarletteDeprecationWarning",
     "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
 ]

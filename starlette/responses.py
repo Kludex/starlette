@@ -23,6 +23,7 @@ from starlette._utils import collapse_excgroups
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.requests import ClientDisconnect
 from starlette.types import Receive, Scope, Send
 
@@ -311,7 +312,7 @@ class FileResponse(Response):
         if method is not None:
             warnings.warn(
                 "The 'method' parameter is not used, and it will be removed.",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
             )
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "text/plain"

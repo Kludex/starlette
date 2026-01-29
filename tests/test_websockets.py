@@ -322,6 +322,63 @@ def test_send_denial_response(test_client_factory: TestClientFactory) -> None:
     assert exc.value.content == b"foo"
 
 
+def test_send_denial_response_with_streaming_response(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        from starlette.responses import StreamingResponse
+
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+
+        async def generate() -> None:
+            yield b"hello"
+            yield b"world"
+
+        response = StreamingResponse(generate(), status_code=403)
+        await websocket.send_denial_response(response)
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.status_code == 403
+    assert exc.value.content == b"helloworld"
+
+
+def test_send_denial_response_with_file_response(test_client_factory: TestClientFactory) -> None:
+    import tempfile
+    from starlette.responses import FileResponse
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+
+        response = FileResponse(scope["app"].file_path, status_code=401)
+        await websocket.send_denial_response(response)
+
+    # Create a temporary file
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
+        f.write("test content")
+        temp_file = f.name
+
+    try:
+        async def test_app(scope: Scope, receive: Receive, send: Send) -> None:
+            scope["app"] = type("App", (), {"file_path": temp_file})()
+            await app(scope, receive, send)
+
+        client = test_client_factory(test_app)
+        with pytest.raises(WebSocketDenialResponse) as exc:
+            with client.websocket_connect("/"):
+                pass  # pragma: no cover
+        assert exc.value.status_code == 401
+        assert exc.value.content == b"test content"
+    finally:
+        import os
+
+        os.unlink(temp_file)
+
+
 def test_send_response_multi(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)

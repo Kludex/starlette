@@ -49,17 +49,17 @@ dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
     "coverage>=7.8.2",
-    "importlib-metadata==8.7.0",
-    "mypy==1.16.1",
-    "ruff==0.12.1",
+    "importlib-metadata==8.7.1",
+    "mypy==1.19.1",
+    "ruff==0.14.14",
     "types-PyYAML==6.0.12.20250516",
-    "pytest==8.4.1",
-    "trio==0.30.0",
+    "pytest==9.0.2",
+    "trio==0.32.0",
     # Check dist
-    "twine==6.1.0",
+    "twine==6.2.0",
 ]
 docs = [
-    "black==25.1.0",
+    "black==26.1.0",
     "mkdocstrings>=1.0.2",
     "mkdocstrings-python>=2.0.1",
     "zensical>=0.0.19",

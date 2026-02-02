@@ -26,6 +26,7 @@ import anyio.from_thread
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
 
@@ -439,7 +440,7 @@ class TestClient(httpx.Client):
             warnings.warn(
                 "You should not use the 'timeout' argument with the TestClient. "
                 "See https://github.com/Kludex/starlette/issues/1108 for more information.",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
             )
         url = self._merge_url(url)
         return super().request(

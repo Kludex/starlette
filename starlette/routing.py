@@ -18,7 +18,7 @@ from starlette._utils import get_route_path, is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
-from starlette.exceptions import HTTPException
+from starlette.exceptions import HTTPException, StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
@@ -586,13 +586,13 @@ class Router:
             warnings.warn(
                 "async generator function lifespans are deprecated, "
                 "use an @contextlib.asynccontextmanager function instead",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
             )
             self.lifespan_context = asynccontextmanager(lifespan)
         elif inspect.isgeneratorfunction(lifespan):
             warnings.warn(
                 "generator function lifespans are deprecated, use an @contextlib.asynccontextmanager function instead",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
             )
             self.lifespan_context = _wrap_gen_lifespan_context(lifespan)
         else:

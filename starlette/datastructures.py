@@ -689,3 +689,18 @@ class State:
 
     def __delattr__(self, key: Any) -> None:
         del self._state[key]
+
+    def __getitem__(self, key: str) -> Any:
+        return self._state[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self._state[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self._state[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._state)
+
+    def __len__(self) -> int:
+        return len(self._state)

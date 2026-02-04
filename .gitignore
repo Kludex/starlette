@@ -8,6 +8,7 @@ htmlcov/
 site/
 *.egg-info/
 venv*/
+.venv/
 .python-version
 build/
 dist/

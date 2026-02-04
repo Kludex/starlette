@@ -2,7 +2,59 @@
 toc_depth: 2
 ---
 
+## 0.52.1 (January 18, 2026)
+
+#### Fixed
+
+* Only use `typing_extensions` in older Python versions [#3109](https://github.com/Kludex/starlette/pull/3109).
+
+## 0.52.0 (January 18, 2026)
+
+In this release, `State` can be accessed using dictionary-style syntax for improved type
+safety ([#3036](https://github.com/Kludex/starlette/pull/3036)).
+
+```python
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import TypedDict
+
+import httpx
+
+from starlette.applications import Starlette
+from starlette.requests import Request
+
+
+class State(TypedDict):
+    http_client: httpx.AsyncClient
+
+
+@asynccontextmanager
+async def lifespan(app: Starlette) -> AsyncIterator[State]:
+    async with httpx.AsyncClient() as client:
+        yield {"http_client": client}
+
+
+async def homepage(request: Request[State]):
+    client = request.state["http_client"]
+    # If you run the below line with mypy or pyright, it will reveal the correct type.
+    reveal_type(client)  # Revealed type is 'httpx.AsyncClient'
+```
+
+See [Accessing State](lifespan.md#accessing-state) for more details.
+
+## 0.51.0 (January 10, 2026)
+
+#### Added
+
+* Add `allow_private_network` in `CORSMiddleware` [#3065](https://github.com/Kludex/starlette/pull/3065).
+
+#### Changed
+
+* Increase warning stacklevel on `DeprecationWarning` for wsgi module [#3082](https://github.com/Kludex/starlette/pull/3082).
+
 ## 0.50.0 (November 1, 2025)
+
+#### Removed
 
 * Drop Python 3.9 support [#3061](https://github.com/Kludex/starlette/pull/3061).
 

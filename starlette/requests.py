@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections.abc import AsyncGenerator, Iterator, Mapping
 from http import cookies as http_cookies
-from typing import TYPE_CHECKING, Any, NoReturn, cast
+from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
 
 import anyio
 
@@ -27,6 +28,10 @@ else:
     except ModuleNotFoundError:  # pragma: no cover
         parse_options_header = None
 
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from typing import TypeVar
+else:  # pragma: no cover
+    from typing_extensions import TypeVar
 
 SERVER_PUSH_HEADERS_TO_COPY = {
     "accept",
@@ -68,7 +73,10 @@ class ClientDisconnect(Exception):
     pass
 
 
-class HTTPConnection(Mapping[str, Any]):
+StateT = TypeVar("StateT", bound=Mapping[str, Any] | State, default=State)
+
+
+class HTTPConnection(Mapping[str, Any], Generic[StateT]):
     """
     A base class for incoming HTTP connections, that is used to provide
     any functionality that is common to both `Request` and `WebSocket`.
@@ -172,14 +180,14 @@ class HTTPConnection(Mapping[str, Any]):
         return self.scope["user"]
 
     @property
-    def state(self) -> State:
+    def state(self) -> StateT:
         if not hasattr(self, "_state"):
             # Ensure 'state' has an empty dict if it's not already populated.
             self.scope.setdefault("state", {})
             # Create a state instance with a reference to the dict in which it should
             # store info
             self._state = State(self.scope["state"])
-        return self._state
+        return cast(StateT, self._state)
 
     def url_for(self, name: str, /, **path_params: Any) -> URL:
         url_path_provider: Router | Starlette | None = self.scope.get("router") or self.scope.get("app")
@@ -197,7 +205,7 @@ async def empty_send(message: Message) -> NoReturn:
     raise RuntimeError("Send channel has not been made available")
 
 
-class Request(HTTPConnection):
+class Request(HTTPConnection[StateT]):
     _form: FormData | None
 
     def __init__(self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send):

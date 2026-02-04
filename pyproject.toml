@@ -11,7 +11,7 @@ license = "BSD-3-Clause"
 license-files = ["LICENSE.md"]
 requires-python = ">=3.10"
 authors = [
-    { name = "Tom Christie", email = "tom@tomchristie.com" },
+    { name = "Tom Christie", email = "tom@tomchristie.com" }
 ]
 maintainers = [
     { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" },
@@ -48,7 +48,7 @@ full = [
 dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
-    "coverage==7.8.2",
+    "coverage>=7.8.2",
     "importlib-metadata==8.7.0",
     "mypy==1.16.1",
     "ruff==0.12.1",
@@ -56,13 +56,13 @@ dev = [
     "pytest==8.4.1",
     "trio==0.30.0",
     # Check dist
-    "twine==6.1.0"
+    "twine==6.1.0",
 ]
 docs = [
     "black==25.1.0",
-    "mkdocs==1.6.1",
-    "mkdocs-material==9.6.15",
-    "mkdocstrings-python==1.16.12",
+    "mkdocstrings>=1.0.2",
+    "mkdocstrings-python>=2.0.1",
+    "zensical>=0.0.19",
 ]
 
 [tool.uv]
@@ -120,9 +120,7 @@ branch = true
 source_pkgs = ["starlette", "tests"]
 
 [tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "if TYPE_CHECKING:",
+exclude_also = [
     "@overload",
     "raise NotImplementedError",
 ]

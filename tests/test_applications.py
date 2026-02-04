@@ -4,6 +4,7 @@ import os
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import TypedDict
 
 import anyio.from_thread
 import pytest
@@ -13,7 +14,6 @@ from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException, WebSocketException
 from starlette.middleware import Middleware
-from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
@@ -95,6 +95,19 @@ def custom_ws_exception_handler(websocket: WebSocket, exc: CustomWSException) ->
     anyio.from_thread.run(websocket.close, status.WS_1013_TRY_AGAIN_LATER)
 
 
+class CustomState(TypedDict):
+    count: int
+
+
+@asynccontextmanager
+async def lifespan(app: Starlette) -> AsyncGenerator[CustomState]:
+    yield {"count": 1}
+
+
+async def state_count(request: Request[CustomState]) -> JSONResponse:
+    return JSONResponse({"count": request.state["count"]}, status_code=200)
+
+
 users = Router(
     routes=[
         Route("/", endpoint=all_users_page),
@@ -122,6 +135,7 @@ app = Starlette(
         Route("/func", endpoint=func_homepage),
         Route("/async", endpoint=async_homepage),
         Route("/class", endpoint=Homepage),
+        Route("/state", endpoint=state_count),
         Route("/500", endpoint=runtime_error),
         WebSocketRoute("/ws", endpoint=websocket_endpoint),
         WebSocketRoute("/ws-raise-websocket", endpoint=websocket_raise_websocket_exception),
@@ -132,6 +146,7 @@ app = Starlette(
     ],
     exception_handlers=exception_handlers,  # type: ignore
     middleware=middleware,
+    lifespan=lifespan,
 )
 
 
@@ -216,6 +231,12 @@ def test_500(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"detail": "Server Error"}
 
 
+def test_request_state(client: TestClient) -> None:
+    response = client.get("/state")
+    assert response.status_code == 200
+    assert response.json() == {"count": 1}
+
+
 def test_websocket_raise_websocket_exception(client: TestClient) -> None:
     with client.websocket_connect("/ws-raise-websocket") as session:
         response = session.receive()
@@ -256,6 +277,7 @@ def test_routes() -> None:
         Route("/func", endpoint=func_homepage, methods=["GET"]),
         Route("/async", endpoint=async_homepage, methods=["GET"]),
         Route("/class", endpoint=Homepage),
+        Route("/state", endpoint=state_count, methods=["GET"]),
         Route("/500", endpoint=runtime_error, methods=["GET"]),
         WebSocketRoute("/ws", endpoint=websocket_endpoint),
         WebSocketRoute("/ws-raise-websocket", endpoint=websocket_raise_websocket_exception),
@@ -351,33 +373,6 @@ def test_app_add_websocket_route(test_client_factory: TestClientFactory) -> None
         assert text == "Hello, world!"
 
 
-def test_app_add_event_handler(test_client_factory: TestClientFactory) -> None:
-    startup_complete = False
-    cleanup_complete = False
-
-    def run_startup() -> None:
-        nonlocal startup_complete
-        startup_complete = True
-
-    def run_cleanup() -> None:
-        nonlocal cleanup_complete
-        cleanup_complete = True
-
-    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
-        app = Starlette(
-            on_startup=[run_startup],
-            on_shutdown=[run_cleanup],
-        )
-
-    assert not startup_complete
-    assert not cleanup_complete
-    with test_client_factory(app):
-        assert startup_complete
-        assert not cleanup_complete
-    assert startup_complete
-    assert cleanup_complete
-
-
 def test_app_async_cm_lifespan(test_client_factory: TestClientFactory) -> None:
     startup_complete = False
     cleanup_complete = False
@@ -451,46 +446,6 @@ def test_app_sync_gen_lifespan(test_client_factory: TestClientFactory) -> None:
         assert not cleanup_complete
     assert startup_complete
     assert cleanup_complete
-
-
-def test_decorator_deprecations() -> None:
-    app = Starlette()
-
-    with pytest.deprecated_call(
-        match=("The `exception_handler` decorator is deprecated, and will be removed in version 1.0.0.")
-    ) as record:
-        app.exception_handler(500)(http_exception)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=("The `middleware` decorator is deprecated, and will be removed in version 1.0.0.")
-    ) as record:
-
-        async def middleware(request: Request, call_next: RequestResponseEndpoint) -> None: ...  # pragma: no cover
-
-        app.middleware("http")(middleware)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=("The `route` decorator is deprecated, and will be removed in version 1.0.0.")
-    ) as record:
-        app.route("/")(async_homepage)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=("The `websocket_route` decorator is deprecated, and will be removed in version 1.0.0.")
-    ) as record:
-        app.websocket_route("/ws")(websocket_endpoint)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=("The `on_event` decorator is deprecated, and will be removed in version 1.0.0.")
-    ) as record:
-
-        async def startup() -> None: ...  # pragma: no cover
-
-        app.on_event("startup")(startup)
-        assert len(record) == 1
 
 
 def test_middleware_stack_init(test_client_factory: TestClientFactory) -> None:

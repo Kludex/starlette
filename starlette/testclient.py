@@ -286,8 +286,7 @@ class _TestClientTransport(httpx.BaseTransport):
         response_started = False
         response_complete: anyio.Event
         raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
-        template = None
-        context = None
+        debug_info: dict[str, Any] | None = None
 
         async def receive() -> Message:
             nonlocal request_complete
@@ -318,7 +317,7 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, template, context
+            nonlocal raw_kwargs, response_started, debug_info
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'

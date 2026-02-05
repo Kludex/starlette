@@ -335,7 +335,7 @@ class _TestClientTransport(httpx.BaseTransport):
                     raw_kwargs["stream"].seek(0)
                     response_complete.set()
             elif message["type"] == "http.response.debug":
-                debug_info= message["info"]
+                debug_info = message["info"]
 
         try:
             with self.portal_factory() as portal:
@@ -359,7 +359,7 @@ class _TestClientTransport(httpx.BaseTransport):
         response = httpx.Response(**raw_kwargs, request=request)
         if debug_info is not None:
             for key, value in debug_info.items():
-                assert not hasattr(response, key) # don't allow overwrite existing attributes
+                assert not hasattr(response, key)  # don't allow overwrite existing attributes
                 setattr(response, key, value)
         return response
 

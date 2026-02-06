@@ -8,7 +8,6 @@ from typing import Any, cast
 from starlette.requests import HTTPConnection, StateT
 from starlette.responses import Response
 from starlette.types import Message, Receive, Scope, Send
-from typing_extensions import TypeVar
 
 
 class WebSocketState(enum.Enum):

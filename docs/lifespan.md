@@ -113,6 +113,16 @@ async def homepage(request: Request[State]) -> PlainTextResponse:
 
 app = Starlette(lifespan=lifespan, routes=[Route("/", homepage)])
 ```
+This works with Websockets too
+```python
+async def websocket_endpoint(websocket: WebSocket[State]):
+    await websocket.accept()
+    response = await client.get("https://www.example.com")
+    await websocket.send_text(response.text)
+    await websocket.close()
+
+app = Starlette(lifespan=lifespan, routes=[WebSocketRoute("/ws", websocket_endpoint)])
+```
 
 !!! note
     There were many attempts to make this work with attribute-style access instead of

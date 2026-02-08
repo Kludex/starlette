@@ -52,8 +52,17 @@ def test_cors_allow_all(
     assert response.headers["access-control-expose-headers"] == "X-Status"
     assert response.headers["access-control-allow-credentials"] == "true"
 
-    # Test standard credentialed response
+    # Test standard credentialed response with cookies
     headers = {"Origin": "https://example.org", "Cookie": "star_cookie=sugar"}
+    response = client.get("/", headers=headers)
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["access-control-allow-origin"] == "https://example.org"
+    assert response.headers["access-control-expose-headers"] == "X-Status"
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+    # Test standard credentialed response with Authorization header
+    headers = {"Origin": "https://example.org", "Authorization": "Bearer token"}
     response = client.get("/", headers=headers)
     assert response.status_code == 200
     assert response.text == "Homepage"
@@ -416,8 +425,16 @@ def test_cors_credentialed_requests_return_specific_origin(
     )
     client = test_client_factory(app)
 
-    # Test credentialed request
+    # Test credentialed request with cookie
     headers = {"Origin": "https://example.org", "Cookie": "star_cookie=sugar"}
+    response = client.get("/", headers=headers)
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["access-control-allow-origin"] == "https://example.org"
+    assert "access-control-allow-credentials" not in response.headers
+
+    # Test credentialed request with Authorization header
+    headers = {"Origin": "https://example.org", "Authorization": "Bearer token"}
     response = client.get("/", headers=headers)
     assert response.status_code == 200
     assert response.text == "Homepage"
@@ -475,6 +492,11 @@ def test_cors_vary_header_is_properly_set_for_credentialed_request(
     client = test_client_factory(app)
 
     response = client.get("/", headers={"Cookie": "foo=bar", "Origin": "https://someplace.org"})
+    assert response.status_code == 200
+    assert response.headers["vary"] == "Accept-Encoding, Origin"
+
+    # Test with Authorization header
+    response = client.get("/", headers={"Authorization": "Bearer token", "Origin": "https://someplace.org"})
     assert response.status_code == 200
     assert response.headers["vary"] == "Accept-Encoding, Origin"
 

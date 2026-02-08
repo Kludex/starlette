@@ -605,3 +605,106 @@ def test_cors_private_network_access_disallowed(test_client_factory: TestClientF
     assert response.status_code == 400
     assert response.text == "Disallowed CORS private-network"
     assert "access-control-allow-private-network" not in response.headers
+
+
+def test_cors_credentialed_requests_with_authorization_return_specific_origin(
+    test_client_factory: TestClientFactory,
+) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(CORSMiddleware, allow_origins=["*"])],
+    )
+    client = test_client_factory(app)
+
+    # Test credentialed request with Authorization header
+    headers = {"Origin": "https://example.org", "Authorization": "Bearer token"}
+    response = client.get("/", headers=headers)
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["access-control-allow-origin"] == "https://example.org"
+    assert "access-control-allow-credentials" not in response.headers
+
+
+def test_cors_allow_all_with_authorization_header(
+    test_client_factory: TestClientFactory,
+) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_headers=["*"],
+                allow_methods=["*"],
+                allow_credentials=True,
+            )
+        ],
+    )
+    client = test_client_factory(app)
+
+    # Test credentialed response with Authorization header
+    headers = {"Origin": "https://example.org", "Authorization": "Bearer token"}
+    response = client.get("/", headers=headers)
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["access-control-allow-origin"] == "https://example.org"
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
+def test_cors_allowed_origin_does_not_leak_between_authorization_requests(
+    test_client_factory: TestClientFactory,
+) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_headers=["*"],
+                allow_methods=["*"],
+            )
+        ],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"Origin": "https://someplace.org"})
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "access-control-allow-credentials" not in response.headers
+
+    response = client.get(
+        "/", headers={"Authorization": "Bearer token", "Origin": "https://someplace.org"}
+    )
+    assert response.headers["access-control-allow-origin"] == "https://someplace.org"
+    assert "access-control-allow-credentials" not in response.headers
+
+    response = client.get("/", headers={"Origin": "https://someplace.org"})
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "access-control-allow-credentials" not in response.headers
+
+
+def test_cors_vary_header_is_properly_set_for_authorization_request(
+    test_client_factory: TestClientFactory,
+) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Accept-Encoding"})
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(CORSMiddleware, allow_origins=["*"])],
+    )
+    client = test_client_factory(app)
+
+    response = client.get(
+        "/", headers={"Authorization": "Bearer token", "Origin": "https://someplace.org"}
+    )
+    assert response.status_code == 200
+    assert response.headers["vary"] == "Accept-Encoding, Origin"

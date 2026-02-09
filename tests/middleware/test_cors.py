@@ -680,9 +680,7 @@ def test_cors_allowed_origin_does_not_leak_between_authorization_requests(
     assert response.headers["access-control-allow-origin"] == "*"
     assert "access-control-allow-credentials" not in response.headers
 
-    response = client.get(
-        "/", headers={"Authorization": "Bearer token", "Origin": "https://someplace.org"}
-    )
+    response = client.get("/", headers={"Authorization": "Bearer token", "Origin": "https://someplace.org"})
     assert response.headers["access-control-allow-origin"] == "https://someplace.org"
     assert "access-control-allow-credentials" not in response.headers
 
@@ -703,8 +701,6 @@ def test_cors_vary_header_is_properly_set_for_authorization_request(
     )
     client = test_client_factory(app)
 
-    response = client.get(
-        "/", headers={"Authorization": "Bearer token", "Origin": "https://someplace.org"}
-    )
+    response = client.get("/", headers={"Authorization": "Bearer token", "Origin": "https://someplace.org"})
     assert response.status_code == 200
     assert response.headers["vary"] == "Accept-Encoding, Origin"

@@ -262,7 +262,7 @@ class Request(HTTPConnection[StateT]):
         return self._body
 
     async def json(self, max_body_size: int | None = None) -> Any:
-        if not hasattr(self, "_json"):  # pragma: no branch
+        if not hasattr(self, "_json"):
             body = await self.body(max_body_size=max_body_size)
             self._json = json.loads(body)
         elif max_body_size is not None:

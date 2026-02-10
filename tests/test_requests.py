@@ -772,7 +772,7 @@ def test_request_body_max_body_size_cached_body(test_client_factory: TestClientF
         # Second call with max_body_size should still check the limit
         try:
             await request.body(max_body_size=5)
-            response = JSONResponse({"status": "ok"})
+            response = JSONResponse({"status": "ok"})  # pragma: no cover
         except Exception as exc:
             response = JSONResponse({"detail": str(exc)}, status_code=413)
         await response(scope, receive, send)
@@ -782,6 +782,45 @@ def test_request_body_max_body_size_cached_body(test_client_factory: TestClientF
     # Body exceeding limit should return 413 even when cached
     response = client.post("/", data="a" * 100)  # type: ignore
     assert response.status_code == 413
+
+
+def test_request_json_max_body_size_cached_json(test_client_factory: TestClientFactory) -> None:
+    """Test that max_body_size check works on json() when _json is already cached."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        # First call caches _json (no limit)
+        await request.json()
+        # Second call with max_body_size should check against cached body
+        try:
+            await request.json(max_body_size=5)
+            response = JSONResponse({"status": "ok"})  # pragma: no cover
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Body exceeding limit should return 413 even when json is cached
+    response = client.post("/", json={"a": "x" * 100})
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
+def test_request_json_cached_called_without_max_body_size(test_client_factory: TestClientFactory) -> None:
+    """Test that calling json() twice without max_body_size returns the cached result."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        data1 = await request.json()
+        data2 = await request.json()
+        assert data1 is data2
+        response = JSONResponse(data2)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.post("/", json={"key": "value"})
+    assert response.json() == {"key": "value"}
 
 
 def test_request_stream_max_body_size_cached_body(test_client_factory: TestClientFactory) -> None:
@@ -795,8 +834,8 @@ def test_request_stream_max_body_size_cached_body(test_client_factory: TestClien
         try:
             chunks = b""
             async for chunk in request.stream(max_body_size=5):
-                chunks += chunk
-            response = JSONResponse({"body": chunks.decode()})
+                chunks += chunk  # pragma: no cover
+            response = JSONResponse({"body": chunks.decode()})  # pragma: no cover
         except Exception as exc:
             response = JSONResponse({"detail": str(exc)}, status_code=413)
         await response(scope, receive, send)

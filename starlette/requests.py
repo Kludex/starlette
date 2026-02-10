@@ -315,7 +315,9 @@ class Request(HTTPConnection[StateT]):
         max_body_size: int | None = None,
     ) -> AwaitableOrContextManager[FormData]:
         return AwaitableOrContextManagerWrapper(
-            self._get_form(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size, max_body_size=max_body_size)
+            self._get_form(
+                max_files=max_files, max_fields=max_fields, max_part_size=max_part_size, max_body_size=max_body_size
+            )
         )
 
     async def close(self) -> None:

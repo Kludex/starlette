@@ -696,6 +696,28 @@ def test_request_stream_max_body_size(test_client_factory: TestClientFactory) ->
     assert response.json() == {"detail": "Content Too Large"}
 
 
+def test_request_stream_max_body_size_content_length(test_client_factory: TestClientFactory) -> None:
+    """Test that Content-Length header is checked before reading the stream."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        try:
+            body = b""
+            async for chunk in request.stream(max_body_size=10):
+                body += chunk  # pragma: no cover
+            response = JSONResponse({"body": body.decode()})  # pragma: no cover
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Content-Length exceeding limit should return 413 without reading the body
+    response = client.post("/", content="a" * 100)
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
 def test_request_body_max_body_size(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
@@ -845,3 +867,60 @@ def test_request_stream_max_body_size_cached_body(test_client_factory: TestClien
     # Body exceeding limit should return 413 even when cached
     response = client.post("/", data="a" * 100)  # type: ignore
     assert response.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_request_stream_max_body_size_no_content_length() -> None:
+    """Test that the streaming body size check works without a Content-Length header."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"a" * 20, "more_body": True},
+        {"type": "http.request", "body": b"b" * 20},
+    ]
+
+    async def rcv() -> Message:
+        return messages.pop(0)
+
+    # No content-length header, so the early check won't trigger
+    request = Request({"type": "http", "headers": []}, rcv)
+    with pytest.raises(HTTPException) as exc_info:
+        async for _ in request.stream(max_body_size=10):
+            pass  # pragma: no cover
+    assert exc_info.value.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_request_stream_max_body_size_cached_no_content_length() -> None:
+    """Test that the cached body size check works without a Content-Length header."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"a" * 20},
+    ]
+
+    async def rcv() -> Message:
+        return messages.pop(0)
+
+    # No content-length header
+    request = Request({"type": "http", "headers": []}, rcv)
+    # Cache the body first
+    await request.body()
+    # Now stream with max_body_size should check the cached body
+    with pytest.raises(HTTPException) as exc_info:
+        async for _ in request.stream(max_body_size=10):
+            pass  # pragma: no cover
+    assert exc_info.value.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_request_stream_max_body_size_bogus_content_length() -> None:
+    """Test that a bogus Content-Length header does not cause a server error."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"abc"},
+    ]
+
+    async def rcv() -> Message:
+        return messages.pop(0)
+
+    request = Request({"type": "http", "headers": [(b"content-length", b"bogus")]}, rcv)
+    body = b""
+    async for chunk in request.stream(max_body_size=100):
+        body += chunk
+    assert body == b"abc"

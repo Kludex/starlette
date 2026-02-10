@@ -226,6 +226,14 @@ class Request(HTTPConnection[StateT]):
         return self._receive
 
     async def stream(self, max_body_size: int | None = None) -> AsyncGenerator[bytes, None]:
+        if max_body_size is not None:
+            content_length = self.headers.get("content-length")
+            if content_length is not None:
+                try:
+                    if int(content_length) > max_body_size:
+                        raise HTTPException(status_code=413, detail="Content Too Large")
+                except ValueError:
+                    pass
         if hasattr(self, "_body"):
             if max_body_size is not None and len(self._body) > max_body_size:
                 raise HTTPException(status_code=413, detail="Content Too Large")

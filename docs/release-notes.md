@@ -7,7 +7,7 @@ toc_depth: 2
 We're ready! I'm thrilled to announce the first release candidate for Starlette 1.0.
 
 Starlette was created in June 2018 by Tom Christie, and has been on ZeroVer for years. Today, it's downloaded
-more than [8 million times a day](https://pypistats.org/packages/starlette), serves as the foundation for FastAPI,
+almost [10 million times a day](https://pypistats.org/packages/starlette), serves as the foundation for FastAPI,
 and has inspired many other frameworks. In the age of AI, Starlette continues to play an important role as a
 dependency of the Python MCP SDK.
 

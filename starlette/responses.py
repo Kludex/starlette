@@ -425,7 +425,7 @@ class FileResponse(Response):
         content_length, header_generator = self.generate_multipart(
             ranges, boundary, file_size, self.headers["content-type"]
         )
-        self.headers["content-range"] = f"multipart/byteranges; boundary={boundary}"
+        self.headers["content-type"] = f"multipart/byteranges; boundary={boundary}"
         self.headers["content-length"] = str(content_length)
         await send({"type": "http.response.start", "status": 206, "headers": self.raw_headers})
         if send_header_only:

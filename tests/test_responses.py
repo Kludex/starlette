@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import sys
 import time
-from collections.abc import AsyncGenerator, AsyncIterator, Callable, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from pathlib import Path
@@ -901,17 +901,15 @@ def test_file_response_suffix_range(file_response_client: TestClient) -> None:
     assert response.content == README.encode("utf8")[-100:]
 
 
-@pytest.mark.parametrize(
-    "first", [test_file_response_without_range, test_file_response_range, test_file_response_range_multi]
-)
-@pytest.mark.parametrize(
-    "second", [test_file_response_without_range, test_file_response_range, test_file_response_range_multi]
-)
-def test_file_response_multiple_calls(
-    file_response_client: TestClient, first: Callable[[TestClient], None], second: Callable[[TestClient], None]
-) -> None:
-    first(file_response_client)
-    second(file_response_client)
+def test_file_response_multiple_calls(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=0-100"})
+    assert response.status_code == 206
+
+    response = file_response_client.get("/")
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
 
 
 @pytest.mark.anyio

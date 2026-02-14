@@ -2,6 +2,106 @@
 toc_depth: 2
 ---
 
+## 1.0.0rc1 (February 14, 2026)
+
+We're ready! I'm thrilled to announce the first release candidate for Starlette 1.0.
+
+Starlette was created in June 2018 by Tom Christie, and has been on ZeroVer for years. Today, it's downloaded
+more than [8 million times a day](https://pypistats.org/packages/starlette), serves as the foundation for FastAPI,
+and has inspired many other frameworks. In the age of AI, Starlette continues to play an important role as a
+dependency of the Python MCP SDK.
+
+This release focuses on removing deprecated features that were marked for removal in 1.0.0, along with some
+last minute bug fixes. It's a release candidate, so we can gather feedback from the community before the final
+1.0.0 release soon.
+
+A huge thank you to all the contributors who have helped make Starlette what it is today.
+In particular, I'd like to recognize:
+
+* [Tom Christie](https://github.com/tomchristie) - The original creator of Starlette and Uvicorn, and the current
+  maintainer of HTTPX.
+* [Adrian Garcia Badaracco](https://github.com/adriangb) - Whom I have the pleasure of working with at Pydantic.
+* [Thomas Grainger](https://github.com/graingert)
+* [Alex Grönholm](https://github.com/agronholm)
+* [Florimond Manca](https://github.com/florimondmanca)
+* [Amin Alaee](https://github.com/aminalaee)
+* [Sebastián Ramírez](https://github.com/tiangolo)
+* [Alex Oleshkevich](https://github.com/alex-oleshkevich)
+* [abersheeran](https://github.com/abersheeran)
+
+I'd also like to thank my sponsors for their support:
+
+[@huggingface](https://github.com/huggingface),
+[@roboflow](https://github.com/roboflow),
+[@tiangolo](https://github.com/tiangolo),
+[@ogabrielluiz](https://github.com/ogabrielluiz),
+[@SaboniAmine](https://github.com/SaboniAmine),
+[@russbiggs](https://github.com/russbiggs),
+[@BryceBeagle](https://github.com/BryceBeagle),
+[@chdsbd](https://github.com/chdsbd),
+[@TheR1D](https://github.com/TheR1D),
+[@ddanier](https://github.com/ddanier),
+[@larsyngvelundin](https://github.com/larsyngvelundin),
+[@jpizquierdo](https://github.com/jpizquierdo),
+[@alixlahuec](https://github.com/alixlahuec),
+[@nathanchapman](https://github.com/nathanchapman),
+[@devid8642](https://github.com/devid8642),
+[@kytta](https://github.com/kytta),
+[@Evil0ctal](https://github.com/Evil0ctal),
+[@msehnout](https://github.com/msehnout),
+[@codingjoe](https://github.com/codingjoe),
+[@BabyBoy-Yuan](https://github.com/BabyBoy-Yuan),
+and two private sponsors.
+
+#### Removed
+
+* Remove `on_startup` and `on_shutdown` parameters from `Starlette` and `Router`.
+  Use the `lifespan` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `on_event()` decorator from `Starlette` and `Router`.
+  Use the `lifespan` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `add_event_handler()` method from `Starlette` and `Router`.
+  Use the `lifespan` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `startup()` and `shutdown()` methods from `Router`
+  [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.route()` decorator from `Starlette` and `Router`.
+  Use `Route` in the `routes` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.websocket_route()` decorator from `Starlette` and `Router`.
+  Use `WebSocketRoute` in the `routes` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.exception_handler()` decorator from `Starlette`.
+  Use `exception_handlers` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.middleware()` decorator from `Starlette`.
+  Use `middleware` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `iscoroutinefunction_or_partial()` from `starlette.routing`
+  [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `**env_options` parameter from `Jinja2Templates`.
+  Use a preconfigured `jinja2.Environment` via the `env` parameter instead
+  [#3118](https://github.com/encode/starlette/pull/3118).
+* Remove deprecated `TemplateResponse(name, context)` signature from `Jinja2Templates`.
+  Use `TemplateResponse(request, name, ...)` instead [#3118](https://github.com/encode/starlette/pull/3118).
+
+#### Added
+
+* Add state generic to `WebSocket` [#3132](https://github.com/encode/starlette/pull/3132).
+
+#### Fixed
+
+* Include `bytes` unit in `Content-Range` header on 416 responses.
+* Handle null bytes in `StaticFiles` path [#3139](https://github.com/encode/starlette/pull/3139).
+* Use sort-based merge for `Range` header parsing [#3138](https://github.com/encode/starlette/pull/3138).
+* Set `Content-Type` instead of `Content-Range` on multi-range responses
+  [#3142](https://github.com/encode/starlette/pull/3142).
+* Use CRLF line endings in multipart byterange boundaries
+  [#3143](https://github.com/encode/starlette/pull/3143).
+* Avoid mutating `FileResponse` headers on range requests
+  [#3144](https://github.com/encode/starlette/pull/3144).
+* Return explicit origin in CORS response when credentials are allowed
+  [#3137](https://github.com/encode/starlette/pull/3137).
+
+#### Changed
+
+* `jinja2` must now be installed to import `Jinja2Templates`. Previously it would only
+  fail when instantiating the class [#3118](https://github.com/encode/starlette/pull/3118).
+
 ## 0.52.1 (January 18, 2026)
 
 #### Fixed

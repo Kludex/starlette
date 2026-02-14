@@ -91,6 +91,12 @@ async def websocket_raise_custom(websocket: WebSocket) -> None:
     raise CustomWSException()
 
 
+async def websocket_state(websocket: WebSocket[CustomState]) -> None:
+    await websocket.accept()
+    await websocket.send_json({"count": websocket.state["count"]})
+    await websocket.close()
+
+
 def custom_ws_exception_handler(websocket: WebSocket, exc: CustomWSException) -> None:
     anyio.from_thread.run(websocket.close, status.WS_1013_TRY_AGAIN_LATER)
 
@@ -141,6 +147,7 @@ app = Starlette(
         WebSocketRoute("/ws-raise-websocket", endpoint=websocket_raise_websocket_exception),
         WebSocketRoute("/ws-raise-http", endpoint=websocket_raise_http_exception),
         WebSocketRoute("/ws-raise-custom", endpoint=websocket_raise_custom),
+        WebSocketRoute("/ws-state", endpoint=websocket_state),
         Mount("/users", app=users),
         Host("{subdomain}.example.org", app=subdomain),
     ],
@@ -247,6 +254,12 @@ def test_websocket_raise_websocket_exception(client: TestClient) -> None:
         }
 
 
+def test_websocket_state(client: TestClient) -> None:
+    with client.websocket_connect("/ws-state") as session:
+        response = session.receive_json()
+        assert response == {"count": 1}
+
+
 def test_websocket_raise_http_exception(client: TestClient) -> None:
     with pytest.raises(WebSocketDenialResponse) as exc:
         with client.websocket_connect("/ws-raise-http"):
@@ -283,6 +296,7 @@ def test_routes() -> None:
         WebSocketRoute("/ws-raise-websocket", endpoint=websocket_raise_websocket_exception),
         WebSocketRoute("/ws-raise-http", endpoint=websocket_raise_http_exception),
         WebSocketRoute("/ws-raise-custom", endpoint=websocket_raise_custom),
+        WebSocketRoute("/ws-state", endpoint=websocket_state),
         Mount(
             "/users",
             app=Router(

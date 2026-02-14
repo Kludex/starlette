@@ -746,7 +746,7 @@ def test_file_response_range_head_max(file_response_client: TestClient) -> None:
 def test_file_response_range_416(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": f"bytes={len(README.encode('utf8')) + 1}-"})
     assert response.status_code == 416
-    assert response.headers["Content-Range"] == f"*/{len(README.encode('utf8'))}"
+    assert response.headers["Content-Range"] == f"bytes */{len(README.encode('utf8'))}"
 
 
 def test_file_response_only_support_bytes_range(file_response_client: TestClient) -> None:

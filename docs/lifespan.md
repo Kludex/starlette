@@ -113,13 +113,17 @@ async def homepage(request: Request[State]) -> PlainTextResponse:
 
 app = Starlette(lifespan=lifespan, routes=[Route("/", homepage)])
 ```
-This works with Websockets too
+
+This also works with WebSockets:
+
 ```python
-async def websocket_endpoint(websocket: WebSocket[State]):
+async def websocket_endpoint(websocket: WebSocket[State]) -> None:
     await websocket.accept()
+    client = websocket.state["http_client"]
     response = await client.get("https://www.example.com")
     await websocket.send_text(response.text)
     await websocket.close()
+
 
 app = Starlette(lifespan=lifespan, routes=[WebSocketRoute("/ws", websocket_endpoint)])
 ```

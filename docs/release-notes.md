@@ -18,22 +18,22 @@ last minute bug fixes. It's a release candidate, so we can gather feedback from 
 A huge thank you to all the contributors who have helped make Starlette what it is today.
 In particular, I'd like to recognize:
 
-* [Tom Christie](https://github.com/tomchristie) - The original creator of Starlette and Uvicorn, and the current
-  maintainer of HTTPX.
-* [Adrian Garcia Badaracco](https://github.com/adriangb) - Whom I have the pleasure of working with at Pydantic.
-* [Thomas Grainger](https://github.com/graingert)
-* [Alex Grönholm](https://github.com/agronholm)
-* [Florimond Manca](https://github.com/florimondmanca)
-* [Amin Alaee](https://github.com/aminalaee)
-* [Sebastián Ramírez](https://github.com/tiangolo)
-* [Alex Oleshkevich](https://github.com/alex-oleshkevich)
-* [abersheeran](https://github.com/abersheeran)
+* [Tom Christie](https://github.com/tomchristie) - The original creator of Starlette, Uvicorn, and MkDocs, and the
+  current maintainer of HTTPX. Tom's work laid the foundation for the modern async Python ecosystem.
+* [Adrian Garcia Badaracco](https://github.com/adriangb) - One of the smartest people I know, whom I have the pleasure of working with at Pydantic.
+* [Thomas Grainger](https://github.com/graingert) - My async teacher, always ready to help with questions.
+* [Alex Grönholm](https://github.com/agronholm) - Another async mentor, always prompt to help with questions.
+* [Florimond Manca](https://github.com/florimondmanca) - Always present in the early days of both Starlette and Uvicorn, and helped a lot in the ecosystem.
+* [Amin Alaee](https://github.com/aminalaee) - Contributed a lot with file-related PRs.
+* [Sebastián Ramírez](https://github.com/tiangolo) - Maintains FastAPI upstream, and always in contact to help with upstream issues.
+* [Alex Oleshkevich](https://github.com/alex-oleshkevich) - Helped a lot on templates and many discussions.
+* [abersheeran](https://github.com/abersheeran) - My go-to person when I need help on many subjects.
 
-I'd also like to thank my sponsors for their support:
+I'd also like to thank my sponsors for their support. A special thanks to
+[@tiangolo](https://github.com/tiangolo), [@huggingface](https://github.com/huggingface),
+and [@elevenlabs](https://github.com/elevenlabs) for their generous sponsorship, and to all my other sponsors:
 
-[@huggingface](https://github.com/huggingface),
 [@roboflow](https://github.com/roboflow),
-[@tiangolo](https://github.com/tiangolo),
 [@ogabrielluiz](https://github.com/ogabrielluiz),
 [@SaboniAmine](https://github.com/SaboniAmine),
 [@russbiggs](https://github.com/russbiggs),
@@ -46,12 +46,10 @@ I'd also like to thank my sponsors for their support:
 [@alixlahuec](https://github.com/alixlahuec),
 [@nathanchapman](https://github.com/nathanchapman),
 [@devid8642](https://github.com/devid8642),
-[@kytta](https://github.com/kytta),
+[@comet-ml](https://github.com/comet-ml),
 [@Evil0ctal](https://github.com/Evil0ctal),
 [@msehnout](https://github.com/msehnout),
-[@codingjoe](https://github.com/codingjoe),
-[@BabyBoy-Yuan](https://github.com/BabyBoy-Yuan),
-and two private sponsors.
+and [@codingjoe](https://github.com/codingjoe).
 
 #### Removed
 

@@ -369,7 +369,7 @@ class FileResponse(Response):
             except MalformedRangeHeader as exc:
                 return await PlainTextResponse(exc.content, status_code=400)(scope, receive, send)
             except RangeNotSatisfiable as exc:
-                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"*/{exc.max_size}"})
+                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
                 return await response(scope, receive, send)
 
             if len(ranges) == 1:
@@ -398,9 +398,10 @@ class FileResponse(Response):
     async def _handle_single_range(
         self, send: Send, start: int, end: int, file_size: int, send_header_only: bool
     ) -> None:
-        self.headers["content-range"] = f"bytes {start}-{end - 1}/{file_size}"
-        self.headers["content-length"] = str(end - start)
-        await send({"type": "http.response.start", "status": 206, "headers": self.raw_headers})
+        headers = MutableHeaders(raw=list(self.raw_headers))
+        headers["content-range"] = f"bytes {start}-{end - 1}/{file_size}"
+        headers["content-length"] = str(end - start)
+        await send({"type": "http.response.start", "status": 206, "headers": headers.raw})
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
@@ -425,9 +426,10 @@ class FileResponse(Response):
         content_length, header_generator = self.generate_multipart(
             ranges, boundary, file_size, self.headers["content-type"]
         )
-        self.headers["content-range"] = f"multipart/byteranges; boundary={boundary}"
-        self.headers["content-length"] = str(content_length)
-        await send({"type": "http.response.start", "status": 206, "headers": self.raw_headers})
+        headers = MutableHeaders(raw=list(self.raw_headers))
+        headers["content-type"] = f"multipart/byteranges; boundary={boundary}"
+        headers["content-length"] = str(content_length)
+        await send({"type": "http.response.start", "status": 206, "headers": headers.raw})
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
@@ -439,11 +441,11 @@ class FileResponse(Response):
                         chunk = await file.read(min(self.chunk_size, end - start))
                         start += len(chunk)
                         await send({"type": "http.response.body", "body": chunk, "more_body": True})
-                    await send({"type": "http.response.body", "body": b"\n", "more_body": True})
+                    await send({"type": "http.response.body", "body": b"\r\n", "more_body": True})
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": f"\n--{boundary}--\n".encode("latin-1"),
+                        "body": f"--{boundary}--".encode("latin-1"),
                         "more_body": False,
                     }
                 )
@@ -478,19 +480,13 @@ class FileResponse(Response):
         if len(ranges) == 1:
             return ranges
 
-        # Merge ranges
-        result: list[tuple[int, int]] = []
-        for start, end in ranges:
-            for p in range(len(result)):
-                p_start, p_end = result[p]
-                if start > p_end:
-                    continue
-                elif end < p_start:
-                    result.insert(p, (start, end))  # THIS IS NOT REACHED!
-                    break
-                else:
-                    result[p] = (min(start, p_start), max(end, p_end))
-                    break
+        # Merge overlapping ranges
+        ranges.sort()
+        result: list[tuple[int, int]] = [ranges[0]]
+        for start, end in ranges[1:]:
+            last_start, last_end = result[-1]
+            if start <= last_end:
+                result[-1] = (last_start, max(last_end, end))
             else:
                 result.append((start, end))
 
@@ -536,31 +532,36 @@ class FileResponse(Response):
         Multipart response headers generator.
 
         ```
-        --{boundary}\n
-        Content-Type: {content_type}\n
-        Content-Range: bytes {start}-{end-1}/{max_size}\n
-        \n
-        ..........content...........\n
-        --{boundary}\n
-        Content-Type: {content_type}\n
-        Content-Range: bytes {start}-{end-1}/{max_size}\n
-        \n
-        ..........content...........\n
-        --{boundary}--\n
+        --{boundary}\r\n
+        Content-Type: {content_type}\r\n
+        Content-Range: bytes {start}-{end-1}/{max_size}\r\n
+        \r\n
+        ..........content...........\r\n
+        --{boundary}\r\n
+        Content-Type: {content_type}\r\n
+        Content-Range: bytes {start}-{end-1}/{max_size}\r\n
+        \r\n
+        ..........content...........\r\n
+        --{boundary}--
         ```
         """
         boundary_len = len(boundary)
-        static_header_part_len = 44 + boundary_len + len(content_type) + len(str(max_size))
+        static_header_part_len = 49 + boundary_len + len(content_type) + len(str(max_size))
         content_length = sum(
             (len(str(start)) + len(str(end - 1)) + static_header_part_len)  # Headers
             + (end - start)  # Content
             for start, end in ranges
         ) + (
-            5 + boundary_len  # --boundary--\n
+            4 + boundary_len  # --boundary--
         )
         return (
             content_length,
             lambda start, end: (
-                f"--{boundary}\nContent-Type: {content_type}\nContent-Range: bytes {start}-{end - 1}/{max_size}\n\n"
+                f"""\
+--{boundary}\r
+Content-Type: {content_type}\r
+Content-Range: bytes {start}-{end - 1}/{max_size}\r
+\r
+"""
             ).encode("latin-1"),
         )

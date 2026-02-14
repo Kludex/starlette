@@ -4,12 +4,14 @@ import datetime as dt
 import sys
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Iterator
+from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import Any
 
 import anyio
 import pytest
+from python_multipart import MultipartParser
 
 from starlette import status
 from starlette.background import BackgroundTask
@@ -682,14 +684,18 @@ def file_response_client(readme_file: Path, test_client_factory: TestClientFacto
 def test_file_response_without_range(file_response_client: TestClient) -> None:
     response = file_response_client.get("/")
     assert response.status_code == 200
+    assert "content-range" not in response.headers
     assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.text == README
 
 
 def test_file_response_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/")
     assert response.status_code == 200
+    assert "content-range" not in response.headers
     assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.content == b""
 
 
@@ -698,27 +704,33 @@ def test_file_response_range(file_response_client: TestClient) -> None:
     assert response.status_code == 206
     assert response.headers["content-range"] == f"bytes 0-100/{len(README.encode('utf8'))}"
     assert response.headers["content-length"] == "101"
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.content == README.encode("utf8")[:101]
 
 
 def test_file_response_range_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": "bytes=0-100"})
     assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-100/{len(README.encode('utf8'))}"
     assert response.headers["content-length"] == str(101)
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.content == b""
 
 
 def test_file_response_range_multi(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=0-100, 200-300"})
     assert response.status_code == 206
-    assert response.headers["content-range"].startswith("multipart/byteranges; boundary=")
-    assert response.headers["content-length"] == "439"
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == "448"
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
 
 
 def test_file_response_range_multi_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": "bytes=0-100, 200-300"})
     assert response.status_code == 206
-    assert response.headers["content-length"] == "439"
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == "448"
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
     assert response.content == b""
 
     response = file_response_client.head(
@@ -746,7 +758,7 @@ def test_file_response_range_head_max(file_response_client: TestClient) -> None:
 def test_file_response_range_416(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": f"bytes={len(README.encode('utf8')) + 1}-"})
     assert response.status_code == 416
-    assert response.headers["Content-Range"] == f"*/{len(README.encode('utf8'))}"
+    assert response.headers["Content-Range"] == f"bytes */{len(README.encode('utf8'))}"
 
 
 def test_file_response_only_support_bytes_range(file_response_client: TestClient) -> None:
@@ -774,12 +786,60 @@ def test_file_response_merge_ranges(file_response_client: TestClient) -> None:
     assert response.headers["content-range"] == f"bytes 0-200/{len(README.encode('utf8'))}"
 
 
+@dataclass
+class MultipartPart:
+    headers: dict[bytes, bytes]
+    data: bytes
+
+
+def parse_multipart_data(data: bytes, boundary: bytes | str) -> list[MultipartPart]:
+    parts: list[MultipartPart] = []
+    done = False
+
+    current_headers: dict[bytes, bytes] = {}
+    current_header_field: bytes = b""
+
+    def on_part_begin() -> None:
+        nonlocal current_headers
+        current_headers = {}
+
+    def on_part_data(data: bytes, start: int, end: int) -> None:
+        parts.append(MultipartPart(current_headers, data[start:end]))
+
+    def on_header_field(data: bytes, start: int, end: int) -> None:
+        nonlocal current_header_field
+        current_header_field = data[start:end]
+
+    def on_header_value(data: bytes, start: int, end: int) -> None:
+        current_headers[current_header_field] = data[start:end]
+
+    def on_end() -> None:
+        nonlocal done
+        done = True
+
+    parser = MultipartParser(
+        boundary,
+        dict(
+            on_part_begin=on_part_begin,
+            on_part_data=on_part_data,
+            on_header_field=on_header_field,
+            on_header_value=on_header_value,
+            on_end=on_end,
+        ),
+    )
+    parser.write(data)
+    parser.finalize()
+    assert done
+    return parts
+
+
 def test_file_response_insert_ranges(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=100-200, 0-50"})
 
     assert response.status_code == 206
-    assert response.headers["content-range"].startswith("multipart/byteranges; boundary=")
-    boundary = response.headers["content-range"].split("boundary=")[1]
+    assert "content-range" not in response.headers
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+    boundary = response.headers["content-type"].split("boundary=")[1]
     assert response.text.splitlines() == [
         f"--{boundary}",
         "Content-Type: text/plain; charset=utf-8",
@@ -793,9 +853,24 @@ def test_file_response_insert_ranges(file_response_client: TestClient) -> None:
         "Content-Range: bytes 100-200/526",
         "",
         "ds required in the Web framework. No redundant implementation means that you can freely customize fun",
-        "",
         f"--{boundary}--",
     ]
+
+    parts = parse_multipart_data(response._content, boundary)
+    assert all(
+        value == b"text/plain; charset=utf-8"
+        for part in parts
+        for key, value in part.headers.items()
+        if key == b"Content-Type"
+    )
+    assert len(parts) == 2
+    assert parts[0].headers[b"Content-Range"] == b"bytes 0-50/526"
+    assert parts[0].data == "# BáiZé\n\nPowerful and exquisite WSGI/ASGI framewo".encode()
+    assert parts[1].headers[b"Content-Range"] == b"bytes 100-200/526"
+    assert (
+        parts[1].data
+        == b"ds required in the Web framework. No redundant implementation means that you can freely customize fun"
+    )
 
 
 def test_file_response_range_without_dash(file_response_client: TestClient) -> None:
@@ -826,6 +901,17 @@ def test_file_response_suffix_range(file_response_client: TestClient) -> None:
     assert response.content == README.encode("utf8")[-100:]
 
 
+def test_file_response_multiple_calls(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=0-100"})
+    assert response.status_code == 206
+
+    response = file_response_client.get("/")
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+
+
 @pytest.mark.anyio
 async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
     class SmallChunkSizeFileResponse(FileResponse):
@@ -849,25 +935,25 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
     assert start_message["status"] == 206
 
     headers = Headers(raw=start_message["headers"])
-    assert headers.get("content-type") == "text/plain; charset=utf-8"
+    assert "content-range" not in headers
     assert headers.get("accept-ranges") == "bytes"
     assert "content-length" in headers
     assert "last-modified" in headers
     assert "etag" in headers
-    assert headers["content-range"].startswith("multipart/byteranges; boundary=")
-    boundary = headers["content-range"].split("boundary=")[1]
+    assert headers["content-type"].startswith("multipart/byteranges; boundary=")
+    boundary = headers["content-type"].split("boundary=")[1]
 
     assert received_chunks == [
         # Send the part headers.
-        f"--{boundary}\nContent-Type: text/plain; charset=utf-8\nContent-Range: bytes 0-15/526\n\n".encode(),
+        f"--{boundary}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Range: bytes 0-15/526\r\n\r\n".encode(),
         # Send the first chunk (10 bytes).
         b"# B\xc3\xa1iZ\xc3\xa9\n",
         # Send the second chunk (6 bytes).
         b"\nPower",
         # Send the new line to separate the parts.
-        b"\n",
+        b"\r\n",
         # Send the part headers. We merge the ranges 20-35 and 35-50 into a single part.
-        f"--{boundary}\nContent-Type: text/plain; charset=utf-8\nContent-Range: bytes 20-50/526\n\n".encode(),
+        f"--{boundary}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Range: bytes 20-50/526\r\n\r\n".encode(),
         # Send the first chunk (10 bytes).
         b"and exquis",
         # Send the second chunk (10 bytes).
@@ -876,6 +962,6 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         b"SGI framew",
         # Send the last chunk (1 byte).
         b"o",
-        b"\n",
-        f"\n--{boundary}--\n".encode(),
+        b"\r\n",
+        f"--{boundary}--".encode(),
     ]

@@ -68,6 +68,7 @@ class CORSMiddleware:
         self.allow_headers = [h.lower() for h in allow_headers]
         self.allow_all_origins = allow_all_origins
         self.allow_all_headers = allow_all_headers
+        self.allow_credentials = allow_credentials
         self.preflight_explicit_allow_origin = preflight_explicit_allow_origin
         self.allow_origin_regex = compiled_allow_origin_regex
         self.allow_private_network = allow_private_network
@@ -161,15 +162,12 @@ class CORSMiddleware:
         headers = MutableHeaders(scope=message)
         headers.update(self.simple_headers)
         origin = request_headers["Origin"]
-        has_cookie = "cookie" in request_headers
 
-        # If request includes any cookie headers, then we must respond
-        # with the specific origin instead of '*'.
-        if self.allow_all_origins and has_cookie:
+        # If credentials are allowed, then we must respond with the specific origin instead of '*'.
+        if self.allow_all_origins and self.allow_credentials:
             self.allow_explicit_origin(headers, origin)
 
-        # If we only allow specific origins, then we have to mirror back
-        # the Origin header in the response.
+        # If we only allow specific origins, then we have to mirror back the Origin header in the response.
         elif not self.allow_all_origins and self.is_allowed_origin(origin=origin):
             self.allow_explicit_origin(headers, origin)
 

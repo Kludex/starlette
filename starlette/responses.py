@@ -439,11 +439,11 @@ class FileResponse(Response):
                         chunk = await file.read(min(self.chunk_size, end - start))
                         start += len(chunk)
                         await send({"type": "http.response.body", "body": chunk, "more_body": True})
-                    await send({"type": "http.response.body", "body": b"\n", "more_body": True})
+                    await send({"type": "http.response.body", "body": b"\r\n", "more_body": True})
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": f"\n--{boundary}--\n".encode("latin-1"),
+                        "body": f"--{boundary}--".encode("latin-1"),
                         "more_body": False,
                     }
                 )
@@ -530,31 +530,36 @@ class FileResponse(Response):
         Multipart response headers generator.
 
         ```
-        --{boundary}\n
-        Content-Type: {content_type}\n
-        Content-Range: bytes {start}-{end-1}/{max_size}\n
-        \n
-        ..........content...........\n
-        --{boundary}\n
-        Content-Type: {content_type}\n
-        Content-Range: bytes {start}-{end-1}/{max_size}\n
-        \n
-        ..........content...........\n
-        --{boundary}--\n
+        --{boundary}\r\n
+        Content-Type: {content_type}\r\n
+        Content-Range: bytes {start}-{end-1}/{max_size}\r\n
+        \r\n
+        ..........content...........\r\n
+        --{boundary}\r\n
+        Content-Type: {content_type}\r\n
+        Content-Range: bytes {start}-{end-1}/{max_size}\r\n
+        \r\n
+        ..........content...........\r\n
+        --{boundary}--
         ```
         """
         boundary_len = len(boundary)
-        static_header_part_len = 44 + boundary_len + len(content_type) + len(str(max_size))
+        static_header_part_len = 49 + boundary_len + len(content_type) + len(str(max_size))
         content_length = sum(
             (len(str(start)) + len(str(end - 1)) + static_header_part_len)  # Headers
             + (end - start)  # Content
             for start, end in ranges
         ) + (
-            5 + boundary_len  # --boundary--\n
+            4 + boundary_len  # --boundary--
         )
         return (
             content_length,
             lambda start, end: (
-                f"--{boundary}\nContent-Type: {content_type}\nContent-Range: bytes {start}-{end - 1}/{max_size}\n\n"
+                f"""\
+--{boundary}\r
+Content-Type: {content_type}\r
+Content-Range: bytes {start}-{end - 1}/{max_size}\r
+\r
+"""
             ).encode("latin-1"),
         )

@@ -478,19 +478,13 @@ class FileResponse(Response):
         if len(ranges) == 1:
             return ranges
 
-        # Merge ranges
-        result: list[tuple[int, int]] = []
-        for start, end in ranges:
-            for p in range(len(result)):
-                p_start, p_end = result[p]
-                if start > p_end:
-                    continue
-                elif end < p_start:
-                    result.insert(p, (start, end))  # THIS IS NOT REACHED!
-                    break
-                else:
-                    result[p] = (min(start, p_start), max(end, p_end))
-                    break
+        # Merge overlapping ranges
+        ranges.sort()
+        result: list[tuple[int, int]] = [ranges[0]]
+        for start, end in ranges[1:]:
+            last_start, last_end = result[-1]
+            if start <= last_end:
+                result[-1] = (last_start, max(last_end, end))
             else:
                 result.append((start, end))
 

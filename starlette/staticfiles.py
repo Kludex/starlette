@@ -125,7 +125,7 @@ class StaticFiles:
             raise exc
         except ValueError:
             # Null bytes or other invalid characters in the path.
-            raise HTTPException(status_code=400)
+            raise HTTPException(status_code=404)
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.

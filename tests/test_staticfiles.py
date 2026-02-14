@@ -466,7 +466,7 @@ def test_staticfiles_null_byte_in_path(tmpdir: Path, test_client_factory: TestCl
     client = test_client_factory(app)
 
     response = client.get("/example%00.txt")
-    assert response.status_code == 400
+    assert response.status_code == 404
 
 
 def test_staticfiles_filename_too_long(tmpdir: Path, test_client_factory: TestClientFactory) -> None:

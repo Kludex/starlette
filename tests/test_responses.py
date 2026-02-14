@@ -684,14 +684,18 @@ def file_response_client(readme_file: Path, test_client_factory: TestClientFacto
 def test_file_response_without_range(file_response_client: TestClient) -> None:
     response = file_response_client.get("/")
     assert response.status_code == 200
+    assert "content-range" not in response.headers
     assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.text == README
 
 
 def test_file_response_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/")
     assert response.status_code == 200
+    assert "content-range" not in response.headers
     assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.content == b""
 
 
@@ -700,13 +704,16 @@ def test_file_response_range(file_response_client: TestClient) -> None:
     assert response.status_code == 206
     assert response.headers["content-range"] == f"bytes 0-100/{len(README.encode('utf8'))}"
     assert response.headers["content-length"] == "101"
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.content == README.encode("utf8")[:101]
 
 
 def test_file_response_range_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": "bytes=0-100"})
     assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-100/{len(README.encode('utf8'))}"
     assert response.headers["content-length"] == str(101)
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.content == b""
 
 
@@ -892,6 +899,17 @@ def test_file_response_suffix_range(file_response_client: TestClient) -> None:
     assert response.headers["content-range"] == f"bytes {file_size - 100}-{file_size - 1}/{file_size}"
     assert response.headers["content-length"] == "100"
     assert response.content == README.encode("utf8")[-100:]
+
+
+def test_file_response_multiple_calls(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=0-100"})
+    assert response.status_code == 206
+
+    response = file_response_client.get("/")
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
 
 
 @pytest.mark.anyio

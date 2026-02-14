@@ -751,7 +751,7 @@ def test_file_response_range_head_max(file_response_client: TestClient) -> None:
 def test_file_response_range_416(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": f"bytes={len(README.encode('utf8')) + 1}-"})
     assert response.status_code == 416
-    assert response.headers["Content-Range"] == f"*/{len(README.encode('utf8'))}"
+    assert response.headers["Content-Range"] == f"bytes */{len(README.encode('utf8'))}"
 
 
 def test_file_response_only_support_bytes_range(file_response_client: TestClient) -> None:
@@ -830,8 +830,9 @@ def test_file_response_insert_ranges(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=100-200, 0-50"})
 
     assert response.status_code == 206
-    assert response.headers["content-range"].startswith("multipart/byteranges; boundary=")
-    boundary = response.headers["content-range"].split("boundary=")[1]
+    assert "content-range" not in response.headers
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+    boundary = response.headers["content-type"].split("boundary=")[1]
     assert response.text.splitlines() == [
         f"--{boundary}",
         "Content-Type: text/plain; charset=utf-8",
@@ -916,13 +917,13 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
     assert start_message["status"] == 206
 
     headers = Headers(raw=start_message["headers"])
-    assert headers.get("content-type") == "text/plain; charset=utf-8"
+    assert "content-range" not in headers
     assert headers.get("accept-ranges") == "bytes"
     assert "content-length" in headers
     assert "last-modified" in headers
     assert "etag" in headers
-    assert headers["content-range"].startswith("multipart/byteranges; boundary=")
-    boundary = headers["content-range"].split("boundary=")[1]
+    assert headers["content-type"].startswith("multipart/byteranges; boundary=")
+    boundary = headers["content-type"].split("boundary=")[1]
 
     assert received_chunks == [
         # Send the part headers.

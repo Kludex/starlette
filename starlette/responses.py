@@ -369,7 +369,7 @@ class FileResponse(Response):
             except MalformedRangeHeader as exc:
                 return await PlainTextResponse(exc.content, status_code=400)(scope, receive, send)
             except RangeNotSatisfiable as exc:
-                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"*/{exc.max_size}"})
+                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
                 return await response(scope, receive, send)
 
             if len(ranges) == 1:
@@ -425,7 +425,7 @@ class FileResponse(Response):
         content_length, header_generator = self.generate_multipart(
             ranges, boundary, file_size, self.headers["content-type"]
         )
-        self.headers["content-range"] = f"multipart/byteranges; boundary={boundary}"
+        self.headers["content-type"] = f"multipart/byteranges; boundary={boundary}"
         self.headers["content-length"] = str(content_length)
         await send({"type": "http.response.start", "status": 206, "headers": self.raw_headers})
         if send_header_only:

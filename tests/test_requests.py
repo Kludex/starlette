@@ -8,7 +8,7 @@ import anyio
 import pytest
 
 from starlette.applications import Starlette
-from starlette.datastructures import URL, Address, State
+from starlette.datastructures import URL, Address, State, UploadFile
 from starlette.exceptions import HTTPException
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
@@ -759,7 +759,7 @@ def test_request_form_urlencoded_max_body_size_via_route(test_client_factory: Te
     assert response.status_code == 413
 
 
-def test_request_max_body_size_via_router(test_client_factory: TestClientFactory) -> None:
+def test_request_max_body_size_via_starlette(test_client_factory: TestClientFactory) -> None:
     async def endpoint(request: Request) -> Response:
         body = await request.body()
         return JSONResponse({"body": body.decode()})
@@ -801,26 +801,6 @@ def test_request_max_body_size_via_mount(test_client_factory: TestClientFactory)
 
     # Body exceeding limit should return 413
     response = client.post("/api/upload", data="a" * 100)  # type: ignore
-    assert response.status_code == 413
-
-
-def test_request_max_body_size_via_starlette(test_client_factory: TestClientFactory) -> None:
-    async def endpoint(request: Request) -> Response:
-        body = await request.body()
-        return JSONResponse({"body": body.decode()})
-
-    app = Starlette(
-        routes=[Route("/", endpoint=endpoint, methods=["POST"])],
-        max_body_size=10,
-    )
-    client = test_client_factory(app)
-
-    # Body within limit should work
-    response = client.post("/", data="abc")  # type: ignore
-    assert response.json() == {"body": "abc"}
-
-    # Body exceeding limit should return 413
-    response = client.post("/", data="a" * 100)  # type: ignore
     assert response.status_code == 413
 
 
@@ -974,3 +954,172 @@ async def test_request_stream_max_body_size_bogus_content_length() -> None:
     async for chunk in request.stream():
         body += chunk
     assert body == b"abc"
+
+
+def test_request_max_upload_size_via_route(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> Response:
+        async with request.form() as form:
+            file = form["file"]
+            assert isinstance(file, UploadFile)
+            content = await file.read()
+        return JSONResponse({"size": len(content)})
+
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=10)]
+    )
+    client = test_client_factory(app)
+
+    # Small file within limit should work
+    response = client.post("/", files={"file": ("small.txt", b"abc")})
+    assert response.json() == {"size": 3}
+
+    # File exceeding limit should return 413
+    response = client.post("/", files={"file": ("large.txt", b"a" * 100)})
+    assert response.status_code == 413
+
+
+def test_request_max_upload_size_multiple_files(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> Response:
+        async with request.form() as form:
+            total = 0
+            for key in form:
+                file = form[key]
+                if isinstance(file, UploadFile):
+                    content = await file.read()
+                    total += len(content)
+        return JSONResponse({"total": total})
+
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=50)]
+    )
+    client = test_client_factory(app)
+
+    # Multiple small files within total limit should work
+    response = client.post("/", files=[("f1", ("a.txt", b"a" * 10)), ("f2", ("b.txt", b"b" * 10))])
+    assert response.json() == {"total": 20}
+
+    # Multiple files exceeding total limit should return 413
+    response = client.post("/", files=[("f1", ("a.txt", b"a" * 30)), ("f2", ("b.txt", b"b" * 30))])
+    assert response.status_code == 413
+
+
+def test_request_max_upload_size_via_starlette(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> Response:
+        async with request.form() as form:
+            file = form["file"]
+            assert isinstance(file, UploadFile)
+            content = await file.read()
+        return JSONResponse({"size": len(content)})
+
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint, methods=["POST"])],
+        max_upload_size=10,
+    )
+    client = test_client_factory(app)
+
+    # Small file within limit should work
+    response = client.post("/", files={"file": ("small.txt", b"abc")})
+    assert response.json() == {"size": 3}
+
+    # File exceeding limit should return 413
+    response = client.post("/", files={"file": ("large.txt", b"a" * 100)})
+    assert response.status_code == 413
+
+
+def test_request_max_upload_size_via_mount(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> Response:
+        async with request.form() as form:
+            file = form["file"]
+            assert isinstance(file, UploadFile)
+            content = await file.read()
+        return JSONResponse({"size": len(content)})
+
+    app = Starlette(
+        routes=[
+            Mount(
+                "/api",
+                routes=[Route("/upload", endpoint=endpoint, methods=["POST"])],
+                max_upload_size=10,
+            )
+        ]
+    )
+    client = test_client_factory(app)
+
+    # Small file within limit should work
+    response = client.post("/api/upload", files={"file": ("small.txt", b"abc")})
+    assert response.json() == {"size": 3}
+
+    # File exceeding limit should return 413
+    response = client.post("/api/upload", files={"file": ("large.txt", b"a" * 100)})
+    assert response.status_code == 413
+
+
+def test_request_max_body_size_does_not_affect_multipart(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> Response:
+        async with request.form() as form:
+            file = form["file"]
+            assert isinstance(file, UploadFile)
+            content = await file.read()
+        return JSONResponse({"size": len(content)})
+
+    # max_body_size=10 should NOT block a multipart upload of 100 bytes
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_body_size=10)]
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/", files={"file": ("file.txt", b"a" * 100)})
+    assert response.status_code == 200
+    assert response.json() == {"size": 100}
+
+
+def test_request_max_upload_size_does_not_affect_body(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> Response:
+        body = await request.body()
+        return JSONResponse({"size": len(body)})
+
+    # max_upload_size=10 should NOT block a regular body of 100 bytes
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=10)]
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/", data="a" * 100)  # type: ignore
+    assert response.status_code == 200
+    assert response.json() == {"size": 100}
+
+
+def test_request_max_body_size_and_max_upload_size_together(test_client_factory: TestClientFactory) -> None:
+    async def body_endpoint(request: Request) -> Response:
+        body = await request.body()
+        return JSONResponse({"size": len(body)})
+
+    async def upload_endpoint(request: Request) -> Response:
+        async with request.form() as form:
+            file = form["file"]
+            assert isinstance(file, UploadFile)
+            content = await file.read()
+        return JSONResponse({"size": len(content)})
+
+    app = Starlette(
+        routes=[
+            Route("/body", endpoint=body_endpoint, methods=["POST"]),
+            Route("/upload", endpoint=upload_endpoint, methods=["POST"]),
+        ],
+        max_body_size=10,
+        max_upload_size=1000,
+    )
+    client = test_client_factory(app)
+
+    # Regular body over max_body_size should be rejected
+    response = client.post("/body", data="a" * 100)  # type: ignore
+    assert response.status_code == 413
+
+    # File upload within max_upload_size should work (not limited by max_body_size)
+    response = client.post("/upload", files={"file": ("file.txt", b"a" * 100)})
+    assert response.status_code == 200
+    assert response.json() == {"size": 100}
+
+    # File upload over max_upload_size should be rejected
+    response = client.post("/upload", files={"file": ("file.txt", b"a" * 2000)})
+    assert response.status_code == 413

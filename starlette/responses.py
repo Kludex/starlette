@@ -6,7 +6,6 @@ import json
 import os
 import stat
 import sys
-import warnings
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Mapping, Sequence
 from datetime import datetime
 from email.utils import format_datetime, formatdate
@@ -302,17 +301,11 @@ class FileResponse(Response):
         background: BackgroundTask | None = None,
         filename: str | None = None,
         stat_result: os.stat_result | None = None,
-        method: str | None = None,
         content_disposition_type: str = "attachment",
     ) -> None:
         self.path = path
         self.status_code = status_code
         self.filename = filename
-        if method is not None:
-            warnings.warn(
-                "The 'method' parameter is not used, and it will be removed.",
-                DeprecationWarning,
-            )
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "text/plain"
         self.media_type = media_type

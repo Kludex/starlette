@@ -13,7 +13,7 @@ import anyio.to_thread
 from starlette._utils import get_route_path
 from starlette.datastructures import URL, Headers
 from starlette.exceptions import HTTPException
-from starlette.responses import FileResponse, RedirectResponse, Response
+from starlette.responses import BaseResponse, FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
 
 PathLike = Union[str, "os.PathLike[str]"]
@@ -106,7 +106,7 @@ class StaticFiles:
         route_path = get_route_path(scope)
         return os.path.normpath(os.path.join(*route_path.split("/")))
 
-    async def get_response(self, path: str, scope: Scope) -> Response:
+    async def get_response(self, path: str, scope: Scope) -> BaseResponse:
         """
         Returns an HTTP response, given the incoming path, method and request headers.
         """
@@ -175,7 +175,7 @@ class StaticFiles:
         stat_result: os.stat_result,
         scope: Scope,
         status_code: int = 200,
-    ) -> Response:
+    ) -> BaseResponse:
         request_headers = Headers(scope=scope)
 
         response = FileResponse(full_path, status_code=status_code, stat_result=stat_result)

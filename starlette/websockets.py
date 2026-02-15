@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator, Iterable
 from typing import Any, cast
 
 from starlette.requests import HTTPConnection, StateT
-from starlette.responses import Response
+from starlette.responses import BaseResponse
 from starlette.types import Message, Receive, Scope, Send
 
 
@@ -180,7 +180,7 @@ class WebSocket(HTTPConnection[StateT]):
     async def close(self, code: int = 1000, reason: str | None = None) -> None:
         await self.send({"type": "websocket.close", "code": code, "reason": reason or ""})
 
-    async def send_denial_response(self, response: Response) -> None:
+    async def send_denial_response(self, response: BaseResponse) -> None:
         if "websocket.http.response" in self.scope.get("extensions", {}):
             await response(self.scope, self.receive, self.send)
         else:

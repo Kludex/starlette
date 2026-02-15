@@ -13,7 +13,7 @@ from email.utils import format_datetime, formatdate
 from functools import partial
 from mimetypes import guess_type
 from secrets import token_hex
-from typing import Any, Literal
+from typing import Any, Generic, Literal
 from urllib.parse import quote
 
 import anyio
@@ -26,14 +26,20 @@ from starlette.datastructures import URL, Headers, MutableHeaders
 from starlette.requests import ClientDisconnect
 from starlette.types import Receive, Scope, Send
 
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from typing import TypeVar
+else:  # pragma: no cover
+    from typing_extensions import TypeVar
 
-class Response:
-    media_type = None
+ContentT = TypeVar("ContentT", default=Any)
+
+
+class BaseResponse:
+    media_type: str | None = None
     charset = "utf-8"
 
     def __init__(
         self,
-        content: Any = None,
         status_code: int = 200,
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
@@ -43,15 +49,7 @@ class Response:
         if media_type is not None:
             self.media_type = media_type
         self.background = background
-        self.body = self.render(content)
         self.init_headers(headers)
-
-    def render(self, content: Any) -> bytes | memoryview:
-        if content is None:
-            return b""
-        if isinstance(content, bytes | memoryview):
-            return content
-        return content.encode(self.charset)  # type: ignore
 
     def init_headers(self, headers: Mapping[str, str] | None = None) -> None:
         if headers is None:
@@ -153,14 +151,31 @@ class Response:
         )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        raise NotImplementedError()  # pragma: no cover
+
+
+class Response(BaseResponse, Generic[ContentT]):
+    def __init__(
+        self,
+        content: ContentT | None = None,
+        status_code: int = 200,
+        headers: Mapping[str, str] | None = None,
+        media_type: str | None = None,
+        background: BackgroundTask | None = None,
+    ) -> None:
+        self.body = self.render(content)
+        super().__init__(status_code, headers, media_type, background)
+
+    def render(self, content: ContentT | None) -> bytes | memoryview:
+        if content is None:
+            return b""
+        if isinstance(content, bytes | memoryview):
+            return content
+        return content.encode(self.charset)  # type: ignore
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         prefix = "websocket." if scope["type"] == "websocket" else ""
-        await send(
-            {
-                "type": prefix + "http.response.start",
-                "status": self.status_code,
-                "headers": self.raw_headers,
-            }
-        )
+        await send({"type": prefix + "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         await send({"type": prefix + "http.response.body", "body": self.body})
 
         if self.background is not None:
@@ -175,12 +190,12 @@ class PlainTextResponse(Response):
     media_type = "text/plain"
 
 
-class JSONResponse(Response):
+class JSONResponse(Response[ContentT]):
     media_type = "application/json"
 
     def __init__(
         self,
-        content: Any,
+        content: ContentT,
         status_code: int = 200,
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
@@ -188,7 +203,7 @@ class JSONResponse(Response):
     ) -> None:
         super().__init__(content, status_code, headers, media_type, background)
 
-    def render(self, content: Any) -> bytes:
+    def render(self, content: ContentT | None) -> bytes:
         return json.dumps(
             content,
             ensure_ascii=False,
@@ -216,7 +231,7 @@ AsyncContentStream = AsyncIterable[Content]
 ContentStream = AsyncContentStream | SyncContentStream
 
 
-class StreamingResponse(Response):
+class StreamingResponse(BaseResponse):
     body_iterator: AsyncContentStream
 
     def __init__(
@@ -231,10 +246,7 @@ class StreamingResponse(Response):
             self.body_iterator = content
         else:
             self.body_iterator = iterate_in_threadpool(content)
-        self.status_code = status_code
-        self.media_type = self.media_type if media_type is None else media_type
-        self.background = background
-        self.init_headers(headers)
+        super().__init__(status_code, headers, media_type, background)
 
     async def listen_for_disconnect(self, receive: Receive) -> None:
         while True:
@@ -290,7 +302,7 @@ class RangeNotSatisfiable(Exception):
         self.max_size = max_size
 
 
-class FileResponse(Response):
+class FileResponse(BaseResponse):
     chunk_size = 64 * 1024
 
     def __init__(
@@ -306,7 +318,6 @@ class FileResponse(Response):
         content_disposition_type: str = "attachment",
     ) -> None:
         self.path = path
-        self.status_code = status_code
         self.filename = filename
         if method is not None:
             warnings.warn(
@@ -315,9 +326,7 @@ class FileResponse(Response):
             )
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "text/plain"
-        self.media_type = media_type
-        self.background = background
-        self.init_headers(headers)
+        super().__init__(status_code, headers, media_type, background)
         self.headers.setdefault("accept-ranges", "bytes")
         if self.filename is not None:
             content_disposition_filename = quote(self.filename)

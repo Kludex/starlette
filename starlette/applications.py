@@ -8,7 +8,7 @@ from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import BaseResponse
 from starlette.routing import BaseRoute, Router
 from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope, Send
 
@@ -110,7 +110,7 @@ class Starlette:
     def add_route(
         self,
         path: str,
-        route: Callable[[Request], Awaitable[Response] | Response],
+        route: Callable[[Request], Awaitable[BaseResponse] | BaseResponse],
         methods: list[str] | None = None,
         name: str | None = None,
         include_in_schema: bool = True,

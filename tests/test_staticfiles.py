@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import BaseResponse
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 from tests.types import TestClientFactory
@@ -51,7 +51,7 @@ def test_staticfiles_head_with_middleware(tmpdir: Path, test_client_factory: Tes
     with open(path, "w") as file:
         file.write("x" * 100)
 
-    async def does_nothing_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def does_nothing_middleware(request: Request, call_next: RequestResponseEndpoint) -> BaseResponse:
         response = await call_next(request)
         return response
 

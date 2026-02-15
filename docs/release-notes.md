@@ -76,6 +76,8 @@ and [@codingjoe](https://github.com/codingjoe).
   [#3118](https://github.com/encode/starlette/pull/3118).
 * Remove deprecated `TemplateResponse(name, context)` signature from `Jinja2Templates`.
   Use `TemplateResponse(request, name, ...)` instead [#3118](https://github.com/encode/starlette/pull/3118).
+* Remove deprecated `method` parameter from `FileResponse`
+  [#3147](https://github.com/encode/starlette/pull/3147).
 
 #### Added
 

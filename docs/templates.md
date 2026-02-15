@@ -10,7 +10,7 @@ Signature: `Jinja2Templates(directory, context_processors=None)`
 
 Starlette provides a simple way to get `jinja2` configured. This is probably
 what you want to use by default. Autoescape is enabled by default for
-`.html`, `.htm`, `.svg`, and `.xml` templates using `jinja2.select_autoescape()`.
+`.html`, `.htm`, and `.xml` templates using `jinja2.select_autoescape()`.
 
 ```python
 from starlette.applications import Starlette

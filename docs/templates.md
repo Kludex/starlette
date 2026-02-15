@@ -3,14 +3,14 @@ Jinja2 provides an excellent choice.
 
 ### Jinja2Templates
 
-Signature: `Jinja2Templates(directory, context_processors=None, **env_options)`
+Signature: `Jinja2Templates(directory, context_processors=None)`
 
 * `directory` - A string, [os.Pathlike][pathlike] or a list of strings or [os.Pathlike][pathlike] denoting a directory path.
 * `context_processors` - A list of functions that return a dictionary to add to the template context.
-* `**env_options` - Additional keyword arguments to pass to the Jinja2 environment.
 
 Starlette provides a simple way to get `jinja2` configured. This is probably
-what you want to use by default.
+what you want to use by default. Autoescape is enabled by default for
+`.html`, `.htm`, `.svg`, and `.xml` templates using `jinja2.select_autoescape()`.
 
 ```python
 from starlette.applications import Starlette
@@ -124,20 +124,6 @@ def test_homepage():
     assert response.status_code == 200
     assert response.template.name == 'index.html'
     assert "request" in response.context
-```
-
-## Customizing Jinja2 Environment
-
-`Jinja2Templates` accepts all options supported by Jinja2 `Environment`.
-This will allow more control over the `Environment` instance created by Starlette.
-
-For the list of options available to `Environment` you can check Jinja2 documentation [here](https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment)
-
-```python
-from starlette.templating import Jinja2Templates
-
-
-templates = Jinja2Templates(directory='templates', autoescape=False, auto_reload=True)
 ```
 
 ## Asynchronous template rendering

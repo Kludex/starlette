@@ -3,9 +3,10 @@ Jinja2 provides an excellent choice.
 
 ### Jinja2Templates
 
-Signature: `Jinja2Templates(directory, context_processors=None)`
+Signature: `Jinja2Templates(directory, context_processors=None)` or `Jinja2Templates(env, context_processors=None)`
 
 * `directory` - A string, [os.Pathlike][pathlike] or a list of strings or [os.Pathlike][pathlike] denoting a directory path.
+* `env` - A preconfigured [`jinja2.Environment`](https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment) instance.
 * `context_processors` - A list of functions that return a dictionary to add to the template context.
 
 Starlette provides a simple way to get `jinja2` configured. This is probably

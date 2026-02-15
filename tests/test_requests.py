@@ -828,7 +828,6 @@ def test_request_max_body_size_route_overrides_router(test_client_factory: TestC
 
 
 def test_request_max_body_size_in_scope(test_client_factory: TestClientFactory) -> None:
-
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         scope["max_body_size"] = 10
         request = Request(scope, receive)
@@ -854,7 +853,6 @@ def test_request_max_body_size_in_scope(test_client_factory: TestClientFactory) 
 
 
 def test_request_body_max_body_size_cached_body(test_client_factory: TestClientFactory) -> None:
-
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         # First call without max_body_size caches the body
@@ -877,7 +875,6 @@ def test_request_body_max_body_size_cached_body(test_client_factory: TestClientF
 
 
 def test_request_stream_max_body_size_cached_body(test_client_factory: TestClientFactory) -> None:
-
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         # First call caches the body
@@ -964,9 +961,7 @@ def test_request_max_upload_size_via_route(test_client_factory: TestClientFactor
             content = await file.read()
         return JSONResponse({"size": len(content)})
 
-    app = Starlette(
-        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=10)]
-    )
+    app = Starlette(routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=10)])
     client = test_client_factory(app)
 
     # Small file within limit should work
@@ -989,9 +984,7 @@ def test_request_max_upload_size_multiple_files(test_client_factory: TestClientF
                     total += len(content)
         return JSONResponse({"total": total})
 
-    app = Starlette(
-        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=50)]
-    )
+    app = Starlette(routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=50)])
     client = test_client_factory(app)
 
     # Multiple small files within total limit should work
@@ -1063,9 +1056,7 @@ def test_request_max_body_size_does_not_affect_multipart(test_client_factory: Te
         return JSONResponse({"size": len(content)})
 
     # max_body_size=10 should NOT block a multipart upload of 100 bytes
-    app = Starlette(
-        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_body_size=10)]
-    )
+    app = Starlette(routes=[Route("/", endpoint=endpoint, methods=["POST"], max_body_size=10)])
     client = test_client_factory(app)
 
     response = client.post("/", files={"file": ("file.txt", b"a" * 100)})
@@ -1079,9 +1070,7 @@ def test_request_max_upload_size_does_not_affect_body(test_client_factory: TestC
         return JSONResponse({"size": len(body)})
 
     # max_upload_size=10 should NOT block a regular body of 100 bytes
-    app = Starlette(
-        routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=10)]
-    )
+    app = Starlette(routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=10)])
     client = test_client_factory(app)
 
     response = client.post("/", data="a" * 100)  # type: ignore

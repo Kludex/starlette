@@ -1,17 +1,17 @@
 Starlette is not _strictly_ coupled to any particular templating engine, but
 Jinja2 provides an excellent choice.
 
-### Jinja2Templates
-
-Signature: `Jinja2Templates(directory, context_processors=None)` or `Jinja2Templates(env, context_processors=None)`
-
-* `directory` - A string, [os.Pathlike][pathlike] or a list of strings or [os.Pathlike][pathlike] denoting a directory path.
-* `env` - A preconfigured [`jinja2.Environment`](https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment) instance.
-* `context_processors` - A list of functions that return a dictionary to add to the template context.
+??? abstract "API Reference"
+    ::: starlette.templating.Jinja2Templates
+        options:
+            parameter_headings: false
+            show_root_heading: true
+            heading_level: 3
+            filters:
+                - "__init__"
 
 Starlette provides a simple way to get `jinja2` configured. This is probably
-what you want to use by default. Autoescape is enabled by default for
-`.html`, `.htm`, and `.xml` templates using `jinja2.select_autoescape()`.
+what you want to use by default.
 
 ```python
 from starlette.applications import Starlette
@@ -73,6 +73,16 @@ env = jinja2.Environment(...)
 templates = Jinja2Templates(env=env)
 ```
 
+
+## Autoescape
+
+When using the `directory` argument, Starlette enables autoescape by default for
+`.html`, `.htm`, and `.xml` templates using [`jinja2.select_autoescape()`](https://jinja.palletsprojects.com/en/stable/api/#jinja2.select_autoescape).
+
+This protects against Cross-Site Scripting (XSS) vulnerabilities by escaping
+user-provided content before rendering it in the template. For example, if a user
+submits `<script>alert('XSS')</script>` as their name, it will be rendered as
+`&lt;script&gt;alert('XSS')&lt;/script&gt;` instead of being executed as JavaScript.
 
 ## Context processors
 

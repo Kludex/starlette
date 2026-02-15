@@ -27,6 +27,7 @@ class Starlette:
         exception_handlers: Mapping[Any, ExceptionHandler] | None = None,
         lifespan: Lifespan[AppType] | None = None,
         max_body_size: int | None = None,
+        max_upload_size: int | None = None,
     ) -> None:
         """Initializes the application.
 
@@ -49,10 +50,13 @@ class Starlette:
                 `on_startup` and `on_shutdown` handlers. Use one or the other, not both.
             max_body_size: Maximum allowed request body size in bytes. If set,
                 requests with bodies exceeding this limit will receive a 413 response.
+                Does not affect multipart file uploads.
+            max_upload_size: Maximum total size in bytes of all uploaded files
+                in multipart form data. Does not affect the regular request body.
         """
         self.debug = debug
         self.state = State()
-        self.router = Router(routes, lifespan=lifespan, max_body_size=max_body_size)
+        self.router = Router(routes, lifespan=lifespan, max_body_size=max_body_size, max_upload_size=max_upload_size)
         self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
         self.user_middleware = [] if middleware is None else list(middleware)
         self.middleware_stack: ASGIApp | None = None

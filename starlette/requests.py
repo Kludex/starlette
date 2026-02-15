@@ -11,7 +11,7 @@ import anyio
 from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManagerWrapper
 from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
 from starlette.exceptions import HTTPException
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
+from starlette.formparsers import FormParser, MultiPartException, MultiPartParser, MultiPartSizeException
 from starlette.types import Message, Receive, Scope, Send
 
 if TYPE_CHECKING:
@@ -225,6 +225,26 @@ class Request(HTTPConnection[StateT]):
     def receive(self) -> Receive:
         return self._receive
 
+    async def _stream(self) -> AsyncGenerator[bytes, None]:
+        if hasattr(self, "_body"):
+            yield self._body
+            yield b""
+            return
+        if self._stream_consumed:
+            raise RuntimeError("Stream consumed")
+        while not self._stream_consumed:
+            message = await self._receive()
+            if message["type"] == "http.request":
+                body = message.get("body", b"")
+                if not message.get("more_body", False):
+                    self._stream_consumed = True
+                if body:
+                    yield body
+            elif message["type"] == "http.disconnect":  # pragma: no branch
+                self._is_disconnected = True
+                raise ClientDisconnect()
+        yield b""
+
     async def stream(self) -> AsyncGenerator[bytes, None]:
         max_body_size: int | None = self.scope.get("max_body_size")
         if max_body_size is not None:
@@ -235,30 +255,14 @@ class Request(HTTPConnection[StateT]):
                         raise HTTPException(status_code=413, detail="Content Too Large")
                 except ValueError:
                     pass
-        if hasattr(self, "_body"):
-            if max_body_size is not None and len(self._body) > max_body_size:
-                raise HTTPException(status_code=413, detail="Content Too Large")
-            yield self._body
-            yield b""
-            return
-        if self._stream_consumed:
-            raise RuntimeError("Stream consumed")
         total_size = 0
-        while not self._stream_consumed:
-            message = await self._receive()
-            if message["type"] == "http.request":
-                body = message.get("body", b"")
-                if not message.get("more_body", False):
-                    self._stream_consumed = True
-                if body:
-                    total_size += len(body)
-                    if max_body_size is not None and total_size > max_body_size:
+        async for chunk in self._stream():
+            if chunk:
+                if max_body_size is not None:
+                    total_size += len(chunk)
+                    if total_size > max_body_size:
                         raise HTTPException(status_code=413, detail="Content Too Large")
-                    yield body
-            elif message["type"] == "http.disconnect":  # pragma: no branch
-                self._is_disconnected = True
-                raise ClientDisconnect()
-        yield b""
+            yield chunk
 
     async def body(self) -> bytes:
         if not hasattr(self, "_body"):
@@ -293,16 +297,25 @@ class Request(HTTPConnection[StateT]):
             content_type: bytes
             content_type, _ = parse_options_header(content_type_header)
             if content_type == b"multipart/form-data":
+                multipart_stream = self._stream()
                 try:
+                    max_upload_size: int | None = self.scope.get("max_upload_size")
                     multipart_parser = MultiPartParser(
                         self.headers,
-                        self.stream(),
+                        multipart_stream,
                         max_files=max_files,
                         max_fields=max_fields,
                         max_part_size=max_part_size,
+                        max_upload_size=max_upload_size,
                     )
                     self._form = await multipart_parser.parse()
+                except MultiPartSizeException as exc:
+                    await multipart_stream.aclose()
+                    if "app" in self.scope:
+                        raise HTTPException(status_code=413, detail=exc.message)
+                    raise exc
                 except MultiPartException as exc:
+                    await multipart_stream.aclose()
                     if "app" in self.scope:
                         raise HTTPException(status_code=400, detail=exc.message)
                     raise exc

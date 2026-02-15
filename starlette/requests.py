@@ -225,7 +225,8 @@ class Request(HTTPConnection[StateT]):
     def receive(self) -> Receive:
         return self._receive
 
-    async def stream(self, max_body_size: int | None = None) -> AsyncGenerator[bytes, None]:
+    async def stream(self) -> AsyncGenerator[bytes, None]:
+        max_body_size: int | None = self.scope.get("max_body_size")
         if max_body_size is not None:
             content_length = self.headers.get("content-length")
             if content_length is not None:
@@ -259,23 +260,22 @@ class Request(HTTPConnection[StateT]):
                 raise ClientDisconnect()
         yield b""
 
-    async def body(self, max_body_size: int | None = None) -> bytes:
+    async def body(self) -> bytes:
         if not hasattr(self, "_body"):
             chunks: list[bytes] = []
-            async for chunk in self.stream(max_body_size=max_body_size):
+            async for chunk in self.stream():
                 chunks.append(chunk)
             self._body = b"".join(chunks)
-        elif max_body_size is not None and len(self._body) > max_body_size:
-            raise HTTPException(status_code=413, detail="Content Too Large")
+        else:
+            max_body_size: int | None = self.scope.get("max_body_size")
+            if max_body_size is not None and len(self._body) > max_body_size:
+                raise HTTPException(status_code=413, detail="Content Too Large")
         return self._body
 
-    async def json(self, max_body_size: int | None = None) -> Any:
+    async def json(self) -> Any:
         if not hasattr(self, "_json"):
-            body = await self.body(max_body_size=max_body_size)
+            body = await self.body()
             self._json = json.loads(body)
-        elif max_body_size is not None:
-            # Only to potentially trigger the exception
-            await self.body(max_body_size=max_body_size)
         return self._json
 
     async def _get_form(
@@ -284,7 +284,6 @@ class Request(HTTPConnection[StateT]):
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,
-        max_body_size: int | None = None,
     ) -> FormData:
         if self._form is None:  # pragma: no branch
             assert parse_options_header is not None, (
@@ -297,7 +296,7 @@ class Request(HTTPConnection[StateT]):
                 try:
                     multipart_parser = MultiPartParser(
                         self.headers,
-                        self.stream(max_body_size=max_body_size),
+                        self.stream(),
                         max_files=max_files,
                         max_fields=max_fields,
                         max_part_size=max_part_size,
@@ -308,7 +307,7 @@ class Request(HTTPConnection[StateT]):
                         raise HTTPException(status_code=400, detail=exc.message)
                     raise exc
             elif content_type == b"application/x-www-form-urlencoded":
-                form_parser = FormParser(self.headers, self.stream(max_body_size=max_body_size))
+                form_parser = FormParser(self.headers, self.stream())
                 self._form = await form_parser.parse()
             else:
                 self._form = FormData()
@@ -320,11 +319,10 @@ class Request(HTTPConnection[StateT]):
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,
-        max_body_size: int | None = None,
     ) -> AwaitableOrContextManager[FormData]:
         return AwaitableOrContextManagerWrapper(
             self._get_form(
-                max_files=max_files, max_fields=max_fields, max_part_size=max_part_size, max_body_size=max_body_size
+                max_files=max_files, max_fields=max_fields, max_part_size=max_part_size
             )
         )
 

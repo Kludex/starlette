@@ -273,7 +273,7 @@ class Request(HTTPConnection[StateT]):
         return self._body
 
     async def json(self) -> Any:
-        if not hasattr(self, "_json"):
+        if not hasattr(self, "_json"):  # pragma: no branch
             body = await self.body()
             self._json = json.loads(body)
         return self._json

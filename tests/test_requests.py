@@ -1129,9 +1129,7 @@ async def test_request_max_upload_size_outside_app_context() -> None:
         body = (
             boundary + b"\r\n"
             b'Content-Disposition: form-data; name="file"; filename="big.txt"\r\n'
-            b"Content-Type: text/plain\r\n\r\n"
-            + b"a" * 100 + b"\r\n"
-            + boundary + b"--\r\n"
+            b"Content-Type: text/plain\r\n\r\n" + b"a" * 100 + b"\r\n" + boundary + b"--\r\n"
         )
         return {"type": "http.request", "body": body}
 

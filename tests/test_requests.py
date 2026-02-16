@@ -10,6 +10,7 @@ import pytest
 from starlette.applications import Starlette
 from starlette.datastructures import URL, Address, State, UploadFile
 from starlette.exceptions import HTTPException
+from starlette.formparsers import MultiPartSizeException
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Mount, Route
@@ -978,10 +979,10 @@ def test_request_max_upload_size_multiple_files(test_client_factory: TestClientF
         async with request.form() as form:
             total = 0
             for key in form:
-                file = form[key]
-                if isinstance(file, UploadFile):
-                    content = await file.read()
-                    total += len(content)
+                upload_file = form[key]
+                assert isinstance(upload_file, UploadFile)
+                content = await upload_file.read()
+                total += len(content)
         return JSONResponse({"total": total})
 
     app = Starlette(routes=[Route("/", endpoint=endpoint, methods=["POST"], max_upload_size=50)])
@@ -1100,6 +1101,11 @@ def test_request_max_body_size_and_max_upload_size_together(test_client_factory:
     )
     client = test_client_factory(app)
 
+    # Regular body within max_body_size should work
+    response = client.post("/body", data="abc")  # type: ignore
+    assert response.status_code == 200
+    assert response.json() == {"size": 3}
+
     # Regular body over max_body_size should be rejected
     response = client.post("/body", data="a" * 100)  # type: ignore
     assert response.status_code == 413
@@ -1112,3 +1118,29 @@ def test_request_max_body_size_and_max_upload_size_together(test_client_factory:
     # File upload over max_upload_size should be rejected
     response = client.post("/upload", files={"file": ("file.txt", b"a" * 2000)})
     assert response.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_request_max_upload_size_outside_app_context() -> None:
+    """MultiPartSizeException is raised directly when not inside a Starlette app."""
+
+    async def receive() -> Message:
+        boundary = b"--testboundary"
+        body = (
+            boundary + b"\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="big.txt"\r\n'
+            b"Content-Type: text/plain\r\n\r\n"
+            + b"a" * 100 + b"\r\n"
+            + boundary + b"--\r\n"
+        )
+        return {"type": "http.request", "body": body}
+
+    scope: Scope = {
+        "type": "http",
+        "method": "POST",
+        "headers": [(b"content-type", b"multipart/form-data; boundary=testboundary")],
+        "max_upload_size": 10,
+    }
+    request = Request(scope, receive)
+    with pytest.raises(MultiPartSizeException):
+        await request.form()

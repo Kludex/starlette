@@ -413,6 +413,7 @@ class Mount(BaseRoute):
                     "app_root_path": scope.get("app_root_path", root_path),
                     "root_path": root_path + matched_path,
                     "endpoint": self.app,
+                    "route": self,
                 }
                 return Match.FULL, child_scope
         return Match.NONE, {}

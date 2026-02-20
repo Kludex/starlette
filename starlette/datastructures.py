@@ -125,7 +125,7 @@ class URL:
                 netloc = self.netloc
                 _, _, hostname = netloc.rpartition("@")
 
-                if hostname[-1] != "]":
+                if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
 
             netloc = hostname

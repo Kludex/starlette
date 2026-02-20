@@ -704,3 +704,15 @@ class State:
 
     def __len__(self) -> int:
         return len(self._state)
+
+    def __contains__(self, key: Any) -> bool:
+        return key in self._state
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, State):
+            return NotImplemented
+        return self._state == other._state
+
+    def __repr__(self) -> str:
+        contents = ", ".join(f"{k}={v!r}" for k, v in self._state.items())
+        return f"{self.__class__.__name__}({contents})"

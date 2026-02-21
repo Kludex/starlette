@@ -71,6 +71,7 @@ class Jinja2Templates:
         directory: str | PathLike[str] | Sequence[str | PathLike[str]],
         *,
         context_processors: list[Callable[[Request], dict[str, Any]]] | None = None,
+        **env_options: Any,
     ) -> None: ...
 
     @overload
@@ -79,6 +80,7 @@ class Jinja2Templates:
         *,
         env: jinja2.Environment,
         context_processors: list[Callable[[Request], dict[str, Any]]] | None = None,
+        **env_options: Any,
     ) -> None: ...
 
     def __init__(
@@ -87,12 +89,14 @@ class Jinja2Templates:
         *,
         context_processors: list[Callable[[Request], dict[str, Any]]] | None = None,
         env: jinja2.Environment | None = None,
+        **env_options: Any,
     ) -> None:
         assert bool(directory) ^ bool(env), "either 'directory' or 'env' arguments must be passed"
         self.context_processors = context_processors or []
         if directory is not None:
+            env_options.setdefault("autoescape", jinja2.select_autoescape())
             loader = jinja2.FileSystemLoader(directory)
-            self.env = jinja2.Environment(loader=loader)
+            self.env = jinja2.Environment(loader=loader, **env_options)
         elif env is not None:  # pragma: no branch
             self.env = env
 

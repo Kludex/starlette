@@ -34,6 +34,28 @@ def test_templates(tmpdir: Path, test_client_factory: TestClientFactory) -> None
     assert set(response.context.keys()) == {"request"}  # type: ignore
 
 
+def test_templates_autoescape(tmpdir: Path) -> None:
+    path = os.path.join(tmpdir, "index.html")
+    with open(path, "w") as file:
+        file.write("Hello, {{ name }}")
+
+    templates = Jinja2Templates(directory=str(tmpdir))
+    template = templates.get_template("index.html")
+    content = template.render(name="<script>alert('XSS')</script>")
+    assert content == "Hello, &lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;"
+
+
+def test_templates_autoescape_disabled(tmpdir: Path) -> None:
+    path = os.path.join(tmpdir, "index.html")
+    with open(path, "w") as file:
+        file.write("Hello, {{ name }}")
+
+    templates = Jinja2Templates(directory=str(tmpdir), autoescape=False)
+    template = templates.get_template("index.html")
+    content = template.render(name="<script>alert('XSS')</script>")
+    assert content == "Hello, <script>alert('XSS')</script>"
+
+
 def test_calls_context_processors(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     path = tmp_path / "index.html"
     path.write_text("<html>Hello {{ username }}</html>")
@@ -130,7 +152,7 @@ def test_templates_require_directory_or_environment() -> None:
 
 def test_templates_require_directory_or_environment_not_both() -> None:
     with pytest.raises(AssertionError, match="either 'directory' or 'env' arguments must be passed"):
-        Jinja2Templates(directory="dir", env=jinja2.Environment())  # type: ignore[call-overload]
+        Jinja2Templates(directory="dir", env=jinja2.Environment())
 
 
 def test_templates_with_directory(tmpdir: Path) -> None:

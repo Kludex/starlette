@@ -129,7 +129,8 @@ def test_homepage():
 ## Customizing Jinja2 Environment
 
 `Jinja2Templates` accepts all options supported by Jinja2 `Environment`.
-This will allow more control over the `Environment` instance created by Starlette.
+Enabling `autoescape` by default for HTML/XML files using `jinja2.select_autoescape()` ensures a secure baseline against XSS vulnerabilities.
+These options can be customized or overridden by passing them as keyword arguments.
 
 For the list of options available to `Environment` you can check Jinja2 documentation [here](https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment)
 

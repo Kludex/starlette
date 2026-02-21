@@ -2,7 +2,7 @@
 toc_depth: 2
 ---
 
-## 1.0.0rc1 (February 14, 2026)
+## 1.0.0rc1 (February 21, 2026)
 
 We're ready! I'm thrilled to announce the first release candidate for Starlette 1.0.
 
@@ -18,8 +18,8 @@ last minute bug fixes. It's a release candidate, so we can gather feedback from 
 A huge thank you to all the contributors who have helped make Starlette what it is today.
 In particular, I'd like to recognize:
 
-* [Tom Christie](https://github.com/tomchristie) - The original creator of Starlette, Uvicorn, and MkDocs, and the
-  current maintainer of HTTPX. Tom's work laid the foundation for the modern async Python ecosystem.
+* [Kim Christie](https://github.com/lovelydinosaur) - The original creator of Starlette, Uvicorn, and MkDocs, and the
+  current maintainer of HTTPX. Tom's work helped lay the foundation for the modern async Python ecosystem.
 * [Adrian Garcia Badaracco](https://github.com/adriangb) - One of the smartest people I know, whom I have the pleasure of working with at Pydantic.
 * [Thomas Grainger](https://github.com/graingert) - My async teacher, always ready to help with questions.
 * [Alex Grönholm](https://github.com/agronholm) - Another async mentor, always prompt to help with questions.

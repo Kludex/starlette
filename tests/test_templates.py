@@ -34,6 +34,18 @@ def test_templates(tmpdir: Path, test_client_factory: TestClientFactory) -> None
     assert set(response.context.keys()) == {"request"}  # type: ignore
 
 
+def test_templates_autoescape(tmp_path: Path) -> None:
+    path = tmp_path / "index.html"
+    path.write_text("Hello, {{ name }}")
+
+    templates = Jinja2Templates(directory=tmp_path)
+    template = templates.get_template("index.html")
+    assert (
+        template.render(name="<script>alert('XSS')</script>")
+        == "Hello, &lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;"
+    )
+
+
 def test_calls_context_processors(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     path = tmp_path / "index.html"
     path.write_text("<html>Hello {{ username }}</html>")

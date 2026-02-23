@@ -56,7 +56,6 @@ nav:
   - Community:
       - Third Party Packages: "third-party-packages.md"
       - Contributing: "contributing.md"
-  - Sponsorship: "sponsorship.md"
 
 extra_css:
   - css/custom.css

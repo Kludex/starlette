@@ -69,15 +69,12 @@ and [@codingjoe](https://github.com/codingjoe).
   Use `exception_handlers` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
 * Remove `@app.middleware()` decorator from `Starlette`.
   Use `middleware` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
-* Remove `iscoroutinefunction_or_partial()` from `starlette.routing`
-  [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `iscoroutinefunction_or_partial()` from `starlette.routing` [#3117](https://github.com/encode/starlette/pull/3117).
 * Remove `**env_options` parameter from `Jinja2Templates`.
-  Use a preconfigured `jinja2.Environment` via the `env` parameter instead
-  [#3118](https://github.com/encode/starlette/pull/3118).
+  Use a preconfigured `jinja2.Environment` via the `env` parameter instead [#3118](https://github.com/encode/starlette/pull/3118).
 * Remove deprecated `TemplateResponse(name, context)` signature from `Jinja2Templates`.
   Use `TemplateResponse(request, name, ...)` instead [#3118](https://github.com/encode/starlette/pull/3118).
-* Remove deprecated `method` parameter from `FileResponse`
-  [#3147](https://github.com/encode/starlette/pull/3147).
+* Remove deprecated `method` parameter from `FileResponse` [#3147](https://github.com/encode/starlette/pull/3147).
 
 #### Added
 
@@ -88,14 +85,11 @@ and [@codingjoe](https://github.com/codingjoe).
 * Include `bytes` unit in `Content-Range` header on 416 responses.
 * Handle null bytes in `StaticFiles` path [#3139](https://github.com/encode/starlette/pull/3139).
 * Use sort-based merge for `Range` header parsing [#3138](https://github.com/encode/starlette/pull/3138).
-* Set `Content-Type` instead of `Content-Range` on multi-range responses
-  [#3142](https://github.com/encode/starlette/pull/3142).
-* Use CRLF line endings in multipart byterange boundaries
-  [#3143](https://github.com/encode/starlette/pull/3143).
-* Avoid mutating `FileResponse` headers on range requests
-  [#3144](https://github.com/encode/starlette/pull/3144).
-* Return explicit origin in CORS response when credentials are allowed
-  [#3137](https://github.com/encode/starlette/pull/3137).
+* Set `Content-Type` instead of `Content-Range` on multi-range responses [#3142](https://github.com/encode/starlette/pull/3142).
+* Use CRLF line endings in multipart byterange boundaries [#3143](https://github.com/encode/starlette/pull/3143).
+* Avoid mutating `FileResponse` headers on range requests [#3144](https://github.com/encode/starlette/pull/3144).
+* Return explicit origin in CORS response when credentials are allowed [#3137](https://github.com/encode/starlette/pull/3137).
+* Enable `autoescape` by default in `Jinja2Templates` [#3148](https://github.com/encode/starlette/pull/3148).
 
 #### Changed
 

@@ -2,7 +2,7 @@
 toc_depth: 2
 ---
 
-## 1.0.0rc1 (February 21, 2026)
+## 1.0.0rc1 (February 23, 2026)
 
 We're ready! I'm thrilled to announce the first release candidate for Starlette 1.0.
 

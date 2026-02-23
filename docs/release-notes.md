@@ -19,7 +19,7 @@ A huge thank you to all the contributors who have helped make Starlette what it 
 In particular, I'd like to recognize:
 
 * [Kim Christie](https://github.com/lovelydinosaur) - The original creator of Starlette, Uvicorn, and MkDocs, and the
-  current maintainer of HTTPX. Tom's work helped lay the foundation for the modern async Python ecosystem.
+  current maintainer of HTTPX. Kim's work helped lay the foundation for the modern async Python ecosystem.
 * [Adrian Garcia Badaracco](https://github.com/adriangb) - One of the smartest people I know, whom I have the pleasure of working with at Pydantic.
 * [Thomas Grainger](https://github.com/graingert) - My async teacher, always ready to help with questions.
 * [Alex Grönholm](https://github.com/agronholm) - Another async mentor, always prompt to help with questions.

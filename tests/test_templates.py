@@ -10,7 +10,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import BaseResponse, Response
 from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 from tests.types import TestClientFactory
@@ -83,7 +83,7 @@ def test_template_with_middleware(tmpdir: Path, test_client_factory: TestClientF
         return templates.TemplateResponse(request, "index.html")
 
     class CustomMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> BaseResponse:
             return await call_next(request)
 
     app = Starlette(

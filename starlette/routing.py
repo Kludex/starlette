@@ -21,7 +21,7 @@ from starlette.datastructures import URL, Headers, URLPath
 from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from starlette.responses import BaseResponse, PlainTextResponse, RedirectResponse
 from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
 
@@ -44,13 +44,13 @@ class Match(Enum):
 
 
 def request_response(
-    func: Callable[[Request], Awaitable[Response] | Response],
+    func: Callable[[Request], Awaitable[BaseResponse] | BaseResponse],
 ) -> ASGIApp:
     """
     Takes a function or coroutine `func(request) -> response`,
     and returns an ASGI application.
     """
-    f: Callable[[Request], Awaitable[Response]] = (
+    f: Callable[[Request], Awaitable[BaseResponse]] = (
         func if is_async_callable(func) else functools.partial(run_in_threadpool, func)
     )
 
@@ -723,7 +723,7 @@ class Router:
     def add_route(
         self,
         path: str,
-        endpoint: Callable[[Request], Awaitable[Response] | Response],
+        endpoint: Callable[[Request], Awaitable[BaseResponse] | BaseResponse],
         methods: Collection[str] | None = None,
         name: str | None = None,
         include_in_schema: bool = True,

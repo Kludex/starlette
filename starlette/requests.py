@@ -11,7 +11,7 @@ import anyio
 from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManagerWrapper
 from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
 from starlette.exceptions import HTTPException
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
+from starlette.formparsers import FormParser, MultiPartException, MultiPartParser, MultiPartSizeException
 from starlette.types import Message, Receive, Scope, Send
 
 if TYPE_CHECKING:
@@ -225,7 +225,7 @@ class Request(HTTPConnection[StateT]):
     def receive(self) -> Receive:
         return self._receive
 
-    async def stream(self) -> AsyncGenerator[bytes, None]:
+    async def _stream(self) -> AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):
             yield self._body
             yield b""
@@ -245,12 +245,35 @@ class Request(HTTPConnection[StateT]):
                 raise ClientDisconnect()
         yield b""
 
+    async def stream(self) -> AsyncGenerator[bytes, None]:
+        max_body_size: int | None = self.scope.get("max_body_size")
+        if max_body_size is not None:
+            content_length = self.headers.get("content-length")
+            if content_length is not None:
+                try:
+                    if int(content_length) > max_body_size:
+                        raise HTTPException(status_code=413, detail="Content Too Large")
+                except ValueError:
+                    pass
+        total_size = 0
+        async for chunk in self._stream():
+            if chunk:
+                if max_body_size is not None:
+                    total_size += len(chunk)
+                    if total_size > max_body_size:
+                        raise HTTPException(status_code=413, detail="Content Too Large")
+            yield chunk
+
     async def body(self) -> bytes:
         if not hasattr(self, "_body"):
             chunks: list[bytes] = []
             async for chunk in self.stream():
                 chunks.append(chunk)
             self._body = b"".join(chunks)
+        else:
+            max_body_size: int | None = self.scope.get("max_body_size")
+            if max_body_size is not None and len(self._body) > max_body_size:
+                raise HTTPException(status_code=413, detail="Content Too Large")
         return self._body
 
     async def json(self) -> Any:
@@ -274,16 +297,25 @@ class Request(HTTPConnection[StateT]):
             content_type: bytes
             content_type, _ = parse_options_header(content_type_header)
             if content_type == b"multipart/form-data":
+                multipart_stream = self._stream()
                 try:
+                    max_upload_size: int | None = self.scope.get("max_upload_size")
                     multipart_parser = MultiPartParser(
                         self.headers,
-                        self.stream(),
+                        multipart_stream,
                         max_files=max_files,
                         max_fields=max_fields,
                         max_part_size=max_part_size,
+                        max_upload_size=max_upload_size,
                     )
                     self._form = await multipart_parser.parse()
+                except MultiPartSizeException as exc:
+                    await multipart_stream.aclose()
+                    if "app" in self.scope:
+                        raise HTTPException(status_code=413, detail=exc.message)
+                    raise exc
                 except MultiPartException as exc:
+                    await multipart_stream.aclose()
                     if "app" in self.scope:
                         raise HTTPException(status_code=400, detail=exc.message)
                     raise exc

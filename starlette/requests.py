@@ -83,7 +83,10 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
     """
 
     def __init__(self, scope: Scope, receive: Receive | None = None) -> None:
-        assert scope["type"] in ("http", "websocket")
+        if scope["type"] not in ("http", "websocket"):
+            raise ValueError(
+                f"Expected scope type 'http' or 'websocket', got '{scope['type']}'"
+            )
         self.scope = scope
 
     def __getitem__(self, key: str) -> Any:
@@ -166,17 +169,20 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
 
     @property
     def session(self) -> dict[str, Any]:
-        assert "session" in self.scope, "SessionMiddleware must be installed to access request.session"
+        if "session" not in self.scope:
+            raise RuntimeError("SessionMiddleware must be installed to access request.session")
         return self.scope["session"]  # type: ignore[no-any-return]
 
     @property
     def auth(self) -> Any:
-        assert "auth" in self.scope, "AuthenticationMiddleware must be installed to access request.auth"
+        if "auth" not in self.scope:
+            raise RuntimeError("AuthenticationMiddleware must be installed to access request.auth")
         return self.scope["auth"]
 
     @property
     def user(self) -> Any:
-        assert "user" in self.scope, "AuthenticationMiddleware must be installed to access request.user"
+        if "user" not in self.scope:
+            raise RuntimeError("AuthenticationMiddleware must be installed to access request.user")
         return self.scope["user"]
 
     @property
@@ -210,7 +216,10 @@ class Request(HTTPConnection[StateT]):
 
     def __init__(self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send):
         super().__init__(scope)
-        assert scope["type"] == "http"
+        if scope["type"] != "http":
+            raise ValueError(
+                f"Expected scope type 'http', got '{scope['type']}'"
+            )
         self._receive = receive
         self._send = send
         self._stream_consumed = False
@@ -267,9 +276,10 @@ class Request(HTTPConnection[StateT]):
         max_part_size: int = 1024 * 1024,
     ) -> FormData:
         if self._form is None:  # pragma: no branch
-            assert parse_options_header is not None, (
-                "The `python-multipart` library must be installed to use form parsing."
-            )
+            if parse_options_header is None:
+                raise RuntimeError(
+                    "The `python-multipart` library must be installed to use form parsing."
+                )
             content_type_header = self.headers.get("Content-Type")
             content_type: bytes
             content_type, _ = parse_options_header(content_type_header)

@@ -253,7 +253,7 @@ class Request(HTTPConnection[StateT]):
                 chunks.append(chunk)
             self._body = b"".join(chunks)
         return self._body
-    
+
     async def read(self, size: int = -1) -> bytes:
         if size == -1:
             return await self.body()

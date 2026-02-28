@@ -215,6 +215,7 @@ class Request(HTTPConnection[StateT]):
         self._send = send
         self._stream_consumed = False
         self._is_disconnected = False
+        self._read_buffer = b""
         self._form = None
 
     @property
@@ -252,6 +253,18 @@ class Request(HTTPConnection[StateT]):
                 chunks.append(chunk)
             self._body = b"".join(chunks)
         return self._body
+    
+    async def read(self, size: int = -1) -> bytes:
+        if size == -1:
+            return await self.body()
+        if len(self._read_buffer) < size and not self._stream_consumed:
+            async for chunk in self.stream():
+                self._read_buffer += chunk
+                if len(self._read_buffer) >= size:
+                    break
+        result = self._read_buffer[:size]
+        self._read_buffer = self._read_buffer[size:]
+        return result
 
     async def json(self) -> Any:
         if not hasattr(self, "_json"):  # pragma: no branch

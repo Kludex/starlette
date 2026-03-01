@@ -3,13 +3,10 @@ from __future__ import annotations
 import json
 import typing
 from base64 import b64decode, b64encode
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import itsdangerous
 from itsdangerous.exc import BadSignature
-
-if TYPE_CHECKING:
-    from builtins import dict_items, dict_keys, dict_values  # type: ignore[attr-defined]
 
 from starlette.datastructures import MutableHeaders, Secret
 from starlette.requests import HTTPConnection
@@ -95,70 +92,34 @@ class Session(dict[str, typing.Any]):
     accessed: bool = False
     modified: bool = False
 
-    def _mark_accessed(self) -> None:
+    def mark_accessed(self) -> None:
         self.accessed = True
 
-    def _mark_modified(self) -> None:
+    def mark_modified(self) -> None:
         self.accessed = True
         self.modified = True
 
-    def __getitem__(self, key: str) -> typing.Any:
-        self._mark_accessed()
-        return super().__getitem__(key)
-
-    def get(self, key: str, default: typing.Any = None) -> typing.Any:
-        self._mark_accessed()
-        return super().get(key, default)
-
-    def __contains__(self, key: object) -> bool:
-        self._mark_accessed()
-        return super().__contains__(key)
-
-    def __iter__(self) -> typing.Iterator[str]:
-        self._mark_accessed()
-        return super().__iter__()
-
-    def __len__(self) -> int:
-        self._mark_accessed()
-        return super().__len__()
-
-    def __bool__(self) -> bool:
-        self._mark_accessed()
-        return super().__len__() > 0
-
-    def keys(self) -> dict_keys[str, typing.Any]:
-        self._mark_accessed()
-        return super().keys()
-
-    def values(self) -> dict_values[str, typing.Any]:
-        self._mark_accessed()
-        return super().values()
-
-    def items(self) -> dict_items[str, typing.Any]:
-        self._mark_accessed()
-        return super().items()
-
     def __setitem__(self, key: str, value: typing.Any) -> None:
-        self._mark_modified()
+        self.mark_modified()
         super().__setitem__(key, value)
 
     def __delitem__(self, key: str) -> None:
-        self._mark_modified()
+        self.mark_modified()
         super().__delitem__(key)
 
     def clear(self) -> None:
-        self._mark_modified()
+        self.mark_modified()
         super().clear()
 
     def pop(self, key: str, *args: typing.Any) -> typing.Any:
-        self.modified = self.modified or key in self  # `in` sets accessed
+        self.modified = self.modified or key in self
         return super().pop(key, *args)
 
     def setdefault(self, key: str, default: typing.Any = None) -> typing.Any:
         if key not in self:
-            self._mark_modified()
+            self.mark_modified()
         return super().setdefault(key, default)
 
     def update(self, *args: typing.Any, **kwargs: typing.Any) -> None:
-        self._mark_modified()
+        self.mark_modified()
         super().update(*args, **kwargs)

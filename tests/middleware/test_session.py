@@ -2,7 +2,7 @@ import re
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.sessions import Session, SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
@@ -246,3 +246,42 @@ def test_vary_cookie_on_access(test_client_factory: TestClientFactory) -> None:
     # Not accessing session at all should NOT add Vary: Cookie
     response = client.get("/no_session")
     assert "cookie" not in response.headers.get("vary", "").lower()
+
+
+def test_session_tracks_modification() -> None:
+    session = Session({"a": "1", "b": "2"})
+    assert not session.modified
+
+    # __setitem__
+    session["c"] = "3"
+    assert session.modified
+
+    # __delitem__
+    session = Session({"a": "1"})
+    del session["a"]
+    assert session.modified
+
+    # clear
+    session = Session({"a": "1"})
+    session.clear()
+    assert session.modified
+
+    # pop with existing key
+    session = Session({"a": "1"})
+    session.pop("a")
+    assert session.modified
+
+    # pop with missing key
+    session = Session({"a": "1"})
+    session.pop("missing", None)
+    assert not session.modified
+
+    # setdefault with missing key
+    session = Session({"a": "1"})
+    session.setdefault("b", "2")
+    assert session.modified
+
+    # setdefault with existing key
+    session = Session({"a": "1"})
+    session.setdefault("a", "2")
+    assert not session.modified

@@ -130,6 +130,8 @@ if __name__ == '__main__':
 
 Adds signed cookie-based HTTP sessions. Session information is readable but not modifiable.
 
+The session cookie is always set with the `"HttpOnly"` flag, preventing client-side JavaScript from accessing it.
+
 Access or modify the session data using the `request.session` dictionary interface.
 
 The following arguments are supported:
@@ -139,7 +141,7 @@ The following arguments are supported:
 * `max_age` - Session expiry time in seconds. Defaults to 2 weeks. If set to `None` then the cookie will last as long as the browser session.
 * `same_site` - SameSite flag prevents the browser from sending session cookie along with cross-site requests. Defaults to `'lax'`.
 * `path` - The path set for the session cookie. Defaults to `'/'`.
-* `https_only` - Indicate that Secure flag should be set (can be used with HTTPS only). Defaults to `False`.
+* `https_only` - Indicate that the `"Secure"` flag should be set (can be used with HTTPS only). Defaults to `False`. Set this to `True` in production to ensure the session cookie is only sent over HTTPS.
 * `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains ([reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute)).
 
 

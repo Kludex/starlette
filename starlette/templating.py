@@ -92,7 +92,7 @@ class Jinja2Templates:
         self.context_processors = context_processors or []
         if directory is not None:
             loader = jinja2.FileSystemLoader(directory)
-            self.env = jinja2.Environment(loader=loader)
+            self.env = jinja2.Environment(loader=loader, autoescape=jinja2.select_autoescape())
         elif env is not None:  # pragma: no branch
             self.env = env
 

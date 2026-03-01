@@ -2,6 +2,100 @@
 toc_depth: 2
 ---
 
+## 1.0.0rc1 (February 23, 2026)
+
+We're ready! I'm thrilled to announce the first release candidate for Starlette 1.0.
+
+Starlette was created in June 2018 by Tom Christie, and has been on ZeroVer for years. Today, it's downloaded
+almost [10 million times a day](https://pypistats.org/packages/starlette), serves as the foundation for FastAPI,
+and has inspired many other frameworks. In the age of AI, Starlette continues to play an important role as a
+dependency of the Python MCP SDK.
+
+This release focuses on removing deprecated features that were marked for removal in 1.0.0, along with some
+last minute bug fixes. It's a release candidate, so we can gather feedback from the community before the final
+1.0.0 release soon.
+
+A huge thank you to all the contributors who have helped make Starlette what it is today.
+In particular, I'd like to recognize:
+
+* [Kim Christie](https://github.com/lovelydinosaur) - The original creator of Starlette, Uvicorn, and MkDocs, and the
+  current maintainer of HTTPX. Kim's work helped lay the foundation for the modern async Python ecosystem.
+* [Adrian Garcia Badaracco](https://github.com/adriangb) - One of the smartest people I know, whom I have the pleasure of working with at Pydantic.
+* [Thomas Grainger](https://github.com/graingert) - My async teacher, always ready to help with questions.
+* [Alex Grönholm](https://github.com/agronholm) - Another async mentor, always prompt to help with questions.
+* [Florimond Manca](https://github.com/florimondmanca) - Always present in the early days of both Starlette and Uvicorn, and helped a lot in the ecosystem.
+* [Amin Alaee](https://github.com/aminalaee) - Contributed a lot with file-related PRs.
+* [Sebastián Ramírez](https://github.com/tiangolo) - Maintains FastAPI upstream, and always in contact to help with upstream issues.
+* [Alex Oleshkevich](https://github.com/alex-oleshkevich) - Helped a lot on templates and many discussions.
+* [abersheeran](https://github.com/abersheeran) - My go-to person when I need help on many subjects.
+
+I'd also like to thank my sponsors for their support. A special thanks to
+[@tiangolo](https://github.com/tiangolo), [@huggingface](https://github.com/huggingface),
+and [@elevenlabs](https://github.com/elevenlabs) for their generous sponsorship, and to all my other sponsors:
+
+[@roboflow](https://github.com/roboflow),
+[@ogabrielluiz](https://github.com/ogabrielluiz),
+[@SaboniAmine](https://github.com/SaboniAmine),
+[@russbiggs](https://github.com/russbiggs),
+[@BryceBeagle](https://github.com/BryceBeagle),
+[@chdsbd](https://github.com/chdsbd),
+[@TheR1D](https://github.com/TheR1D),
+[@ddanier](https://github.com/ddanier),
+[@larsyngvelundin](https://github.com/larsyngvelundin),
+[@jpizquierdo](https://github.com/jpizquierdo),
+[@alixlahuec](https://github.com/alixlahuec),
+[@nathanchapman](https://github.com/nathanchapman),
+[@devid8642](https://github.com/devid8642),
+[@comet-ml](https://github.com/comet-ml),
+[@Evil0ctal](https://github.com/Evil0ctal),
+[@msehnout](https://github.com/msehnout),
+and [@codingjoe](https://github.com/codingjoe).
+
+#### Removed
+
+* Remove `on_startup` and `on_shutdown` parameters from `Starlette` and `Router`.
+  Use the `lifespan` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `on_event()` decorator from `Starlette` and `Router`.
+  Use the `lifespan` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `add_event_handler()` method from `Starlette` and `Router`.
+  Use the `lifespan` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `startup()` and `shutdown()` methods from `Router`
+  [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.route()` decorator from `Starlette` and `Router`.
+  Use `Route` in the `routes` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.websocket_route()` decorator from `Starlette` and `Router`.
+  Use `WebSocketRoute` in the `routes` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.exception_handler()` decorator from `Starlette`.
+  Use `exception_handlers` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `@app.middleware()` decorator from `Starlette`.
+  Use `middleware` parameter instead [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `iscoroutinefunction_or_partial()` from `starlette.routing` [#3117](https://github.com/encode/starlette/pull/3117).
+* Remove `**env_options` parameter from `Jinja2Templates`.
+  Use a preconfigured `jinja2.Environment` via the `env` parameter instead [#3118](https://github.com/encode/starlette/pull/3118).
+* Remove deprecated `TemplateResponse(name, context)` signature from `Jinja2Templates`.
+  Use `TemplateResponse(request, name, ...)` instead [#3118](https://github.com/encode/starlette/pull/3118).
+* Remove deprecated `method` parameter from `FileResponse` [#3147](https://github.com/encode/starlette/pull/3147).
+
+#### Added
+
+* Add state generic to `WebSocket` [#3132](https://github.com/encode/starlette/pull/3132).
+
+#### Fixed
+
+* Include `bytes` unit in `Content-Range` header on 416 responses.
+* Handle null bytes in `StaticFiles` path [#3139](https://github.com/encode/starlette/pull/3139).
+* Use sort-based merge for `Range` header parsing [#3138](https://github.com/encode/starlette/pull/3138).
+* Set `Content-Type` instead of `Content-Range` on multi-range responses [#3142](https://github.com/encode/starlette/pull/3142).
+* Use CRLF line endings in multipart byterange boundaries [#3143](https://github.com/encode/starlette/pull/3143).
+* Avoid mutating `FileResponse` headers on range requests [#3144](https://github.com/encode/starlette/pull/3144).
+* Return explicit origin in CORS response when credentials are allowed [#3137](https://github.com/encode/starlette/pull/3137).
+* Enable `autoescape` by default in `Jinja2Templates` [#3148](https://github.com/encode/starlette/pull/3148).
+
+#### Changed
+
+* `jinja2` must now be installed to import `Jinja2Templates`. Previously it would only
+  fail when instantiating the class [#3118](https://github.com/encode/starlette/pull/3118).
+
 ## 0.52.1 (January 18, 2026)
 
 #### Fixed

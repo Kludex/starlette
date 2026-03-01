@@ -37,7 +37,6 @@ dependencies = [
 
 [project.optional-dependencies]
 full = [
-    "itsdangerous",
     "jinja2",
     "python-multipart>=0.0.18",
     "pyyaml",

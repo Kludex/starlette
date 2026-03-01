@@ -491,15 +491,6 @@ wheels = [
 ]
 
 [[package]]
-name = "itsdangerous"
-version = "2.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9c/cb/8ac0172223afbccb63986cc25049b154ecfb5e85932587206f42317be31d/itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173", size = 54410, upload-time = "2024-04-16T21:28:15.614Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef", size = 16234, upload-time = "2024-04-16T21:28:14.499Z" },
-]
-
-[[package]]
 name = "jaraco-classes"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1227,7 +1218,6 @@ dependencies = [
 [package.optional-dependencies]
 full = [
     { name = "httpx" },
-    { name = "itsdangerous" },
     { name = "jinja2" },
     { name = "python-multipart" },
     { name = "pyyaml" },
@@ -1256,7 +1246,6 @@ docs = [
 requires-dist = [
     { name = "anyio", specifier = ">=3.6.2,<5" },
     { name = "httpx", marker = "extra == 'full'", specifier = ">=0.27.0,<0.29.0" },
-    { name = "itsdangerous", marker = "extra == 'full'" },
     { name = "jinja2", marker = "extra == 'full'" },
     { name = "python-multipart", marker = "extra == 'full'", specifier = ">=0.0.18" },
     { name = "pyyaml", marker = "extra == 'full'" },

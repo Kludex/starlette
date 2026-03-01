@@ -72,7 +72,7 @@ app = Starlette(routes=routes, middleware=middleware)
 The following arguments are supported:
 
 * `allow_origins` - A list of origins that should be permitted to make cross-origin requests. eg. `['https://example.org', 'https://www.example.org']`. You can use `['*']` to allow any origin.
-* `allow_origin_regex` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. `'https://.*\.example\.org'`.
+* `allow_origin_regex` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. `'https://[a-zA-Z0-9-]+\.example\.org'`. Avoid using `.*` or `.+` as they match URL special characters (`/`, `@`, `#`, `?`) and may result in overly permissive origin matching. Use specific character classes like `[a-zA-Z0-9-]+` instead.
 * `allow_methods` - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to `['GET']`. You can use `['*']` to allow all standard methods.
 * `allow_headers` - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to `[]`. You can use `['*']` to allow all headers. The `Accept`, `Accept-Language`, `Content-Language` and `Content-Type` headers are always allowed for CORS requests.
 * `allow_credentials` - Indicate that cookies should be supported for cross-origin requests. Defaults to `False`. Also, `allow_origins`, `allow_methods` and `allow_headers` cannot be set to `['*']` for credentials to be allowed, all of them must be explicitly specified.

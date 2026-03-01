@@ -3,10 +3,13 @@ from __future__ import annotations
 import json
 import typing
 from base64 import b64decode, b64encode
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import itsdangerous
 from itsdangerous.exc import BadSignature
+
+if TYPE_CHECKING:
+    from builtins import dict_items, dict_keys, dict_values  # type: ignore[attr-defined]
 
 from starlette.datastructures import MutableHeaders, Secret
 from starlette.requests import HTTPConnection
@@ -123,15 +126,15 @@ class Session(dict[str, typing.Any]):
         self._mark_accessed()
         return super().__len__() > 0
 
-    def keys(self) -> typing.KeysView[str]:
+    def keys(self) -> dict_keys[str, typing.Any]:
         self._mark_accessed()
         return super().keys()
 
-    def values(self) -> typing.ValuesView[typing.Any]:
+    def values(self) -> dict_values[str, typing.Any]:
         self._mark_accessed()
         return super().values()
 
-    def items(self) -> typing.ItemsView[str, typing.Any]:
+    def items(self) -> dict_items[str, typing.Any]:
         self._mark_accessed()
         return super().items()
 

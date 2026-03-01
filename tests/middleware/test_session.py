@@ -25,6 +25,10 @@ async def clear_session(request: Request) -> JSONResponse:
     return JSONResponse({"session": request.session})
 
 
+def no_session_access(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok"})
+
+
 def test_session(test_client_factory: TestClientFactory) -> None:
     app = Starlette(
         routes=[
@@ -198,3 +202,47 @@ def test_domain_cookie(test_client_factory: TestClientFactory) -> None:
     client.cookies.delete("session")
     response = client.get("/view_session")
     assert response.json() == {"session": {}}
+
+
+def test_set_cookie_only_on_modification(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    # Write to session - should send Set-Cookie
+    response = client.post("/update_session", json={"some": "data"})
+    assert "set-cookie" in response.headers
+
+    # Read-only access - should NOT send Set-Cookie
+    response = client.get("/view_session")
+    assert response.json() == {"session": {"some": "data"}}
+    assert "set-cookie" not in response.headers
+
+
+def test_vary_cookie_on_access(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/no_session", endpoint=no_session_access),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    # Modifying session should add Vary: Cookie
+    response = client.post("/update_session", json={"some": "data"})
+    assert "cookie" in response.headers.get("vary", "").lower()
+
+    # Reading a non-empty session should add Vary: Cookie
+    response = client.get("/view_session")
+    assert "cookie" in response.headers.get("vary", "").lower()
+
+    # Not accessing session at all should NOT add Vary: Cookie
+    response = client.get("/no_session")
+    assert "cookie" not in response.headers.get("vary", "").lower()

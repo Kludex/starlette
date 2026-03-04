@@ -182,9 +182,22 @@ class WebSocket(HTTPConnection[StateT]):
 
     async def send_denial_response(self, response: Response) -> None:
         if "websocket.http.response" in self.scope.get("extensions", {}):
-            await response(self.scope, self.receive, self.send)
+            wrapped_send = self._send_wrap(self.send, is_websocket_denial=True)
+            await response(self.scope, self.receive, wrapped_send)
         else:
             raise RuntimeError("The server doesn't support the Websocket Denial Response extension.")
+
+    @staticmethod
+    def _send_wrap(send: Send, is_websocket_denial: bool) -> Send:
+        async def wrapped(message: Message) -> None:
+            message_type = message["type"]
+            if is_websocket_denial:
+                if not message_type.startswith("websocket."):
+                    message["type"] = "websocket." + message_type
+
+            await send(message)
+
+        return wrapped
 
 
 class WebSocketClose:

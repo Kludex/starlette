@@ -1,5 +1,5 @@
-import typing
 from collections.abc import Generator
+from typing import Any
 
 import pytest
 from pytest import MonkeyPatch
@@ -196,7 +196,7 @@ def test_http_exception_does_not_use_threadpool(client: TestClient, monkeypatch:
     from starlette import _exception_handler
 
     # Replace run_in_threadpool with a function that raises an error
-    def mock_run_in_threadpool(*args: typing.Any, **kwargs: typing.Any) -> None:
+    def mock_run_in_threadpool(*args: Any, **kwargs: Any) -> None:
         pytest.fail("run_in_threadpool should not be called for HTTP exceptions")  # pragma: no cover
 
     # Apply the monkeypatch only during this test
@@ -205,3 +205,20 @@ def test_http_exception_does_not_use_threadpool(client: TestClient, monkeypatch:
     # This should succeed because http_exception is async and won't use run_in_threadpool
     response = client.get("/not_acceptable")
     assert response.status_code == 406
+
+
+def test_handlers_annotations() -> None:
+    """Check that async exception handlers are accepted by type checkers.
+
+    We annotate the handlers' exceptions with plain `Exception` to avoid variance issues
+    when using other exception types.
+    """
+
+    async def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:
+        raise NotImplementedError
+
+    def sync_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:
+        raise NotImplementedError
+
+    ExceptionMiddleware(router, handlers={Exception: sync_catch_all_handler})
+    ExceptionMiddleware(router, handlers={Exception: async_catch_all_handler})

@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import os
-import typing
-from contextlib import nullcontext as does_not_raise
+import threading
+from collections.abc import Generator
+from contextlib import AbstractContextManager, nullcontext as does_not_raise
+from io import BytesIO
 from pathlib import Path
+from tempfile import SpooledTemporaryFile
+from typing import Any, ClassVar
+from unittest import mock
 
 import pytest
 
 from starlette.applications import Starlette
 from starlette.datastructures import UploadFile
-from starlette.formparsers import MultiPartException, _user_safe_decode
+from starlette.formparsers import MultiPartException, MultiPartParser, _user_safe_decode
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -17,7 +22,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
-class ForceMultipartDict(dict[typing.Any, typing.Any]):
+class ForceMultipartDict(dict[Any, Any]):
     def __bool__(self) -> bool:
         return True
 
@@ -29,7 +34,7 @@ FORCE_MULTIPART = ForceMultipartDict()
 async def app(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: dict[str, typing.Any] = {}
+    output: dict[str, Any] = {}
     for key, value in data.items():
         if isinstance(value, UploadFile):
             content = await value.read()
@@ -49,7 +54,7 @@ async def app(scope: Scope, receive: Receive, send: Send) -> None:
 async def multi_items_app(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: dict[str, list[typing.Any]] = {}
+    output: dict[str, list[Any]] = {}
     for key, value in data.multi_items():
         if key not in output:
             output[key] = []
@@ -73,7 +78,7 @@ async def multi_items_app(scope: Scope, receive: Receive, send: Send) -> None:
 async def app_with_headers(scope: Scope, receive: Receive, send: Send) -> None:
     request = Request(scope, receive)
     data = await request.form()
-    output: dict[str, typing.Any] = {}
+    output: dict[str, Any] = {}
     for key, value in data.items():
         if isinstance(value, UploadFile):
             content = await value.read()
@@ -104,11 +109,27 @@ async def app_read_body(scope: Scope, receive: Receive, send: Send) -> None:
     await response(scope, receive, send)
 
 
+async def app_monitor_thread(scope: Scope, receive: Receive, send: Send) -> None:
+    """Helper app to monitor what thread the app was called on.
+
+    This can later be used to validate thread/event loop operations.
+    """
+    request = Request(scope, receive)
+
+    # Make sure we parse the form
+    await request.form()
+    await request.close()
+
+    # Send back the current thread id
+    response = JSONResponse({"thread_ident": threading.current_thread().ident})
+    await response(scope, receive, send)
+
+
 def make_app_max_parts(max_files: int = 1000, max_fields: int = 1000, max_part_size: int = 1024 * 1024) -> ASGIApp:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         data = await request.form(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size)
-        output: dict[str, typing.Any] = {}
+        output: dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, UploadFile):
                 content = await value.read()
@@ -303,6 +324,47 @@ def test_multipart_request_mixed_files_and_data(tmpdir: Path, test_client_factor
     }
 
 
+class ThreadTrackingSpooledTemporaryFile(SpooledTemporaryFile[bytes]):
+    """Helper class to track which threads performed the rollover operation.
+
+    This is not threadsafe/multi-test safe.
+    """
+
+    rollover_threads: ClassVar[set[int | None]] = set()
+
+    def rollover(self) -> None:
+        ThreadTrackingSpooledTemporaryFile.rollover_threads.add(threading.current_thread().ident)
+        super().rollover()
+
+
+@pytest.fixture
+def mock_spooled_temporary_file() -> Generator[None]:
+    try:
+        with mock.patch("starlette.formparsers.SpooledTemporaryFile", ThreadTrackingSpooledTemporaryFile):
+            yield
+    finally:
+        ThreadTrackingSpooledTemporaryFile.rollover_threads.clear()
+
+
+def test_multipart_request_large_file_rollover_in_background_thread(
+    mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
+) -> None:
+    """Test that Spooled file rollovers happen in background threads."""
+    data = BytesIO(b" " * (MultiPartParser.spool_max_size + 1))
+
+    client = test_client_factory(app_monitor_thread)
+    response = client.post("/", files=[("test_large", data)])
+    assert response.status_code == 200
+
+    # Parse the event thread id from the API response and ensure we have one
+    app_thread_ident = response.json().get("thread_ident")
+    assert app_thread_ident is not None
+
+    # Ensure the app thread was not the same as the rollover one and that a rollover thread exists
+    assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
+    assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
+
+
 def test_multipart_request_with_charset_for_filename(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.post(
@@ -422,7 +484,7 @@ def test_user_safe_decode_ignores_wrong_charset() -> None:
 )
 def test_missing_boundary_parameter(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -450,7 +512,7 @@ def test_missing_boundary_parameter(
 )
 def test_missing_name_parameter_on_content_disposition(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -478,7 +540,7 @@ def test_missing_name_parameter_on_content_disposition(
 )
 def test_too_many_fields_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -505,7 +567,7 @@ def test_too_many_fields_raise(
 )
 def test_too_many_files_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -532,7 +594,7 @@ def test_too_many_files_raise(
 )
 def test_too_many_files_single_field_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -561,7 +623,7 @@ def test_too_many_files_single_field_raise(
 )
 def test_too_many_files_and_fields_raise(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -592,7 +654,7 @@ def test_too_many_files_and_fields_raise(
 )
 def test_max_fields_is_customizable_low_raises(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -622,7 +684,7 @@ def test_max_fields_is_customizable_low_raises(
 )
 def test_max_files_is_customizable_low_raises(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -673,7 +735,7 @@ def test_max_fields_is_customizable_high(test_client_factory: TestClientFactory)
 )
 def test_max_part_size_exceeds_limit(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)
@@ -713,7 +775,7 @@ def test_max_part_size_exceeds_limit(
 )
 def test_max_part_size_exceeds_custom_limit(
     app: ASGIApp,
-    expectation: typing.ContextManager[Exception],
+    expectation: AbstractContextManager[Exception],
     test_client_factory: TestClientFactory,
 ) -> None:
     client = test_client_factory(app)

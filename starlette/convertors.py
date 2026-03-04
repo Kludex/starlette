@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import math
-import typing
 import uuid
+from typing import Any, ClassVar, Generic, TypeVar
 
-T = typing.TypeVar("T")
+T = TypeVar("T")
 
 
-class Convertor(typing.Generic[T]):
-    regex: typing.ClassVar[str] = ""
+class Convertor(Generic[T]):
+    regex: ClassVar[str] = ""
 
     def convert(self, value: str) -> T:
         raise NotImplementedError()  # pragma: no cover
@@ -76,7 +76,7 @@ class UUIDConvertor(Convertor[uuid.UUID]):
         return str(value)
 
 
-CONVERTOR_TYPES: dict[str, Convertor[typing.Any]] = {
+CONVERTOR_TYPES: dict[str, Convertor[Any]] = {
     "str": StringConvertor(),
     "path": PathConvertor(),
     "int": IntegerConvertor(),
@@ -85,5 +85,5 @@ CONVERTOR_TYPES: dict[str, Convertor[typing.Any]] = {
 }
 
 
-def register_url_convertor(key: str, convertor: Convertor[typing.Any]) -> None:
+def register_url_convertor(key: str, convertor: Convertor[Any]) -> None:
     CONVERTOR_TYPES[key] = convertor

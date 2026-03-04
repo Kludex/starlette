@@ -1,6 +1,6 @@
 import gzip
 import io
-import typing
+from typing import NoReturn
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -93,13 +93,17 @@ class IdentityResponder:
 
                 await self.send(self.initial_message)
                 await self.send(message)
-        elif message_type == "http.response.body":  # pragma: no branch
+        elif message_type == "http.response.body":
             # Remaining body in streaming response.
             body = message.get("body", b"")
             more_body = message.get("more_body", False)
 
             message["body"] = self.apply_compression(body, more_body=more_body)
 
+            await self.send(message)
+        elif message_type == "http.response.pathsend":  # pragma: no branch
+            # Don't apply GZip to pathsend responses
+            await self.send(self.initial_message)
             await self.send(message)
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
@@ -137,5 +141,5 @@ class GZipResponder(IdentityResponder):
         return body
 
 
-async def unattached_send(message: Message) -> typing.NoReturn:
+async def unattached_send(message: Message) -> NoReturn:
     raise RuntimeError("send awaitable not set")  # pragma: no cover

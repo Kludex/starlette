@@ -3,9 +3,9 @@
 Thank you for being interested in contributing to Starlette.
 There are many ways you can contribute to the project:
 
-- Try Starlette and [report bugs/issues you find](https://github.com/encode/starlette/issues/new)
-- [Implement new features](https://github.com/encode/starlette/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-- [Review Pull Requests of others](https://github.com/encode/starlette/pulls)
+- Try Starlette and [report bugs/issues you find](https://github.com/Kludex/starlette/issues/new)
+- [Implement new features](https://github.com/Kludex/starlette/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- [Review Pull Requests of others](https://github.com/Kludex/starlette/pulls)
 - Write documentation
 - Participate in discussions
 
@@ -14,7 +14,7 @@ There are many ways you can contribute to the project:
 Found something that Starlette should support?
 Stumbled upon some unexpected behaviour?
 
-Contributions should generally start out with [a discussion](https://github.com/encode/starlette/discussions).
+Contributions should generally start out with [a discussion](https://github.com/Kludex/starlette/discussions).
 Possible bugs may be raised as a "Potential Issue" discussion, feature requests may
 be raised as an "Ideas" discussion. We can then determine if the discussion needs
 to be escalated into an "Issue" or not, or if we'd consider a pull request.
@@ -34,7 +34,7 @@ that demonstrates the issue.
 ## Development
 
 To start developing Starlette, create a **fork** of the
-[Starlette repository](https://github.com/encode/starlette) on GitHub.
+[Starlette repository](https://github.com/Kludex/starlette) on GitHub.
 
 Then clone your fork with the following command replacing `YOUR-USERNAME` with
 your GitHub username:
@@ -97,7 +97,7 @@ Once you've submitted your pull request, the test suite will automatically run, 
 If the test suite fails, you'll want to click through to the "Details" link, and try to identify why the test suite failed.
 
 <p align="center" style="margin: 0 0 10px">
-  <img src="https://raw.githubusercontent.com/encode/starlette/master/docs/img/gh-actions-fail.png" alt='Failing PR commit status'>
+  <img src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/gh-actions-fail.png" alt='Failing PR commit status'>
 </p>
 
 Here are some common ways the test suite can fail:
@@ -105,7 +105,7 @@ Here are some common ways the test suite can fail:
 ### Check Job Failed
 
 <p align="center" style="margin: 0 0 10px">
-  <img src="https://raw.githubusercontent.com/encode/starlette/master/docs/img/gh-actions-fail-check.png" alt='Failing GitHub action lint job'>
+  <img src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/gh-actions-fail-check.png" alt='Failing GitHub action lint job'>
 </p>
 
 This job failing means there is either a code formatting issue or type-annotation issue.
@@ -126,7 +126,7 @@ a variety of reasons like invalid markdown or missing configuration within `mkdo
 ### Python 3.X Job Failed
 
 <p align="center" style="margin: 0 0 10px">
-  <img src="https://raw.githubusercontent.com/encode/starlette/master/docs/img/gh-actions-fail-test.png" alt='Failing GitHub action test job'>
+  <img src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/gh-actions-fail-test.png" alt='Failing GitHub action test job'>
 </p>
 
 This job failing means the unit tests failed or not all code paths are covered by unit tests.
@@ -148,17 +148,17 @@ Before releasing a new version, create a pull request that includes:
 
 - **An update to the changelog**:
     - We follow the format from [keepachangelog](https://keepachangelog.com/en/1.0.0/).
-    - [Compare](https://github.com/encode/starlette/compare/) `master` with the tag of the latest release, and list all entries that are of interest to our users:
+    - [Compare](https://github.com/Kludex/starlette/compare/) `main` with the tag of the latest release, and list all entries that are of interest to our users:
         - Things that **must** go in the changelog: added, changed, deprecated or removed features, and bug fixes.
         - Things that **should not** go in the changelog: changes to documentation, tests or tooling.
         - Try sorting entries in descending order of impact / importance.
         - Keep it concise and to-the-point. 🎯
 - **A version bump**: see `__version__.py`.
 
-For an example, see [#1600](https://github.com/encode/starlette/pull/1600).
+For an example, see [#1600](https://github.com/Kludex/starlette/pull/1600).
 
 Once the release PR is merged, create a
-[new release](https://github.com/encode/starlette/releases/new) including:
+[new release](https://github.com/Kludex/starlette/releases/new) including:
 
 - Tag version like `0.13.3`.
 - Release title `Version 0.13.3`
@@ -166,5 +166,3 @@ Once the release PR is merged, create a
 
 Once created this release will be automatically uploaded to PyPI.
 
-If something goes wrong with the PyPI job the release can be published using the
-`scripts/publish` script.

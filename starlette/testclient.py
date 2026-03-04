@@ -286,8 +286,7 @@ class _TestClientTransport(httpx.BaseTransport):
         response_started = False
         response_complete: anyio.Event
         raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
-        template = None
-        context = None
+        debug_info: dict[str, Any] | None = None
 
         async def receive() -> Message:
             nonlocal request_complete
@@ -318,7 +317,7 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, template, context
+            nonlocal raw_kwargs, response_started, debug_info
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
@@ -336,8 +335,7 @@ class _TestClientTransport(httpx.BaseTransport):
                     raw_kwargs["stream"].seek(0)
                     response_complete.set()
             elif message["type"] == "http.response.debug":
-                template = message["info"]["template"]
-                context = message["info"]["context"]
+                debug_info = message["info"]
 
         try:
             with self.portal_factory() as portal:
@@ -359,9 +357,10 @@ class _TestClientTransport(httpx.BaseTransport):
         raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
 
         response = httpx.Response(**raw_kwargs, request=request)
-        if template is not None:
-            response.template = template  # type: ignore[attr-defined]
-            response.context = context  # type: ignore[attr-defined]
+        if debug_info is not None:
+            for key, value in debug_info.items():
+                assert not hasattr(response, key)  # don't allow overwrite existing attributes
+                setattr(response, key, value)
         return response
 
 

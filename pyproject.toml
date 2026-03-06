@@ -50,11 +50,11 @@ dev = [
     "starlette[full]",
     "coverage>=7.8.2",
     "importlib-metadata==8.7.1",
-    "mypy==1.16.1",
-    "ruff==0.14.14",
+    "mypy==1.19.1",
+    "ruff==0.15.4",
     "types-PyYAML==6.0.12.20250516",
     "pytest==9.0.2",
-    "trio==0.32.0",
+    "trio==0.33.0",
     # Check dist
     "twine==6.2.0",
 ]

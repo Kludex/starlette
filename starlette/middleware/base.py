@@ -7,11 +7,11 @@ import anyio
 
 from starlette._utils import collapse_excgroups
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import Response
+from starlette.responses import BaseResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
-DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
+RequestResponseEndpoint = Callable[[Request], Awaitable[BaseResponse]]
+DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[BaseResponse]]
 BodyStreamGenerator = AsyncGenerator[bytes | MutableMapping[str, Any], None]
 AsyncContentStream = AsyncIterable[str | bytes | memoryview | MutableMapping[str, Any]]
 T = TypeVar("T")
@@ -109,7 +109,7 @@ class BaseHTTPMiddleware:
         app_exc: Exception | None = None
         exception_already_raised = False
 
-        async def call_next(request: Request) -> Response:
+        async def call_next(request: Request) -> BaseResponse:
             async def receive_or_disconnect() -> Message:
                 if response_sent.is_set():
                     return {"type": "http.disconnect"}
@@ -197,11 +197,11 @@ class BaseHTTPMiddleware:
         if app_exc is not None and not exception_already_raised:
             raise app_exc
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> BaseResponse:
         raise NotImplementedError()  # pragma: no cover
 
 
-class _StreamingResponse(Response):
+class _StreamingResponse(BaseResponse):
     def __init__(
         self,
         content: AsyncContentStream,
@@ -212,10 +212,7 @@ class _StreamingResponse(Response):
     ) -> None:
         self.info = info
         self.body_iterator = content
-        self.status_code = status_code
-        self.media_type = media_type
-        self.init_headers(headers)
-        self.background = None
+        super().__init__(status_code, headers, media_type)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.info is not None:

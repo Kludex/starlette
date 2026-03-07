@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from starlette.requests import Request
-    from starlette.responses import Response
+    from starlette.responses import BaseResponse
     from starlette.websockets import WebSocket
 
 AppType = TypeVar("AppType")
@@ -21,6 +21,6 @@ StatelessLifespan = Callable[[AppType], AbstractAsyncContextManager[None]]
 StatefulLifespan = Callable[[AppType], AbstractAsyncContextManager[Mapping[str, Any]]]
 Lifespan = StatelessLifespan[AppType] | StatefulLifespan[AppType]
 
-HTTPExceptionHandler = Callable[["Request", Exception], "Response | Awaitable[Response]"]
+HTTPExceptionHandler = Callable[["Request", Exception], "BaseResponse | Awaitable[BaseResponse]"]
 WebSocketExceptionHandler = Callable[["WebSocket", Exception], Awaitable[None]]
 ExceptionHandler = HTTPExceptionHandler | WebSocketExceptionHandler

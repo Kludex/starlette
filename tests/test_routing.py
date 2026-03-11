@@ -11,6 +11,7 @@ import pytest
 from typing_extensions import Never
 
 from starlette.applications import Starlette
+from starlette.datastructures import URLPath
 from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
@@ -510,7 +511,7 @@ def test_router_sequential_fallback_handles_custom_base_route_partials(
         def matches(self, scope: Scope) -> tuple[Match, Scope]:
             return self.route.matches(scope)
 
-        def url_path_for(self, name: str, /, **path_params: object):
+        def url_path_for(self, name: str, /, **path_params: object) -> URLPath:
             return self.route.url_path_for(name, **path_params)
 
         async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -537,7 +538,7 @@ def test_router_sequential_redirect_still_works_when_fast_path_is_disabled(
         def matches(self, scope: Scope) -> tuple[Match, Scope]:
             return self.route.matches(scope)
 
-        def url_path_for(self, name: str, /, **path_params: object):
+        def url_path_for(self, name: str, /, **path_params: object) -> URLPath:
             return self.route.url_path_for(name, **path_params)
 
         async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:

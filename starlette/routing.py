@@ -7,11 +7,11 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Generator, Iterable, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
-from typing import Any, TypeVar
+from typing import Any, Self, SupportsIndex, TypeVar, cast, overload
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable
@@ -161,6 +161,149 @@ def compile_path(
     path_format += path[idx:]
 
     return re.compile(path_regex), path_format, param_convertors
+
+
+_HTTP_METHODS = ("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD")
+
+
+class _FastHTTPGroup:
+    __slots__ = (
+        "path_regex_match",
+        "param_convertors",
+        "param_names",
+        "converters",
+        "method_cache",
+        "any_route",
+        "first_route",
+        "is_static",
+        "static_path",
+        "m_get",
+        "m_post",
+        "m_put",
+        "m_delete",
+        "m_patch",
+        "m_options",
+        "m_head",
+    )
+
+    def __init__(
+        self,
+        *,
+        path_regex_match: Callable[[str], Any],
+        param_convertors: dict[str, Convertor[Any]],
+        method_cache: dict[str, Route | None],
+        any_route: Route | None,
+        first_route: Route,
+        is_static: bool,
+        static_path: str | None,
+    ) -> None:
+        self.path_regex_match = path_regex_match
+        self.param_convertors = param_convertors
+        self.param_names = tuple(param_convertors.keys())
+        self.converters = tuple(
+            (name, convertor)
+            for name, convertor in param_convertors.items()
+            if convertor is not CONVERTOR_TYPES["str"] and convertor is not CONVERTOR_TYPES["path"]
+        )
+        self.method_cache = method_cache
+        self.any_route = any_route
+        self.first_route = first_route
+        self.is_static = is_static
+        self.static_path = static_path
+        self.m_get = method_cache.get("GET")
+        self.m_post = method_cache.get("POST")
+        self.m_put = method_cache.get("PUT")
+        self.m_delete = method_cache.get("DELETE")
+        self.m_patch = method_cache.get("PATCH")
+        self.m_options = method_cache.get("OPTIONS")
+        self.m_head = method_cache.get("HEAD")
+
+
+class _RouteList(list["BaseRoute"]):
+    def __init__(self, router: Router, routes: Iterable[BaseRoute] = ()) -> None:
+        self._router = router
+        super().__init__(routes)
+
+    def _invalidate(self) -> None:
+        self._router._invalidate_http_fast_path()
+
+    def append(self, item: BaseRoute) -> None:
+        super().append(item)
+        self._invalidate()
+
+    def extend(self, items: Iterable[BaseRoute]) -> None:
+        super().extend(items)
+        self._invalidate()
+
+    def insert(self, index: SupportsIndex, item: BaseRoute) -> None:
+        super().insert(index, item)
+        self._invalidate()
+
+    def pop(self, index: SupportsIndex = -1) -> BaseRoute:
+        item = super().pop(index)
+        self._invalidate()
+        return item
+
+    def remove(self, item: BaseRoute) -> None:
+        super().remove(item)
+        self._invalidate()
+
+    def clear(self) -> None:
+        super().clear()
+        self._invalidate()
+
+    @overload
+    def __setitem__(self, index: SupportsIndex, value: BaseRoute) -> None: ...
+
+    @overload
+    def __setitem__(self, index: slice, value: Iterable[BaseRoute]) -> None: ...
+
+    def __setitem__(self, index: SupportsIndex | slice, value: BaseRoute | Iterable[BaseRoute]) -> None:
+        if isinstance(index, slice):
+            super().__setitem__(index, cast(Iterable[BaseRoute], value))
+        else:
+            super().__setitem__(index, cast(BaseRoute, value))
+        self._invalidate()
+
+    def __delitem__(self, index: SupportsIndex | slice) -> None:
+        super().__delitem__(index)
+        self._invalidate()
+
+    def sort(self, *args: Any, **kwargs: Any) -> None:
+        super().sort(*args, **kwargs)
+        self._invalidate()
+
+    def reverse(self) -> None:
+        super().reverse()
+        self._invalidate()
+
+
+def _select_http_route(group: _FastHTTPGroup, method: str) -> Route | None:
+    if method == "GET":
+        return group.m_get
+    if method == "POST":
+        return group.m_post
+    if method == "PUT":
+        return group.m_put
+    if method == "DELETE":
+        return group.m_delete
+    if method == "PATCH":
+        return group.m_patch
+    if method == "OPTIONS":
+        return group.m_options
+    if method == "HEAD":
+        return group.m_head
+    return group.method_cache.get(method, group.any_route)
+
+
+def _build_route_child_scope(
+    route: Route,
+    scope: Scope,
+    matched_params: dict[str, Any],
+) -> Scope:
+    path_params = dict(scope.get("path_params", {}))
+    path_params.update(matched_params)
+    return {"endpoint": route.endpoint, "path_params": path_params}
 
 
 class BaseRoute:
@@ -575,6 +718,9 @@ class Router:
         *,
         middleware: Sequence[Middleware] | None = None,
     ) -> None:
+        self._http_fast_path_dirty = True
+        self._http_fast_path_enabled = False
+        self._http_fast_path_elements: list[Any] = []
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
@@ -602,6 +748,171 @@ class Router:
         if middleware:
             for cls, args, kwargs in reversed(middleware):
                 self.middleware_stack = cls(self.middleware_stack, *args, **kwargs)
+
+    @property
+    def routes(self) -> list[BaseRoute]:
+        return self._routes
+
+    @routes.setter
+    def routes(self, value: Sequence[BaseRoute]) -> None:
+        self._routes = _RouteList(self, value)
+        self._invalidate_http_fast_path()
+
+    def _invalidate_http_fast_path(self) -> None:
+        self._http_fast_path_dirty = True
+        self._http_fast_path_enabled = False
+        self._http_fast_path_elements = []
+
+    def _disable_http_fast_path(self) -> None:
+        self._http_fast_path_dirty = False
+        self._http_fast_path_enabled = False
+        self._http_fast_path_elements = []
+
+    def _build_http_method_cache(self, routes: list[Route]) -> dict[str, Route | None]:
+        return {
+            method: next((route for route in routes if route.methods is None or method in route.methods), None)
+            for method in _HTTP_METHODS
+        }
+
+    def _build_fast_http_group(self, routes: list[Route]) -> _FastHTTPGroup:
+        first_route = routes[0]
+        is_static = not first_route.param_convertors
+        return _FastHTTPGroup(
+            path_regex_match=first_route.path_regex.match,
+            param_convertors=first_route.param_convertors,
+            method_cache=self._build_http_method_cache(routes),
+            any_route=next((route for route in routes if route.methods is None), None),
+            first_route=first_route,
+            is_static=is_static,
+            static_path=first_route.path if is_static else None,
+        )
+
+    def _rebuild_http_fast_path(self) -> None:
+        if not self._http_fast_path_dirty:
+            return
+
+        elements: list[Any] = []
+        pending_routes: list[Route] = []
+        pending_key: tuple[str, tuple[tuple[str, Convertor[Any]], ...]] | None = None
+        pending_static_chunk: dict[str, _FastHTTPGroup] | None = None
+
+        def flush_pending_routes() -> None:
+            nonlocal pending_routes, pending_key, pending_static_chunk
+            if not pending_routes:
+                return
+
+            group = self._build_fast_http_group(pending_routes)
+            if group.is_static:
+                if pending_static_chunk is None:
+                    pending_static_chunk = {}
+                assert group.static_path is not None
+                pending_static_chunk[group.static_path] = group
+            else:
+                if pending_static_chunk is not None:
+                    elements.append(pending_static_chunk)
+                    pending_static_chunk = None
+                elements.append(group)
+
+            pending_routes = []
+            pending_key = None
+
+        for route in self.routes:
+            if isinstance(route, WebSocketRoute):
+                continue
+
+            if isinstance(route, Route):
+                key = (
+                    route.path_regex.pattern,
+                    tuple(route.param_convertors.items()),
+                )
+                if pending_key == key:
+                    pending_routes.append(route)
+                else:
+                    flush_pending_routes()
+                    pending_routes = [route]
+                    pending_key = key
+                continue
+
+            if not isinstance(route, (Mount, Host)):
+                self._disable_http_fast_path()
+                return
+
+            flush_pending_routes()
+            if pending_static_chunk is not None:
+                elements.append(pending_static_chunk)
+                pending_static_chunk = None
+            elements.append(route)
+
+        flush_pending_routes()
+        if pending_static_chunk is not None:
+            elements.append(pending_static_chunk)
+
+        self._http_fast_path_elements = elements
+        self._http_fast_path_enabled = True
+        self._http_fast_path_dirty = False
+
+    def _resolve_with_http_fast_path(self, scope: Scope) -> tuple[BaseRoute, Scope, Match] | None:
+        self._rebuild_http_fast_path()
+        if not self._http_fast_path_enabled:
+            return None
+
+        route_path = get_route_path(scope)
+        method = scope["method"]
+        partial_route: BaseRoute | None = None
+        partial_scope: Scope = {}
+
+        for element in self._http_fast_path_elements:
+            if isinstance(element, dict):
+                group = element.get(route_path)
+                if group is None:
+                    continue
+
+                route = _select_http_route(group, method)
+                inherited_path_params = dict(scope.get("path_params", {}))
+                if route is not None:
+                    return route, {"endpoint": route.endpoint, "path_params": inherited_path_params}, Match.FULL
+
+                if partial_route is None:
+                    partial_route = group.first_route
+                    partial_scope = {
+                        "endpoint": group.first_route.endpoint,
+                        "path_params": inherited_path_params,
+                    }
+                continue
+
+            if isinstance(element, _FastHTTPGroup):
+                match = element.path_regex_match(route_path)
+                if match is None:
+                    continue
+
+                matched_params = match.groupdict()
+                for key, convertor in element.converters:
+                    matched_params[key] = convertor.convert(matched_params[key])
+
+                route = _select_http_route(element, method)
+                child_scope = _build_route_child_scope(
+                    element.first_route if route is None else route,
+                    scope,
+                    matched_params,
+                )
+                if route is not None:
+                    return route, child_scope, Match.FULL
+
+                if partial_route is None:
+                    partial_route = element.first_route
+                    partial_scope = child_scope
+                continue
+
+            match, child_scope = element.matches(scope)
+            if match == Match.FULL:
+                return element, child_scope, Match.FULL
+            if match == Match.PARTIAL and partial_route is None:
+                partial_route = element
+                partial_scope = child_scope
+
+        if partial_route is not None:
+            return partial_route, partial_scope, Match.PARTIAL
+        return None
 
     async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
@@ -669,6 +980,14 @@ class Router:
             await self.lifespan(scope, receive, send)
             return
 
+        if scope["type"] == "http":
+            resolved = self._resolve_with_http_fast_path(scope)
+            if resolved is not None:
+                route, child_scope, match = resolved
+                scope.update(child_scope)
+                await route.handle(scope, receive, send)
+                return
+
         partial = None
 
         for route in self.routes:
@@ -698,6 +1017,13 @@ class Router:
                 redirect_scope["path"] = redirect_scope["path"].rstrip("/")
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
+
+            redirected = self._resolve_with_http_fast_path(redirect_scope)
+            if redirected is not None:
+                redirect_url = URL(scope=redirect_scope)
+                response = RedirectResponse(url=str(redirect_url))
+                await response(scope, receive, send)
+                return
 
             for route in self.routes:
                 match, child_scope = route.matches(redirect_scope)

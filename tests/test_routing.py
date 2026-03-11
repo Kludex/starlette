@@ -304,6 +304,66 @@ def test_router_duplicate_path(client: TestClient) -> None:
     assert response.text == "Hello, POST!"
 
 
+def test_router_fast_path_invalidates_on_runtime_route_append(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(routes=[Route("/before", endpoint=homepage)])
+    client = test_client_factory(app)
+
+    response = client.get("/before")
+    assert response.status_code == 200
+    assert response.text == "Hello, world"
+
+    app.routes.append(Route("/after", endpoint=func_homepage))
+
+    response = client.get("/after")
+    assert response.status_code == 200
+    assert response.text == "Hello, world!"
+
+
+def test_router_fast_path_invalidates_on_runtime_route_replace(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(routes=[Route("/mutating", endpoint=homepage)])
+    client = test_client_factory(app)
+
+    response = client.get("/mutating")
+    assert response.status_code == 200
+    assert response.text == "Hello, world"
+
+    app.routes[0] = Route("/mutating", endpoint=func_homepage)
+
+    response = client.get("/mutating")
+    assert response.status_code == 200
+    assert response.text == "Hello, world!"
+
+
+def test_router_fast_path_preserves_declaration_order_across_static_chunks(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(
+        routes=[
+            Route("/alpha", endpoint=homepage),
+            Route("/users/{username}", endpoint=user),
+            Route("/users/me", endpoint=user_me),
+            Route("/about", endpoint=func_homepage),
+        ]
+    )
+    client = test_client_factory(app)
+
+    response = client.get("/alpha")
+    assert response.status_code == 200
+    assert response.text == "Hello, world"
+
+    response = client.get("/users/me")
+    assert response.status_code == 200
+    assert response.text == "User me"
+
+    response = client.get("/about")
+    assert response.status_code == 200
+    assert response.text == "Hello, world!"
+
+
 def test_router_add_websocket_route(client: TestClient) -> None:
     with client.websocket_connect("/ws") as session:
         text = session.receive_text()

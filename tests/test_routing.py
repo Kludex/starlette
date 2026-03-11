@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import BaseRoute, Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -362,6 +362,194 @@ def test_router_fast_path_preserves_declaration_order_across_static_chunks(
     response = client.get("/about")
     assert response.status_code == 200
     assert response.text == "Hello, world!"
+
+
+def test_router_fast_path_invalidates_across_route_list_mutations(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(
+        routes=[
+            Route("/b", endpoint=homepage),
+            Route("/c", endpoint=func_homepage),
+        ]
+    )
+    client = test_client_factory(app)
+
+    response = client.get("/b")
+    assert response.status_code == 200
+    assert response.text == "Hello, world"
+    assert app._http_fast_path_dirty is False
+
+    app.routes.extend([Route("/d", endpoint=contact, methods=["POST"])])
+    assert app._http_fast_path_dirty is True
+    response = client.post("/d")
+    assert response.status_code == 200
+    assert response.text == "Hello, POST!"
+
+    app.routes.insert(0, Route("/a", endpoint=homepage))
+    response = client.get("/a")
+    assert response.status_code == 200
+    assert response.text == "Hello, world"
+
+    popped = app.routes.pop()
+    assert isinstance(popped, Route)
+    assert popped.path == "/d"
+    assert client.post("/d").status_code == 404
+
+    route_b = next(route for route in app.routes if isinstance(route, Route) and route.path == "/b")
+    app.routes.remove(route_b)
+    assert client.get("/b").status_code == 404
+
+    app.routes[:] = [
+        Route("/x", endpoint=homepage),
+        Route("/y", endpoint=func_homepage),
+    ]
+    response = client.get("/x")
+    assert response.status_code == 200
+    assert response.text == "Hello, world"
+
+    del app.routes[1]
+    assert client.get("/y").status_code == 404
+
+    app.routes.extend(
+        [
+            Route("/c", endpoint=homepage),
+            Route("/a", endpoint=func_homepage),
+        ]
+    )
+    app.routes.sort(key=lambda route: route.path)
+    assert [route.path for route in app.routes] == ["/a", "/c", "/x"]
+
+    app.routes.reverse()
+    assert [route.path for route in app.routes] == ["/x", "/c", "/a"]
+
+    app.routes.clear()
+    assert client.get("/x").status_code == 404
+
+
+def test_router_fast_path_uses_method_cache_fallback_for_other_http_methods(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(routes=[Route("/trace", endpoint=PlainTextResponse("trace"), methods=None)])
+    client = test_client_factory(app)
+
+    response = client.request("TRACE", "/trace")
+    assert response.status_code == 200
+    assert response.text == "trace"
+
+
+def test_router_fast_path_handles_unrolled_delete_patch_and_options(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(routes=[Route("/verbs", endpoint=PlainTextResponse("verbs"), methods=None)])
+    client = test_client_factory(app)
+
+    assert client.request("DELETE", "/verbs").text == "verbs"
+    assert client.request("PATCH", "/verbs").text == "verbs"
+    assert client.options("/verbs").text == "verbs"
+
+
+def test_router_fast_path_preserves_first_static_partial_match_across_chunks(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(
+        routes=[
+            Route("/shared", endpoint=homepage, methods=["POST"]),
+            Mount("/mounted", app=ok),
+            Route("/shared", endpoint=func_homepage, methods=["DELETE"]),
+        ]
+    )
+    client = test_client_factory(app)
+
+    response = client.get("/shared")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "POST"
+
+
+def test_router_fast_path_preserves_first_dynamic_partial_match_across_chunks(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Router(
+        routes=[
+            Route("/{first}", endpoint=homepage, methods=["POST"]),
+            Mount("/mounted", app=ok),
+            Route("/{second}", endpoint=func_homepage, methods=["DELETE"]),
+        ]
+    )
+    client = test_client_factory(app)
+
+    response = client.get("/value")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "POST"
+
+
+def test_router_fast_path_handles_partial_mount_subclass(
+    test_client_factory: TestClientFactory,
+) -> None:
+    class PartialMount(Mount):
+        def matches(self, scope: Scope) -> tuple[Match, Scope]:
+            return Match.PARTIAL, {"path_params": {}, "endpoint": self.app}
+
+    app = Router(routes=[PartialMount("/partial", app=PlainTextResponse("OK"))])
+    client = test_client_factory(app)
+
+    response = client.get("/anything")
+    assert response.status_code == 200
+    assert response.text == "OK"
+
+
+def test_router_sequential_fallback_handles_custom_base_route_partials(
+    test_client_factory: TestClientFactory,
+) -> None:
+    class DelegatingRoute(BaseRoute):
+        def __init__(self, route: Route) -> None:
+            self.route = route
+
+        def matches(self, scope: Scope) -> tuple[Match, Scope]:
+            return self.route.matches(scope)
+
+        def url_path_for(self, name: str, /, **path_params: object):
+            return self.route.url_path_for(name, **path_params)
+
+        async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+            await self.route.handle(scope, receive, send)
+
+    app = Router(routes=[DelegatingRoute(Route("/legacy/{value:int}", endpoint=int_convertor, methods=["POST"]))])
+    client = test_client_factory(app)
+
+    response = client.get("/legacy/5")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "POST"
+    assert app._http_fast_path_enabled is False
+    assert app._http_fast_path_dirty is False
+
+
+def test_router_sequential_redirect_still_works_when_fast_path_is_disabled(
+    test_client_factory: TestClientFactory,
+) -> None:
+    class DelegatingRoute(BaseRoute):
+        def __init__(self, route: Route) -> None:
+            self.route = route
+
+        def matches(self, scope: Scope) -> tuple[Match, Scope]:
+            return self.route.matches(scope)
+
+        def url_path_for(self, name: str, /, **path_params: object):
+            return self.route.url_path_for(name, **path_params)
+
+        async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+            await self.route.handle(scope, receive, send)
+
+    app = Router(routes=[DelegatingRoute(Route("/legacy", endpoint=homepage))])
+    client = test_client_factory(app)
+
+    response = client.get("/legacy/")
+    assert response.status_code == 200
+    assert response.history[0].status_code == 307
+    assert str(response.url) == "http://testserver/legacy"
 
 
 def test_router_add_websocket_route(client: TestClient) -> None:

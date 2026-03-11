@@ -11,7 +11,7 @@ from collections.abc import Awaitable, Callable, Collection, Generator, Iterable
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
-from typing import Any, Self, SupportsIndex, TypeVar, cast, overload
+from typing import Any, SupportsIndex, TypeVar, cast, overload
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable

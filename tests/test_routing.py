@@ -520,6 +520,8 @@ def test_router_sequential_fallback_handles_custom_base_route_partials(
     app = Router(routes=[DelegatingRoute(Route("/legacy/{value:int}", endpoint=int_convertor, methods=["POST"]))])
     client = test_client_factory(app)
 
+    assert app.url_path_for("int_convertor", value=5) == "/legacy/5"
+
     response = client.get("/legacy/5")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
@@ -546,6 +548,8 @@ def test_router_sequential_redirect_still_works_when_fast_path_is_disabled(
 
     app = Router(routes=[DelegatingRoute(Route("/legacy", endpoint=homepage))])
     client = test_client_factory(app)
+
+    assert app.url_path_for("homepage") == "/legacy"
 
     response = client.get("/legacy/")
     assert response.status_code == 200

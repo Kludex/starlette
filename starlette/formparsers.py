@@ -93,8 +93,8 @@ class FormParser:
 
         # Create the parser.
         parser = multipart.QuerystringParser(callbacks)
-        field_name = b""
-        field_value = b""
+        field_name = bytearray()
+        field_value = bytearray()
 
         items: list[tuple[str, str | UploadFile]] = []
 
@@ -108,12 +108,12 @@ class FormParser:
             self.messages.clear()
             for message_type, message_bytes in messages:
                 if message_type == FormMessage.FIELD_START:
-                    field_name = b""
-                    field_value = b""
+                    field_name = bytearray()
+                    field_value = bytearray()
                 elif message_type == FormMessage.FIELD_NAME:
-                    field_name += message_bytes
+                    field_name.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_DATA:
-                    field_value += message_bytes
+                    field_value.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_END:
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))
@@ -266,11 +266,11 @@ class MultiPartParser:
                     await part.file.seek(0)
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()
+            parser.finalize()
         except MultiPartException as exc:
             # Close all the files if there was an error.
             for file in self._files_to_close_on_error:
                 file.close()
             raise exc
 
-        parser.finalize()
         return FormData(self.items)

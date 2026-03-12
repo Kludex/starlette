@@ -298,7 +298,7 @@ app = Router(routes=[
 When working with WebSocket endpoints, you should use `WebSocketRoute`
 instead of the usual `Route`.
 
-Path parameters, and reverse URL lookups for `WebSocketRoute` work the the same
+Path parameters, and reverse URL lookups for `WebSocketRoute` work the same
 as HTTP `Route`, which can be found in the HTTP [Route](#http-routing) section above.
 
 ```python

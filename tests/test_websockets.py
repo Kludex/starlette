@@ -7,7 +7,7 @@ import pytest
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
 from starlette import status
-from starlette.responses import Response
+from starlette.responses import Response, StreamingResponse
 from starlette.testclient import WebSocketDenialResponse
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
@@ -612,3 +612,24 @@ def test_receive_wrong_message_type(test_client_factory: TestClientFactory) -> N
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/") as websocket:
             websocket.send({"type": "websocket.connect"})
+
+
+def test_send_denial_streaming_response(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+
+        async def body_iterator():
+            yield b"hello "
+            yield b"world"
+
+        response = StreamingResponse(content=body_iterator(), status_code=403)
+        await websocket.send_denial_response(response)
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.status_code == 403
+    assert exc.value.content == b"hello world"

@@ -23,7 +23,19 @@ from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
 from starlette.requests import ClientDisconnect
-from starlette.types import Receive, Scope, Send
+from starlette.types import Message, Receive, Scope, Send
+
+
+def _wrap_send_for_websocket(send: Send, scope: Scope) -> Send:
+    if scope.get("type") != "websocket":
+        return send
+
+    async def websocket_send(message: Message) -> None:
+        if message["type"].startswith("http.response."):
+            message["type"] = "websocket." + message["type"]
+        await send(message)
+
+    return websocket_send
 
 
 class Response:
@@ -257,6 +269,7 @@ class StreamingResponse(Response):
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        send = _wrap_send_for_websocket(send, scope)
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
         if spec_version >= (2, 4):
@@ -334,6 +347,7 @@ class FileResponse(Response):
         self.headers.setdefault("etag", etag)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        send = _wrap_send_for_websocket(send, scope)
         send_header_only: bool = scope["method"].upper() == "HEAD"
         send_pathsend: bool = "http.response.pathsend" in scope.get("extensions", {})
 

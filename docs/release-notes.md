@@ -2,6 +2,16 @@
 toc_depth: 2
 ---
 
+## 1.0.0rc2 (March 7, 2026)
+
+#### Added
+
+* Track session access and modification in `SessionMiddleware` [#3166](https://github.com/encode/starlette/pull/3166).
+
+#### Fixed
+
+* Move `parser.finalize()` inside try/except in `MultiPartParser.parse()` [#3153](https://github.com/encode/starlette/pull/3153).
+
 ## 1.0.0rc1 (February 23, 2026)
 
 We're ready! I'm thrilled to announce the first release candidate for Starlette 1.0.

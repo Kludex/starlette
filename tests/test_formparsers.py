@@ -390,10 +390,26 @@ def test_multipart_request_custom_spool_max_size(
     assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
 
 
-@pytest.mark.parametrize("attr", ["spool_max_size", "max_part_size"])
-def test_removed_class_attributes(attr: str) -> None:
-    with pytest.raises(AttributeError, match="no longer supported.*parameter on `MultiPartParser"):
-        getattr(MultiPartParser, attr)
+def test_multipart_request_class_spool_max_size(
+    mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
+) -> None:
+    """Test that setting spool_max_size as a class attribute works as a global default."""
+    original = MultiPartParser.spool_max_size
+    try:
+        MultiPartParser.spool_max_size = 512
+
+        client = test_client_factory(app_monitor_thread)
+        # Data larger than 512 bytes but smaller than 1MB
+        data = BytesIO(b" " * 1024)
+        response = client.post("/", files=[("test_file", data)])
+        assert response.status_code == 200
+
+        app_thread_ident = response.json().get("thread_ident")
+        assert app_thread_ident is not None
+        assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
+        assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
+    finally:
+        MultiPartParser.spool_max_size = original
 
 
 def test_multipart_request_with_charset_for_filename(tmpdir: Path, test_client_factory: TestClientFactory) -> None:

@@ -122,33 +122,12 @@ class FormParser:
         return FormData(items)
 
 
-class _RemovedAttribute:
-    """Descriptor that raises a helpful error when a removed class attribute is accessed.
-
-    This is a data descriptor: instance access goes through ``__get__``/``__set__``
-    so that ``self.attr = value`` in ``__init__`` stores into the instance ``__dict__``
-    and later reads return that value, while *class-level* access
-    (``MultiPartParser.attr``) raises an ``AttributeError`` with migration guidance.
-    """
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-    def __set__(self, obj: object, value: int) -> None:
-        obj.__dict__[self.name] = value
-
-    def __get__(self, obj: object | None, objtype: type | None = None) -> int:
-        if obj is not None:
-            return obj.__dict__[self.name]  # type: ignore[no-any-return]
-        raise AttributeError(
-            f"Accessing `{self.name}` as a class variable is no longer supported. "
-            f"Use the `{self.name}` parameter on `MultiPartParser()` or `request.form()` instead."
-        )
+_Unset = type("_Unset", (), {"__repr__": lambda self: "_Unset"})()
 
 
 class MultiPartParser:
-    spool_max_size = _RemovedAttribute("spool_max_size")
-    max_part_size = _RemovedAttribute("max_part_size")
+    spool_max_size: int = 1024 * 1024  # 1MB
+    max_part_size: int = 1024 * 1024  # 1MB
 
     def __init__(
         self,
@@ -157,8 +136,8 @@ class MultiPartParser:
         *,
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
-        max_part_size: int = 1024 * 1024,  # 1MB
-        spool_max_size: int = 1024 * 1024,  # 1MB
+        max_part_size: int = _Unset,
+        spool_max_size: int = _Unset,
     ) -> None:
         """Parse multipart form data from an incoming request.
 
@@ -167,9 +146,9 @@ class MultiPartParser:
             stream: An async generator yielding request body chunks.
             max_files: Maximum number of file parts allowed.
             max_fields: Maximum number of non-file field parts allowed.
-            max_part_size: Maximum size in bytes for a single non-file part.
+            max_part_size: Maximum size in bytes for a single non-file part. Falls back to the class attribute.
             spool_max_size: Maximum size in bytes for the in-memory spool of each uploaded file before it rolls over
-                to disk.
+                to disk. Falls back to the class attribute.
         """
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
@@ -186,8 +165,10 @@ class MultiPartParser:
         self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: list[MultipartPart] = []
         self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
-        self.max_part_size = max_part_size
-        self.spool_max_size = spool_max_size
+        if max_part_size is not _Unset:
+            self.max_part_size = max_part_size
+        if spool_max_size is not _Unset:
+            self.spool_max_size = spool_max_size
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()

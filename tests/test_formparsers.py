@@ -14,7 +14,7 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.datastructures import UploadFile
-from starlette.formparsers import MultiPartException, _user_safe_decode
+from starlette.formparsers import MultiPartException, MultiPartParser, _user_safe_decode
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -388,6 +388,12 @@ def test_multipart_request_custom_spool_max_size(
     assert app_thread_ident is not None
     assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
     assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
+
+
+@pytest.mark.parametrize("attr", ["spool_max_size", "max_part_size"])
+def test_removed_class_attributes(attr: str) -> None:
+    with pytest.raises(AttributeError, match="no longer supported.*parameter on `MultiPartParser"):
+        getattr(MultiPartParser, attr)
 
 
 def test_multipart_request_with_charset_for_filename(tmpdir: Path, test_client_factory: TestClientFactory) -> None:

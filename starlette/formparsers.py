@@ -122,7 +122,34 @@ class FormParser:
         return FormData(items)
 
 
+class _RemovedAttribute:
+    """Descriptor that raises a helpful error when a removed class attribute is accessed.
+
+    This is a data descriptor: instance access goes through ``__get__``/``__set__``
+    so that ``self.attr = value`` in ``__init__`` stores into the instance ``__dict__``
+    and later reads return that value, while *class-level* access
+    (``MultiPartParser.attr``) raises an ``AttributeError`` with migration guidance.
+    """
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __set__(self, obj: object, value: int) -> None:
+        obj.__dict__[self.name] = value
+
+    def __get__(self, obj: object | None, objtype: type | None = None) -> int:
+        if obj is not None:
+            return obj.__dict__[self.name]  # type: ignore[no-any-return]
+        raise AttributeError(
+            f"Accessing `{self.name}` as a class variable is no longer supported. "
+            f"Use the `{self.name}` parameter on `MultiPartParser()` or `request.form()` instead."
+        )
+
+
 class MultiPartParser:
+    spool_max_size = _RemovedAttribute("spool_max_size")
+    max_part_size = _RemovedAttribute("max_part_size")
+
     def __init__(
         self,
         headers: Headers,

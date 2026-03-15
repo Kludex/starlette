@@ -124,6 +124,7 @@ class FormParser:
 
 class _Unset:
     def __repr__(self) -> str:  # pragma: no cover
+        # Shown in inspect.signature() output for parameters that fall back to class attributes.
         return "<default>"
 
 
@@ -206,7 +207,7 @@ class MultiPartParser:
         self._current_partial_header_value = b""
 
     def on_headers_finished(self) -> None:
-        disposition, options = parse_options_header(self._current_part.content_disposition)
+        _disposition, options = parse_options_header(self._current_part.content_disposition)
         try:
             self._current_part.field_name = _user_safe_decode(options[b"name"], self._charset)
         except KeyError:

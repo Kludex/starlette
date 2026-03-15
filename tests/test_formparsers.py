@@ -350,7 +350,7 @@ def test_multipart_request_large_file_rollover_in_background_thread(
     mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
 ) -> None:
     """Test that Spooled file rollovers happen in background threads."""
-    data = BytesIO(b" " * (MultiPartParser.spool_max_size + 1))
+    data = BytesIO(b" " * (1024 * 1024 + 1))
 
     client = test_client_factory(app_monitor_thread)
     response = client.post("/", files=[("test_large", data)])
@@ -361,6 +361,31 @@ def test_multipart_request_large_file_rollover_in_background_thread(
     assert app_thread_ident is not None
 
     # Ensure the app thread was not the same as the rollover one and that a rollover thread exists
+    assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
+    assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
+
+
+def test_multipart_request_custom_spool_max_size(
+    mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
+) -> None:
+    """Test that a custom spool_max_size triggers rollover at the configured threshold."""
+
+    async def app_with_custom_spool(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        await request.form(spool_max_size=512)
+        await request.close()
+        response = JSONResponse({"thread_ident": threading.current_thread().ident})
+        await response(scope, receive, send)
+
+    # Data larger than the custom spool size (512 bytes), but smaller than the default (1MB)
+    data = BytesIO(b" " * 1024)
+
+    client = test_client_factory(app_with_custom_spool)
+    response = client.post("/", files=[("test_file", data)])
+    assert response.status_code == 200
+
+    app_thread_ident = response.json().get("thread_ident")
+    assert app_thread_ident is not None
     assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
     assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
 

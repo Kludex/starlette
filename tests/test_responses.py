@@ -653,6 +653,36 @@ async def test_streaming_response_on_client_disconnects() -> None:
     await stream.aclose()
 
 
+@pytest.mark.anyio
+async def test_streaming_response_runs_background_on_websocket_scope() -> None:
+    background_called = False
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        return {}  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    def run_background() -> None:
+        nonlocal background_called
+        background_called = True
+
+    async def stream() -> AsyncIterator[bytes]:
+        yield b"chunk"
+
+    response = StreamingResponse(stream(), background=BackgroundTask(run_background))
+
+    await response({"type": "websocket"}, receive, send)
+
+    assert background_called
+    assert [message["type"] for message in sent] == [
+        "websocket.http.response.start",
+        "websocket.http.response.body",
+        "websocket.http.response.body",
+    ]
+
+
 README = """\
 # BáiZé
 

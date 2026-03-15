@@ -131,7 +131,7 @@ MultiPartParser.spool_max_size = 100 * 1024 * 1024  # 100 MB
 MultiPartParser.max_part_size = 10 * 1024 * 1024  # 10 MB
 ```
 
-These defaults apply whenever `request.form()` is called without explicit values, which is useful for frameworks like FastAPI that call `request.form()` internally.
+These defaults apply whenever `request.form()` is called without explicit values.
 
 !!! info
     These limits are for security reasons, allowing an unlimited number of fields or files could lead to a denial of service attack by consuming a lot of CPU and memory parsing too many empty fields.

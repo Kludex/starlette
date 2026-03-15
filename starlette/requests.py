@@ -11,7 +11,7 @@ import anyio
 from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManagerWrapper
 from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
 from starlette.exceptions import HTTPException
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser, _Unset
+from starlette.formparsers import _UNSET, FormParser, MultiPartException, MultiPartParser, _Unset
 from starlette.types import Message, Receive, Scope, Send
 
 if TYPE_CHECKING:
@@ -269,8 +269,8 @@ class Request(HTTPConnection[StateT]):
         *,
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
-        max_part_size: int = _Unset,
-        spool_max_size: int = _Unset,
+        max_part_size: int | _Unset = _UNSET,
+        spool_max_size: int | _Unset = _UNSET,
     ) -> FormData:
         if self._form is None:  # pragma: no branch
             assert parse_options_header is not None, (
@@ -306,8 +306,8 @@ class Request(HTTPConnection[StateT]):
         *,
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
-        max_part_size: int = _Unset,
-        spool_max_size: int = _Unset,
+        max_part_size: int | _Unset = _UNSET,
+        spool_max_size: int | _Unset = _UNSET,
     ) -> AwaitableOrContextManager[FormData]:
         return AwaitableOrContextManagerWrapper(
             self._get_form(

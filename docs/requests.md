@@ -122,6 +122,17 @@ async with request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024
     ...
 ```
 
+You can also set `max_part_size` and `spool_max_size` globally via class attributes on `MultiPartParser`:
+
+```python
+from starlette.formparsers import MultiPartParser
+
+MultiPartParser.spool_max_size = 100 * 1024 * 1024  # 100 MB
+MultiPartParser.max_part_size = 10 * 1024 * 1024  # 10 MB
+```
+
+These defaults apply whenever `request.form()` is called without explicit values, which is useful for frameworks like FastAPI that call `request.form()` internally.
+
 !!! info
     These limits are for security reasons, allowing an unlimited number of fields or files could lead to a denial of service attack by consuming a lot of CPU and memory parsing too many empty fields.
 

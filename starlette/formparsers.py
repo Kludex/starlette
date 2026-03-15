@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
 from tempfile import SpooledTemporaryFile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from urllib.parse import unquote_plus
 
 from starlette.datastructures import FormData, Headers, UploadFile
@@ -130,9 +130,9 @@ _UNSET = _Unset()
 
 
 class MultiPartParser:
-    spool_max_size: int = 1024 * 1024  # 1MB
+    spool_max_size: ClassVar[int] = 1024 * 1024  # 1MB
     """The maximum size of the spooled temporary file used to store file data."""
-    max_part_size: int = 1024 * 1024  # 1MB
+    max_part_size: ClassVar[int] = 1024 * 1024  # 1MB
     """The maximum size of a part in the multipart request."""
 
     def __init__(

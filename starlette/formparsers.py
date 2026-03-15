@@ -122,12 +122,18 @@ class FormParser:
         return FormData(items)
 
 
-_Unset = type("_Unset", (), {"__repr__": lambda self: "_Unset"})()
+class _Unset:  # pragma: no cover
+    ...
+
+
+_UNSET = _Unset()
 
 
 class MultiPartParser:
     spool_max_size: int = 1024 * 1024  # 1MB
+    """The maximum size of the spooled temporary file used to store file data."""
     max_part_size: int = 1024 * 1024  # 1MB
+    """The maximum size of a part in the multipart request."""
 
     def __init__(
         self,
@@ -136,20 +142,9 @@ class MultiPartParser:
         *,
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
-        max_part_size: int = _Unset,
-        spool_max_size: int = _Unset,
+        max_part_size: int | _Unset = _UNSET,
+        spool_max_size: int | _Unset = _UNSET,
     ) -> None:
-        """Parse multipart form data from an incoming request.
-
-        Args:
-            headers: The request headers, used to extract the multipart boundary.
-            stream: An async generator yielding request body chunks.
-            max_files: Maximum number of file parts allowed.
-            max_fields: Maximum number of non-file field parts allowed.
-            max_part_size: Maximum size in bytes for a single non-file part. Falls back to the class attribute.
-            spool_max_size: Maximum size in bytes for the in-memory spool of each uploaded file before it rolls over
-                to disk. Falls back to the class attribute.
-        """
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
@@ -165,8 +160,8 @@ class MultiPartParser:
         self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: list[MultipartPart] = []
         self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
-        self._max_part_size = max_part_size if max_part_size is not _Unset else type(self).max_part_size
-        self._spool_max_size = spool_max_size if spool_max_size is not _Unset else type(self).spool_max_size
+        self._max_part_size = type(self).max_part_size if isinstance(max_part_size, _Unset) else max_part_size
+        self._spool_max_size = type(self).spool_max_size if isinstance(spool_max_size, _Unset) else spool_max_size
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()

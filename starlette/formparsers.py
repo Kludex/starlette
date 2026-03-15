@@ -122,8 +122,9 @@ class FormParser:
         return FormData(items)
 
 
-class _Unset:  # pragma: no cover
-    ...
+class _Unset:
+    def __repr__(self) -> str:  # pragma: no cover
+        return "<default>"
 
 
 _UNSET = _Unset()

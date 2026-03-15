@@ -412,6 +412,20 @@ def test_multipart_request_class_spool_max_size(
         MultiPartParser.spool_max_size = original
 
 
+def test_multipart_request_class_max_part_size(test_client_factory: TestClientFactory) -> None:
+    """Test that setting max_part_size as a class attribute works as a global default."""
+    original = MultiPartParser.max_part_size
+    try:
+        MultiPartParser.max_part_size = 512
+
+        client = test_client_factory(Starlette(routes=[Mount("/", app=app)]))
+        response = client.post("/", data={"field": "x" * 513}, files=FORCE_MULTIPART)
+        assert response.status_code == 400
+        assert response.text == "Part exceeded maximum size of 0KB."
+    finally:
+        MultiPartParser.max_part_size = original
+
+
 def test_multipart_request_with_charset_for_filename(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.post(

@@ -113,7 +113,7 @@ state with `disconnected = await request.is_disconnected()`.
 
 Request files are normally sent as multipart form data (`multipart/form-data`).
 
-Signature: `request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024, spool_max_size=1024*1024)`
+Signature: `request.form(max_files=1000, max_fields=1000, max_part_size=<default>, spool_max_size=<default>)`
 
 You can configure the number of maximum fields or files with the parameters `max_files` and `max_fields`; part size using `max_part_size`; and the in-memory spool size before uploaded files roll over to disk using `spool_max_size`:
 
@@ -122,7 +122,7 @@ async with request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024
     ...
 ```
 
-You can also set `max_part_size` and `spool_max_size` globally via class attributes on `MultiPartParser`:
+The defaults for `max_part_size` and `spool_max_size` are read from class attributes on `MultiPartParser` (both default to 1MB). You can set them globally:
 
 ```python
 from starlette.formparsers import MultiPartParser

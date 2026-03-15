@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
 from tempfile import SpooledTemporaryFile
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 from urllib.parse import unquote_plus
 
 from starlette.datastructures import FormData, Headers, UploadFile
@@ -132,9 +132,9 @@ _UNSET = _Unset()
 
 
 class MultiPartParser:
-    spool_max_size: ClassVar[int] = 1024 * 1024  # 1MB
+    spool_max_size: int = 1024 * 1024  # 1MB
     """The maximum size of the spooled temporary file used to store file data."""
-    max_part_size: ClassVar[int] = 1024 * 1024  # 1MB
+    max_part_size: int = 1024 * 1024  # 1MB
     """The maximum size of a part in the multipart request."""
 
     def __init__(
@@ -162,8 +162,10 @@ class MultiPartParser:
         self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: list[MultipartPart] = []
         self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
-        self._max_part_size = type(self).max_part_size if isinstance(max_part_size, _Unset) else max_part_size
-        self._spool_max_size = type(self).spool_max_size if isinstance(spool_max_size, _Unset) else spool_max_size
+        if not isinstance(max_part_size, _Unset):
+            self.max_part_size = max_part_size
+        if not isinstance(spool_max_size, _Unset):
+            self.spool_max_size = spool_max_size
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()
@@ -171,8 +173,8 @@ class MultiPartParser:
     def on_part_data(self, data: bytes, start: int, end: int) -> None:
         message_bytes = data[start:end]
         if self._current_part.file is None:
-            if len(self._current_part.data) + len(message_bytes) > self._max_part_size:
-                raise MultiPartException(f"Part exceeded maximum size of {int(self._max_part_size / 1024)}KB.")
+            if len(self._current_part.data) + len(message_bytes) > self.max_part_size:
+                raise MultiPartException(f"Part exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
             self._current_part.data.extend(message_bytes)
         else:
             self._file_parts_to_write.append((self._current_part, message_bytes))
@@ -217,7 +219,7 @@ class MultiPartParser:
             if self._current_files > self.max_files:
                 raise MultiPartException(f"Too many files. Maximum number of files is {self.max_files}.")
             filename = _user_safe_decode(options[b"filename"], self._charset)
-            tempfile = SpooledTemporaryFile(max_size=self._spool_max_size)
+            tempfile = SpooledTemporaryFile(max_size=self.spool_max_size)
             self._files_to_close_on_error.append(tempfile)
             self._current_part.file = UploadFile(
                 file=tempfile,  # type: ignore[arg-type]

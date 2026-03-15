@@ -616,7 +616,7 @@ async def test_streaming_response_stops_if_receiving_http_disconnect() -> None:
     response = StreamingResponse(content=stream_indefinitely())
 
     with anyio.move_on_after(1) as cancel_scope:
-        await response({}, receive_disconnect, send)
+        await response({"type": "http"}, receive_disconnect, send)
     assert not cancel_scope.cancel_called, "Content streaming should stop itself."
 
 
@@ -647,7 +647,7 @@ async def test_streaming_response_on_client_disconnects() -> None:
 
     with anyio.move_on_after(1) as cancel_scope:
         with pytest.raises(ClientDisconnect):
-            await response({"asgi": {"spec_version": "2.4"}}, receive_disconnect, send)
+            await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive_disconnect, send)
     assert not cancel_scope.cancel_called, "Content streaming should stop itself."
     assert chunks == b"chunk"
     await stream.aclose()

@@ -151,10 +151,7 @@ class Response:
             samesite=samesite,
         )
 
-    def _wrap_websocket_denial_send(self, scope: Scope, send: Send) -> Send:
-        if scope.get("type") != "websocket":
-            return send
-
+    def _wrap_websocket_denial_send(self, send: Send) -> Send:
         async def wrapped(message: Message) -> None:
             message_type = message["type"]
             if message_type in {"http.response.start", "http.response.body"}:  # pragma: no branch
@@ -164,7 +161,8 @@ class Response:
         return wrapped
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        send = self._wrap_websocket_denial_send(scope, send)
+        if scope["type"] == "websocket":
+            send = self._wrap_websocket_denial_send(send)
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         await send({"type": "http.response.body", "body": self.body})
 
@@ -257,8 +255,8 @@ class StreamingResponse(Response):
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        send = self._wrap_websocket_denial_send(scope, send)
-        if scope.get("type") == "websocket":
+        if scope["type"] == "websocket":
+            send = self._wrap_websocket_denial_send(send)
             await self.stream_response(send)
             if self.background is not None:
                 await self.background()
@@ -341,10 +339,11 @@ class FileResponse(Response):
         self.headers.setdefault("etag", etag)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        scope_type = scope.get("type", "http")
+        scope_type = scope["type"]
         send_header_only = scope_type == "http" and scope["method"].upper() == "HEAD"
         send_pathsend = scope_type == "http" and "http.response.pathsend" in scope.get("extensions", {})
-        send = self._wrap_websocket_denial_send(scope, send)
+        if scope_type == "websocket":
+            send = self._wrap_websocket_denial_send(send)
 
         if self.stat_result is None:
             try:

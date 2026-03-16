@@ -350,7 +350,7 @@ def test_multipart_request_large_file_rollover_in_background_thread(
     mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
 ) -> None:
     """Test that Spooled file rollovers happen in background threads."""
-    data = BytesIO(b" " * (1024 * 1024 + 1))
+    data = BytesIO(b" " * (MultiPartParser.spool_max_size + 1))
 
     client = test_client_factory(app_monitor_thread)
     response = client.post("/", files=[("test_large", data)])

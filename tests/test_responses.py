@@ -616,7 +616,7 @@ async def test_streaming_response_stops_if_receiving_http_disconnect() -> None:
     response = StreamingResponse(content=stream_indefinitely())
 
     with anyio.move_on_after(1) as cancel_scope:
-        await response({}, receive_disconnect, send)
+        await response({"type": "http"}, receive_disconnect, send)
     assert not cancel_scope.cancel_called, "Content streaming should stop itself."
 
 
@@ -647,10 +647,40 @@ async def test_streaming_response_on_client_disconnects() -> None:
 
     with anyio.move_on_after(1) as cancel_scope:
         with pytest.raises(ClientDisconnect):
-            await response({"asgi": {"spec_version": "2.4"}}, receive_disconnect, send)
+            await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive_disconnect, send)
     assert not cancel_scope.cancel_called, "Content streaming should stop itself."
     assert chunks == b"chunk"
     await stream.aclose()
+
+
+@pytest.mark.anyio
+async def test_streaming_response_runs_background_on_websocket_scope() -> None:
+    background_called = False
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        return {}  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    def run_background() -> None:
+        nonlocal background_called
+        background_called = True
+
+    async def stream() -> AsyncIterator[bytes]:
+        yield b"chunk"
+
+    response = StreamingResponse(stream(), background=BackgroundTask(run_background))
+
+    await response({"type": "websocket"}, receive, send)
+
+    assert background_called
+    assert [message["type"] for message in sent] == [
+        "websocket.http.response.start",
+        "websocket.http.response.body",
+        "websocket.http.response.body",
+    ]
 
 
 README = """\

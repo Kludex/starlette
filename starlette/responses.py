@@ -23,7 +23,7 @@ from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
 from starlette.requests import ClientDisconnect
-from starlette.types import Receive, Scope, Send
+from starlette.types import Message, Receive, Scope, Send
 
 
 class Response:
@@ -151,16 +151,20 @@ class Response:
             samesite=samesite,
         )
 
+    def _wrap_websocket_denial_send(self, send: Send) -> Send:
+        async def wrapped(message: Message) -> None:
+            message_type = message["type"]
+            if message_type in {"http.response.start", "http.response.body"}:  # pragma: no branch
+                message = {**message, "type": "websocket." + message_type}
+            await send(message)
+
+        return wrapped
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        prefix = "websocket." if scope["type"] == "websocket" else ""
-        await send(
-            {
-                "type": prefix + "http.response.start",
-                "status": self.status_code,
-                "headers": self.raw_headers,
-            }
-        )
-        await send({"type": prefix + "http.response.body", "body": self.body})
+        if scope["type"] == "websocket":
+            send = self._wrap_websocket_denial_send(send)
+        await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
+        await send({"type": "http.response.body", "body": self.body})
 
         if self.background is not None:
             await self.background()
@@ -242,13 +246,7 @@ class StreamingResponse(Response):
                 break
 
     async def stream_response(self, send: Send) -> None:
-        await send(
-            {
-                "type": "http.response.start",
-                "status": self.status_code,
-                "headers": self.raw_headers,
-            }
-        )
+        await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         async for chunk in self.body_iterator:
             if not isinstance(chunk, bytes | memoryview):
                 chunk = chunk.encode(self.charset)
@@ -257,6 +255,13 @@ class StreamingResponse(Response):
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "websocket":
+            send = self._wrap_websocket_denial_send(send)
+            await self.stream_response(send)
+            if self.background is not None:
+                await self.background()
+            return
+
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
         if spec_version >= (2, 4):
@@ -334,8 +339,11 @@ class FileResponse(Response):
         self.headers.setdefault("etag", etag)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        send_header_only: bool = scope["method"].upper() == "HEAD"
-        send_pathsend: bool = "http.response.pathsend" in scope.get("extensions", {})
+        scope_type = scope["type"]
+        send_header_only = scope_type == "http" and scope["method"].upper() == "HEAD"
+        send_pathsend = scope_type == "http" and "http.response.pathsend" in scope.get("extensions", {})
+        if scope_type == "websocket":
+            send = self._wrap_websocket_denial_send(send)
 
         if self.stat_result is None:
             try:

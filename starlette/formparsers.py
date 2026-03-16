@@ -93,8 +93,8 @@ class FormParser:
 
         # Create the parser.
         parser = multipart.QuerystringParser(callbacks)
-        field_name = b""
-        field_value = b""
+        field_name = bytearray()
+        field_value = bytearray()
 
         items: list[tuple[str, str | UploadFile]] = []
 
@@ -108,12 +108,12 @@ class FormParser:
             self.messages.clear()
             for message_type, message_bytes in messages:
                 if message_type == FormMessage.FIELD_START:
-                    field_name = b""
-                    field_value = b""
+                    field_name = bytearray()
+                    field_value = bytearray()
                 elif message_type == FormMessage.FIELD_NAME:
-                    field_name += message_bytes
+                    field_name.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_DATA:
-                    field_value += message_bytes
+                    field_value.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_END:
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))

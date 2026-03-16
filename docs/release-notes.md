@@ -2,7 +2,7 @@
 toc_depth: 2
 ---
 
-## 1.0.0rc2 (March 7, 2026)
+## 1.0.0rc2 (March 16, 2026)
 
 #### Added
 
@@ -10,6 +10,8 @@ toc_depth: 2
 
 #### Fixed
 
+* Handle websocket denial responses in `StreamingResponse` and `FileResponse` [#3189](https://github.com/encode/starlette/pull/3189).
+* Use `bytearray` for field accumulation in `FormParser` [#3179](https://github.com/encode/starlette/pull/3179).
 * Move `parser.finalize()` inside try/except in `MultiPartParser.parse()` [#3153](https://github.com/encode/starlette/pull/3153).
 
 ## 1.0.0rc1 (February 23, 2026)

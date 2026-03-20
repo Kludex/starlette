@@ -7,6 +7,10 @@ import pytest
     "constant,msg",
     (
         (
+            "HTTP_306_RESERVED",
+            "'HTTP_306_RESERVED' is deprecated and will be removed in a future version.",
+        ),
+        (
             "HTTP_413_REQUEST_ENTITY_TOO_LARGE",
             "'HTTP_413_REQUEST_ENTITY_TOO_LARGE' is deprecated. Use 'HTTP_413_CONTENT_TOO_LARGE' instead.",
         ),

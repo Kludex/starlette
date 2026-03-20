@@ -31,7 +31,6 @@ __all__ = [
     "HTTP_303_SEE_OTHER",
     "HTTP_304_NOT_MODIFIED",
     "HTTP_305_USE_PROXY",
-    "HTTP_306_RESERVED",
     "HTTP_307_TEMPORARY_REDIRECT",
     "HTTP_308_PERMANENT_REDIRECT",
     "HTTP_400_BAD_REQUEST",
@@ -111,7 +110,6 @@ HTTP_302_FOUND = 302
 HTTP_303_SEE_OTHER = 303
 HTTP_304_NOT_MODIFIED = 304
 HTTP_305_USE_PROXY = 305
-HTTP_306_RESERVED = 306
 HTTP_307_TEMPORARY_REDIRECT = 307
 HTTP_308_PERMANENT_REDIRECT = 308
 HTTP_400_BAD_REQUEST = 400
@@ -178,6 +176,7 @@ WS_1014_BAD_GATEWAY = 1014
 WS_1015_TLS_HANDSHAKE = 1015
 
 __deprecated__ = {
+    "HTTP_306_RESERVED": 306,
     "HTTP_413_REQUEST_ENTITY_TOO_LARGE": 413,
     "HTTP_414_REQUEST_URI_TOO_LONG": 414,
     "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE": 416,
@@ -195,11 +194,12 @@ def __getattr__(name: str) -> int:
 
     deprecated = __deprecated__.get(name)
     if deprecated:
-        warnings.warn(
-            f"'{name}' is deprecated. Use '{deprecation_changes[name]}' instead.",
-            category=DeprecationWarning,
-            stacklevel=3,
-        )
+        replacement = deprecation_changes.get(name)
+        if replacement:
+            msg = f"'{name}' is deprecated. Use '{replacement}' instead."
+        else:
+            msg = f"'{name}' is deprecated and will be removed in a future version."
+        warnings.warn(msg, category=DeprecationWarning, stacklevel=3)
         return deprecated
 
     raise AttributeError(f"module 'starlette.status' has no attribute '{name}'")

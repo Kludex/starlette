@@ -65,15 +65,16 @@ def test_multiple_tasks(test_client_factory: TestClientFactory) -> None:
     assert TASK_COUNTER == 1 + 2 + 3
 
 
-def test_multi_tasks_failure_avoids_next_execution(
+def test_multi_tasks_failure_continues_remaining(
     test_client_factory: TestClientFactory,
 ) -> None:
+    """Verify that when one background task raises, remaining tasks still run (fire-and-forget)."""
     TASK_COUNTER = 0
 
     def increment() -> None:
         nonlocal TASK_COUNTER
         TASK_COUNTER += 1
-        if TASK_COUNTER == 1:  # pragma: no branch
+        if TASK_COUNTER == 1:
             raise Exception("task failed")
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -84,6 +85,6 @@ def test_multi_tasks_failure_avoids_next_execution(
         await response(scope, receive, send)
 
     client = test_client_factory(app)
-    with pytest.raises(Exception):
-        client.get("/")
-    assert TASK_COUNTER == 1
+    response = client.get("/")
+    assert response.text == "tasks initiated"
+    assert TASK_COUNTER == 2

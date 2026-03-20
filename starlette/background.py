@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Sequence
 from typing import Any, ParamSpec
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
+
+logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 
@@ -33,4 +36,7 @@ class BackgroundTasks(BackgroundTask):
 
     async def __call__(self) -> None:
         for task in self.tasks:
-            await task()
+            try:
+                await task()
+            except Exception:
+                logger.exception(f"Background task '{task.func.__name__}' failed")

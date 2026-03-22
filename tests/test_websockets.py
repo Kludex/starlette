@@ -651,3 +651,18 @@ def test_receive_wrong_message_type(test_client_factory: TestClientFactory) -> N
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/") as websocket:
             websocket.send({"type": "websocket.connect"})
+
+
+def test_is_disconnected_property(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        assert not websocket.is_disconnected
+        await websocket.accept()
+        assert not websocket.is_disconnected
+        message = await websocket.receive()
+        websocket.client_state = WebSocketState.DISCONNECTED
+        assert websocket.is_disconnected
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/") as websocket:
+        websocket.send_json({"close": True})

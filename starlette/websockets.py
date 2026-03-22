@@ -32,6 +32,13 @@ class WebSocket(HTTPConnection[StateT]):
         self.client_state = WebSocketState.CONNECTING
         self.application_state = WebSocketState.CONNECTING
 
+    @property
+    def is_disconnected(self) -> bool:
+        return (
+            self.client_state == WebSocketState.DISCONNECTED
+            or self.application_state == WebSocketState.DISCONNECTED
+        )
+
     async def receive(self) -> Message:
         """
         Receive ASGI websocket messages, ensuring valid state transitions.
@@ -54,7 +61,7 @@ class WebSocket(HTTPConnection[StateT]):
                 self.client_state = WebSocketState.DISCONNECTED
             return message
         else:
-            raise RuntimeError('Cannot call "receive" once a disconnect message has been received.')
+            raise WebSocketDisconnect(code=1000)
 
     async def send(self, message: Message) -> None:
         """
@@ -95,7 +102,7 @@ class WebSocket(HTTPConnection[StateT]):
                 self.application_state = WebSocketState.DISCONNECTED
             await self._send(message)
         else:
-            raise RuntimeError('Cannot call "send" once a close message has been sent.')
+            raise WebSocketDisconnect(code=1000)
 
     async def accept(
         self,

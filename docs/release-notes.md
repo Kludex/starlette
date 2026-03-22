@@ -2,7 +2,14 @@
 toc_depth: 2
 ---
 
-## 1.0.0rc2 (March 16, 2026)
+## 1.0.0 (March 22, 2026)
+
+Starlette 1.0 is here!
+
+After nearly eight years since its creation, Starlette has reached its first stable release.
+Thank you to everyone who tested the release candidate and reported issues.
+
+You can read more on the [blog post](https://marcelotryle.com/blog/2026/03/22/starlette-10-is-here/).
 
 #### Added
 

@@ -32,6 +32,13 @@ class WebSocket(HTTPConnection[StateT]):
         self.client_state = WebSocketState.CONNECTING
         self.application_state = WebSocketState.CONNECTING
 
+    @property
+    def is_disconnected(self) -> bool:
+        return (
+            self.client_state == WebSocketState.DISCONNECTED
+            or self.application_state == WebSocketState.DISCONNECTED
+        )
+
     async def receive(self) -> Message:
         """
         Receive ASGI websocket messages, ensuring valid state transitions.

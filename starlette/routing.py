@@ -233,6 +233,10 @@ class Route(BaseRoute):
             if "GET" in self.methods:
                 self.methods.add("HEAD")
 
+        # Keep a separate list of exactly what the user explicitly asked for
+        # It's okay if this is None or empty.
+        self.explicit_methods: set[str] | None = {method.upper() for method in methods} if methods is not None else None
+
         self.path_regex, self.path_format, self.param_convertors = compile_path(path)
 
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
@@ -249,6 +253,12 @@ class Route(BaseRoute):
                 child_scope = {"endpoint": self.endpoint, "path_params": path_params}
                 if self.methods and scope["method"] not in self.methods:
                     return Match.PARTIAL, child_scope
+                elif self.methods and "HEAD" in self.methods and scope["method"] == "HEAD":
+                    # If this is a HEAD request on a GET route that did not explicitly state HEAD
+                    # it should be treated as a partial match so that explicit HEAD routes can match fully
+                    if self.explicit_methods is not None and "HEAD" not in self.explicit_methods:
+                        return Match.PARTIAL, child_scope
+                    return Match.FULL, child_scope
                 else:
                     return Match.FULL, child_scope
         return Match.NONE, {}

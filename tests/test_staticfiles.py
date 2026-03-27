@@ -216,6 +216,19 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     assert second_resp.content == b""
 
 
+def test_staticfiles_304_with_if_none_match_wildcard(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    # Per RFC 7232 §3.2, "If-None-Match: *" should match any current representation.
+    response = client.get("/example.txt", headers={"if-none-match": "*"})
+    assert response.status_code == 304
+    assert response.content == b""
+
+
 def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:

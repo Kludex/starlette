@@ -365,6 +365,67 @@ def test_multipart_request_large_file_rollover_in_background_thread(
     assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
 
 
+def test_multipart_request_custom_spool_max_size(
+    mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
+) -> None:
+    """Test that a custom spool_max_size triggers rollover at the configured threshold."""
+
+    async def app_with_custom_spool(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        await request.form(spool_max_size=512)
+        await request.close()
+        response = JSONResponse({"thread_ident": threading.current_thread().ident})
+        await response(scope, receive, send)
+
+    # Data larger than the custom spool size (512 bytes), but smaller than the default (1MB)
+    data = BytesIO(b" " * 1024)
+
+    client = test_client_factory(app_with_custom_spool)
+    response = client.post("/", files=[("test_file", data)])
+    assert response.status_code == 200
+
+    app_thread_ident = response.json().get("thread_ident")
+    assert app_thread_ident is not None
+    assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
+    assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
+
+
+def test_multipart_request_class_spool_max_size(
+    mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
+) -> None:
+    """Test that setting spool_max_size as a class attribute works as a global default."""
+    original = MultiPartParser.spool_max_size
+    try:
+        MultiPartParser.spool_max_size = 512
+
+        client = test_client_factory(app_monitor_thread)
+        # Data larger than 512 bytes but smaller than 1MB
+        data = BytesIO(b" " * 1024)
+        response = client.post("/", files=[("test_file", data)])
+        assert response.status_code == 200
+
+        app_thread_ident = response.json().get("thread_ident")
+        assert app_thread_ident is not None
+        assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
+        assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
+    finally:
+        MultiPartParser.spool_max_size = original
+
+
+def test_multipart_request_class_max_part_size(test_client_factory: TestClientFactory) -> None:
+    """Test that setting max_part_size as a class attribute works as a global default."""
+    original = MultiPartParser.max_part_size
+    try:
+        MultiPartParser.max_part_size = 512
+
+        client = test_client_factory(Starlette(routes=[Mount("/", app=app)]))
+        response = client.post("/", data={"field": "x" * 513}, files=FORCE_MULTIPART)
+        assert response.status_code == 400
+        assert response.text == "Part exceeded maximum size of 0KB."
+    finally:
+        MultiPartParser.max_part_size = original
+
+
 def test_multipart_request_with_charset_for_filename(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.post(

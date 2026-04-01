@@ -142,12 +142,12 @@ def sync_inject_decorator(
 ) -> Callable[[SyncEndpoint], Callable[..., Response]]:
     def wrapper(endpoint: SyncEndpoint) -> Callable[..., Response]:
         def app(request: Request) -> Response:
-            return endpoint(request=request, **kwargs)
-
-        return app
-
-    return wrapper
-
+@sync_inject_decorator(additional="payload")
+@requires("authenticated")
+def decorated_sync(request: Request, additional: str = "payload") -> JSONResponse:
+    return JSONResponse(
+        {
+            "authenticated": request.user.is_authenticated,
 
 @sync_inject_decorator(additional="payload")
 @requires("authenticated")
@@ -155,12 +155,12 @@ def decorated_sync(request: Request, additional: str) -> JSONResponse:
     return JSONResponse(
         {
             "authenticated": request.user.is_authenticated,
-            "user": request.user.display_name,
-            "additional": additional,
-        }
-    )
-
-
+@ws_inject_decorator(additional="payload")
+@requires("authenticated")
+async def websocket_endpoint_decorated(websocket: WebSocket, additional: str = "payload") -> None:
+    await websocket.accept()
+    await websocket.send_json(
+        {
 def ws_inject_decorator(**kwargs: Any) -> Callable[..., AsyncEndpoint]:
     def wrapper(endpoint: AsyncEndpoint) -> AsyncEndpoint:
         def app(websocket: WebSocket) -> Awaitable[Response]:

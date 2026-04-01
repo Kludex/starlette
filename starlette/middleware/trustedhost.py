@@ -10,6 +10,13 @@ ENFORCE_DOMAIN_WILDCARD = "Domain wildcard patterns must be like '*.example.com'
 
 
 class TrustedHostMiddleware:
+    """Middleware that enforces a list of trusted host/domain names.
+
+    Requests with a ``Host`` header not matching the allowed hosts will
+    receive a 400 response. Supports wildcard domains (e.g. ``*.example.com``)
+    and optional ``www.`` redirect.
+    """
+
     def __init__(
         self,
         app: ASGIApp,

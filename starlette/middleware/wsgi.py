@@ -73,6 +73,12 @@ def build_environ(scope: Scope, body: bytes) -> dict[str, Any]:
 
 
 class WSGIMiddleware:
+    """Middleware that wraps a WSGI application to run within an ASGI server.
+
+    .. deprecated::
+        Use `a2wsgi <https://github.com/abersheeran/a2wsgi>`_ instead.
+    """
+
     def __init__(self, app: Callable[..., Any]) -> None:
         self.app = app
 

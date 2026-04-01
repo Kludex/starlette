@@ -9,6 +9,13 @@ DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
 
 
 class GZipMiddleware:
+    """Middleware that applies GZip compression to responses.
+
+    Responses smaller than ``minimum_size`` bytes will not be compressed.
+    Compression is only applied when the client sends an ``Accept-Encoding``
+    header that includes ``gzip``.
+    """
+
     def __init__(self, app: ASGIApp, minimum_size: int = 500, compresslevel: int = 9) -> None:
         self.app = app
         self.minimum_size = minimum_size
@@ -117,6 +124,8 @@ class IdentityResponder:
 
 
 class GZipResponder(IdentityResponder):
+    """Responder that compresses response bodies using GZip."""
+
     content_encoding = "gzip"
 
     def __init__(self, app: ASGIApp, minimum_size: int, compresslevel: int = 9) -> None:

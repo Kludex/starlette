@@ -4,6 +4,12 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class HTTPSRedirectMiddleware:
+    """Middleware that redirects all incoming HTTP requests to HTTPS.
+
+    Any incoming requests to ``http`` or ``ws`` will be redirected to
+    the corresponding ``https`` or ``wss`` URL.
+    """
+
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 

@@ -13,6 +13,12 @@ SAFELISTED_HEADERS = {"Accept", "Accept-Language", "Content-Language", "Content-
 
 
 class CORSMiddleware:
+    """Middleware for handling Cross-Origin Resource Sharing (CORS) headers.
+
+    Allows configuring allowed origins, methods, headers, and other CORS
+    policy settings. Handles both simple requests and preflight requests.
+    """
+
     def __init__(
         self,
         app: ASGIApp,

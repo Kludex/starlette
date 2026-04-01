@@ -14,6 +14,12 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 class SessionMiddleware:
+    """Middleware that provides cookie-based session support.
+
+    Session data is stored as a signed cookie using ``itsdangerous``.
+    The session dictionary is available via ``request.session``.
+    """
+
     def __init__(
         self,
         app: ASGIApp,
@@ -89,6 +95,8 @@ class SessionMiddleware:
 
 
 class Session(dict[str, typing.Any]):
+    """A dictionary-like object that tracks access and modification state."""
+
     accessed: bool = False
     modified: bool = False
 

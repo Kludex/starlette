@@ -16,6 +16,13 @@ from starlette.websockets import WebSocket
 
 
 class ExceptionMiddleware:
+    """Middleware that handles exceptions by dispatching to registered handlers.
+
+    Exception handlers can be registered by exception class or by HTTP
+    status code. This middleware is added as the innermost middleware
+    by ``Starlette`` applications.
+    """
+
     def __init__(
         self,
         app: ASGIApp,

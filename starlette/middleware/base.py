@@ -94,6 +94,13 @@ class _CachedRequest(Request):
 
 
 class BaseHTTPMiddleware:
+    """Base class for implementing HTTP middleware using a request/response interface.
+
+    Subclasses should override the ``dispatch`` method. The ``dispatch``
+    method receives a ``Request`` and a ``call_next`` callable that forwards
+    the request to the downstream application and returns a ``Response``.
+    """
+
     def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None) -> None:
         self.app = app
         self.dispatch_func = self.dispatch if dispatch is None else dispatch

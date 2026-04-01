@@ -14,6 +14,12 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class AuthenticationMiddleware:
+    """Middleware that authenticates incoming requests using a pluggable backend.
+
+    On successful authentication, ``scope["auth"]`` and ``scope["user"]``
+    are populated from the backend result.
+    """
+
     def __init__(
         self,
         app: ASGIApp,

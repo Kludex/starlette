@@ -109,14 +109,14 @@ class Starlette:
         self,
         exc_class: type[E],
         handler: Callable[[Request, E], ResponseType],
-    ) -> None: ... # pragma: no cover
+    ) -> None: ...  # pragma: no cover
 
     @overload
     def add_exception_handler(
         self,
         exc_class: int,
         handler: Callable[[Request, Exception], ResponseType],
-    ) -> None: ... # pragma: no cover
+    ) -> None: ...  # pragma: no cover
 
     def add_exception_handler(
         self,

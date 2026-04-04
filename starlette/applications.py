@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar, overload
 
 from starlette.datastructures import State, URLPath
 from starlette.middleware import Middleware, _MiddlewareFactory
@@ -14,6 +14,10 @@ from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope,
 
 AppType = TypeVar("AppType", bound="Starlette")
 P = ParamSpec("P")
+
+E = TypeVar("E", bound=Exception)
+
+ResponseType = Response | Awaitable[Response]
 
 
 class Starlette:
@@ -99,6 +103,19 @@ class Starlette:
         if self.middleware_stack is not None:  # pragma: no cover
             raise RuntimeError("Cannot add middleware after an application has started")
         self.user_middleware.insert(0, Middleware(middleware_class, *args, **kwargs))
+
+    @overload
+    def add_exception_handler(
+         exc_class: type[E],
+        handler: Callable[[Request, E], ResponseType],
+    ) -> None: ...
+
+    @overload
+    def add_exception_handler(
+        self,
+        exc_class: int,
+        handler: Callable[[Request, Exception], ResponseType],
+    ) -> None: ...
 
     def add_exception_handler(
         self,

@@ -86,6 +86,12 @@ Can be used with logging so logs automatically use request headers such as x-req
 
 A Starlette middleware that allows **brotli**, **gzip** and **deflate** compression algorithm with a minimal requirements.
 
+### Starlette Hot Reload
+
+<a href="http://github.com/pyk/starlette-hot-reload" target="_blank">GitHub</a>
+
+A lightweight hot reload utility for Starlette that provides fast in-browser reloads for templates and static files.
+
 ### Starlette OAuth2 API
 
 <a href="https://gitlab.com/jorgecarleitao/starlette-oauth2-api" target="_blank">GitLab</a>
@@ -98,6 +104,12 @@ It relies solely on an auth provider to issue access and/or id tokens to clients
 <a href="https://github.com/perdy/starlette-prometheus" target="_blank">GitHub</a>
 
 A plugin for providing an endpoint that exposes [Prometheus](https://prometheus.io/) metrics based on its [official python client](https://github.com/prometheus/client_python).
+
+### Starlette Tailwind CSS
+
+<a href="https://github.com/pyk/starlette-tailwindcss" target="_blank">GitHub</a>
+
+A lightweight utility for Starlette that builds Tailwind CSS on startup with optional watch mode during development.
 
 ### Starlette WTF
 

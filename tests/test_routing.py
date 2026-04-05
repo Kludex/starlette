@@ -1180,3 +1180,32 @@ def test_paths_with_root_path(test_client_factory: TestClientFactory) -> None:
         "path": "/root/root-queue/path",
         "root_path": "/root",
     }
+
+
+def test_explicit_head_route(test_client_factory: TestClientFactory) -> None:
+    calls = []
+
+    async def get_route(request: Request) -> PlainTextResponse:
+        calls.append("GET")
+        return PlainTextResponse("GET")
+
+    async def head_route(request: Request) -> PlainTextResponse:
+        calls.append("HEAD")
+        return PlainTextResponse("")
+
+    app = Starlette(
+        routes=[
+            Route("/", endpoint=get_route),
+            Route("/", methods=["HEAD"], endpoint=head_route),
+        ]
+    )
+
+    client = test_client_factory(app)
+    response = client.head("/")
+    assert response.status_code == 200
+    assert calls == ["HEAD"]
+
+    calls.clear()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert calls == ["GET"]

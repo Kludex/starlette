@@ -138,7 +138,7 @@ Run uvicorn with `--reload` to enable auto-reloading on code changes.
 
 ## Modularity
 
-The modularity that Starlette is designed on promotes building re-usable
+The modularity that Starlette is designed on promotes building reusable
 components that can be shared between any ASGI framework. This should enable
 an ecosystem of shared middleware and mountable applications.
 

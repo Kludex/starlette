@@ -28,6 +28,7 @@ async def run_until_first_complete(*args: tuple[Callable, dict]) -> None:  # typ
 
 
 async def run_in_threadpool(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    """Run a synchronous callable in a worker thread, returning its result."""
     func = functools.partial(func, *args, **kwargs)
     return await anyio.to_thread.run_sync(func)
 
@@ -49,6 +50,11 @@ def _next(iterator: Iterator[T]) -> T:
 async def iterate_in_threadpool(
     iterator: Iterable[T],
 ) -> AsyncIterator[T]:
+    """Adapt a synchronous iterable into an async iterator using a thread pool.
+
+    Each call to `next()` on the underlying iterator is offloaded to a worker
+    thread so that blocking iteration does not stall the event loop.
+    """
     as_iterator = iter(iterator)
     while True:
         try:

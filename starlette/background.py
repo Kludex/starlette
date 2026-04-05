@@ -10,6 +10,13 @@ P = ParamSpec("P")
 
 
 class BackgroundTask:
+    """A task to run in the background after a response has been sent.
+
+    Accepts a callable along with any positional and keyword arguments.
+    If the callable is a coroutine function it is awaited directly; otherwise
+    it is executed in a thread pool via `run_in_threadpool`.
+    """
+
     def __init__(self, func: Callable[P, Any], *args: P.args, **kwargs: P.kwargs) -> None:
         self.func = func
         self.args = args
@@ -24,10 +31,16 @@ class BackgroundTask:
 
 
 class BackgroundTasks(BackgroundTask):
+    """A collection of background tasks that are run sequentially after a response.
+
+    Tasks are executed in the order they were added.
+    """
+
     def __init__(self, tasks: Sequence[BackgroundTask] | None = None):
         self.tasks = list(tasks) if tasks else []
 
     def add_task(self, func: Callable[P, Any], *args: P.args, **kwargs: P.kwargs) -> None:
+        """Add a new background task to the collection."""
         task = BackgroundTask(func, *args, **kwargs)
         self.tasks.append(task)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import typing
 from base64 import b64decode, b64encode
 from typing import Literal
@@ -34,6 +35,8 @@ class SessionMiddleware:
         if https_only:  # Secure flag can be used with HTTPS only
             self.security_flags += "; secure"
         if domain is not None:
+            if not re.match(r"^[a-zA-Z0-9._-]+$", domain):
+                raise ValueError("Invalid domain: must contain only alphanumeric characters, dots, hyphens, and underscores")
             self.security_flags += f"; domain={domain}"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

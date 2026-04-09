@@ -49,7 +49,7 @@ routes=[
 app = Starlette(routes=routes)
 ```
 
-By default `StaticFiles` will look for `statics` directory in each package,
+By default `StaticFiles` will look for a `static` directory in each package,
 you can change the default directory by specifying a tuple of strings.
 
 ```python

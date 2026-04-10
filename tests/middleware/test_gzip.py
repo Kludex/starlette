@@ -93,6 +93,21 @@ def test_gzip_streaming_response(test_client_factory: TestClientFactory) -> None
     assert "Content-Length" not in response.headers
 
 
+def test_gzip_streaming_response_flushes_every_chunk() -> None:
+    """Without flushing, zlib buffers output internally and clients receive
+    data in large irregular bursts instead of progressively (Z_SYNC_FLUSH, RFC 1951)."""
+    from starlette.middleware.gzip import GZipResponder
+
+    responder = GZipResponder(app=None, minimum_size=500)  # type: ignore[arg-type]
+
+    for i in range(10):
+        body = responder.apply_compression(b"x" * 4000, more_body=True)
+        assert len(body) > 0, f"Chunk {i} produced 0 bytes"
+
+    final = responder.apply_compression(b"x" * 4000, more_body=False)
+    assert len(final) > 0
+
+
 def test_gzip_streaming_response_identity(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> StreamingResponse:
         async def generator(bytes: bytes, count: int) -> ContentStream:

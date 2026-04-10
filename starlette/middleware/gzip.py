@@ -133,6 +133,13 @@ class GZipResponder(IdentityResponder):
         self.gzip_file.write(body)
         if not more_body:
             self.gzip_file.close()
+        else:
+            # Flush the compressor to emit all pending compressed bytes.
+            # Without this, zlib buffers output internally and clients
+            # receive data in large irregular bursts instead of progressively.
+            # GzipFile.flush() issues a Z_SYNC_FLUSH (RFC 1951 §3.2.3),
+            # which appends a sync point that all standard decompressors handle.
+            self.gzip_file.flush()
 
         body = self.gzip_buffer.getvalue()
         self.gzip_buffer.seek(0)

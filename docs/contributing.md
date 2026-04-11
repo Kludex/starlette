@@ -109,7 +109,7 @@ Here are some common ways the test suite can fail:
 </p>
 
 This job failing means there is either a code formatting issue or type-annotation issue.
-You can look at the job output to figure out why it's failed or within a shell run:
+You can look at the job output to figure out why it failed, or run the following within a shell:
 
 ```shell
 $ scripts/check
@@ -165,4 +165,3 @@ Once the release PR is merged, create a
 - Description copied from the changelog.
 
 Once created this release will be automatically uploaded to PyPI.
-

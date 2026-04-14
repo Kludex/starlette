@@ -14,6 +14,29 @@ from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
+class ReceiveTracker:
+    def __init__(self) -> None:
+        self._count = 0
+        self._recieve_content = {"type": "http.request", "body": b'{"abc": 123}', "more_body": False}
+
+    async def __call__(self) -> dict[str, str | bytes | bool]:
+        self._count += 1
+        return self._recieve_content  # type: ignore[return-value]
+
+    @property
+    def call_count(self) -> int:
+        return self._count
+
+
+@pytest.fixture()
+def receive() -> ReceiveTracker:
+    """
+    Wrapper for the `receive` func that adds
+    an additional call_count
+    """
+    return ReceiveTracker()
+
+
 def test_request_url(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)

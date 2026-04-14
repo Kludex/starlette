@@ -43,6 +43,17 @@ def receive() -> ReceiveTracker:
     return ReceiveTracker()
 
 
+@pytest.mark.anyio
+async def test_body_caching(scope: dict[str, Any], receive: ReceiveTracker) -> None:
+    request = Request(scope, receive)
+
+    body1 = await request.body()
+    body2 = await request.body()
+    assert body1 == body2
+
+    assert receive.call_count == 1
+
+
 def test_request_url(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)

@@ -14,6 +14,12 @@ from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
+@pytest.fixture()
+def scope() -> dict[str, Any]:
+    scope = {"type": "http", "path": "/", "method": "GET", "headers": [(b"content-type", b"application/json")]}
+    return scope
+
+
 class ReceiveTracker:
     def __init__(self) -> None:
         self._count = 0

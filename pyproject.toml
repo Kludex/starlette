@@ -49,9 +49,9 @@ dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
     "coverage>=7.8.2",
-    "importlib-metadata==8.7.1",
-    "mypy==1.16.1",
-    "ruff==0.15.4",
+    "importlib-metadata==9.0.0",
+    "mypy==1.20.1",
+    "ruff==0.15.10",
     "types-PyYAML==6.0.12.20250516",
     "pytest==9.0.3",
     "trio==0.33.0",

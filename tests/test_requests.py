@@ -57,12 +57,42 @@ async def test_body_caching(scope: dict[str, Any], receive: ReceiveTracker) -> N
 @pytest.mark.anyio
 async def test_body_to_json_caching(scope: dict[str, Any], receive: ReceiveTracker) -> None:
     request = Request(scope, receive)
-    
+
     json_body1 = await request.json()
     json_body2 = await request.json()
     assert json_body1 == json_body2
 
     assert receive.call_count == 1
+
+
+@pytest.mark.anyio
+async def test_form_caching(scope: dict[str, Any]) -> None:
+    scope_urlencoded = scope.copy()
+    scope_multipart = scope.copy()
+
+    scope_urlencoded["headers"] = [(b"content-type", b"application/x-www-form-urlencoded")]
+    scope_multipart["headers"] = [(b"content-type", b"multipart/form-data; boundary=----x")]
+
+    # Urlencoded
+    receive_url_encoded = ReceiveTracker()
+    receive_url_encoded._recieve_content["body"] = b"abc=123"
+    request_urlencoded = Request(scope_urlencoded, receive_url_encoded)
+    form_urlencoded = await request_urlencoded.form()
+    await request_urlencoded.form()
+    assert receive_url_encoded.call_count == 1
+    assert dict(form_urlencoded) == {"abc": "123"}
+
+    # Multipart
+    receive_multipart = ReceiveTracker()
+    receive_multipart._recieve_content["body"] = (
+        b'------x\r\nContent-Disposition: form-data; name="abc"\r\n\r\n123\r\n------x--\r\n'
+    )
+    request_multipart = Request(scope_multipart, receive_multipart)
+    form_multipart = await request_multipart.form()
+    await request_multipart.form()
+    assert receive_multipart.call_count == 1
+    assert dict(form_multipart) == {"abc": "123"}
+
 
 @pytest.mark.anyio
 async def test_stream_consumed_once(scope: dict[str, Any], receive: ReceiveTracker) -> None:

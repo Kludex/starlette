@@ -54,6 +54,26 @@ async def test_body_caching(scope: dict[str, Any], receive: ReceiveTracker) -> N
     assert receive.call_count == 1
 
 
+@pytest.mark.anyio
+async def test_stream_consumed_once(scope: dict[str, Any], receive: ReceiveTracker) -> None:
+    _receive = receive
+    request = Request(scope, receive)
+
+    async def get_chunks() -> bytes:
+        chunks = b""
+        async for chunk in request.stream():
+            chunks += chunk
+        return chunks
+
+    await get_chunks()
+    with pytest.raises(RuntimeError) as exc:
+        await get_chunks()
+
+    assert "Stream consumed" in str(exc.value)
+
+    assert _receive.call_count == 1
+
+
 def test_request_url(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)

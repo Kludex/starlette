@@ -55,6 +55,16 @@ async def test_body_caching(scope: dict[str, Any], receive: ReceiveTracker) -> N
 
 
 @pytest.mark.anyio
+async def test_body_to_json_caching(scope: dict[str, Any], receive: ReceiveTracker) -> None:
+    request = Request(scope, receive)
+    
+    json_body1 = await request.json()
+    json_body2 = await request.json()
+    assert json_body1 == json_body2
+
+    assert receive.call_count == 1
+
+@pytest.mark.anyio
 async def test_stream_consumed_once(scope: dict[str, Any], receive: ReceiveTracker) -> None:
     _receive = receive
     request = Request(scope, receive)

@@ -199,10 +199,8 @@ def test_request_json_strict_invalid_content_type(test_client_factory: TestClien
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
-        data = await request.json(strict=True)
-        response = JSONResponse({"json": data})
-        await response(scope, receive, send)
-
+        await request.json(strict=True)
+        
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         client.post("/", json={"a": "123"}, headers={"Content-Type": "text/plain; charset=utf-8"})

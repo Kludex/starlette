@@ -192,7 +192,8 @@ def test_request_json(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"json": {"a": "123"}}
 
 
-def test_request_json_strict_invalid_content_type(test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize("content_type", ["text/plain; charset=utf-8", "applicationjson"])
+def test_request_json_strict_invalid_content_type(content_type: str, test_client_factory: TestClientFactory) -> None:
     """
     Test request's content-type is not application/json and strict mode is enabled
     """
@@ -200,10 +201,10 @@ def test_request_json_strict_invalid_content_type(test_client_factory: TestClien
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         await request.json(strict=True)
-        
+
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
-        client.post("/", json={"a": "123"}, headers={"Content-Type": "text/plain; charset=utf-8"})
+        client.post("/", json={"a": "123"}, headers={"Content-Type": content_type})
 
 
 def test_request_json_strict_valid_content_type(test_client_factory: TestClientFactory) -> None:

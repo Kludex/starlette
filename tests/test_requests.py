@@ -192,6 +192,47 @@ def test_request_json(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"json": {"a": "123"}}
 
 
+def test_request_json_strict_invalid_content_type(test_client_factory: TestClientFactory) -> None:
+    """
+    Test request's content-type is not application/json and strict mode is enabled
+    """
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        data = await request.json(strict=True)
+        response = JSONResponse({"json": data})
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    with pytest.raises(RuntimeError):
+        client.post("/", json={"a": "123"}, headers={"Content-Type": "text/plain; charset=utf-8"})
+
+
+def test_request_json_strict_valid_content_type(test_client_factory: TestClientFactory) -> None:
+    """
+    Test request's content-type is application/json and strict mode is enabled
+    """
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        data = await request.json(strict=True)
+        response = JSONResponse({"json": data})
+        await response(scope, receive, send)
+
+    payload = {"a": "123"}
+
+    client = test_client_factory(app)
+    # default
+    response = client.post("/", json=payload)
+    assert response.status_code == 200
+    assert response.json() == {"json": payload}
+
+    # edge case
+    response = client.post("/", json=payload, headers={"Content-Type": " application/json ; charset=utf-8 "})
+    assert response.status_code == 200
+    assert response.json() == {"json": payload}
+
+
 def test_request_scope_interface() -> None:
     """
     A Request can be instantiated with a scope, and presents a `Mapping`

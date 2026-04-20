@@ -14,6 +14,15 @@ import pytest
             "HTTP_414_REQUEST_URI_TOO_LONG",
             "'HTTP_414_REQUEST_URI_TOO_LONG' is deprecated. Use 'HTTP_414_URI_TOO_LONG' instead.",
         ),
+        (
+            "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE",
+            "'HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE' is deprecated."
+            " Use 'HTTP_416_RANGE_NOT_SATISFIABLE' instead.",
+        ),
+        (
+            "HTTP_422_UNPROCESSABLE_ENTITY",
+            "'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.",
+        ),
     ),
 )
 def test_deprecated_types(constant: str, msg: str) -> None:

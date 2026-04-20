@@ -25,6 +25,14 @@ class CORSMiddleware:
         expose_headers: Sequence[str] = (),
         max_age: int = 600,
     ) -> None:
+        if allow_credentials and "*" in allow_origins:
+            raise ValueError(
+                'CORSMiddleware: allow_credentials=True may not be used with allow_origins=["*"]. '
+                "Allowing credentials from every origin is a security misconfiguration — any website "
+                "can make authenticated cross-origin requests on behalf of your users. "
+                "Specify explicit trusted origins in allow_origins instead."
+            )
+
         if "*" in allow_methods:
             allow_methods = ALL_METHODS
 

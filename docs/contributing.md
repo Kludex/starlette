@@ -19,7 +19,7 @@ Possible bugs may be raised as a "Potential Issue" discussion, feature requests 
 be raised as an "Ideas" discussion. We can then determine if the discussion needs
 to be escalated into an "Issue" or not, or if we'd consider a pull request.
 
-Try to be as descriptive as you can and, in case of a bug report,
+Try to be as descriptive as you can and, in the case of a bug report,
 provide as much information as possible like:
 
 - OS platform

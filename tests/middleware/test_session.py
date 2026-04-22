@@ -270,11 +270,13 @@ def test_session_tracks_modification() -> None:
     session = Session({"a": "1"})
     session.pop("a")
     assert session.modified
+    assert session.accessed
 
     # pop with missing key
     session = Session({"a": "1"})
     session.pop("missing", None)
     assert not session.modified
+    assert not session.accessed
 
     # setdefault with missing key
     session = Session({"a": "1"})

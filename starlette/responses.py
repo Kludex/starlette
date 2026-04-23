@@ -445,7 +445,6 @@ class FileResponse(Response):
 
     @staticmethod
     def _parse_range_header(http_range: str, file_size: int) -> list[tuple[int, int]]:
-        ranges: list[tuple[int, int]] = []
         try:
             units, range_ = http_range.split("=", 1)
         except ValueError:
@@ -456,14 +455,27 @@ class FileResponse(Response):
         if units != "bytes":
             raise MalformedRangeHeader("Only support bytes range")
 
-        ranges = [
-            (
-                int(_[0]) if _[0] else file_size - int(_[1]),
-                int(_[1]) + 1 if _[0] and _[1] and int(_[1]) < file_size else file_size,
-            )
-            for _ in _RANGE_PATTERN.findall(range_)
-            if _ != ("", "")
-        ]
+        ranges: list[tuple[int, int]] = []
+        for range_part in range_.split(","):
+            range_part = range_part.strip()
+            if not range_part:
+                continue
+
+            match = _RANGE_PATTERN.fullmatch(range_part)
+            if match is None:
+                raise MalformedRangeHeader()
+
+            start_str, end_str = match.groups()
+            if start_str == end_str == "":
+                continue
+
+            if start_str:
+                start = int(start_str)
+                end = int(end_str) + 1 if end_str else file_size
+                ranges.append((start, min(end, file_size)))
+            else:
+                suffix_length = int(end_str)
+                ranges.append((max(file_size - suffix_length, 0), file_size))
 
         if len(ranges) == 0:
             raise MalformedRangeHeader("Range header: range must be requested")
@@ -471,7 +483,7 @@ class FileResponse(Response):
         if any(not (0 <= start < file_size) for start, _ in ranges):
             raise RangeNotSatisfiable(file_size)
 
-        if any(start > end for start, end in ranges):
+        if any(start >= end for start, end in ranges):
             raise MalformedRangeHeader("Range header: start must be less than end")
 
         if len(ranges) == 1:

@@ -216,6 +216,18 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     assert second_resp.content == b""
 
 
+def test_staticfiles_304_with_if_none_match_wildcard(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
+    path = os.path.join(tmpdir, "example.txt")
+    with open(path, "w") as file:
+        file.write("<file content>")
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    response = client.get("/example.txt", headers={"if-none-match": "*"})
+    assert response.status_code == 304
+    assert response.content == b""
+
+
 def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
@@ -229,6 +241,28 @@ def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: T
     second_resp = client.get("/example.txt", headers={"if-none-match": '"123"'})
     assert second_resp.status_code == 200
     assert second_resp.content == b"<file content>"
+
+
+def test_staticfiles_if_none_match_takes_precedence_over_if_modified_since(
+    tmpdir: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = os.path.join(tmpdir, "example.txt")
+    file_last_modified_time = time.mktime(time.strptime("2013-10-10 23:40:00", "%Y-%m-%d %H:%M:%S"))
+    with open(path, "w") as file:
+        file.write("<file content>")
+    os.utime(path, (file_last_modified_time, file_last_modified_time))
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    response = client.get(
+        "/example.txt",
+        headers={
+            "If-None-Match": '"123"',
+            "If-Modified-Since": "Thu, 11 Oct 2013 15:30:19 GMT",
+        },
+    )
+    assert response.status_code == 200
+    assert response.content == b"<file content>"
 
 
 def test_staticfiles_304_with_last_modified_compare_last_req(

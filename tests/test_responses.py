@@ -715,6 +715,26 @@ def test_file_response_start_must_be_less_than_end(file_response_client: TestCli
     assert response.text == "Range header: start must be less than end"
 
 
+@pytest.mark.parametrize("range_header", ["bytes=abc0-10", "bytes=0-10x", "bytes=0-10, junk"])
+def test_file_response_range_malformed_with_extra_text(
+    file_response_client: TestClient, range_header: str
+) -> None:
+    response = file_response_client.get("/", headers={"Range": range_header})
+    assert response.status_code == 400
+    assert response.text == "Malformed range header."
+
+
+def test_file_response_range_suffix_larger_than_file(file_response_client: TestClient) -> None:
+    file_size = len(README.encode("utf8"))
+
+    response = file_response_client.get("/", headers={"Range": f"bytes=-{file_size + 1}"})
+
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-{file_size - 1}/{file_size}"
+    assert response.headers["content-length"] == str(file_size)
+    assert response.text == README
+
+
 def test_file_response_merge_ranges(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=0-100, 50-200"})
     assert response.status_code == 206

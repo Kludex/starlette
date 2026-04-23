@@ -203,11 +203,15 @@ class StaticFiles:
         """
         try:
             if_none_match = request_headers["if-none-match"]
-            etag = response_headers["etag"]
-            if etag in [tag.strip(" W/") for tag in if_none_match.split(",")]:
-                return True
         except KeyError:
             pass
+        else:
+            # RFC 9110: If-None-Match takes precedence over If-Modified-Since.
+            try:
+                etag = response_headers["etag"]
+            except KeyError:
+                return False
+            return self._etag_matches(etag, if_none_match)
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])
@@ -218,3 +222,12 @@ class StaticFiles:
             pass
 
         return False
+
+    @staticmethod
+    def _etag_matches(etag: str, if_none_match: str) -> bool:
+        def normalize(tag: str) -> str:
+            tag = tag.strip()
+            return tag[2:] if tag.startswith("W/") else tag
+
+        normalized_etag = normalize(etag)
+        return any(tag.strip() == "*" or normalize(tag) == normalized_etag for tag in if_none_match.split(","))

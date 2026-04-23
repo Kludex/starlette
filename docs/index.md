@@ -70,7 +70,7 @@ Help us keep Starlette maintained and sustainable by [becoming a sponsor](https:
 pip install starlette
 ```
 
-You'll also want to install an ASGI server, such as [uvicorn](https://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://hypercorn.readthedocs.io/en/latest/).
+You'll also want to install an ASGI server; see the [ASGI server implementations list](https://asgi.readthedocs.io/en/latest/implementations.html#servers).
 
 ```shell
 pip install uvicorn

@@ -269,7 +269,7 @@ class MultiPartParser:
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()
             parser.finalize()
-        except BaseException as exc:
+        except BaseException:
             # Close all the files if there was an error.
             await self._files_to_close_on_error.aclose()
             raise

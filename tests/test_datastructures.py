@@ -313,11 +313,8 @@ async def test_upload_file_file_input() -> None:
         try:
             assert await file.read() == b"data"
             assert file.size == 4
-            await file.write(b" and more data!")
-            assert await file.read() == b""
-            assert file.size == 19
             await file.seek(0)
-            assert await file.read() == b"data and more data!"
+            assert await file.read() == b"data"
         finally:
             await file.close()
 
@@ -333,32 +330,55 @@ async def test_upload_file_without_size() -> None:
         try:
             assert await file.read() == b"data"
             assert file.size is None
-            await file.write(b" and more data!")
-            assert await file.read() == b""
-            assert file.size is None
             await file.seek(0)
-            assert await file.read() == b"data and more data!"
+            assert await file.read() == b"data"
+        finally:
+            await file.close()
+
+
+@pytest.mark.anyio
+async def test_upload_file_file_property_is_deprecated() -> None:
+    async with anyio.SpooledTemporaryFile(max_size=1024 * 1024) as stream:
+        file = UploadFile(filename="file", file=stream)
+        try:
+            with pytest.deprecated_call(match=r"UploadFile\.file is deprecated"):
+                assert file.file is stream
+        finally:
+            await file.close()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("size, expected_size", [(0, 4), (None, None)])
+async def test_upload_file_write_is_deprecated(size: int | None, expected_size: int | None) -> None:
+    async with anyio.SpooledTemporaryFile(max_size=1024 * 1024) as stream:
+        file = UploadFile(filename="file", file=stream, size=size)
+        try:
+            with pytest.deprecated_call(match=r"UploadFile\.write\(\) is deprecated"):
+                await file.write(b"data")
+            assert file.size == expected_size
+            await file.seek(0)
+            assert await file.read() == b"data"
         finally:
             await file.close()
 
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("max_size", [1, 1024], ids=["rolled", "unrolled"])
-async def test_uploadfile_rolling(max_size: int) -> None:
-    """Test that we can r/w to a SpooledTemporaryFile
-    managed by UploadFile before and after it rolls to disk
+async def test_upload_file_internal_write_rolling(max_size: int) -> None:
+    """Test that UploadFile can write to a SpooledTemporaryFile
+    before and after it rolls to disk
     """
     async with anyio.SpooledTemporaryFile(max_size=max_size) as stream:
         file = UploadFile(filename="file", file=stream, size=0)
         try:
             assert await file.read() == b""
             assert file.size == 0
-            await file.write(b"data")
+            await file._write(b"data")
             assert await file.read() == b""
             assert file.size == 4
             await file.seek(0)
             assert await file.read() == b"data"
-            await file.write(b" more")
+            await file._write(b" more")
             assert await file.read() == b""
             assert file.size == 9
             await file.seek(0)

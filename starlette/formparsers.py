@@ -262,7 +262,7 @@ class MultiPartParser:
                 # the main thread.
                 for part, data in self._file_parts_to_write:
                     assert part.file  # for type checkers
-                    await part.file.write(data)
+                    await part.file._write(data)
                 for part in self._file_parts_to_finish:
                     assert part.file  # for type checkers
                     await part.file.seek(0)

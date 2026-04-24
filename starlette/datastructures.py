@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
 from typing import (
@@ -422,7 +423,7 @@ class UploadFile:
         headers: Headers | None = None,
     ) -> None:
         self.filename = filename
-        self.file = file
+        self._file = file
         self.size = size
         self.headers = headers or Headers()
 
@@ -430,19 +431,36 @@ class UploadFile:
     def content_type(self) -> str | None:
         return self.headers.get("content-type", None)
 
-    async def write(self, data: bytes) -> None:
+    @property
+    def file(self) -> AsyncFileIO:
+        warnings.warn(
+            "UploadFile.file is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._file
+
+    async def _write(self, data: bytes) -> None:
         if self.size is not None:
             self.size += len(data)
-        await self.file.write(data)
+        await self._file.write(data)
+
+    async def write(self, data: bytes) -> None:
+        warnings.warn(
+            "UploadFile.write() is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await self._write(data)
 
     async def read(self, size: int = -1) -> bytes:
-        return await self.file.read(size)
+        return await self._file.read(size)
 
     async def seek(self, offset: int) -> None:
-        await self.file.seek(offset)
+        await self._file.seek(offset)
 
     async def close(self) -> None:
-        await self.file.aclose()
+        await self._file.aclose()
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(filename={self.filename!r}, size={self.size!r}, headers={self.headers!r})"

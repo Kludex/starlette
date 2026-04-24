@@ -21,6 +21,7 @@ class CORSMiddleware:
         allow_headers: Sequence[str] = (),
         allow_credentials: bool = False,
         allow_origin_regex: str | None = None,
+        allow_private_network: bool = False,
         expose_headers: Sequence[str] = (),
         max_age: int = 600,
     ) -> None:
@@ -35,7 +36,7 @@ class CORSMiddleware:
         allow_all_headers = "*" in allow_headers
         preflight_explicit_allow_origin = not allow_all_origins or allow_credentials
 
-        simple_headers = {}
+        simple_headers: dict[str, str] = {}
         if allow_all_origins:
             simple_headers["Access-Control-Allow-Origin"] = "*"
         if allow_credentials:
@@ -43,7 +44,7 @@ class CORSMiddleware:
         if expose_headers:
             simple_headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
 
-        preflight_headers = {}
+        preflight_headers: dict[str, str] = {}
         if preflight_explicit_allow_origin:
             # The origin value will be set in preflight_response() if it is allowed.
             preflight_headers["Vary"] = "Origin"
@@ -67,8 +68,10 @@ class CORSMiddleware:
         self.allow_headers = [h.lower() for h in allow_headers]
         self.allow_all_origins = allow_all_origins
         self.allow_all_headers = allow_all_headers
+        self.allow_credentials = allow_credentials
         self.preflight_explicit_allow_origin = preflight_explicit_allow_origin
         self.allow_origin_regex = compiled_allow_origin_regex
+        self.allow_private_network = allow_private_network
         self.simple_headers = simple_headers
         self.preflight_headers = preflight_headers
 
@@ -105,9 +108,10 @@ class CORSMiddleware:
         requested_origin = request_headers["origin"]
         requested_method = request_headers["access-control-request-method"]
         requested_headers = request_headers.get("access-control-request-headers")
+        requested_private_network = request_headers.get("access-control-request-private-network")
 
         headers = dict(self.preflight_headers)
-        failures = []
+        failures: list[str] = []
 
         if self.is_allowed_origin(origin=requested_origin):
             if self.preflight_explicit_allow_origin:
@@ -129,6 +133,12 @@ class CORSMiddleware:
                 if header.strip() not in self.allow_headers:
                     failures.append("headers")
                     break
+
+        if requested_private_network is not None:
+            if self.allow_private_network:
+                headers["Access-Control-Allow-Private-Network"] = "true"
+            else:
+                failures.append("private-network")
 
         # We don't strictly need to use 400 responses here, since its up to
         # the browser to enforce the CORS policy, but its more informative
@@ -152,15 +162,12 @@ class CORSMiddleware:
         headers = MutableHeaders(scope=message)
         headers.update(self.simple_headers)
         origin = request_headers["Origin"]
-        has_cookie = "cookie" in request_headers
 
-        # If request includes any cookie headers, then we must respond
-        # with the specific origin instead of '*'.
-        if self.allow_all_origins and has_cookie:
+        # If credentials are allowed, then we must respond with the specific origin instead of '*'.
+        if self.allow_all_origins and self.allow_credentials:
             self.allow_explicit_origin(headers, origin)
 
-        # If we only allow specific origins, then we have to mirror back
-        # the Origin header in the response.
+        # If we only allow specific origins, then we have to mirror back the Origin header in the response.
         elif not self.allow_all_origins and self.is_allowed_origin(origin=origin):
             self.allow_explicit_origin(headers, origin)
 

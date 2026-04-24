@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette_dark.svg" width="420px">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette.svg" width="420px">
-    <img alt="starlette-logo" src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette_dark.svg">
+    <img alt="starlette-logo" src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette.svg">
   </picture>
 </p>
 
@@ -15,10 +15,11 @@
 [![Build Status](https://github.com/Kludex/starlette/workflows/Test%20Suite/badge.svg)](https://github.com/Kludex/starlette/actions)
 [![Package version](https://badge.fury.io/py/starlette.svg)](https://pypi.python.org/pypi/starlette)
 [![Supported Python Version](https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058)](https://pypi.org/project/starlette)
+[![Discord](https://img.shields.io/discord/1051468649518616576?logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/RxKUF5JuHs)
 
 ---
 
-**Documentation**: <a href="https://www.starlette.io/" target="_blank">https://www.starlette.io</a>
+**Documentation**: <a href="https://starlette.dev/" target="_blank">https://starlette.dev</a>
 
 **Source Code**: <a href="https://github.com/Kludex/starlette" target="_blank">https://github.com/Kludex/starlette</a>
 
@@ -119,7 +120,7 @@ Run uvicorn with `--reload` to enable auto-reloading on code changes.
 
 ## Modularity
 
-The modularity that Starlette is designed on promotes building re-usable
+The modularity that Starlette is designed on promotes building reusable
 components that can be shared between any ASGI framework. This should enable
 an ecosystem of shared middleware and mountable applications.
 

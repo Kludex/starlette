@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Generator
-from typing import Any, Callable
+from collections.abc import Callable, Generator
+from typing import Any, Literal
 
 from starlette import status
 from starlette._utils import is_async_callable
@@ -52,7 +52,7 @@ class HTTPEndpoint:
 
 
 class WebSocketEndpoint:
-    encoding: str | None = None  # May be "text", "bytes", or "json".
+    encoding: Literal["text", "bytes", "json"] | None = None
 
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "websocket"

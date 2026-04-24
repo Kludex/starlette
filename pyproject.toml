@@ -8,21 +8,26 @@ dynamic = ["version"]
 description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
-requires-python = ">=3.9"
-authors = [{ name = "Tom Christie", email = "tom@tomchristie.com" }]
+license-files = ["LICENSE.md"]
+requires-python = ">=3.10"
+authors = [
+    { name = "Tom Christie", email = "tom@tomchristie.com" }
+]
+maintainers = [
+    { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" },
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",
     "Framework :: AnyIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
@@ -43,30 +48,31 @@ full = [
 dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
-    "coverage==7.8.2",
-    "importlib-metadata==8.7.0",
+    "coverage>=7.8.2",
+    "importlib-metadata==8.7.1",
     "mypy==1.16.1",
-    "ruff==0.12.1",
+    "ruff==0.15.4",
     "types-PyYAML==6.0.12.20250516",
-    "pytest==8.4.1",
-    "trio==0.30.0",
+    "pytest==9.0.3",
+    "trio==0.33.0",
     # Check dist
-    "twine==6.1.0"
+    "twine==6.2.0",
 ]
 docs = [
-    "black==25.1.0",
-    "mkdocs==1.6.1",
-    "mkdocs-material==9.6.15",
-    "mkdocstrings-python==1.16.12",
+    "black==26.3.1",
+    "mkdocstrings>=1.0.2",
+    "mkdocstrings-python>=2.0.1",
+    "zensical>=0.0.19",
 ]
 
 [tool.uv]
 default-groups = ["dev", "docs"]
+required-version = ">=0.8.6"
 
 [project.urls]
 Homepage = "https://github.com/Kludex/starlette"
-Documentation = "https://www.starlette.io/"
-Changelog = "https://www.starlette.io/release-notes/"
+Documentation = "https://starlette.dev/"
+Changelog = "https://starlette.dev/release-notes/"
 Funding = "https://github.com/sponsors/Kludex"
 Source = "https://github.com/Kludex/starlette"
 
@@ -110,12 +116,11 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
+branch = true
 source_pkgs = ["starlette", "tests"]
 
 [tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "if TYPE_CHECKING:",
+exclude_also = [
     "@overload",
     "raise NotImplementedError",
 ]

@@ -72,10 +72,11 @@ app = Starlette(routes=routes, middleware=middleware)
 The following arguments are supported:
 
 * `allow_origins` - A list of origins that should be permitted to make cross-origin requests. eg. `['https://example.org', 'https://www.example.org']`. You can use `['*']` to allow any origin.
-* `allow_origin_regex` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. `'https://.*\.example\.org'`.
+* `allow_origin_regex` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. `'https://[a-zA-Z0-9-]+\.example\.org'`. Avoid using `.*` or `.+` as they match URL special characters (`/`, `@`, `#`, `?`) and may result in overly permissive origin matching. Use specific character classes like `[a-zA-Z0-9-]+` instead.
 * `allow_methods` - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to `['GET']`. You can use `['*']` to allow all standard methods.
 * `allow_headers` - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to `[]`. You can use `['*']` to allow all headers. The `Accept`, `Accept-Language`, `Content-Language` and `Content-Type` headers are always allowed for CORS requests.
 * `allow_credentials` - Indicate that cookies should be supported for cross-origin requests. Defaults to `False`. Also, `allow_origins`, `allow_methods` and `allow_headers` cannot be set to `['*']` for credentials to be allowed, all of them must be explicitly specified.
+* `allow_private_network` - Indicates whether to accept cross-origin requests over a private network. Defaults to `False`.
 * `expose_headers` - Indicate any response headers that should be made accessible to the browser. Defaults to `[]`.
 * `max_age` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to `600`.
 
@@ -91,6 +92,14 @@ appropriate CORS headers, and either a 200 or 400 response for informational pur
 
 Any request with an `Origin` header. In this case the middleware will pass the
 request through as normal, but will include appropriate CORS headers on the response.
+
+#### Private Network Access (PNA)
+
+Private Network Access is a browser security feature that restricts websites from public networks from accessing servers on private networks.
+
+When a website attempts to make such a cross-network request, the browser will send a `Access-Control-Request-Private-Network: true` header in the
+pre-flight request. If the `allow_private_network` flag is set to `True`, the middleware will include the `Access-Control-Allow-Private-Network: true`
+header in the response, allowing the request. If set to `False`, the middleware will return a 400 response, blocking the request.
 
 ### CORSMiddleware Global Enforcement
 
@@ -121,6 +130,8 @@ if __name__ == '__main__':
 
 Adds signed cookie-based HTTP sessions. Session information is readable but not modifiable.
 
+The session cookie is always set with the `"HttpOnly"` flag, preventing client-side JavaScript from accessing it.
+
 Access or modify the session data using the `request.session` dictionary interface.
 
 The following arguments are supported:
@@ -130,7 +141,7 @@ The following arguments are supported:
 * `max_age` - Session expiry time in seconds. Defaults to 2 weeks. If set to `None` then the cookie will last as long as the browser session.
 * `same_site` - SameSite flag prevents the browser from sending session cookie along with cross-site requests. Defaults to `'lax'`.
 * `path` - The path set for the session cookie. Defaults to `'/'`.
-* `https_only` - Indicate that Secure flag should be set (can be used with HTTPS only). Defaults to `False`.
+* `https_only` - Indicate that the `"Secure"` flag should be set (can be used with HTTPS only). Defaults to `False`. Set this to `True` in production to ensure the session cookie is only sent over HTTPS.
 * `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains ([reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute)).
 
 

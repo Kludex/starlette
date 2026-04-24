@@ -1,17 +1,11 @@
 from __future__ import annotations
 
 import functools
-import sys
 import warnings
-from collections.abc import AsyncIterator, Coroutine, Iterable, Iterator
-from typing import Callable, TypeVar
+from collections.abc import AsyncIterator, Callable, Coroutine, Iterable, Iterator
+from typing import ParamSpec, TypeVar
 
 import anyio.to_thread
-
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import ParamSpec
-else:  # pragma: no cover
-    from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
 T = TypeVar("T")

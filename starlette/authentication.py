@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import functools
 import inspect
-import sys
-from collections.abc import Sequence
-from typing import Any, Callable
+from collections.abc import Callable, Sequence
+from typing import Any, ParamSpec
 from urllib.parse import urlencode
-
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import ParamSpec
-else:  # pragma: no cover
-    from typing_extensions import ParamSpec
 
 from starlette._utils import is_async_callable
 from starlette.exceptions import HTTPException

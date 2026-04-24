@@ -1,0 +1,42 @@
+/* Lighter dark mode colors */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #263238;
+  --md-default-fg-color: #e0e0e0;
+  --md-code-bg-color: #2e3c43;
+}
+
+/* Announcement bar styling */
+.announce-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 40px;
+  min-height: 40px;
+  background-color: var(--md-primary-fg-color);
+}
+
+.announce-wrapper #announce-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.announce-wrapper #announce-msg div.item {
+  display: none;
+}
+
+.announce-wrapper #announce-msg div.item:first-child {
+  display: block;
+}
+
+a.announce-link:link,
+a.announce-link:visited {
+  color: var(--md-primary-bg-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+a.announce-link:hover {
+  color: var(--md-accent-fg-color);
+  text-decoration: underline;
+}

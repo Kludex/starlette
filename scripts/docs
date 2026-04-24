@@ -2,4 +2,4 @@
 
 set -x
 
-uv run mkdocs serve
+uv run zensical serve

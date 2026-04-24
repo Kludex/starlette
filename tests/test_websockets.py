@@ -1,5 +1,6 @@
 import sys
-from collections.abc import MutableMapping
+from collections.abc import AsyncGenerator, MutableMapping
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -7,7 +8,7 @@ import pytest
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
 from starlette import status
-from starlette.responses import Response
+from starlette.responses import FileResponse, Response, StreamingResponse
 from starlette.testclient import WebSocketDenialResponse
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
@@ -320,6 +321,44 @@ def test_send_denial_response(test_client_factory: TestClientFactory) -> None:
             pass  # pragma: no cover
     assert exc.value.status_code == 404
     assert exc.value.content == b"foo"
+
+
+def test_send_denial_response_with_streaming_response(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        message = await websocket.receive()
+        assert message == {"type": "websocket.connect"}
+
+        async def content() -> AsyncGenerator[bytes]:
+            yield b"hello"
+            yield b"world"
+
+        await websocket.send_denial_response(StreamingResponse(content(), status_code=403))
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            ...  # pragma: no cover
+    assert exc.value.status_code == 403
+    assert exc.value.content == b"helloworld"
+
+
+def test_send_denial_response_with_file_response(test_client_factory: TestClientFactory, tmp_path: Path) -> None:
+    file_path = tmp_path / "denial.txt"
+    file_path.write_text("test content")
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+        await websocket.send_denial_response(FileResponse(file_path, status_code=401))
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.status_code == 401
+    assert exc.value.content == b"test content"
 
 
 def test_send_response_multi(test_client_factory: TestClientFactory) -> None:

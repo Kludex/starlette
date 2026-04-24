@@ -272,6 +272,6 @@ class MultiPartParser:
         except BaseException as exc:
             # Close all the files if there was an error.
             await self._files_to_close_on_error.aclose()
-            raise exc
+            raise
 
         return FormData(self.items)

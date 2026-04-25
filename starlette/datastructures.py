@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import warnings
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
@@ -13,6 +14,11 @@ from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 
 from starlette._fileio import AsyncFileIO
 from starlette.types import Scope
+
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from warnings import deprecated
+else:  # pragma: no cover
+    from typing_extensions import deprecated
 
 
 class Address(NamedTuple):
@@ -432,6 +438,7 @@ class UploadFile:
         return self.headers.get("content-type", None)
 
     @property
+    @deprecated("UploadFile.file is deprecated and will be removed in a future version.", category=None)
     def file(self) -> AsyncFileIO:
         warnings.warn(
             "UploadFile.file is deprecated and will be removed in a future version.",
@@ -445,6 +452,7 @@ class UploadFile:
             self.size += len(data)
         await self._file.write(data)
 
+    @deprecated("UploadFile.write() is deprecated and will be removed in a future version.", category=None)
     async def write(self, data: bytes) -> None:
         warnings.warn(
             "UploadFile.write() is deprecated and will be removed in a future version.",

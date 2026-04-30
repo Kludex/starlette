@@ -108,7 +108,7 @@ Here are some common ways the test suite can fail:
   <img src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/gh-actions-fail-check.png" alt='Failing GitHub action lint job'>
 </p>
 
-This job failing means there is either a code formatting issue or type-annotation issue.
+This job failing means there is either a code formatting issue or a type-annotation issue.
 You can look at the job output to figure out why it failed, or run the following within a shell:
 
 ```shell

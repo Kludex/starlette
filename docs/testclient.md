@@ -189,7 +189,7 @@ Sometimes you will want to do async things outside of your application.
 For example, you might want to check the state of your database after calling your app
 using your existing async database client/infrastructure.
 
-For these situations, using `TestClient` is difficult because it creates it's own event loop and async
+For these situations, using `TestClient` is difficult because it creates its own event loop and async
 resources (like a database connection) often cannot be shared across event loops.
 The simplest way to work around this is to just make your entire test async and use an async client, like [httpx.AsyncClient].
 

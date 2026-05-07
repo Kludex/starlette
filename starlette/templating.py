@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import typing
-import warnings
+from collections.abc import Callable, Mapping, Sequence
 from os import PathLike
+from typing import TYPE_CHECKING, Any, overload
 
 from starlette.background import BackgroundTask
 from starlette.datastructures import URL
@@ -17,21 +17,24 @@ try:
     # hence we try to get pass_context (most installs will be >=3.1)
     # and fall back to contextfunction,
     # adding a type ignore for mypy to let us access an attribute that may not exist
-    if hasattr(jinja2, "pass_context"):
+    if TYPE_CHECKING:
         pass_context = jinja2.pass_context
-    else:  # pragma: no cover
-        pass_context = jinja2.contextfunction  # type: ignore[attr-defined]
-except ModuleNotFoundError:  # pragma: no cover
-    jinja2 = None  # type: ignore[assignment]
+    else:
+        if hasattr(jinja2, "pass_context"):
+            pass_context = jinja2.pass_context
+        else:  # pragma: no cover
+            pass_context = jinja2.contextfunction  # type: ignore[attr-defined]
+except ImportError as _import_error:  # pragma: no cover
+    raise ImportError("jinja2 must be installed to use Jinja2Templates") from _import_error
 
 
 class _TemplateResponse(HTMLResponse):
     def __init__(
         self,
-        template: typing.Any,
-        context: dict[str, typing.Any],
+        template: Any,
+        context: dict[str, Any],
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
     ):
@@ -44,83 +47,64 @@ class _TemplateResponse(HTMLResponse):
         request = self.context.get("request", {})
         extensions = request.get("extensions", {})
         if "http.response.debug" in extensions:  # pragma: no branch
-            await send(
-                {
-                    "type": "http.response.debug",
-                    "info": {
-                        "template": self.template,
-                        "context": self.context,
-                    },
-                }
-            )
+            await send({"type": "http.response.debug", "info": {"template": self.template, "context": self.context}})
         await super().__call__(scope, receive, send)
 
 
 class Jinja2Templates:
-    """
-    templates = Jinja2Templates("templates")
+    """Jinja2 template renderer.
 
-    return templates.TemplateResponse("index.html", {"request": request})
+    Example:
+        ```python
+        from starlette.templating import Jinja2Templates
+
+        templates = Jinja2Templates(directory="templates")
+
+        async def homepage(request: Request) -> Response:
+            return templates.TemplateResponse(request, "index.html")
+        ```
     """
 
-    @typing.overload
+    @overload
     def __init__(
         self,
-        directory: str | PathLike[str] | typing.Sequence[str | PathLike[str]],
+        directory: str | PathLike[str] | Sequence[str | PathLike[str]],
         *,
-        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]] | None = None,
-        **env_options: typing.Any,
+        context_processors: list[Callable[[Request], dict[str, Any]]] | None = None,
     ) -> None: ...
 
-    @typing.overload
+    @overload
     def __init__(
         self,
         *,
         env: jinja2.Environment,
-        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]] | None = None,
+        context_processors: list[Callable[[Request], dict[str, Any]]] | None = None,
     ) -> None: ...
 
     def __init__(
         self,
-        directory: str | PathLike[str] | typing.Sequence[str | PathLike[str]] | None = None,
+        directory: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None,
         *,
-        context_processors: list[typing.Callable[[Request], dict[str, typing.Any]]] | None = None,
+        context_processors: list[Callable[[Request], dict[str, Any]]] | None = None,
         env: jinja2.Environment | None = None,
-        **env_options: typing.Any,
     ) -> None:
-        if env_options:
-            warnings.warn(
-                "Extra environment options are deprecated. Use a preconfigured jinja2.Environment instead.",
-                DeprecationWarning,
-            )
-        assert jinja2 is not None, "jinja2 must be installed to use Jinja2Templates"
         assert bool(directory) ^ bool(env), "either 'directory' or 'env' arguments must be passed"
         self.context_processors = context_processors or []
         if directory is not None:
-            self.env = self._create_env(directory, **env_options)
+            loader = jinja2.FileSystemLoader(directory)
+            self.env = jinja2.Environment(loader=loader, autoescape=jinja2.select_autoescape())
         elif env is not None:  # pragma: no branch
             self.env = env
 
         self._setup_env_defaults(self.env)
 
-    def _create_env(
-        self,
-        directory: str | PathLike[str] | typing.Sequence[str | PathLike[str]],
-        **env_options: typing.Any,
-    ) -> jinja2.Environment:
-        loader = jinja2.FileSystemLoader(directory)
-        env_options.setdefault("loader", loader)
-        env_options.setdefault("autoescape", True)
-
-        return jinja2.Environment(**env_options)
-
     def _setup_env_defaults(self, env: jinja2.Environment) -> None:
         @pass_context
         def url_for(
-            context: dict[str, typing.Any],
+            context: dict[str, Any],
             name: str,
             /,
-            **path_params: typing.Any,
+            **path_params: Any,
         ) -> URL:
             request: Request = context["request"]
             return request.url_for(name, **path_params)
@@ -130,76 +114,32 @@ class Jinja2Templates:
     def get_template(self, name: str) -> jinja2.Template:
         return self.env.get_template(name)
 
-    @typing.overload
     def TemplateResponse(
         self,
         request: Request,
         name: str,
-        context: dict[str, typing.Any] | None = None,
+        context: dict[str, Any] | None = None,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
-        media_type: str | None = None,
-        background: BackgroundTask | None = None,
-    ) -> _TemplateResponse: ...
-
-    @typing.overload
-    def TemplateResponse(
-        self,
-        name: str,
-        context: dict[str, typing.Any] | None = None,
-        status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
     ) -> _TemplateResponse:
-        # Deprecated usage
-        ...
+        """
+        Render a template and return an HTML response.
 
-    def TemplateResponse(self, *args: typing.Any, **kwargs: typing.Any) -> _TemplateResponse:
-        if args:
-            if isinstance(args[0], str):  # the first argument is template name (old style)
-                warnings.warn(
-                    "The `name` is not the first parameter anymore. "
-                    "The first parameter should be the `Request` instance.\n"
-                    'Replace `TemplateResponse(name, {"request": request})` by `TemplateResponse(request, name)`.',
-                    DeprecationWarning,
-                )
+        Args:
+            request: The incoming request instance.
+            name: The template file name to render.
+            context: Variables to pass to the template.
+            status_code: HTTP status code for the response.
+            headers: Additional headers to include in the response.
+            media_type: Media type for the response.
+            background: Background task to run after response is sent.
 
-                name = args[0]
-                context = args[1] if len(args) > 1 else kwargs.get("context", {})
-                status_code = args[2] if len(args) > 2 else kwargs.get("status_code", 200)
-                headers = args[3] if len(args) > 3 else kwargs.get("headers")
-                media_type = args[4] if len(args) > 4 else kwargs.get("media_type")
-                background = args[5] if len(args) > 5 else kwargs.get("background")
-
-                if "request" not in context:
-                    raise ValueError('context must include a "request" key')
-                request = context["request"]
-            else:  # the first argument is a request instance (new style)
-                request = args[0]
-                name = args[1] if len(args) > 1 else kwargs["name"]
-                context = args[2] if len(args) > 2 else kwargs.get("context", {})
-                status_code = args[3] if len(args) > 3 else kwargs.get("status_code", 200)
-                headers = args[4] if len(args) > 4 else kwargs.get("headers")
-                media_type = args[5] if len(args) > 5 else kwargs.get("media_type")
-                background = args[6] if len(args) > 6 else kwargs.get("background")
-        else:  # all arguments are kwargs
-            if "request" not in kwargs:
-                warnings.warn(
-                    "The `TemplateResponse` now requires the `request` argument.\n"
-                    'Replace `TemplateResponse(name, {"context": context})` by `TemplateResponse(request, name)`.',
-                    DeprecationWarning,
-                )
-                if "request" not in kwargs.get("context", {}):
-                    raise ValueError('context must include a "request" key')
-
-            context = kwargs.get("context", {})
-            request = kwargs.get("request", context.get("request"))
-            name = typing.cast(str, kwargs["name"])
-            status_code = kwargs.get("status_code", 200)
-            headers = kwargs.get("headers")
-            media_type = kwargs.get("media_type")
-            background = kwargs.get("background")
+        Returns:
+            An HTML response with the rendered template content.
+        """
+        context = context or {}
 
         context.setdefault("request", request)
         for context_processor in self.context_processors:

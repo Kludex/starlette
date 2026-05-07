@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextvars
 from collections.abc import AsyncGenerator, AsyncIterator, Generator
 from contextlib import AsyncExitStack
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -14,7 +15,7 @@ from starlette.background import BackgroundTask
 from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import PlainTextResponse, Response, StreamingResponse
+from starlette.responses import FileResponse, PlainTextResponse, Response, StreamingResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -173,7 +174,7 @@ def test_app_middleware_argument(test_client_factory: TestClientFactory) -> None
 
 
 def test_fully_evaluated_response(test_client_factory: TestClientFactory) -> None:
-    # Test for https://github.com/encode/starlette/issues/1022
+    # Test for https://github.com/Kludex/starlette/issues/1022
     class CustomMiddleware(BaseHTTPMiddleware):
         async def dispatch(
             self,
@@ -252,7 +253,7 @@ def test_contextvars(
 
 @pytest.mark.anyio
 async def test_run_background_tasks_even_if_client_disconnects() -> None:
-    # test for https://github.com/encode/starlette/issues/1438
+    # test for https://github.com/Kludex/starlette/issues/1438
     response_complete = anyio.Event()
     background_task_run = anyio.Event()
 
@@ -298,7 +299,7 @@ async def test_run_background_tasks_even_if_client_disconnects() -> None:
 
 
 def test_run_background_tasks_raise_exceptions(test_client_factory: TestClientFactory) -> None:
-    # test for https://github.com/encode/starlette/issues/2625
+    # test for https://github.com/Kludex/starlette/issues/2625
 
     async def sleep_and_set() -> None:
         await anyio.sleep(0.1)
@@ -318,6 +319,27 @@ def test_run_background_tasks_raise_exceptions(test_client_factory: TestClientFa
     client = test_client_factory(app)
     with pytest.raises(ValueError, match="TEST"):
         client.get("/")
+
+
+def test_exception_can_be_caught(test_client_factory: TestClientFactory) -> None:
+    async def error_endpoint(_: Request) -> None:
+        raise ValueError("TEST")
+
+    async def catches_error(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        try:
+            return await call_next(request)
+        except ValueError as exc:
+            return PlainTextResponse(content=str(exc), status_code=400)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=catches_error)],
+        routes=[Route("/", error_endpoint)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.status_code == 400
+    assert response.text == "TEST"
 
 
 @pytest.mark.anyio
@@ -377,7 +399,7 @@ async def test_do_not_block_on_background_tasks() -> None:
 
 @pytest.mark.anyio
 async def test_run_context_manager_exit_even_if_client_disconnects() -> None:
-    # test for https://github.com/encode/starlette/issues/1678#issuecomment-1172916042
+    # test for https://github.com/Kludex/starlette/issues/1678#issuecomment-1172916042
     response_complete = anyio.Event()
     context_manager_exited = anyio.Event()
 
@@ -983,7 +1005,7 @@ def test_downstream_middleware_modifies_receive(
 
 def test_pr_1519_comment_1236166180_example() -> None:
     """
-    https://github.com/encode/starlette/pull/1519#issuecomment-1236166180
+    https://github.com/Kludex/starlette/pull/1519#issuecomment-1236166180
     """
     bodies: list[bytes] = []
 
@@ -1027,8 +1049,8 @@ def test_pr_1519_comment_1236166180_example() -> None:
 async def test_multiple_middlewares_stacked_client_disconnected() -> None:
     """
     Tests for:
-    - https://github.com/encode/starlette/issues/2516
-    - https://github.com/encode/starlette/pull/2687
+    - https://github.com/Kludex/starlette/issues/2516
+    - https://github.com/Kludex/starlette/pull/2687
     """
     ordered_events: list[str] = []
     unordered_events: list[str] = []
@@ -1177,3 +1199,106 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
         {"type": "http.response.body", "body": b"good!", "more_body": True},
         {"type": "http.response.body", "body": b"", "more_body": False},
     ]
+
+
+@pytest.mark.anyio
+async def test_asgi_pathsend_events(tmpdir: Path) -> None:
+    path = tmpdir / "example.txt"
+    with path.open("w") as file:
+        file.write("<file content>")
+
+    response_complete = anyio.Event()
+    events: list[Message] = []
+
+    async def endpoint_with_pathsend(_: Request) -> FileResponse:
+        return FileResponse(path)
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", endpoint_with_pathsend)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "extensions": {"http.response.pathsend": {}},
+    }
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        events.append(message)
+        if message["type"] == "http.response.pathsend":
+            response_complete.set()
+
+    await app(scope, receive, send)
+
+    assert len(events) == 2
+    assert events[0]["type"] == "http.response.start"
+    assert events[1]["type"] == "http.response.pathsend"
+
+
+def test_error_context_propagation(test_client_factory: TestClientFactory) -> None:
+    class PassthroughMiddleware(BaseHTTPMiddleware):
+        async def dispatch(
+            self,
+            request: Request,
+            call_next: RequestResponseEndpoint,
+        ) -> Response:
+            return await call_next(request)
+
+    def exception_without_context(request: Request) -> None:
+        raise Exception("Exception")
+
+    def exception_with_context(request: Request) -> None:
+        try:
+            raise Exception("Inner exception")
+        except Exception:
+            raise Exception("Outer exception")
+
+    def exception_with_cause(request: Request) -> None:
+        try:
+            raise Exception("Inner exception")
+        except Exception as e:
+            raise Exception("Outer exception") from e
+
+    app = Starlette(
+        routes=[
+            Route("/exception-without-context", endpoint=exception_without_context),
+            Route("/exception-with-context", endpoint=exception_with_context),
+            Route("/exception-with-cause", endpoint=exception_with_cause),
+        ],
+        middleware=[Middleware(PassthroughMiddleware)],
+    )
+    client = test_client_factory(app)
+
+    # For exceptions without context the context is filled with the `anyio.EndOfStream`
+    # but it is suppressed therefore not propagated to traceback.
+    with pytest.raises(Exception) as ctx:
+        client.get("/exception-without-context")
+    assert str(ctx.value) == "Exception"
+    assert ctx.value.__cause__ is None
+    assert ctx.value.__context__ is not None
+    assert ctx.value.__suppress_context__ is True
+
+    # For exceptions with context the context is propagated as a cause to avoid
+    # `anyio.EndOfStream` error from overwriting it.
+    with pytest.raises(Exception) as ctx:
+        client.get("/exception-with-context")
+    assert str(ctx.value) == "Outer exception"
+    assert ctx.value.__cause__ is not None
+    assert str(ctx.value.__cause__) == "Inner exception"
+
+    # For exceptions with cause check that it gets correctly propagated.
+    with pytest.raises(Exception) as ctx:
+        client.get("/exception-with-cause")
+    assert str(ctx.value) == "Outer exception"
+    assert ctx.value.__cause__ is not None
+    assert str(ctx.value.__cause__) == "Inner exception"

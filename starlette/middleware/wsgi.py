@@ -3,8 +3,9 @@ from __future__ import annotations
 import io
 import math
 import sys
-import typing
 import warnings
+from collections.abc import Callable, MutableMapping
+from typing import Any
 
 import anyio
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
@@ -15,10 +16,11 @@ warnings.warn(
     "starlette.middleware.wsgi is deprecated and will be removed in a future release. "
     "Please refer to https://github.com/abersheeran/a2wsgi as a replacement.",
     DeprecationWarning,
+    stacklevel=2,
 )
 
 
-def build_environ(scope: Scope, body: bytes) -> dict[str, typing.Any]:
+def build_environ(scope: Scope, body: bytes) -> dict[str, Any]:
     """
     Builds a scope and request body into a WSGI environ object.
     """
@@ -71,7 +73,7 @@ def build_environ(scope: Scope, body: bytes) -> dict[str, typing.Any]:
 
 
 class WSGIMiddleware:
-    def __init__(self, app: typing.Callable[..., typing.Any]) -> None:
+    def __init__(self, app: Callable[..., Any]) -> None:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -81,17 +83,17 @@ class WSGIMiddleware:
 
 
 class WSGIResponder:
-    stream_send: ObjectSendStream[typing.MutableMapping[str, typing.Any]]
-    stream_receive: ObjectReceiveStream[typing.MutableMapping[str, typing.Any]]
+    stream_send: ObjectSendStream[MutableMapping[str, Any]]
+    stream_receive: ObjectReceiveStream[MutableMapping[str, Any]]
 
-    def __init__(self, app: typing.Callable[..., typing.Any], scope: Scope) -> None:
+    def __init__(self, app: Callable[..., Any], scope: Scope) -> None:
         self.app = app
         self.scope = scope
         self.status = None
         self.response_headers = None
         self.stream_send, self.stream_receive = anyio.create_memory_object_stream(math.inf)
         self.response_started = False
-        self.exc_info: typing.Any = None
+        self.exc_info: Any = None
 
     async def __call__(self, receive: Receive, send: Send) -> None:
         body = b""
@@ -118,7 +120,7 @@ class WSGIResponder:
         self,
         status: str,
         response_headers: list[tuple[str, str]],
-        exc_info: typing.Any = None,
+        exc_info: Any = None,
     ) -> None:
         self.exc_info = exc_info
         if not self.response_started:  # pragma: no branch
@@ -140,8 +142,8 @@ class WSGIResponder:
 
     def wsgi(
         self,
-        environ: dict[str, typing.Any],
-        start_response: typing.Callable[..., typing.Any],
+        environ: dict[str, Any],
+        start_response: Callable[..., Any],
     ) -> None:
         for chunk in self.app(environ, start_response):
             anyio.from_thread.run(

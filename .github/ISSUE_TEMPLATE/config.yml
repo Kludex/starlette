@@ -1,11 +1,11 @@
 # Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
 blank_issues_enabled: false
 contact_links:
-- name: Discussions
-  url: https://github.com/encode/starlette/discussions
-  about: >
-    The "Discussions" forum is where you want to start. 💖
-- name: Chat
-  url: https://discord.gg/SWU73HffbV
-  about: >
-    Our community chat forum.
+  - name: Discussions
+    url: https://github.com/Kludex/starlette/discussions
+    about: >
+      The "Discussions" forum is where you want to start. 💖
+  - name: Chat
+    url: https://discord.gg/SWU73HffbV
+    about: >
+      Our community chat forum.

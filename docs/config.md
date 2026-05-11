@@ -236,4 +236,20 @@ def client():
         yield test_client
 ```
 
+## Reading from a FIFO (named pipe)
+On Unix, `env_file` may also point to a FIFO (named pipe), not just a regular file.
+This is useful for injecting secrets into a process without writing them to disk (e.g. piping from a secrets manager).
+
+```shell
+mkfifo env.fifo  # or .env
+```
+
+```python
+config = Config("env.fifo")  # or Config(".env")
+```
+
+The FIFO is read once upon calling `Config` construction, using the same `KEY=VALUE` 
+line format as a `.env` file.
+
+
 [twelve-factor]: https://12factor.net/config

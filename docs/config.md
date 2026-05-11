@@ -244,7 +244,9 @@ This is useful for injecting secrets into a process without writing them to disk
 mkfifo env.fifo  # or .env
 ```
 
-```python
+```python title="myproject/settings.py"
+from starlette.config import Config
+
 config = Config("env.fifo")  # or Config(".env")
 ```
 

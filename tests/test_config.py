@@ -1,4 +1,6 @@
 import os
+import sys
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -147,3 +149,23 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="FIFOs are Unix-only. Does not run on Windows.")
+def test_config_fifo(tmpdir: Path) -> None:
+
+    fifo = tmpdir / ".env"
+    os.mkfifo(fifo)  # create named fifo pipe
+
+    def writer() -> None:
+        fifo.write_text("TEST=true", encoding="utf-8")
+
+    t = threading.Thread(target=writer, daemon=True)
+    t.start()
+
+    try:
+        config = Config(fifo)
+    finally:
+        t.join(timeout=2)
+
+    assert config.get("TEST") == "true"

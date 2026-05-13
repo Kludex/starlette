@@ -437,7 +437,7 @@ def test_cookies_edge_cases(
             "abc=def; unnamed; django_language=en",
             {"": "unnamed", "abc": "def", "django_language": "en"},
         ),
-        # Even a double quote may be an unamed value.
+        # Even a double quote may be an unnamed value.
         ('a=b; "; c=d', {"a": "b", "": '"', "c": "d"}),
         # Spaces in names and values, and an equals sign in values.
         ("a b c=d e = f; gh=i", {"a b c": "d e = f", "gh": "i"}),

@@ -738,8 +738,7 @@ def test_request_send_early_hint_without_extension(test_client_factory: TestClie
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         async def capturing_send(message: Message) -> None:
             captured.append(message)
-            if message["type"] in ("http.response.start", "http.response.body"):
-                await send(message)
+            await send(message)
 
         request = Request(scope, receive, capturing_send)
         await request.send_early_hint([Link("/style.css", rel="preload", as_="style")])

@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import AsyncGenerator, Iterator, Mapping
+from collections.abc import AsyncGenerator, Iterable, Iterator, Mapping
 from http import cookies as http_cookies
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
 
 import anyio
 
 from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManagerWrapper
-from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
+from starlette.datastructures import URL, Address, FormData, Headers, Link, QueryParams, State
 from starlette.exceptions import HTTPException
 from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
 from starlette.types import Message, Receive, Scope, Send
@@ -335,3 +335,8 @@ class Request(HTTPConnection[StateT]):
                 for value in self.headers.getlist(name):
                     raw_headers.append((name.encode("latin-1"), value.encode("latin-1")))
             await self._send({"type": "http.response.push", "path": path, "headers": raw_headers})
+
+    async def send_early_hint(self, links: Iterable[Link | bytes]) -> None:
+        if "http.response.early_hint" in self.scope.get("extensions", {}):
+            raw_links = [bytes(link) if isinstance(link, Link) else link for link in links]
+            await self._send({"type": "http.response.early_hint", "links": raw_links})

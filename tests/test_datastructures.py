@@ -9,6 +9,7 @@ from starlette.datastructures import (
     CommaSeparatedStrings,
     FormData,
     Headers,
+    Link,
     MultiDict,
     MutableHeaders,
     QueryParams,
@@ -483,3 +484,64 @@ def test_multidict() -> None:
     assert q.getlist("a") == ["123"]
     q.update([("a", "456")], a="789", b="123")
     assert q == MultiDict([("a", "456"), ("a", "789"), ("b", "123")])
+
+
+def test_link_minimal() -> None:
+    link = Link("/style.css")
+    assert str(link) == "</style.css>"
+    assert bytes(link) == b"</style.css>"
+
+
+def test_link_preload_stylesheet() -> None:
+    link = Link("/static/app.css", rel="preload", as_="style")
+    assert str(link) == "</static/app.css>; rel=preload; as=style"
+    assert bytes(link) == b"</static/app.css>; rel=preload; as=style"
+
+
+def test_link_quoting_when_value_has_non_token_char() -> None:
+    link = Link("/font.woff2", rel="preload", as_="font", type="font/woff2")
+    assert str(link) == '</font.woff2>; rel=preload; as=font; type="font/woff2"'
+
+
+def test_link_flag_parameter() -> None:
+    link = Link("/big.js", rel="preload", as_="script", nopush=True)
+    assert str(link) == "</big.js>; rel=preload; as=script; nopush"
+
+
+def test_link_skips_none_and_false_params() -> None:
+    link = Link("/a.css", rel="preload", as_="style", crossorigin=None, nopush=False)
+    assert str(link) == "</a.css>; rel=preload; as=style"
+    assert "crossorigin" not in link.params
+    assert "nopush" not in link.params
+
+
+def test_link_underscore_to_hyphen() -> None:
+    link = Link("/x", rel="preload", referrer_policy="no-referrer")
+    assert "referrer-policy" in link.params
+    assert str(link) == "</x>; rel=preload; referrer-policy=no-referrer"
+
+
+def test_link_multi_value_rel_is_quoted() -> None:
+    link = Link("/x", rel="preload prefetch")
+    assert str(link) == '</x>; rel="preload prefetch"'
+
+
+def test_link_quoted_value_escapes_quotes_and_backslashes() -> None:
+    link = Link("/x", rel="preload", title='a"b\\c')
+    assert str(link) == '</x>; rel=preload; title="a\\"b\\\\c"'
+
+
+def test_link_rejects_target_with_angle_bracket() -> None:
+    with pytest.raises(ValueError, match="must not contain '>'"):
+        Link("/foo>bar")
+
+
+def test_link_equality_and_repr() -> None:
+    a = Link("/x", rel="preload", as_="style")
+    b = Link("/x", rel="preload", as_="style")
+    c = Link("/y", rel="preload", as_="style")
+    assert a == b
+    assert a != c
+    assert a != "not a link"
+    assert "Link('/x'" in repr(a)
+    assert "rel='preload'" in repr(a)

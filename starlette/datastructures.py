@@ -704,3 +704,76 @@ class State:
 
     def __len__(self) -> int:
         return len(self._state)
+
+
+# RFC 7230 token chars — anything else in a Link param value must be quoted.
+_TCHAR = frozenset("!#$%&'*+-.^_`|~" + "0123456789" + "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+
+def _quote_link_param_value(value: str) -> str:
+    if value and all(ch in _TCHAR for ch in value):
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+class Link:
+    """A single ``Link`` header value as defined by RFC 8288 (Web Linking).
+
+    Used to describe a relationship between resources. Most commonly emitted in
+    103 Early Hints responses (RFC 8297) to let clients preload assets while
+    the main response is still being prepared, but also valid on regular 2xx
+    responses (pagination links, alternate representations, etc.).
+
+    Python keywords cannot be used as keyword arguments, so this class accepts
+    a trailing underscore which is stripped at serialisation time. Underscores
+    in the middle of a parameter name are converted to hyphens
+    (``referrer_policy`` → ``referrer-policy``).
+
+    Boolean ``True`` produces a flag parameter with no value (e.g. ``nopush``);
+    ``None`` / ``False`` are skipped.
+    """
+
+    __slots__ = ("target", "rel", "params")
+
+    def __init__(
+        self,
+        target: str,
+        *,
+        rel: str | None = None,
+        **params: str | bool | None,
+    ) -> None:
+        if ">" in target:
+            raise ValueError("Link target must not contain '>'")
+        self.target = target
+        self.rel = rel
+        self.params: dict[str, str | bool] = {}
+        for key, value in params.items():
+            if value is None or value is False:
+                continue
+            normalized = key.rstrip("_").replace("_", "-")
+            self.params[normalized] = value
+
+    def __bytes__(self) -> bytes:
+        return str(self).encode("ascii")
+
+    def __str__(self) -> str:
+        parts = [f"<{self.target}>"]
+        if self.rel is not None:
+            parts.append(f"rel={_quote_link_param_value(self.rel)}")
+        for name, value in self.params.items():
+            if value is True:
+                parts.append(name)
+            else:
+                parts.append(f"{name}={_quote_link_param_value(cast(str, value))}")
+        return "; ".join(parts)
+
+    def __repr__(self) -> str:
+        kwargs = "".join(f", {k}={v!r}" for k, v in self.params.items())
+        rel = f", rel={self.rel!r}" if self.rel is not None else ""
+        return f"Link({self.target!r}{rel}{kwargs})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Link):
+            return NotImplemented
+        return self.target == other.target and self.rel == other.rel and self.params == other.params

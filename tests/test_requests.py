@@ -7,7 +7,7 @@ from typing import Any
 import anyio
 import pytest
 
-from starlette.datastructures import URL, Address, State
+from starlette.datastructures import URL, Address, Link, State
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
@@ -669,3 +669,107 @@ def test_request_url_starlette_context(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     client.get("/home")
     assert url_for == URL("http://testserver/home")
+
+
+def test_request_send_early_hint_with_link_instances(test_client_factory: TestClientFactory) -> None:
+    """The Link helpers serialise to bytes when the extension is advertised."""
+    captured: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        scope["extensions"]["http.response.early_hint"] = {}
+
+        async def capturing_send(message: Message) -> None:
+            captured.append(message)
+            if message["type"] in ("http.response.start", "http.response.body"):
+                await send(message)
+
+        request = Request(scope, receive, capturing_send)
+        await request.send_early_hint(
+            [
+                Link("/style.css", rel="preload", as_="style"),
+                Link("/app.js", rel="preload", as_="script"),
+            ]
+        )
+        response = JSONResponse({"json": "OK"})
+        await response(scope, receive, capturing_send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.json() == {"json": "OK"}
+
+    early = [m for m in captured if m["type"] == "http.response.early_hint"]
+    assert len(early) == 1
+    assert early[0]["links"] == [
+        b"</style.css>; rel=preload; as=style",
+        b"</app.js>; rel=preload; as=script",
+    ]
+
+
+def test_request_send_early_hint_accepts_raw_bytes(test_client_factory: TestClientFactory) -> None:
+    """Raw byte-strings (per asgiref spec) are passed through unchanged."""
+    captured: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        scope["extensions"]["http.response.early_hint"] = {}
+
+        async def capturing_send(message: Message) -> None:
+            captured.append(message)
+            if message["type"] in ("http.response.start", "http.response.body"):
+                await send(message)
+
+        request = Request(scope, receive, capturing_send)
+        await request.send_early_hint([b"</a.css>; rel=preload; as=style"])
+
+        response = JSONResponse({"json": "OK"})
+        await response(scope, receive, capturing_send)
+
+    client = test_client_factory(app)
+    client.get("/")
+
+    early = [m for m in captured if m["type"] == "http.response.early_hint"]
+    assert len(early) == 1
+    assert early[0]["links"] == [b"</a.css>; rel=preload; as=style"]
+
+
+def test_request_send_early_hint_without_extension(test_client_factory: TestClientFactory) -> None:
+    """If the server does not advertise the extension, the call is a no-op."""
+    captured: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        async def capturing_send(message: Message) -> None:
+            captured.append(message)
+            if message["type"] in ("http.response.start", "http.response.body"):
+                await send(message)
+
+        request = Request(scope, receive, capturing_send)
+        await request.send_early_hint([Link("/style.css", rel="preload", as_="style")])
+
+        response = JSONResponse({"json": "OK"})
+        await response(scope, receive, capturing_send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.json() == {"json": "OK"}
+    assert not any(m["type"] == "http.response.early_hint" for m in captured)
+
+
+def test_request_send_early_hint_without_setting_send(
+    test_client_factory: TestClientFactory,
+) -> None:
+    """Without a send channel on Request, send_early_hint raises RuntimeError."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        scope["extensions"]["http.response.early_hint"] = {}
+
+        data = "OK"
+        request = Request(scope)
+        try:
+            await request.send_early_hint([Link("/style.css", rel="preload", as_="style")])
+        except RuntimeError:
+            data = "Send channel not available"
+        response = JSONResponse({"json": data})
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.json() == {"json": "Send channel not available"}

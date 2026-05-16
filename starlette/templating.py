@@ -92,9 +92,15 @@ class Jinja2Templates:
         self.context_processors = context_processors or []
         if directory is not None:
             loader = jinja2.FileSystemLoader(directory)
-            self.env = jinja2.Environment(loader=loader, autoescape=jinja2.select_autoescape())
+            self.env = jinja2.Environment(
+                loader=loader, 
+                autoescape=jinja2.select_autoescape(['html', 'xml'])
+            )
         elif env is not None:  # pragma: no branch
             self.env = env
+            # Ensure autoescape is enabled if a custom environment is passed
+            if not self.env.autoescape:
+                raise ValueError("The 'env' argument must have autoescaping enabled to prevent XSS vulnerabilities.")
 
         self._setup_env_defaults(self.env)
 

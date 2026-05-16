@@ -210,7 +210,7 @@ def hello(request: Request) -> PlainTextResponse:
 app = Starlette(routes=[Route("/", hello)])
 
 
-# if you're using pytest, you'll need to to add an async marker like:
+# if you're using pytest, you'll need to add an async marker like:
 # @pytest.mark.anyio  # using https://github.com/agronholm/anyio
 # or install and configure pytest-asyncio (https://github.com/pytest-dev/pytest-asyncio)
 async def test_app() -> None:

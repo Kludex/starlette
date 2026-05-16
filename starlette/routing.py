@@ -228,8 +228,13 @@ class Route(BaseRoute):
 
         if methods is None:
             self.methods = None
+            self._explicit_methods: frozenset[str] | None = None
         else:
-            self.methods = {method.upper() for method in methods}
+            explicit = {method.upper() for method in methods}
+            self._explicit_methods = frozenset(explicit)
+            self.methods = explicit
+            # Implicitly support HEAD when GET is defined, per HTTP spec.
+            # We track this separately so explicit HEAD routes take precedence.
             if "GET" in self.methods:
                 self.methods.add("HEAD")
 
@@ -249,8 +254,15 @@ class Route(BaseRoute):
                 child_scope = {"endpoint": self.endpoint, "path_params": path_params}
                 if self.methods and scope["method"] not in self.methods:
                     return Match.PARTIAL, child_scope
-                else:
-                    return Match.FULL, child_scope
+                # Fix #3182: if HEAD matched only via implicit GET→HEAD promotion,
+                # return PARTIAL so explicit HEAD routes registered later can win.
+                if (
+                    scope["method"] == "HEAD"
+                    and self._explicit_methods is not None
+                    and "HEAD" not in self._explicit_methods
+                ):
+                    return Match.PARTIAL, child_scope
+                return Match.FULL, child_scope
         return Match.NONE, {}
 
     def url_path_for(self, name: str, /, **path_params: Any) -> URLPath:

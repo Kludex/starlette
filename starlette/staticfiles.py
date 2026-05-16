@@ -207,7 +207,12 @@ class StaticFiles:
         if if_none_match := request_headers.get("if-none-match"):
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
-            return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
+            # Fix #3193: strip() operates on a charset, not a prefix.
+            # Use removeprefix() to correctly handle weak ETags per RFC 7232.
+            def _normalize(t: str) -> str:
+                t = t.strip()
+                return t[2:] if t.startswith("W/") else t
+            return _normalize(etag) in [_normalize(tag) for tag in if_none_match.split(",")]
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])

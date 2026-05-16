@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import stat
 import warnings
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from pathlib import Path
@@ -58,7 +59,7 @@ class Config:
         self.env_prefix = env_prefix
         self.file_values: dict[str, str] = {}
         if env_file is not None:
-            if not os.path.isfile(env_file):
+            if not self._is_fifo_or_file(env_file):
                 warnings.warn(f"Config file '{env_file}' not found.")
             else:
                 self.file_values = self._read_file(env_file, encoding)
@@ -119,6 +120,17 @@ class Config:
                     value = value.strip().strip("\"'")
                     file_values[key] = value
         return file_values
+
+    def _is_fifo_or_file(self, file_name: str | Path) -> bool:
+        if os.path.isfile(file_name):
+            return True
+
+        try:
+            st = os.stat(file_name)
+        except (FileNotFoundError, OSError):
+            return False
+
+        return stat.S_ISFIFO(st.st_mode)
 
     def _perform_cast(
         self,

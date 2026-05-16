@@ -131,6 +131,10 @@ class SimpleUser(BaseUser):
     def display_name(self) -> str:
         return self.username
 
+    @property
+    def identity(self) -> str:
+        return self.username
+
 
 class UnauthenticatedUser(BaseUser):
     @property
@@ -139,4 +143,8 @@ class UnauthenticatedUser(BaseUser):
 
     @property
     def display_name(self) -> str:
+        return ""
+
+    @property
+    def identity(self) -> str:
         return ""

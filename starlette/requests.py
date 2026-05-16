@@ -258,8 +258,22 @@ class Request(HTTPConnection[StateT]):
             self._body = b"".join(chunks)
         return self._body
 
-    async def json(self) -> Any:
+    async def json(self, *, strict: bool = False) -> Any:
         if not hasattr(self, "_json"):  # pragma: no branch
+            if strict:
+                content_type_header = self.headers.get("Content-Type", "")
+                content_type = content_type_header.split(";", 1)[0].strip().lower()
+
+                if "/" not in content_type:
+                    is_json = False
+                else:
+                    base_type, subtype = content_type.split("/")
+                    is_json = base_type == "application" and (subtype == "json" or subtype.endswith("+json"))
+
+                if not is_json:
+                    raise RuntimeError(
+                        f"Invalid content type. Expected 'application/json', got {content_type_header!r}."
+                    )
             body = await self.body()
             self._json = json.loads(body)
         return self._json

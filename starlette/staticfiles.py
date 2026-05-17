@@ -207,6 +207,9 @@ class StaticFiles:
         if if_none_match := request_headers.get("if-none-match"):
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
+            # Per RFC 7232 §3.2, "If-None-Match: *" matches any current representation.
+            if if_none_match.strip() == "*":
+                return True
             return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
 
         try:

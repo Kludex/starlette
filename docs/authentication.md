@@ -194,3 +194,61 @@ app = Starlette(
     ],
 )
 ```
+
+## Filesystem-based authentication
+
+An alternative to a database or token store is using the filesystem itself as the
+identity record. The presence of a directory (and a marker file inside it) grants
+access; deleting the directory revokes it instantly — no database transaction required.
+
+This pattern is useful for local or agent-oriented services where each authorised
+client has a dedicated workspace folder.
+
+```python
+from pathlib import Path
+
+from starlette.authentication import (
+    AuthCredentials,
+    AuthenticationBackend,
+    AuthenticationError,
+    SimpleUser,
+)
+
+# Root directory that contains one sub-folder per authorised client.
+# Grant:  mkdir -p /srv/safe/<client-id> && touch /srv/safe/<client-id>/manifest
+# Revoke: rm -rf /srv/safe/<client-id>
+SAFE_ROOT = Path("/srv/safe")
+
+
+class FilesystemAuthBackend(AuthenticationBackend):
+    """Authorise clients by checking for a folder + marker file on disk.
+
+    The client sends its ID in the ``X-Client-Id`` header.
+    No passwords, tokens, or database lookups are required.
+    """
+
+    async def authenticate(self, conn):
+        client_id = conn.headers.get("X-Client-Id", "").strip()
+        if not client_id or "/" in client_id or ".." in client_id:
+            return  # unauthenticated — no error, just anonymous
+
+        folder = SAFE_ROOT / client_id
+        if not (folder.is_dir() and (folder / "manifest").exists()):
+            raise AuthenticationError(f"Unknown client: {client_id!r}")
+
+        return AuthCredentials(["authenticated"]), SimpleUser(client_id)
+```
+
+Wire it up the same way as any other backend:
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+
+app = Starlette(
+    middleware=[
+        Middleware(AuthenticationMiddleware, backend=FilesystemAuthBackend()),
+    ],
+)
+```

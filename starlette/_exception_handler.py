@@ -61,5 +61,11 @@ def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASG
                 response = await run_in_threadpool(handler, conn, exc)
             if response is not None:
                 await response(scope, receive, sender)
+            # Clear the traceback to break the reference cycle:
+            # exc.__traceback__ → frame locals → sender closure → send
+            # → RequestResponseCycle. Without this, shared exception
+            # objects (e.g. module-level HTTPException instances) pin
+            # per-request ASGI state in memory permanently.
+            exc.__traceback__ = None
 
     return wrapped_app

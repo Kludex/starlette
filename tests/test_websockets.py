@@ -488,7 +488,7 @@ def test_duplicate_close(test_client_factory: TestClientFactory) -> None:
         await websocket.close()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 
@@ -502,9 +502,37 @@ def test_duplicate_disconnect(test_client_factory: TestClientFactory) -> None:
         message = await websocket.receive()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/") as websocket:
             websocket.close()
+
+
+def test_websocket_is_disconnected(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        assert not websocket.is_disconnected
+        await websocket.accept()
+        assert not websocket.is_disconnected
+        message = await websocket.receive()
+        assert message["type"] == "websocket.disconnect"
+        assert websocket.is_disconnected
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/") as websocket:
+        websocket.close()
+
+
+def test_websocket_is_disconnected_on_close(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        await websocket.accept()
+        assert not websocket.is_disconnected
+        await websocket.close()
+        assert websocket.is_disconnected
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/"):
+        pass
 
 
 def test_websocket_scope_interface() -> None:

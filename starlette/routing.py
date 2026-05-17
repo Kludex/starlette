@@ -203,12 +203,16 @@ class Route(BaseRoute):
         name: str | None = None,
         include_in_schema: bool = True,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
+        max_upload_size: int | None = None,
     ) -> None:
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
         self.endpoint = endpoint
         self.name = get_name(endpoint) if name is None else name
         self.include_in_schema = include_in_schema
+        self.max_body_size = max_body_size
+        self.max_upload_size = max_upload_size
 
         endpoint_handler = endpoint
         while isinstance(endpoint_handler, functools.partial):
@@ -246,7 +250,11 @@ class Route(BaseRoute):
                     matched_params[key] = self.param_convertors[key].convert(value)
                 path_params = dict(scope.get("path_params", {}))
                 path_params.update(matched_params)
-                child_scope = {"endpoint": self.endpoint, "path_params": path_params}
+                child_scope: dict[str, Any] = {"endpoint": self.endpoint, "path_params": path_params}
+                if self.max_body_size is not None:
+                    child_scope["max_body_size"] = self.max_body_size
+                if self.max_upload_size is not None:
+                    child_scope["max_upload_size"] = self.max_upload_size
                 if self.methods and scope["method"] not in self.methods:
                     return Match.PARTIAL, child_scope
                 else:
@@ -365,10 +373,14 @@ class Mount(BaseRoute):
         name: str | None = None,
         *,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
+        max_upload_size: int | None = None,
     ) -> None:
         assert path == "" or path.startswith("/"), "Routed paths must start with '/'"
         assert app is not None or routes is not None, "Either 'app=...', or 'routes=' must be specified"
         self.path = path.rstrip("/")
+        self.max_body_size = max_body_size
+        self.max_upload_size = max_upload_size
         if app is not None:
             self._base_app: ASGIApp = app
         else:
@@ -398,7 +410,7 @@ class Mount(BaseRoute):
                 matched_path = route_path[: -len(remaining_path)]
                 path_params = dict(scope.get("path_params", {}))
                 path_params.update(matched_params)
-                child_scope = {
+                child_scope: dict[str, Any] = {
                     "path_params": path_params,
                     # app_root_path will only be set at the top level scope,
                     # initialized with the (optional) value of a root_path
@@ -414,6 +426,10 @@ class Mount(BaseRoute):
                     "root_path": root_path + matched_path,
                     "endpoint": self.app,
                 }
+                if self.max_body_size is not None:
+                    child_scope["max_body_size"] = self.max_body_size
+                if self.max_upload_size is not None:
+                    child_scope["max_upload_size"] = self.max_upload_size
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
@@ -574,10 +590,14 @@ class Router:
         lifespan: Lifespan[Any] | None = None,
         *,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
+        max_upload_size: int | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
+        self.max_body_size = max_body_size
+        self.max_upload_size = max_upload_size
 
         if lifespan is None:
             self.lifespan_context: Lifespan[Any] = _DefaultLifespan(self)
@@ -664,6 +684,12 @@ class Router:
 
         if "router" not in scope:
             scope["router"] = self
+
+        if self.max_body_size is not None and "max_body_size" not in scope:
+            scope["max_body_size"] = self.max_body_size
+
+        if self.max_upload_size is not None and "max_upload_size" not in scope:
+            scope["max_upload_size"] = self.max_upload_size
 
         if scope["type"] == "lifespan":
             await self.lifespan(scope, receive, send)

@@ -14,7 +14,13 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.datastructures import UploadFile
-from starlette.formparsers import MultiPartException, MultiPartParser, _user_safe_decode
+from starlette.formparsers import (
+    DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+    DEFAULT_MAX_MULTIPART_HEADER_SIZE,
+    MultiPartException,
+    MultiPartParser,
+    _user_safe_decode,
+)
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -125,10 +131,22 @@ async def app_monitor_thread(scope: Scope, receive: Receive, send: Send) -> None
     await response(scope, receive, send)
 
 
-def make_app_max_parts(max_files: int = 1000, max_fields: int = 1000, max_part_size: int = 1024 * 1024) -> ASGIApp:
+def make_app_max_parts(
+    max_files: int = 1000,
+    max_fields: int = 1000,
+    max_part_size: int = 1024 * 1024,
+    max_header_count: int = DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+    max_header_size: int = DEFAULT_MAX_MULTIPART_HEADER_SIZE,
+) -> ASGIApp:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
-        data = await request.form(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size)
+        data = await request.form(
+            max_files=max_files,
+            max_fields=max_fields,
+            max_part_size=max_part_size,
+            max_header_count=max_header_count,
+            max_header_size=max_header_size,
+        )
         output: dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, UploadFile):
@@ -724,6 +742,122 @@ def test_max_fields_is_customizable_high(test_client_factory: TestClientFactory)
         "content": "",
         "content_type": None,
     }
+
+
+def test_max_header_limits_are_passed_to_python_multipart(
+    monkeypatch: pytest.MonkeyPatch, test_client_factory: TestClientFactory
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class RecordingMultipartParser:
+        def __init__(
+            self,
+            boundary: bytes,
+            callbacks: Any = None,
+            *,
+            max_header_count: int = DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+            max_header_size: int = DEFAULT_MAX_MULTIPART_HEADER_SIZE,
+        ) -> None:
+            captured["boundary"] = boundary
+            captured["max_header_count"] = max_header_count
+            captured["max_header_size"] = max_header_size
+
+        def write(self, chunk: bytes) -> None:
+            pass
+
+        def finalize(self) -> None:
+            pass
+
+    monkeypatch.setattr("starlette.formparsers.multipart.MultipartParser", RecordingMultipartParser)
+
+    client = test_client_factory(make_app_max_parts(max_header_count=16, max_header_size=8192))
+    response = client.post(
+        "/",
+        content=b"--B--\r\n",
+        headers={"Content-Type": "multipart/form-data; boundary=B"},
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "boundary": b"B",
+        "max_header_count": 16,
+        "max_header_size": 8192,
+    }
+
+
+@pytest.mark.parametrize(
+    ("form_kwargs", "multipart_data", "expected_message"),
+    [
+        (
+            {"max_header_count": 1},
+            (
+                b"--B\r\n"
+                b'Content-Disposition: form-data; name="field"\r\n'
+                b"X-Test: value\r\n"
+                b"\r\n"
+                b"value\r\n"
+                b"--B--\r\n"
+            ),
+            "Too many headers. Maximum number of headers is 1.",
+        ),
+        (
+            {"max_header_size": 16},
+            (
+                b"--B\r\n"
+                b'Content-Disposition: form-data; name="field"\r\n'
+                b"X-Test: this header is too long\r\n"
+                b"\r\n"
+                b"value\r\n"
+                b"--B--\r\n"
+            ),
+            "Header exceeded maximum size of 16 bytes.",
+        ),
+    ],
+)
+def test_max_header_limits_are_enforced(
+    monkeypatch: pytest.MonkeyPatch,
+    form_kwargs: dict[str, int],
+    multipart_data: bytes,
+    expected_message: str,
+    test_client_factory: TestClientFactory,
+) -> None:
+    class EnforcingMultipartParser:
+        def __init__(
+            self,
+            boundary: bytes,
+            callbacks: Any = None,
+            *,
+            max_header_count: int = DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+            max_header_size: int = DEFAULT_MAX_MULTIPART_HEADER_SIZE,
+        ) -> None:
+            self.max_header_count = max_header_count
+            self.max_header_size = max_header_size
+            self.buffer = bytearray()
+
+        def write(self, chunk: bytes) -> None:
+            self.buffer.extend(chunk)
+
+        def finalize(self) -> None:
+            header_block = bytes(self.buffer).split(b"\r\n\r\n", 1)[0]
+            header_lines = header_block.split(b"\r\n")[1:]
+            if len(header_lines) > self.max_header_count:
+                raise MultiPartException(f"Too many headers. Maximum number of headers is {self.max_header_count}.")
+            for header_line in header_lines:
+                if len(header_line) > self.max_header_size:
+                    raise MultiPartException(f"Header exceeded maximum size of {self.max_header_size} bytes.")
+
+    monkeypatch.setattr("starlette.formparsers.multipart.MultipartParser", EnforcingMultipartParser)
+
+    app = Starlette(routes=[Mount("/", app=make_app_max_parts(**form_kwargs))])
+    client = test_client_factory(app)
+    response = client.post(
+        "/",
+        content=multipart_data,
+        headers={"Content-Type": "multipart/form-data; boundary=B"},
+    )
+
+    assert response.status_code == 400
+    assert response.text == expected_message
 
 
 @pytest.mark.parametrize(

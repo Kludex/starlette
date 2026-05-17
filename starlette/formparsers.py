@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
@@ -24,6 +25,9 @@ else:
         multipart = None
         parse_options_header = None
 
+DEFAULT_MAX_MULTIPART_HEADER_COUNT = 8
+DEFAULT_MAX_MULTIPART_HEADER_SIZE = 4096 + 128
+
 
 class FormMessage(Enum):
     FIELD_START = 1
@@ -47,6 +51,16 @@ def _user_safe_decode(src: bytes | bytearray, codec: str) -> str:
         return src.decode(codec)
     except (UnicodeDecodeError, LookupError):
         return src.decode("latin-1")
+
+
+def _multipart_parser_supports_header_limits() -> bool:
+    if multipart is None:
+        return False
+    try:
+        parameters = inspect.signature(multipart.MultipartParser.__init__).parameters
+    except (TypeError, ValueError):  # pragma: no cover
+        return False
+    return "max_header_count" in parameters and "max_header_size" in parameters
 
 
 class MultiPartException(Exception):
@@ -127,6 +141,10 @@ class MultiPartParser:
     """The maximum size of the spooled temporary file used to store file data."""
     max_part_size = 1024 * 1024  # 1MB
     """The maximum size of a part in the multipart request."""
+    max_header_count = DEFAULT_MAX_MULTIPART_HEADER_COUNT
+    """The maximum number of headers per multipart part."""
+    max_header_size = DEFAULT_MAX_MULTIPART_HEADER_SIZE
+    """The maximum size of a multipart header line."""
 
     def __init__(
         self,
@@ -136,12 +154,16 @@ class MultiPartParser:
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,  # 1MB
+        max_header_count: int = DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+        max_header_size: int = DEFAULT_MAX_MULTIPART_HEADER_SIZE,
     ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
         self.max_files = max_files
         self.max_fields = max_fields
+        self.max_header_count = max_header_count
+        self.max_header_size = max_header_size
         self.items: list[tuple[str, str | UploadFile]] = []
         self._current_files = 0
         self._current_fields = 0
@@ -248,7 +270,21 @@ class MultiPartParser:
         }
 
         # Create the parser.
-        parser = multipart.MultipartParser(boundary, callbacks)
+        parser_kwargs: dict[str, int] = {}
+        if _multipart_parser_supports_header_limits():
+            parser_kwargs = {
+                "max_header_count": self.max_header_count,
+                "max_header_size": self.max_header_size,
+            }
+        elif (
+            self.max_header_count != DEFAULT_MAX_MULTIPART_HEADER_COUNT
+            or self.max_header_size != DEFAULT_MAX_MULTIPART_HEADER_SIZE
+        ):
+            raise RuntimeError(
+                "The installed `python-multipart` version does not support "
+                "`max_header_count` or `max_header_size`. Upgrade `python-multipart` to configure them."
+            )
+        parser = multipart.MultipartParser(boundary, callbacks, **parser_kwargs)
         try:
             # Feed the parser with data from the request.
             async for chunk in self.stream:

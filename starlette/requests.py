@@ -11,7 +11,13 @@ import anyio
 from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManagerWrapper
 from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
 from starlette.exceptions import HTTPException
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
+from starlette.formparsers import (
+    DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+    DEFAULT_MAX_MULTIPART_HEADER_SIZE,
+    FormParser,
+    MultiPartException,
+    MultiPartParser,
+)
 from starlette.types import Message, Receive, Scope, Send
 
 if TYPE_CHECKING:
@@ -270,6 +276,8 @@ class Request(HTTPConnection[StateT]):
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,
+        max_header_count: int = DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+        max_header_size: int = DEFAULT_MAX_MULTIPART_HEADER_SIZE,
     ) -> FormData:
         if self._form is None:  # pragma: no branch
             assert parse_options_header is not None, (
@@ -286,6 +294,8 @@ class Request(HTTPConnection[StateT]):
                         max_files=max_files,
                         max_fields=max_fields,
                         max_part_size=max_part_size,
+                        max_header_count=max_header_count,
+                        max_header_size=max_header_size,
                     )
                     self._form = await multipart_parser.parse()
                 except MultiPartException as exc:
@@ -305,9 +315,17 @@ class Request(HTTPConnection[StateT]):
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,
+        max_header_count: int = DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+        max_header_size: int = DEFAULT_MAX_MULTIPART_HEADER_SIZE,
     ) -> AwaitableOrContextManager[FormData]:
         return AwaitableOrContextManagerWrapper(
-            self._get_form(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size)
+            self._get_form(
+                max_files=max_files,
+                max_fields=max_fields,
+                max_part_size=max_part_size,
+                max_header_count=max_header_count,
+                max_header_size=max_header_size,
+            )
         )
 
     async def close(self) -> None:

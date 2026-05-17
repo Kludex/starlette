@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## Unreleased
+
+#### Added
+
+* Add `max_header_count` and `max_header_size` parameters to `Request.form()`.
+
 ## 1.0.0 (March 22, 2026)
 
 Starlette 1.0 is here!

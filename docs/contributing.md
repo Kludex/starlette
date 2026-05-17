@@ -140,6 +140,12 @@ message under the coverage report:
 
 `FAIL Required test coverage of 100% not reached. Total coverage: 99.00%`
 
+## AI-generated Contributions
+
+AI and LLM tools can be helpful when working on a contribution, but every PR must reflect real human understanding and effort. If you used an AI tool to help write code or documentation, make sure you have read, understood, and tested everything in the PR before submitting it.
+
+PRs where the human effort is clearly lower than the review effort they impose on maintainers will be closed without review. We can run prompts ourselves — external PRs only add value when they bring genuine human judgement with them.
+
 ## Releasing
 
 *This section is targeted at Starlette maintainers.*

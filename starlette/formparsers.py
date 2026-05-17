@@ -122,20 +122,30 @@ class FormParser:
         return FormData(items)
 
 
+class _Unset:
+    def __repr__(self) -> str:  # pragma: no cover
+        # Shown in inspect.signature() output for parameters that fall back to class attributes.
+        return "<default>"
+
+
+_UNSET = _Unset()
+
+
 class MultiPartParser:
-    spool_max_size = 1024 * 1024  # 1MB
+    spool_max_size: int = 1024 * 1024  # 1MB
     """The maximum size of the spooled temporary file used to store file data."""
-    max_part_size = 1024 * 1024  # 1MB
+    max_part_size: int = 1024 * 1024  # 1MB
     """The maximum size of a part in the multipart request."""
 
     def __init__(
         self,
         headers: Headers,
-        stream: AsyncGenerator[bytes, None],
+        stream: AsyncGenerator[bytes],
         *,
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
-        max_part_size: int = 1024 * 1024,  # 1MB
+        max_part_size: int | _Unset = _UNSET,
+        spool_max_size: int | _Unset = _UNSET,
     ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
@@ -152,7 +162,10 @@ class MultiPartParser:
         self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
         self._file_parts_to_finish: list[MultipartPart] = []
         self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
-        self.max_part_size = max_part_size
+        if not isinstance(max_part_size, _Unset):
+            self.max_part_size = max_part_size
+        if not isinstance(spool_max_size, _Unset):
+            self.spool_max_size = spool_max_size
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()
@@ -196,7 +209,7 @@ class MultiPartParser:
         self._current_partial_header_value = b""
 
     def on_headers_finished(self) -> None:
-        disposition, options = parse_options_header(self._current_part.content_disposition)
+        _disposition, options = parse_options_header(self._current_part.content_disposition)
         try:
             self._current_part.field_name = _user_safe_decode(options[b"name"], self._charset)
         except KeyError:

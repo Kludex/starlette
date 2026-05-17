@@ -8,6 +8,7 @@ import anyio
 import pytest
 
 from starlette.datastructures import URL, Address, State
+from starlette.exceptions import HTTPException
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
@@ -669,3 +670,257 @@ def test_request_url_starlette_context(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     client.get("/home")
     assert url_for == URL("http://testserver/home")
+
+
+def test_request_stream_max_body_size(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        try:
+            body = b""
+            async for chunk in request.stream(max_body_size=10):
+                body += chunk
+            response = JSONResponse({"body": body.decode()})
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Body within limit should work
+    response = client.post("/", data="abc")  # type: ignore
+    assert response.json() == {"body": "abc"}
+
+    # Body exceeding limit should return 413
+    response = client.post("/", data="a" * 100)  # type: ignore
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
+def test_request_stream_max_body_size_content_length(test_client_factory: TestClientFactory) -> None:
+    """Test that Content-Length header is checked before reading the stream."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        try:
+            body = b""
+            async for chunk in request.stream(max_body_size=10):
+                body += chunk  # pragma: no cover
+            response = JSONResponse({"body": body.decode()})  # pragma: no cover
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Content-Length exceeding limit should return 413 without reading the body
+    response = client.post("/", content="a" * 100)
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
+def test_request_body_max_body_size(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        try:
+            body = await request.body(max_body_size=10)
+            response = JSONResponse({"body": body.decode()})
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Body within limit should work
+    response = client.post("/", data="abc")  # type: ignore
+    assert response.json() == {"body": "abc"}
+
+    # Body exceeding limit should return 413
+    response = client.post("/", data="a" * 100)  # type: ignore
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
+def test_request_json_max_body_size(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        try:
+            data = await request.json(max_body_size=50)
+            response = JSONResponse(data)
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Body within limit should work
+    response = client.post("/", json={"a": "123"})
+    assert response.json() == {"a": "123"}
+
+    # Body exceeding limit should return 413
+    response = client.post("/", json={"a": "x" * 100})
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
+def test_request_form_urlencoded_max_body_size(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        try:
+            form = await request.form(max_body_size=10)
+            response = JSONResponse({"form": dict(form)})
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Small form within limit should work
+    response = client.post("/", data={"a": "1"})
+    assert response.json() == {"form": {"a": "1"}}
+
+    # Large form exceeding limit should return 413
+    response = client.post("/", data={"abc": "x" * 100})
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
+def test_request_body_max_body_size_cached_body(test_client_factory: TestClientFactory) -> None:
+    """Test that max_body_size check works when body is already cached."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        # First call caches the body
+        await request.body()
+        # Second call with max_body_size should still check the limit
+        try:
+            await request.body(max_body_size=5)
+            response = JSONResponse({"status": "ok"})  # pragma: no cover
+        except Exception as exc:
+            response = JSONResponse({"detail": str(exc)}, status_code=413)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Body exceeding limit should return 413 even when cached
+    response = client.post("/", data="a" * 100)  # type: ignore
+    assert response.status_code == 413
+
+
+def test_request_json_max_body_size_cached_json(test_client_factory: TestClientFactory) -> None:
+    """Test that max_body_size check works on json() when _json is already cached."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        # First call caches _json (no limit)
+        await request.json()
+        # Second call with max_body_size should check against cached body
+        try:
+            await request.json(max_body_size=5)
+            response = JSONResponse({"status": "ok"})  # pragma: no cover
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Body exceeding limit should return 413 even when json is cached
+    response = client.post("/", json={"a": "x" * 100})
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Content Too Large"}
+
+
+def test_request_json_cached_called_without_max_body_size(test_client_factory: TestClientFactory) -> None:
+    """Test that calling json() twice without max_body_size returns the cached result."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        data1 = await request.json()
+        data2 = await request.json()
+        assert data1 is data2
+        response = JSONResponse(data2)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.post("/", json={"key": "value"})
+    assert response.json() == {"key": "value"}
+
+
+def test_request_stream_max_body_size_cached_body(test_client_factory: TestClientFactory) -> None:
+    """Test that max_body_size check works when body is already cached via stream."""
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        # First call caches the body
+        await request.body()
+        # stream() with cached body should check the limit
+        try:
+            chunks = b""
+            async for chunk in request.stream(max_body_size=5):
+                chunks += chunk  # pragma: no cover
+            response = JSONResponse({"body": chunks.decode()})  # pragma: no cover
+        except Exception as exc:
+            response = JSONResponse({"detail": str(exc)}, status_code=413)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+
+    # Body exceeding limit should return 413 even when cached
+    response = client.post("/", data="a" * 100)  # type: ignore
+    assert response.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_request_stream_max_body_size_no_content_length() -> None:
+    """Test that the streaming body size check works without a Content-Length header."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"a" * 20, "more_body": True},
+        {"type": "http.request", "body": b"b" * 20},
+    ]
+
+    async def rcv() -> Message:
+        return messages.pop(0)
+
+    # No content-length header, so the early check won't trigger
+    request = Request({"type": "http", "headers": []}, rcv)
+    with pytest.raises(HTTPException) as exc_info:
+        async for _ in request.stream(max_body_size=10):
+            pass  # pragma: no cover
+    assert exc_info.value.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_request_stream_max_body_size_cached_no_content_length() -> None:
+    """Test that the cached body size check works without a Content-Length header."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"a" * 20},
+    ]
+
+    async def rcv() -> Message:
+        return messages.pop(0)
+
+    # No content-length header
+    request = Request({"type": "http", "headers": []}, rcv)
+    # Cache the body first
+    await request.body()
+    # Now stream with max_body_size should check the cached body
+    with pytest.raises(HTTPException) as exc_info:
+        async for _ in request.stream(max_body_size=10):
+            pass  # pragma: no cover
+    assert exc_info.value.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_request_stream_max_body_size_bogus_content_length() -> None:
+    """Test that a bogus Content-Length header does not cause a server error."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"abc"},
+    ]
+
+    async def rcv() -> Message:
+        return messages.pop(0)
+
+    request = Request({"type": "http", "headers": [(b"content-length", b"bogus")]}, rcv)
+    body = b""
+    async for chunk in request.stream(max_body_size=100):
+        body += chunk
+    assert body == b"abc"

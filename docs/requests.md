@@ -132,17 +132,19 @@ multidict, containing both file uploads and text input. File upload items are re
 
 * `filename`: An `str` with the original file name that was uploaded or `None` if its not available (e.g. `myimage.jpg`).
 * `content_type`: An `str` with the content type (MIME type / media type) or `None` if it's not available (e.g. `image/jpeg`).
-* `file`: A <a href="https://docs.python.org/3/library/tempfile.html#tempfile.SpooledTemporaryFile" target="_blank">`SpooledTemporaryFile`</a> (a <a href="https://docs.python.org/3/glossary.html#term-file-like-object" target="_blank">file-like</a> object). This is the actual Python file that you can pass directly to other functions or libraries that expect a "file-like" object.
 * `headers`: A `Headers` object. Often this will only be the `Content-Type` header, but if additional headers were included in the multipart field they will be included here. Note that these headers have no relationship with the headers in `Request.headers`.
 * `size`: An `int` with uploaded file's size in bytes. This value is calculated from request's contents, making it better choice to find uploaded file's size than `Content-Length` header. `None` if not set.
 
-`UploadFile` has the following `async` methods. They all call the corresponding file methods underneath (using the internal `SpooledTemporaryFile`).
+The `UploadFile.file` attribute is deprecated and will be removed in a future version.
 
-* `async write(data)`: Writes `data` (`bytes`) to the file.
+`UploadFile` has the following `async` methods. They all call the corresponding methods on the underlying file object.
+
 * `async read(size)`: Reads `size` (`int`) bytes of the file.
 * `async seek(offset)`: Goes to the byte position `offset` (`int`) in the file.
     * E.g., `await myfile.seek(0)` would go to the start of the file.
 * `async close()`: Closes the file.
+
+The `UploadFile.write()` method is deprecated and will be removed in a future version.
 
 As all these methods are `async` methods, you need to "await" them.
 

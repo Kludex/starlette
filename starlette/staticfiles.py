@@ -207,7 +207,7 @@ class StaticFiles:
         if if_none_match := request_headers.get("if-none-match"):
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
-            return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
+            return etag in [tag.strip().removeprefix("W/") for tag in if_none_match.split(",")]
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])

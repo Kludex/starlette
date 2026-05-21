@@ -1,0 +1,6 @@
+name = "starlette"
+compatibility_date = "2026-05-22"
+
+[assets]
+directory = "./site"
+not_found_handling = "404-page"

@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 1.0.1 (May 21, 2026)
+
+#### Fixed
+
+* Ignore malformed `Host` header when constructing `request.url` [#3279](https://github.com/encode/starlette/pull/3279).
+
 ## 1.0.0 (March 22, 2026)
 
 Starlette 1.0 is here!

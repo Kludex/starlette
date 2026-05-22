@@ -51,7 +51,6 @@ dev = [
     "coverage>=7.8.2",
     "importlib-metadata==9.0.0",
     "mypy==1.16.1",
-    "pyodide-py==0.29.0; python_version >= '3.13'",  # for mypy type-checking
     "ruff==0.15.12",
     "types-PyYAML==6.0.12.20250516",
     "pytest==9.0.3",
@@ -104,6 +103,10 @@ strict = true
 [[tool.mypy.overrides]]
 module = "starlette.testclient.*"
 implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = "pyodide.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "-rXs --strict-config --strict-markers"

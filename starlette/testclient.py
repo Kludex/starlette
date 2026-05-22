@@ -109,7 +109,7 @@ class _TaskHandle(Protocol):
 def _pyodide_run_sync(awaitable: Awaitable[T]) -> T:  # pragma: no cover
     from pyodide.ffi import run_sync
 
-    return run_sync(awaitable)
+    return cast(Callable[[Awaitable[T]], T], run_sync)(awaitable)
 
 
 class _PyodideTaskStatus:  # pragma: no cover

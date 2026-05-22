@@ -78,7 +78,12 @@ jobs:
         run: PATH="$PWD/.venv-pyodide-host/bin:$PATH" .venv-pyodide-host/bin/pyodide venv .venv-pyodide
 
       - name: Install Pyodide test dependencies
-        run: .venv-pyodide/bin/python -m pip install dist/*.whl pytest typing_extensions
+        run: |
+          wheels=(dist/*.whl)
+          .venv-pyodide/bin/python -m pip install \
+            "${wheels[0]}[full]" \
+            pytest \
+            typing_extensions
 
       - name: Run Pyodide tests
         run: .venv-pyodide/bin/python -m pytest
@@ -86,7 +91,7 @@ jobs:
   # https://github.com/marketplace/actions/alls-green#why
   check:
     if: always()
-    needs: [tests]
+    needs: [tests, pyodide-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether the needed jobs succeeded or failed

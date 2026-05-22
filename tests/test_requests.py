@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
-from typing import Any
 
-import anyio
 import pytest
 
 from starlette.datastructures import URL, Address, State
@@ -238,10 +236,8 @@ def test_request_without_setting_receive(
     assert response.json() == {"json": "Receive channel not available"}
 
 
-def test_request_disconnect(
-    anyio_backend_name: str,
-    anyio_backend_options: dict[str, Any],
-) -> None:
+@pytest.mark.anyio
+async def test_request_disconnect() -> None:
     """
     If a client disconnect occurs while reading request body
     then ClientDisconnect should be raised.
@@ -256,14 +252,7 @@ def test_request_disconnect(
 
     scope = {"type": "http", "method": "POST", "path": "/"}
     with pytest.raises(ClientDisconnect):
-        anyio.run(
-            app,  # type: ignore
-            scope,
-            receiver,
-            None,
-            backend=anyio_backend_name,
-            backend_options=anyio_backend_options,
-        )
+        await app(scope, receiver, None)  # type: ignore[arg-type]
 
 
 def test_request_is_disconnected(test_client_factory: TestClientFactory) -> None:

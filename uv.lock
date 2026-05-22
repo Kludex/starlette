@@ -3,7 +3,8 @@ revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.15'",
-    "python_full_version < '3.15'",
+    "python_full_version >= '3.13' and python_full_version < '3.15'",
+    "python_full_version < '3.13'",
 ]
 
 [options]
@@ -959,6 +960,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyodide-py"
+version = "0.29.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/14/6c/638571a85aa18cc3197ec92a30d6a5a2c7620983ef925babe42b2d1b41fe/pyodide_py-0.29.0.tar.gz", hash = "sha256:408e50d22c9d241c8aa4a542614ebbb760dc16a54dc78f61f2206b7f66bd8918", size = 58190, upload-time = "2025-10-20T19:28:30.471Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/de/ae163ccf3d134dc59813bc7898e4a98cc987493ed3084f4da4c8029395c0/pyodide_py-0.29.0-py3-none-any.whl", hash = "sha256:fa213ad8f3f7fb3afd6bdff9bc3e1b40193d56eee392e642a7d18279e7269c21", size = 65441, upload-time = "2025-10-20T19:28:29.62Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1271,6 +1281,7 @@ dev = [
     { name = "coverage" },
     { name = "importlib-metadata" },
     { name = "mypy" },
+    { name = "pyodide-py", marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
     { name = "ruff" },
     { name = "starlette", extra = ["full"] },
@@ -1302,6 +1313,7 @@ dev = [
     { name = "coverage", specifier = ">=7.8.2" },
     { name = "importlib-metadata", specifier = "==9.0.0" },
     { name = "mypy", specifier = "==1.16.1" },
+    { name = "pyodide-py", marker = "python_full_version >= '3.13'", specifier = "==0.29.0" },
     { name = "pytest", specifier = "==9.0.3" },
     { name = "ruff", specifier = "==0.15.12" },
     { name = "starlette", extras = ["full"] },

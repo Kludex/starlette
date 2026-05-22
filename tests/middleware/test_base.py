@@ -20,6 +20,7 @@ from starlette.routing import Route, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
+from tests.conftest import skip_on_wasm
 from tests.types import TestClientFactory
 
 
@@ -1003,6 +1004,7 @@ def test_downstream_middleware_modifies_receive(
     assert resp.status_code == 200
 
 
+@skip_on_wasm("TestClient requires thread support")
 def test_pr_1519_comment_1236166180_example() -> None:
     """
     https://github.com/Kludex/starlette/pull/1519#issuecomment-1236166180

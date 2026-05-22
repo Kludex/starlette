@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import inspect
 import io
@@ -7,16 +8,18 @@ import json
 import math
 import sys
 import warnings
-from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, MutableMapping, Sequence
-from concurrent.futures import Future
+from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable, Mapping, MutableMapping, Sequence
 from contextlib import AbstractContextManager
 from types import GeneratorType
 from typing import (
     Any,
     Literal,
+    Protocol,
     TypedDict,
     TypeGuard,
+    TypeVar,
     cast,
+    overload,
 )
 from urllib.parse import unquote, urljoin
 
@@ -42,11 +45,11 @@ except ModuleNotFoundError:  # pragma: no cover
         "You can install this with:\n"
         "    $ pip install httpx\n"
     )
-_PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
 ASGI2App = Callable[[Scope], ASGIInstance]
 ASGI3App = Callable[[Scope, Receive, Send], Awaitable[None]]
+T = TypeVar("T")
 
 
 _RequestData = Mapping[str, str | Iterable[str] | bytes]
@@ -74,6 +77,88 @@ class _WrapASGI2:
 class _AsyncBackend(TypedDict):
     backend: str
     backend_options: dict[str, Any]
+
+
+def _in_pyodide() -> bool:  # pragma: no cover
+    return sys.platform == "emscripten"
+
+
+class _Portal(Protocol):
+    """anyio.abc.BlockingPortal-compatible interface for test client."""
+
+    @overload
+    def call(self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T: ...
+
+    @overload
+    def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T: ...
+
+    def start_task_soon(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any) -> _TaskHandle: ...
+
+    def start_task(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any) -> tuple[_TaskHandle, Any]: ...
+
+
+_PortalFactoryType = Callable[[], AbstractContextManager[_Portal]]
+
+
+class _TaskHandle(Protocol):
+    """Handle for a task started by a portal."""
+
+    def result(self) -> Any: ...
+
+
+def _pyodide_run_sync(awaitable: Awaitable[T]) -> T:  # pragma: no cover
+    from pyodide.ffi import run_sync
+
+    return run_sync(awaitable)
+
+
+class _PyodideTaskStatus:  # pragma: no cover
+    def __init__(self) -> None:
+        self.future: asyncio.Future[Any] = asyncio.Future()
+
+    def started(self, value: Any = None) -> None:
+        self.future.set_result(value)
+
+
+class _PyodideTask:  # pragma: no cover
+    def __init__(self, task: asyncio.Task[Any]) -> None:
+        self.task = task
+
+    def result(self) -> Any:
+        if self.task.done():
+            return self.task.result()
+
+        return _pyodide_run_sync(self.task)
+
+
+class _PyodideBlockingPortal:  # pragma: no cover
+    @overload
+    def call(self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T: ...
+
+    @overload
+    def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T: ...
+
+    def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        value = func(*args, **kwargs)
+        if inspect.isawaitable(value):
+            return cast(T, _pyodide_run_sync(value))
+        return value
+
+    def start_task_soon(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any) -> _PyodideTask:
+        task: asyncio.Task[Any] = asyncio.create_task(func(*args))
+        return _PyodideTask(task)
+
+    def start_task(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any) -> tuple[_PyodideTask, Any]:
+        task_status = _PyodideTaskStatus()
+        task: asyncio.Task[Any] = asyncio.create_task(func(*args, task_status=task_status))
+
+        started_value = _pyodide_run_sync(task_status.future)
+        return _PyodideTask(task), started_value
+
+
+@contextlib.contextmanager
+def _pyodide_portal_factory() -> Generator[_PyodideBlockingPortal, None, None]:  # pragma: no cover
+    yield _PyodideBlockingPortal()
 
 
 class _Upgrade(Exception):
@@ -137,7 +222,7 @@ class WebSocketTestSession:
             await self.app(self.scope, receive_rx.receive, send_tx.send)
 
             # wait for cs.cancel to be called before closing streams
-            await anyio.sleep_forever()
+            await anyio.Event().wait()
 
     def _raise_on_close(self, message: Message) -> None:
         if message["type"] == "websocket.close":
@@ -367,8 +452,8 @@ class _TestClientTransport(httpx.BaseTransport):
 
 class TestClient(httpx.Client):
     __test__ = False
-    task: Future[None]
-    portal: anyio.abc.BlockingPortal | None = None
+    task: _TaskHandle
+    portal: _Portal | None = None
 
     def __init__(
         self,
@@ -411,9 +496,12 @@ class TestClient(httpx.Client):
         )
 
     @contextlib.contextmanager
-    def _portal_factory(self) -> Generator[anyio.abc.BlockingPortal, None, None]:
+    def _portal_factory(self) -> Generator[_Portal, None, None]:
         if self.portal is not None:
             yield self.portal
+        elif _in_pyodide():  # pragma: no cover
+            with _pyodide_portal_factory() as portal:
+                yield portal
         else:
             with anyio.from_thread.start_blocking_portal(**self.async_backend) as portal:
                 yield portal
@@ -668,7 +756,13 @@ class TestClient(httpx.Client):
 
     def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
-            self.portal = portal = stack.enter_context(anyio.from_thread.start_blocking_portal(**self.async_backend))
+            portal: _Portal
+            if _in_pyodide():  # pragma: no cover
+                self.portal = portal = stack.enter_context(_pyodide_portal_factory())
+            else:
+                self.portal = portal = stack.enter_context(
+                    anyio.from_thread.start_blocking_portal(**self.async_backend)
+                )
 
             @stack.callback
             def reset_portal() -> None:

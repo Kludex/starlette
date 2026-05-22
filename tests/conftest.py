@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import functools
+import sys
 from typing import Any, Literal
 
 import pytest
 
 from starlette.testclient import TestClient
 from tests.types import TestClientFactory
+
+
+def skip_on_wasm(reason: str) -> pytest.MarkDecorator:
+    return pytest.mark.skipif(sys.platform == "emscripten", reason=reason)
 
 
 @pytest.fixture

@@ -83,6 +83,7 @@ jobs:
           .venv-pyodide/bin/python -m pip install \
             "${wheels[0]}[full]" \
             pytest \
+            sniffio \
             typing_extensions
 
       - name: Run Pyodide tests

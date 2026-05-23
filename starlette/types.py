@@ -1,6 +1,6 @@
 from collections.abc import Awaitable, Callable, Mapping, MutableMapping
 from contextlib import AbstractAsyncContextManager
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 if TYPE_CHECKING:
     from starlette.requests import Request
@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from starlette.websockets import WebSocket
 
 AppType = TypeVar("AppType")
+
+ASGIProtocol = Literal["http", "websocket", ""]
 
 Scope = MutableMapping[str, Any]
 Message = MutableMapping[str, Any]

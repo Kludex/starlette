@@ -53,7 +53,7 @@ def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: Te
             return PlainTextResponse("Hello, world!")
 
         async def _do_delete(self, request: Request) -> PlainTextResponse:
-            return PlainTextResponse("Privileged helper")
+            return PlainTextResponse("Privileged helper")  # pragma: no cover
 
     app = Router(routes=[Route("/", endpoint=Endpoint)])
     client = test_client_factory(app)
@@ -62,6 +62,8 @@ def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: Te
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
     assert response.headers["allow"] == "GET"
+
+    assert client.get("/").status_code == 200
 
 
 def test_websocket_endpoint_on_connect(test_client_factory: TestClientFactory) -> None:

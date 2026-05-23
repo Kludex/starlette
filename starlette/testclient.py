@@ -10,6 +10,7 @@ import warnings
 from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, MutableMapping, Sequence
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
+from contextvars import ContextVar
 from types import GeneratorType
 from typing import (
     Any,
@@ -23,6 +24,7 @@ from urllib.parse import unquote, urljoin
 import anyio
 import anyio.abc
 import anyio.from_thread
+import sniffio
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
@@ -74,6 +76,99 @@ class _WrapASGI2:
 class _AsyncBackend(TypedDict):
     backend: str
     backend_options: dict[str, Any]
+
+
+_pytest_backend_cvar: ContextVar[str | None] = ContextVar("_pytest_backend_cvar", default=None)
+
+
+# Option keys that disambiguate the backend when set in ``backend_options``.
+# Both anyio.run signatures use distinct keyword names, so the presence of any
+# of these keys uniquely identifies the intended backend.
+_TRIO_OPTION_KEYS = frozenset(
+    {"clock", "instruments", "restrict_keyboard_interrupt_to_checkpoints", "strict_exception_groups"}
+)
+_ASYNCIO_OPTION_KEYS = frozenset({"debug", "loop_factory", "use_uvloop"})
+
+
+def _detect_async_backend(backend_options: Mapping[str, Any] | None = None) -> Literal["asyncio", "trio"]:
+    """Detect which async backend to use for the blocking portal.
+
+    Detection order:
+    1. ``sniffio.current_async_library()`` — picks up the currently running
+       async library, if there is one.
+    2. ``_pytest_backend_cvar`` — set by the autouse fixture returned by
+       ``make_anyio_backend_autouse_fixture()``, which mirrors anyio's
+       parametrized ``anyio_backend_name`` fixture into a ContextVar
+       readable from sync test code.
+    3. ``backend_options`` keys — trio and asyncio use disjoint option
+       names, so the presence of any trio-specific or asyncio-specific
+       key disambiguates.
+    4. ``sys.modules`` inspection — if only one of ``trio`` / ``asyncio`` is
+       imported, use that one. If both (or neither) are imported, fall back
+       to ``"asyncio"``.
+    """
+    try:
+        library = sniffio.current_async_library()
+    except sniffio.AsyncLibraryNotFoundError:
+        pass
+    else:
+        if library in ("asyncio", "trio"):
+            return library  # type: ignore[return-value]
+
+    pytest_backend = _pytest_backend_cvar.get()
+    if pytest_backend in ("asyncio", "trio"):
+        return pytest_backend  # type: ignore[return-value]
+
+    if backend_options:
+        option_keys = backend_options.keys()
+        if option_keys & _TRIO_OPTION_KEYS:
+            return "trio"
+        if option_keys & _ASYNCIO_OPTION_KEYS:
+            return "asyncio"
+
+    if "trio" in sys.modules:
+        if "asyncio" not in sys.modules:
+            return "trio"
+        warnings.warn(
+            "Both `trio` and `asyncio` are imported; TestClient is defaulting to "
+            "`asyncio`. Pass `backend=` explicitly to silence this warning.",
+            stacklevel=3,
+        )
+    return "asyncio"
+
+
+@contextlib.contextmanager
+def _set_pytest_backend(backend: str | None) -> Generator[None, None, None]:
+    """Publish the parametrized anyio backend into ``_pytest_backend_cvar``."""
+    token = _pytest_backend_cvar.set(backend)
+    try:
+        yield
+    finally:
+        _pytest_backend_cvar.reset(token)
+
+
+def make_anyio_backend_autouse_fixture() -> Any:
+    """Return an autouse pytest fixture that publishes the active anyio
+    backend to the ``starlette.testclient`` ContextVar.
+
+    Add to a test module or ``conftest.py`` as e.g.::
+
+        from starlette.testclient import make_anyio_backend_autouse_fixture
+
+        _publish_anyio_backend = make_anyio_backend_autouse_fixture()
+
+    With this fixture in place, ``TestClient(app)`` (no ``backend=`` kwarg)
+    will pick up the backend that anyio's pytest plugin has parametrized
+    the test with.
+    """
+    import pytest
+
+    @pytest.fixture(autouse=True)
+    def _publish_anyio_backend(anyio_backend_name: str) -> Generator[None, None, None]:
+        with _set_pytest_backend(anyio_backend_name):
+            yield
+
+    return _publish_anyio_backend
 
 
 class _Upgrade(Exception):
@@ -376,13 +471,15 @@ class TestClient(httpx.Client):
         base_url: str = "http://testserver",
         raise_server_exceptions: bool = True,
         root_path: str = "",
-        backend: Literal["asyncio", "trio"] = "asyncio",
+        backend: Literal["asyncio", "trio"] | None = None,
         backend_options: dict[str, Any] | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         headers: dict[str, str] | None = None,
         follow_redirects: bool = True,
         client: tuple[str, int] = ("testclient", 50000),
     ) -> None:
+        if backend is None:
+            backend = _detect_async_backend(backend_options)
         self.async_backend = _AsyncBackend(backend=backend, backend_options=backend_options or {})
         if _is_asgi3(app):
             asgi_app = app

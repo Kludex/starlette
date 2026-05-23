@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import sys
+import warnings
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -64,6 +65,118 @@ def test_use_testclient_in_endpoint(test_client_factory: TestClientFactory) -> N
     client = test_client_factory(app)
     response = client.get("/")
     assert response.json() == {"mock": "example"}
+
+
+def test_testclient_detects_backend() -> None:
+    """
+    When ``backend`` is not specified, the TestClient should detect the
+    currently active async library via sniffio, falling back to inspecting
+    ``sys.modules`` so that trio-only environments default to trio.
+    """
+    from starlette.testclient import _pytest_backend_cvar
+
+    # Suppress the autouse fixture's cvar value so we exercise the sniffio
+    # and sys.modules detection paths directly.
+    token = _pytest_backend_cvar.set(None)
+    try:
+        # Both trio and asyncio are imported in this test process, so the
+        # sys.modules tier triggers the ambiguity warning before defaulting
+        # to asyncio.
+        with pytest.warns(UserWarning, match="Pass `backend=` explicitly"):
+            client = TestClient(mock_service)
+        assert client.async_backend["backend"] == "asyncio"
+
+        async def detect() -> str:
+            client = TestClient(mock_service)
+            return client.async_backend["backend"]
+
+        # sniffio detects the running library — no ambiguity warning even
+        # though both modules are imported.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert trio.run(detect) == "trio"
+            assert anyio.run(detect, backend="asyncio") == "asyncio"
+    finally:
+        _pytest_backend_cvar.reset(token)
+
+
+def test_testclient_picks_up_pytest_backend_cvar(anyio_backend_name: str) -> None:
+    """
+    The autouse fixture wired in ``tests/conftest.py`` publishes the
+    parametrized anyio backend into a ContextVar that ``TestClient``
+    consults when no explicit ``backend`` is given.
+    """
+    client = TestClient(mock_service)
+    assert client.async_backend["backend"] == anyio_backend_name
+
+
+def test_testclient_detects_backend_from_options() -> None:
+    """
+    When sniffio and the ContextVar are both unset, the presence of
+    backend-specific keys in ``backend_options`` disambiguates the
+    intended backend.
+    """
+    from starlette.testclient import _pytest_backend_cvar
+
+    token = _pytest_backend_cvar.set(None)
+    try:
+        client = TestClient(mock_service, backend_options={"use_uvloop": False})
+        assert client.async_backend["backend"] == "asyncio"
+
+        client = TestClient(mock_service, backend_options={"restrict_keyboard_interrupt_to_checkpoints": True})
+        assert client.async_backend["backend"] == "trio"
+
+        # backend_options without any recognised key falls through to the
+        # sys.modules tier (which here warns and defaults to asyncio).
+        with pytest.warns(UserWarning, match="Pass `backend=` explicitly"):
+            client = TestClient(mock_service, backend_options={"unknown_key": True})
+        assert client.async_backend["backend"] == "asyncio"
+    finally:
+        _pytest_backend_cvar.reset(token)
+
+
+def test_testclient_explicit_backend_skips_detection() -> None:
+    """An explicit ``backend=`` argument bypasses auto-detection entirely."""
+    client = TestClient(mock_service, backend="asyncio")
+    assert client.async_backend["backend"] == "asyncio"
+
+
+def test_testclient_detects_backend_from_sys_modules(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Cover the sys.modules tier branches that aren't reachable from the
+    normal pytest process (where both ``trio`` and ``asyncio`` are always
+    imported).
+    """
+    from starlette.testclient import _pytest_backend_cvar
+
+    def _no_async_library() -> str:
+        raise sniffio.AsyncLibraryNotFoundError
+
+    monkeypatch.setattr(sniffio, "current_async_library", _no_async_library)
+    token = _pytest_backend_cvar.set(None)
+    try:
+        # Sniffio returns a library we don't support — fall through.
+        monkeypatch.setattr(sniffio, "current_async_library", lambda: "curio")
+        with pytest.warns(UserWarning, match="Pass `backend=` explicitly"):
+            assert TestClient(mock_service).async_backend["backend"] == "asyncio"
+        monkeypatch.setattr(sniffio, "current_async_library", _no_async_library)
+
+        # Trio imported but asyncio is not — pick trio.
+        with monkeypatch.context() as m:
+            m.delitem(sys.modules, "asyncio")
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                assert TestClient(mock_service).async_backend["backend"] == "trio"
+
+        # Neither trio nor asyncio is imported — default to asyncio with no warning.
+        with monkeypatch.context() as m:
+            m.delitem(sys.modules, "trio")
+            m.delitem(sys.modules, "asyncio")
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                assert TestClient(mock_service).async_backend["backend"] == "asyncio"
+    finally:
+        _pytest_backend_cvar.reset(token)
 
 
 def test_testclient_headers_behavior() -> None:

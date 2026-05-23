@@ -95,7 +95,25 @@ client = TestClient(app, client=('localhost', 8000))
 These options are passed to `anyio.start_blocking_portal()`.
 See the [anyio documentation](https://anyio.readthedocs.io/en/stable/basics.html#backend-options)
 for more information about the accepted backend options.
-By default, `asyncio` is used with default options.
+When `backend` is not specified (the default), the active async library
+is auto-detected via [sniffio](https://github.com/python-trio/sniffio),
+then by an opt-in pytest autouse fixture (see below), then by checking
+`backend_options` for trio- or asyncio-specific keys (e.g. `use_uvloop`
+implies asyncio), then by inspecting `sys.modules` (so a trio-only
+environment selects `"trio"`), and otherwise defaulting to `"asyncio"`.
+
+If you parametrize tests with anyio's pytest plugin (via the
+`anyio_backend` fixture), you can wire the parametrized backend into
+`TestClient` by adding an autouse fixture to your `conftest.py`:
+
+```python
+from starlette.testclient import make_anyio_backend_autouse_fixture
+
+_publish_anyio_backend = make_anyio_backend_autouse_fixture()
+```
+
+With this in place, `TestClient(app)` (no `backend=` kwarg) picks up the
+backend that anyio parametrized the test with.
 
 To run `Trio`, pass `backend="trio"`. For example:
 

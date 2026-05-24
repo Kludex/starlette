@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-import anyio
 import pytest
 
 from starlette.applications import Starlette
@@ -165,7 +164,8 @@ def test_staticfiles_config_check_occurs_only_once(tmpdir: Path, test_client_fac
         client.get("/")
 
 
-def test_staticfiles_prevents_breaking_out_of_directory(tmpdir: Path) -> None:
+@pytest.mark.anyio
+async def test_staticfiles_prevents_breaking_out_of_directory(tmpdir: Path) -> None:
     directory = os.path.join(tmpdir, "foo")
     os.mkdir(directory)
 
@@ -179,7 +179,7 @@ def test_staticfiles_prevents_breaking_out_of_directory(tmpdir: Path) -> None:
     scope = {"method": "GET"}
 
     with pytest.raises(HTTPException) as exc_info:
-        anyio.run(app.get_response, path, scope)
+        await app.get_response(path, scope)
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"
@@ -545,7 +545,8 @@ def test_staticfiles_follows_symlink_directories(tmpdir: Path, test_client_facto
     assert response.text == "<h1>Hello</h1>"
 
 
-def test_staticfiles_disallows_path_traversal_with_symlinks(tmpdir: Path) -> None:
+@pytest.mark.anyio
+async def test_staticfiles_disallows_path_traversal_with_symlinks(tmpdir: Path) -> None:
     statics_path = os.path.join(tmpdir, "statics")
 
     root_source_path = tempfile.mkdtemp()
@@ -564,13 +565,14 @@ def test_staticfiles_disallows_path_traversal_with_symlinks(tmpdir: Path) -> Non
     scope = {"method": "GET"}
 
     with pytest.raises(HTTPException) as exc_info:
-        anyio.run(app.get_response, path, scope)
+        await app.get_response(path, scope)
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"
 
 
-def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
+@pytest.mark.anyio
+async def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
     statics_path = tmp_path / "static"
     statics_disallow_path = tmp_path / "static_disallow"
 
@@ -590,14 +592,14 @@ def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
     # We can't test this with 'httpx', so we test the app directly here.
     path = app.get_path({"path": "/../static1.txt"})
     with pytest.raises(HTTPException) as exc_info:
-        anyio.run(app.get_response, path, {"method": "GET"})
+        await app.get_response(path, {"method": "GET"})
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"
 
     path = app.get_path({"path": "/../static_disallow/index.html"})
     with pytest.raises(HTTPException) as exc_info:
-        anyio.run(app.get_response, path, {"method": "GET"})
+        await app.get_response(path, {"method": "GET"})
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"

@@ -46,10 +46,53 @@ jobs:
       - name: "Enforce coverage"
         run: scripts/coverage
 
+  pyodide-tests:
+    name: Pyodide
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Install pyodide-build
+        run: |
+          uv venv .venv-pyodide-host --python 3.13
+          uv pip install --python .venv-pyodide-host/bin/python pyodide-build
+
+      - name: Create Pyodide virtual environment
+        run: PATH="$PWD/.venv-pyodide-host/bin:$PATH" .venv-pyodide-host/bin/pyodide venv .venv-pyodide
+
+      - name: Install Pyodide test dependencies
+        run: |
+          wheels=(dist/*.whl)
+          .venv-pyodide/bin/python -m pip install \
+            "${wheels[0]}[full]" \
+            pytest \
+            sniffio \
+            typing_extensions
+
+      - name: Run Pyodide tests
+        run: .venv-pyodide/bin/python -m pytest
+
   # https://github.com/marketplace/actions/alls-green#why
   check:
     if: always()
-    needs: [tests]
+    needs: [tests, pyodide-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether the needed jobs succeeded or failed

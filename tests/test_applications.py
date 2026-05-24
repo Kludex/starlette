@@ -22,6 +22,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient, WebSocketDenialResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket
+from tests.conftest import skip_on_wasm
 from tests.types import TestClientFactory
 
 
@@ -268,6 +269,7 @@ def test_websocket_raise_http_exception(client: TestClient) -> None:
     assert exc.value.content == b'{"detail":"Unauthorized"}'
 
 
+@skip_on_wasm("Sync websocket exception handler uses anyio.from_thread")
 def test_websocket_raise_custom_exception(client: TestClient) -> None:
     with client.websocket_connect("/ws-raise-custom") as session:
         response = session.receive()

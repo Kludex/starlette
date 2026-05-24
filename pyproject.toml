@@ -104,6 +104,10 @@ strict = true
 module = "starlette.testclient.*"
 implicit_optional = true
 
+[[tool.mypy.overrides]]
+module = "pyodide.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 addopts = "-rXs --strict-config --strict-markers"
 xfail_strict = true

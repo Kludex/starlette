@@ -19,6 +19,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
 from starlette.types import ASGIApp, Receive, Scope, Send
+from tests.conftest import skip_on_wasm
 from tests.types import TestClientFactory
 
 
@@ -346,6 +347,7 @@ def mock_spooled_temporary_file() -> Generator[None]:
         ThreadTrackingSpooledTemporaryFile.rollover_threads.clear()
 
 
+@skip_on_wasm("No background thread is used on WASM")
 def test_multipart_request_large_file_rollover_in_background_thread(
     mock_spooled_temporary_file: None, test_client_factory: TestClientFactory
 ) -> None:

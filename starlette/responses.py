@@ -16,11 +16,10 @@ from typing import Any, Literal
 from urllib.parse import quote
 
 import anyio
-import anyio.to_thread
 
 from starlette._utils import collapse_excgroups
 from starlette.background import BackgroundTask
-from starlette.concurrency import iterate_in_threadpool
+from starlette.concurrency import iterate_in_threadpool, open_file, run_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
 from starlette.requests import ClientDisconnect
 from starlette.types import Message, Receive, Scope, Send
@@ -347,7 +346,7 @@ class FileResponse(Response):
 
         if self.stat_result is None:
             try:
-                stat_result = await anyio.to_thread.run_sync(os.stat, self.path)
+                stat_result = await run_in_threadpool(os.stat, self.path)
                 self.set_stat_headers(stat_result)
             except FileNotFoundError:
                 raise RuntimeError(f"File at path {self.path} does not exist.")
@@ -389,7 +388,7 @@ class FileResponse(Response):
         elif send_pathsend:
             await send({"type": "http.response.pathsend", "path": str(self.path)})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            async with await open_file(self.path, mode="rb") as file:
                 more_body = True
                 while more_body:
                     chunk = await file.read(self.chunk_size)
@@ -406,7 +405,7 @@ class FileResponse(Response):
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            async with await open_file(self.path, mode="rb") as file:
                 await file.seek(start)
                 more_body = True
                 while more_body:
@@ -434,7 +433,7 @@ class FileResponse(Response):
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            async with await open_file(self.path, mode="rb") as file:
                 for start, end in ranges:
                     await send({"type": "http.response.body", "body": header_generator(start, end), "more_body": True})
                     await file.seek(start)

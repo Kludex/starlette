@@ -6,6 +6,7 @@ import pytest
 
 from starlette._utils import collapse_excgroups
 from starlette.middleware.wsgi import WSGIMiddleware, build_environ
+from tests.conftest import skip_on_wasm
 from tests.types import TestClientFactory
 
 WSGIResponse = Iterable[bytes]
@@ -65,6 +66,7 @@ def return_exc_info(
         return [output]
 
 
+@skip_on_wasm("WSGIMiddleware requires thread support")
 def test_wsgi_get(test_client_factory: TestClientFactory) -> None:
     app = WSGIMiddleware(hello_world)
     client = test_client_factory(app)
@@ -73,6 +75,7 @@ def test_wsgi_get(test_client_factory: TestClientFactory) -> None:
     assert response.text == "Hello World!\n"
 
 
+@skip_on_wasm("WSGIMiddleware requires thread support")
 def test_wsgi_post(test_client_factory: TestClientFactory) -> None:
     app = WSGIMiddleware(echo_body)
     client = test_client_factory(app)
@@ -81,6 +84,7 @@ def test_wsgi_post(test_client_factory: TestClientFactory) -> None:
     assert response.text == '{"example":123}'
 
 
+@skip_on_wasm("WSGIMiddleware requires thread support")
 def test_wsgi_exception(test_client_factory: TestClientFactory) -> None:
     # Note that we're testing the WSGI app directly here.
     # The HTTP protocol implementations would catch this error and return 500.
@@ -90,6 +94,7 @@ def test_wsgi_exception(test_client_factory: TestClientFactory) -> None:
         client.get("/")
 
 
+@skip_on_wasm("WSGIMiddleware requires thread support")
 def test_wsgi_exc_info(test_client_factory: TestClientFactory) -> None:
     # Note that we're testing the WSGI app directly here.
     # The HTTP protocol implementations would catch this error and return 500.

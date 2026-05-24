@@ -10,6 +10,7 @@ from typing import Any
 import anyio
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
+from starlette.concurrency import _threadpool_available
 from starlette.types import Receive, Scope, Send
 
 warnings.warn(
@@ -78,6 +79,9 @@ class WSGIMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "http"
+        if not _threadpool_available():  # pragma: no cover
+            raise RuntimeError("WSGIMiddleware requires thread support.")
+
         responder = WSGIResponder(self.app, scope)
         await responder(receive, send)
 

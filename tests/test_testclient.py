@@ -5,13 +5,15 @@ import sys
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import anyio.lowlevel
 import pytest
 import sniffio
-import trio.lowlevel
+
+if TYPE_CHECKING or sys.platform != "emscripten":  # pragma: no cover
+    import trio.lowlevel
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -21,6 +23,7 @@ from starlette.routing import Route
 from starlette.testclient import ASGIInstance, TestClient
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
+from tests.conftest import skip_on_wasm
 from tests.types import TestClientFactory
 
 
@@ -85,6 +88,7 @@ def test_testclient_headers_behavior() -> None:
     assert client.headers.get("Authentication") == "Bearer 123"
 
 
+@skip_on_wasm("This test asserts thread-specific TestClient behavior")
 def test_use_testclient_as_contextmanager(test_client_factory: TestClientFactory, anyio_backend_name: str) -> None:
     """
     This test asserts a number of properties that are important for an
@@ -254,6 +258,7 @@ def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> N
         assert data == {"message": "test"}
 
 
+@skip_on_wasm("This test asserts thread-backed websocket cancellation behavior")
 def test_websocket_not_block_on_close(test_client_factory: TestClientFactory) -> None:
     cancelled = False
 

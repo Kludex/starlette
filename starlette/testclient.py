@@ -27,6 +27,7 @@ import anyio.from_thread
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
 
@@ -50,8 +51,6 @@ else:
                 "    $ pip install httpx2\n"
             )
         else:
-            from starlette.exceptions import StarletteDeprecationWarning
-
             warnings.warn(
                 "Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.",
                 StarletteDeprecationWarning,

@@ -12,6 +12,7 @@ from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from types import GeneratorType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Literal,
     TypedDict,
@@ -34,14 +35,28 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import Self
 
-try:
+if TYPE_CHECKING:
     import httpx
-except ModuleNotFoundError:  # pragma: no cover
-    raise RuntimeError(
-        "The starlette.testclient module requires the httpx package to be installed.\n"
-        "You can install this with:\n"
-        "    $ pip install httpx\n"
-    )
+else:
+    try:
+        import httpx2 as httpx
+    except ModuleNotFoundError:
+        try:
+            import httpx
+        except ModuleNotFoundError:  # pragma: no cover
+            raise RuntimeError(
+                "The starlette.testclient module requires the httpx2 package to be installed.\n"
+                "You can install this with:\n"
+                "    $ pip install httpx2\n"
+            )
+        else:
+            from starlette.exceptions import StarletteDeprecationWarning
+
+            warnings.warn(
+                "Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.",
+                StarletteDeprecationWarning,
+                stacklevel=2,
+            )
 _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 ASGIInstance = Callable[[Receive, Send], Awaitable[None]]

@@ -114,6 +114,7 @@ filterwarnings = [
     "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:DeprecationWarning",
     "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
+    "ignore: Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
 ]
 
 [tool.coverage.run]

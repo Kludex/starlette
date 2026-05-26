@@ -58,7 +58,7 @@ def test_request_headers(test_client_factory: TestClientFactory) -> None:
         "headers": {
             "host": "example.org",
             "user-agent": "testclient",
-            "accept-encoding": "gzip, deflate",
+            "accept-encoding": "gzip, deflate, zstd",
             "accept": "*/*",
             "connection": "keep-alive",
         }

@@ -117,11 +117,8 @@ class Response:
         if httponly:
             cookie[key]["httponly"] = True
         if samesite is not None:
-            assert samesite.lower() in [
-                "strict",
-                "lax",
-                "none",
-            ], "samesite must be either 'strict', 'lax' or 'none'"
+            if samesite.lower() not in ("strict", "lax", "none"):
+                raise ValueError("samesite must be either 'strict', 'lax' or 'none'")
             cookie[key]["samesite"] = samesite
         if partitioned:
             if sys.version_info < (3, 14):

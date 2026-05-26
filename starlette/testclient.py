@@ -41,10 +41,10 @@ if TYPE_CHECKING:
 else:
     try:
         import httpx2 as httpx
-    except ModuleNotFoundError:
+    except ModuleNotFoundError:  # pragma: no cover
         try:
             import httpx
-        except ModuleNotFoundError:  # pragma: no cover
+        except ModuleNotFoundError:
             raise RuntimeError(
                 "The starlette.testclient module requires the httpx2 package to be installed.\n"
                 "You can install this with:\n"

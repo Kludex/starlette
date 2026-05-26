@@ -48,7 +48,7 @@ full = [
 dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
-    "httpx2>=2.0.0",
+    "httpx2[zstd]>=2.0.0",
     "coverage>=7.8.2",
     "importlib-metadata==9.0.0",
     "mypy==1.16.1",

@@ -471,7 +471,7 @@ def test_set_cookie_samesite_invalid(test_client_factory: TestClientFactory) -> 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         response = Response("Hello, world!", media_type="text/plain")
         with pytest.raises(ValueError):
-            response.set_cookie("mycookie", "myvalue", samesite="invalid")
+            response.set_cookie("mycookie", "myvalue", samesite="invalid")  # type: ignore[arg-type]
         await response(scope, receive, send)
 
     client = test_client_factory(app)

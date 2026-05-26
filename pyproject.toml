@@ -51,8 +51,8 @@ dev = [
     "httpx2[zstd]>=2.0.0",
     "coverage>=7.8.2",
     "importlib-metadata==9.0.0",
-    "mypy==1.16.1",
-    "ruff==0.15.12",
+    "mypy==2.1.0",
+    "ruff==0.15.13",
     "types-PyYAML==6.0.12.20250516",
     "pytest==9.0.3",
     "trio==0.33.0",
@@ -60,7 +60,7 @@ dev = [
     "twine==6.2.0",
 ]
 docs = [
-    "black==26.3.1",
+    "black==26.5.1",
     "mkdocstrings>=1.0.2",
     "mkdocstrings-python>=2.0.1",
     "zensical>=0.0.19",

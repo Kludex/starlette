@@ -467,6 +467,18 @@ def test_set_cookie_samesite_none(test_client_factory: TestClientFactory) -> Non
     assert response.headers["set-cookie"] == "mycookie=myvalue; Path=/"
 
 
+def test_set_cookie_samesite_invalid(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response("Hello, world!", media_type="text/plain")
+        with pytest.raises(ValueError):
+            response.set_cookie("mycookie", "myvalue", samesite="invalid")
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+
+
 @pytest.mark.parametrize(
     "expires",
     [

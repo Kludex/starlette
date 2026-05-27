@@ -48,6 +48,7 @@ full = [
 dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
+    "httpx2[zstd]>=2.0.0",
     "coverage>=7.8.2",
     "importlib-metadata==9.0.0",
     "mypy==1.16.1",
@@ -114,6 +115,7 @@ filterwarnings = [
     "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:DeprecationWarning",
     "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
+    "ignore: Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
 ]
 
 [tool.coverage.run]

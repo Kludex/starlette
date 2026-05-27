@@ -509,3 +509,20 @@ def test_multidict() -> None:
     assert q.getlist("a") == ["123"]
     q.update([("a", "456")], a="789", b="123")
     assert q == MultiDict([("a", "456"), ("a", "789"), ("b", "123")])
+
+
+def test_datastructures_edge_cases() -> None:
+    # MutableHeaders: deleting a missing key (case-insensitive) is a no-op
+    h = MutableHeaders(raw=[(b"a", b"1")])
+    del h["B"]
+    assert h.raw == [(b"a", b"1")]
+
+    # QueryParams: bytes input preserves repeated param ordering
+    q = QueryParams(b"a=123&a=456&b=789")
+    assert q.getlist("a") == ["123", "456"]
+    assert str(q) == "a=123&a=456&b=789"
+
+    # URL.replace with empty path
+    u = URL("https://example.org/path/to/somewhere?abc=123")
+    new = u.replace(path="")
+    assert str(new) == "https://example.org?abc=123"

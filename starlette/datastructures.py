@@ -208,7 +208,7 @@ class Secret:
     You should cast the value to `str` at the point it is required.
     """
 
-    def __init__(self, value: str):
+    def __init__(self, value: str) -> None:
         self._value = value
 
     def __repr__(self) -> str:

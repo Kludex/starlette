@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 1.2.0 (May 28, 2026)
+
+#### Added
+
+* Support httpx2 in the test client [#3291](https://github.com/encode/starlette/pull/3291).
+
 ## 1.1.0 (May 23, 2026)
 
 #### Added

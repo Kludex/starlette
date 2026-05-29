@@ -62,6 +62,15 @@ def test_url() -> None:
     assert url.replace(username="u") == URL("http://u@host:80")
 
 
+def test_url_replace_with_empty_netloc() -> None:
+    # URLs with no netloc (e.g. relative URLs) used to raise IndexError in
+    # replace() because the empty hostname was indexed with hostname[-1].
+    assert URL("/path").replace(port=8080) == URL("//:8080/path")
+    assert URL("").replace(port=8080) == URL("//:8080")
+    assert URL("http://").replace(port=8080) == URL("http://:8080")
+    assert URL("/path").replace(hostname="example.com") == URL("//example.com/path")
+
+
 def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")
     assert u.query == "page=3"

@@ -37,7 +37,7 @@ else:  # pragma: no cover
     from typing_extensions import Self
 
 if TYPE_CHECKING:
-    import httpx
+    import httpx2 as httpx
 else:
     try:
         import httpx2 as httpx

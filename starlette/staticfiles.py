@@ -152,6 +152,9 @@ class StaticFiles:
         raise HTTPException(status_code=404)
 
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        # Reject absolute paths so they cannot escape the served directory.
+        if path.startswith(("/", "\\")):
+            return "", None
         for directory in self.all_directories:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:

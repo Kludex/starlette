@@ -2,6 +2,29 @@
 toc_depth: 2
 ---
 
+## 1.2.0 (May 28, 2026)
+
+#### Added
+
+* Support httpx2 in the test client [#3291](https://github.com/encode/starlette/pull/3291).
+
+## 1.1.0 (May 23, 2026)
+
+#### Added
+
+* Use `"application/octet-stream"` as the `FileResponse` media type fallback [#3283](https://github.com/encode/starlette/pull/3283).
+
+#### Fixed
+
+* Only dispatch standard HTTP verbs in `HTTPEndpoint` [#3286](https://github.com/encode/starlette/pull/3286).
+* Reject absolute paths in `StaticFiles.lookup_path` [#3287](https://github.com/encode/starlette/pull/3287).
+
+## 1.0.1 (May 21, 2026)
+
+#### Fixed
+
+* Ignore malformed `Host` header when constructing `request.url` [#3279](https://github.com/encode/starlette/pull/3279).
+
 ## 1.0.0 (March 22, 2026)
 
 Starlette 1.0 is here!

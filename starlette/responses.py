@@ -312,7 +312,7 @@ class FileResponse(Response):
         self.status_code = status_code
         self.filename = filename
         if media_type is None:
-            media_type = guess_type(filename or path)[0] or "text/plain"
+            media_type = guess_type(filename or path)[0] or "application/octet-stream"
         self.media_type = media_type
         self.background = background
         self.init_headers(headers)

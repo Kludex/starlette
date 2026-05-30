@@ -194,7 +194,7 @@ def test_headers() -> None:
     assert "c" not in h
     assert h["a"] == "123"
     assert h.get("a") == "123"
-    assert h.get("nope", default=None) is None
+    assert h.get("nope", None) is None
     assert h.getlist("a") == ["123", "456"]
     assert h.keys() == ["a", "a", "b"]
     assert h.values() == ["123", "456", "789"]
@@ -310,7 +310,7 @@ def test_queryparams() -> None:
     assert "c" not in q
     assert q["a"] == "456"
     assert q.get("a") == "456"
-    assert q.get("nope", default=None) is None
+    assert q.get("nope", None) is None
     assert q.getlist("a") == ["123", "456"]
     assert list(q.keys()) == ["a", "b"]
     assert list(q.values()) == ["456", "789"]
@@ -394,7 +394,7 @@ def test_formdata() -> None:
     assert "c" not in form
     assert form["a"] == "456"
     assert form.get("a") == "456"
-    assert form.get("nope", default=None) is None
+    assert form.get("nope", None) is None
     assert form.getlist("a") == ["123", "456"]
     assert list(form.keys()) == ["a", "b"]
     assert list(form.values()) == ["456", upload]
@@ -429,7 +429,7 @@ def test_multidict() -> None:
     assert "c" not in q
     assert q["a"] == "456"
     assert q.get("a") == "456"
-    assert q.get("nope", default=None) is None
+    assert q.get("nope", None) is None
     assert q.getlist("a") == ["123", "456"]
     assert list(q.keys()) == ["a", "b"]
     assert list(q.values()) == ["456", "789"]

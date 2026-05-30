@@ -268,8 +268,8 @@ def test_request_disconnect(
 
 def test_request_is_disconnected(test_client_factory: TestClientFactory) -> None:
     """
-    After reading the request body and sending a response, the request's
-    is_disconnected state should remain consistent.
+    After the response is sent, the receive stream is drained, so a subsequent
+    `is_disconnected()` call reports the request as disconnected.
     """
     disconnected_after_response = None
 

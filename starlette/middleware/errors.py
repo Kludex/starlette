@@ -173,9 +173,9 @@ class ServerErrorMiddleware:
             else:
                 # Use an installed 500 error handler.
                 if is_async_callable(self.handler):
-                    response = await self.handler(request, exc)
+                    response = await self.handler(request, exc)  # type: ignore[assignment, arg-type]
                 else:
-                    response = await run_in_threadpool(self.handler, request, exc)
+                    response = await run_in_threadpool(self.handler, request, exc)  # type: ignore[arg-type]
 
             if not response_started:
                 await response(scope, receive, send)

@@ -189,7 +189,7 @@ Sometimes you will want to do async things outside of your application.
 For example, you might want to check the state of your database after calling your app
 using your existing async database client/infrastructure.
 
-For these situations, using `TestClient` is difficult because it creates it's own event loop and async
+For these situations, using `TestClient` is difficult because it creates its own event loop and async
 resources (like a database connection) often cannot be shared across event loops.
 The simplest way to work around this is to just make your entire test async and use an async client, like [httpx.AsyncClient].
 
@@ -210,7 +210,7 @@ def hello(request: Request) -> PlainTextResponse:
 app = Starlette(routes=[Route("/", hello)])
 
 
-# if you're using pytest, you'll need to to add an async marker like:
+# if you're using pytest, you'll need to add an async marker like:
 # @pytest.mark.anyio  # using https://github.com/agronholm/anyio
 # or install and configure pytest-asyncio (https://github.com/pytest-dev/pytest-asyncio)
 async def test_app() -> None:

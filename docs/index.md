@@ -59,9 +59,6 @@ Help us keep Starlette maintained and sustainable by [becoming a sponsor](https:
     <a href="https://fastapi.tiangolo.com">
         <img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="FastAPI" style="height: 80px;">
     </a>
-    <a href="https://huggingface.co">
-        <img src="https://huggingface.co/datasets/huggingface/brand-assets/resolve/main/hf-logo-with-title.svg" alt="Hugging Face" style="height: 80px;">
-    </a>
 </div>
 
 ## Installation
@@ -138,7 +135,7 @@ Run uvicorn with `--reload` to enable auto-reloading on code changes.
 
 ## Modularity
 
-The modularity that Starlette is designed on promotes building re-usable
+The modularity that Starlette is designed on promotes building reusable
 components that can be shared between any ASGI framework. This should enable
 an ecosystem of shared middleware and mountable applications.
 

@@ -91,7 +91,7 @@ def test_websocket_headers(test_client_factory: TestClientFactory) -> None:
     with client.websocket_connect("/") as websocket:
         expected_headers = {
             "accept": "*/*",
-            "accept-encoding": "gzip, deflate",
+            "accept-encoding": "gzip, deflate, zstd",
             "connection": "upgrade",
             "host": "testserver",
             "user-agent": "testclient",

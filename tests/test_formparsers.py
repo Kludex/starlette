@@ -824,19 +824,16 @@ def test_multipart_closes_tempfile_on_oserror(
 
     client = test_client_factory(error_app)
     boundary = "a7f7ac8d4e2e437c877bb7b8d7cc549c"
-    data = (
+    content = (
         f"--{boundary}\r\n"
         f'Content-Disposition: form-data; name="file"; filename="test.txt"\r\n'
         f"Content-Type: text/plain\r\n\r\n"
         f"file content\r\n"
         f"--{boundary}--\r\n"
     ).encode()
+    headers = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
 
     with pytest.raises(OSError, match="disk full"):
-        client.post(
-            "/",
-            content=data,
-            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-        )
+        client.post("/", content=content, headers=headers)
 
     assert len(close_counts) == 1

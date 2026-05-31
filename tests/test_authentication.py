@@ -215,7 +215,7 @@ def test_requires_sync_raises_type_error_for_wrong_request_type() -> None:
         pass  # pragma: no cover
 
     with pytest.raises(TypeError, match="required to be of type 'Request'"):
-        view("not_a_request")
+        view("not_a_request")  # type: ignore[arg-type]
 
 
 @pytest.mark.anyio
@@ -225,7 +225,7 @@ async def test_requires_async_raises_type_error_for_wrong_request_type() -> None
         pass  # pragma: no cover
 
     with pytest.raises(TypeError, match="required to be of type 'Request'"):
-        await view("not_a_request")
+        await view("not_a_request")  # type: ignore[arg-type]
 
 
 @pytest.mark.anyio
@@ -235,7 +235,7 @@ async def test_requires_websocket_raises_type_error_for_wrong_type() -> None:
         pass  # pragma: no cover
 
     with pytest.raises(TypeError, match="required to be of type 'WebSocket'"):
-        await ws_view("not_a_websocket")
+        await ws_view("not_a_websocket")  # type: ignore[arg-type]
 
 
 def test_user_interface(test_client_factory: TestClientFactory) -> None:

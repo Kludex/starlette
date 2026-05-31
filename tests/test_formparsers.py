@@ -803,25 +803,24 @@ def test_max_part_size_exceeds_custom_limit(
         assert response.text == "Part exceeded maximum size of 10KB."
 
 
-def test_multipart_close_tempfiles_on_non_multipart_exception(
+def test_multipart_closes_tempfile_on_oserror(
     test_client_factory: TestClientFactory,
 ) -> None:
-    """Temporary files must be closed when a non-MultiPartException is raised during parsing."""
+    """Temporary files must be closed when an OSError (e.g. disk full) is raised during parsing."""
     close_counts: list[int] = []
 
-    class TrackingSpooledTemporaryFile(SpooledTemporaryFile[bytes]):
+    class FailingSpooledTemporaryFile(SpooledTemporaryFile[bytes]):
+        def write(self, s: Any) -> int:
+            raise OSError("disk full")
+
         def close(self) -> None:
             close_counts.append(1)
             super().close()
 
     async def error_app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
-        with mock.patch("starlette.formparsers.SpooledTemporaryFile", TrackingSpooledTemporaryFile):
-            with mock.patch(
-                "starlette.datastructures.UploadFile.write",
-                side_effect=OSError("disk full"),
-            ):
-                await request.form()
+        with mock.patch("starlette.formparsers.SpooledTemporaryFile", FailingSpooledTemporaryFile):
+            await request.form()
 
     client = test_client_factory(error_app)
     boundary = "a7f7ac8d4e2e437c877bb7b8d7cc549c"
@@ -831,7 +830,7 @@ def test_multipart_close_tempfiles_on_non_multipart_exception(
         f"Content-Type: text/plain\r\n\r\n"
         f"file content\r\n"
         f"--{boundary}--\r\n"
-    ).encode("utf-8")
+    ).encode()
 
     with pytest.raises(OSError, match="disk full"):
         client.post(

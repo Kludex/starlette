@@ -835,7 +835,7 @@ def test_multipart_closes_tempfile_on_oserror(
     with pytest.raises(OSError, match="disk full"):
         client.post(
             "/",
-            data=data,  # type: ignore
+            content=data,
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
         )
 

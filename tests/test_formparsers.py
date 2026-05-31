@@ -807,14 +807,15 @@ def test_multipart_closes_tempfile_on_oserror(
     test_client_factory: TestClientFactory,
 ) -> None:
     """Temporary files must be closed when an OSError (e.g. disk full) is raised during parsing."""
-    close_counts: list[int] = []
+    close_called = False
 
     class FailingSpooledTemporaryFile(SpooledTemporaryFile[bytes]):
         def write(self, s: Any) -> int:
             raise OSError("disk full")
 
         def close(self) -> None:
-            close_counts.append(1)
+            nonlocal close_called
+            close_called = True
             super().close()
 
     async def error_app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -836,4 +837,4 @@ def test_multipart_closes_tempfile_on_oserror(
     with pytest.raises(OSError, match="disk full"):
         client.post("/", content=content, headers=headers)
 
-    assert len(close_counts) == 1
+    assert close_called

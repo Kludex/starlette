@@ -209,6 +209,35 @@ def test_invalid_decorator_usage() -> None:
             pass
 
 
+def test_requires_sync_raises_type_error_for_wrong_request_type() -> None:
+    @requires("authenticated")
+    def view(request: Request) -> None:
+        pass  # pragma: no cover
+
+    with pytest.raises(TypeError, match="required to be of type 'Request'"):
+        view("not_a_request")
+
+
+@pytest.mark.anyio
+async def test_requires_async_raises_type_error_for_wrong_request_type() -> None:
+    @requires("authenticated")
+    async def view(request: Request) -> None:
+        pass  # pragma: no cover
+
+    with pytest.raises(TypeError, match="required to be of type 'Request'"):
+        await view("not_a_request")
+
+
+@pytest.mark.anyio
+async def test_requires_websocket_raises_type_error_for_wrong_type() -> None:
+    @requires("authenticated")
+    async def ws_view(websocket: WebSocket) -> None:
+        pass  # pragma: no cover
+
+    with pytest.raises(TypeError, match="required to be of type 'WebSocket'"):
+        await ws_view("not_a_websocket")
+
+
 def test_user_interface(test_client_factory: TestClientFactory) -> None:
     with test_client_factory(app) as client:
         response = client.get("/")

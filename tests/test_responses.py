@@ -938,6 +938,16 @@ def test_file_response_suffix_range(file_response_client: TestClient) -> None:
     assert response.content == README.encode("utf8")[-100:]
 
 
+def test_file_response_suffix_range_larger_than_file(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=-1000"})
+
+    file_size = len(README.encode("utf8"))
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-{file_size - 1}/{file_size}"
+    assert response.headers["content-length"] == str(file_size)
+    assert response.content == README.encode("utf8")
+
+
 def test_file_response_multiple_calls(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=0-100"})
     assert response.status_code == 206

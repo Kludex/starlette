@@ -1,9 +1,11 @@
+import pytest
+
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
-from starlette.schemas import SchemaGenerator
+from starlette.schemas import OpenAPIResponse, SchemaGenerator
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
@@ -252,3 +254,8 @@ def test_schema_endpoint(test_client_factory: TestClientFactory) -> None:
     response = client.get("/schema")
     assert response.headers["Content-Type"] == "application/vnd.oai.openapi"
     assert response.text.strip() == EXPECTED_SCHEMA.strip()
+
+
+def test_openapi_response_raises_type_error_for_non_dict() -> None:
+    with pytest.raises(TypeError, match="should be a dictionary"):
+        OpenAPIResponse(content="not_a_dict")

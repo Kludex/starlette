@@ -6,7 +6,7 @@ toc_depth: 2
 
 #### Fixed
 
-* Use the same module (`httpx` | `httpx2`) for type checking as for runtime [#3304](https://github.com/encode/starlette/pull/3304).
+* Use `httpx2` for type checking in the `testclient` module [#3304](https://github.com/encode/starlette/pull/3304).
 * Add assert error for `requires()` when the request parameter is not a `Request` type [#3298](https://github.com/encode/starlette/pull/3298).
 
 ## 1.2.0 (May 28, 2026)

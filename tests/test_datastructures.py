@@ -61,6 +61,13 @@ def test_url() -> None:
     url = URL("http://host:80")
     assert url.replace(username="u") == URL("http://u@host:80")
 
+    # Replacing authority components on a URL that has no authority should not
+    # raise, and should add the requested component to the netloc.
+    url = URL("/path?a=1")
+    assert url.replace(port=8080) == URL("//:8080/path?a=1")
+    assert url.replace(port=8080).port == 8080
+    assert url.replace(username="u") == URL("//u@/path?a=1")
+
 
 def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")

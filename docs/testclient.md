@@ -81,7 +81,7 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
 
 ### Change client address
 
-By default, the TestClient will set the client host to `"testserver"` and the port to `50000`.
+By default, the TestClient will set the client host to `"testclient"` and the port to `50000`.
 
 You can change the client address by setting the `client` attribute of the `TestClient` instance:
 
@@ -100,7 +100,7 @@ By default, `asyncio` is used with default options.
 To run `Trio`, pass `backend="trio"`. For example:
 
 ```python
-def test_app()
+def test_app():
     with TestClient(app, backend="trio") as client:
        ...
 ```
@@ -108,7 +108,7 @@ def test_app()
 To run `asyncio` with `uvloop`, pass `backend_options={"use_uvloop": True}`.  For example:
 
 ```python
-def test_app()
+def test_app():
     with TestClient(app, backend_options={"use_uvloop": True}) as client:
        ...
 ```

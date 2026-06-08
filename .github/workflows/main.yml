@@ -62,6 +62,9 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
 
+    env:
+      HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+
     permissions:
       contents: read
       pull-requests: write
@@ -88,12 +91,14 @@ jobs:
 
       - uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         id: deploy
+        if: ${{ env.HAS_CLOUDFLARE_TOKEN == 'true' }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: versions upload --tag pr-${{ github.event.pull_request.number }}
 
       - name: Comment preview URL
+        if: ${{ steps.deploy.outcome == 'success' }}
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           message: |

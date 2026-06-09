@@ -61,6 +61,12 @@ def test_url() -> None:
     url = URL("http://host:80")
     assert url.replace(username="u") == URL("http://u@host:80")
 
+    # Path-only URLs (no authority) should not raise IndexError
+    url = URL("/path")
+    assert url.replace(port=8080) == URL("//:8080/path")
+    assert url.replace(username="u") == URL("//u@/path")
+    assert url.replace(hostname="example.com") == URL("//example.com/path")
+
 
 def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")

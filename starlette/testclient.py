@@ -24,13 +24,14 @@ from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
 
-if sys.version_info >= (3, 11):  # pragma: no cover
-    from typing import Self
-else:  # pragma: no cover
-    from typing_extensions import Self
-
 if TYPE_CHECKING:
     import httpx2 as httpx
+
+    if sys.version_info >= (3, 11):  # pragma: no cover
+        from typing import Self
+    else:  # pragma: no cover
+        from typing_extensions import Self
+
 else:
     try:
         import httpx2 as httpx
@@ -197,10 +198,7 @@ class WebSocketTestSession:
     def receive_json(self, mode: Literal["text", "binary"] = "text") -> Any:
         message = self.receive()
         self._raise_on_close(message)
-        if mode == "text":
-            text = message["text"]
-        else:
-            text = message["bytes"].decode("utf-8")
+        text = message["text"] if mode == "text" else message["bytes"].decode("utf-8")
         return json.loads(text)
 
 

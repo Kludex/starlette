@@ -603,6 +603,26 @@ def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
     assert exc_info.value.detail == "Not Found"
 
 
+def test_staticfiles_rejects_absolute_paths(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    app = StaticFiles(directory=statics_path)
+
+    full_path, stat_result = app.lookup_path("/etc/passwd")
+    assert full_path == ""
+    assert stat_result is None
+
+
+def test_staticfiles_rejects_absolute_windows_paths(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    app = StaticFiles(directory=statics_path)
+
+    full_path, stat_result = app.lookup_path("\\\\server\\share")
+    assert full_path == ""
+    assert stat_result is None
+
+
 def test_staticfiles_self_symlinks(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     statics_path = tmp_path / "statics"
     statics_path.mkdir()

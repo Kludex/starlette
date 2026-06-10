@@ -61,6 +61,13 @@ def test_url() -> None:
     url = URL("http://host:80")
     assert url.replace(username="u") == URL("http://u@host:80")
 
+    # Replacing authority components on a URL that has no authority should not
+    # raise, and should add the requested component to the netloc.
+    url = URL("/path?a=1")
+    assert url.replace(port=8080) == URL("//:8080/path?a=1")
+    assert url.replace(port=8080).port == 8080
+    assert url.replace(username="u") == URL("//u@/path?a=1")
+
 
 def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")
@@ -159,6 +166,32 @@ def test_url_from_scope() -> None:
     assert repr(u) == "URL('http://example.com:8000/some/path?query=string')"
 
 
+@pytest.mark.parametrize(
+    "host",
+    [
+        pytest.param(b"foo/?x=", id="question-mark"),
+        pytest.param(b"foo/#", id="hash"),
+        pytest.param(b"foo/bar", id="slash"),
+        pytest.param(b"user@foo", id="at-sign"),
+        pytest.param(b"foo\\bar", id="backslash"),
+        pytest.param(b"foo bar", id="space"),
+    ],
+)
+def test_url_from_scope_with_invalid_host(host: bytes) -> None:
+    """An invalid Host header should be ignored, falling back to the server tuple."""
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": ("example.com", 80),
+            "path": "/admin",
+            "query_string": b"",
+            "headers": [(b"host", host)],
+        }
+    )
+    assert u.path == "/admin"
+    assert u.netloc == "example.com"
+
+
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h
@@ -168,7 +201,7 @@ def test_headers() -> None:
     assert "c" not in h
     assert h["a"] == "123"
     assert h.get("a") == "123"
-    assert h.get("nope", default=None) is None
+    assert h.get("nope", None) is None
     assert h.getlist("a") == ["123", "456"]
     assert h.keys() == ["a", "a", "b"]
     assert h.values() == ["123", "456", "789"]
@@ -284,7 +317,7 @@ def test_queryparams() -> None:
     assert "c" not in q
     assert q["a"] == "456"
     assert q.get("a") == "456"
-    assert q.get("nope", default=None) is None
+    assert q.get("nope", None) is None
     assert q.getlist("a") == ["123", "456"]
     assert list(q.keys()) == ["a", "b"]
     assert list(q.values()) == ["456", "789"]
@@ -368,7 +401,7 @@ def test_formdata() -> None:
     assert "c" not in form
     assert form["a"] == "456"
     assert form.get("a") == "456"
-    assert form.get("nope", default=None) is None
+    assert form.get("nope", None) is None
     assert form.getlist("a") == ["123", "456"]
     assert list(form.keys()) == ["a", "b"]
     assert list(form.values()) == ["456", upload]
@@ -403,7 +436,7 @@ def test_multidict() -> None:
     assert "c" not in q
     assert q["a"] == "456"
     assert q.get("a") == "456"
-    assert q.get("nope", default=None) is None
+    assert q.get("nope", None) is None
     assert q.getlist("a") == ["123", "456"]
     assert list(q.keys()) == ["a", "b"]
     assert list(q.values()) == ["456", "789"]

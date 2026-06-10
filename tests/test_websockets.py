@@ -660,9 +660,9 @@ def test_is_disconnected_property(test_client_factory: TestClientFactory) -> Non
         await websocket.accept()
         assert not websocket.is_disconnected
         message = await websocket.receive()
-        websocket.client_state = WebSocketState.DISCONNECTED
+        assert message["type"] == "websocket.disconnect"
         assert websocket.is_disconnected
 
     client = test_client_factory(app)
     with client.websocket_connect("/") as websocket:
-        websocket.send_json({"close": True})
+        websocket.close()

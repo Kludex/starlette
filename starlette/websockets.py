@@ -34,10 +34,7 @@ class WebSocket(HTTPConnection[StateT]):
 
     @property
     def is_disconnected(self) -> bool:
-        return (
-            self.client_state == WebSocketState.DISCONNECTED
-            or self.application_state == WebSocketState.DISCONNECTED
-        )
+        return self.client_state == WebSocketState.DISCONNECTED or self.application_state == WebSocketState.DISCONNECTED
 
     async def receive(self) -> Message:
         """

@@ -89,18 +89,8 @@ async def create_collapsing_task_group() -> AsyncGenerator[anyio.abc.TaskGroup, 
             raise
 
         exc = excs.exceptions[0]
-        context = exc.__context__
-        tb = exc.__traceback__
-        cause = exc.__cause__
-        sc = exc.__suppress_context__
-        try:
-            raise exc
-        finally:
-            exc.__traceback__ = tb
-            exc.__context__ = context
-            exc.__cause__ = cause
-            exc.__suppress_context__ = sc
-            del exc, cause, tb, context
+        context = None if exc.__suppress_context__ else exc.__context__
+        raise exc from exc.__cause__ or context
 
 
 def get_route_path(scope: Scope) -> str:

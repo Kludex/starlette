@@ -1,0 +1,23 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Starlette
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Marcelo
+    family-names: Trylesinski
+    email: marcelotryle@gmail.com
+  - given-names: Tom
+    family-names: Christie
+    email: tom@tomchristie.com
+repository-code: "https://github.com/Kludex/starlette"
+url: "https://starlette.dev/"
+abstract: Starlette is an ASGI web framework for Python.
+keywords:
+  - asgi
+  - starlette
+license: BSD-3-Clause

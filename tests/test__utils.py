@@ -1,6 +1,7 @@
 import functools
 import sys
 from typing import Any
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -85,6 +86,13 @@ def test_async_nested_partial() -> None:
     partial = functools.partial(async_func, b=2)
     nested_partial = functools.partial(partial, a=1)
     assert is_async_callable(nested_partial)
+
+
+def test_async_mocked_async_function() -> None:
+    async def async_func() -> None: ...  # pragma: no cover
+
+    mock = create_autospec(async_func)
+    assert is_async_callable(mock)
 
 
 @pytest.mark.parametrize(

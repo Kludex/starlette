@@ -4,8 +4,8 @@ import errno
 import importlib.util
 import os
 import stat
-import typing
 from email.utils import parsedate
+from typing import Union
 
 import anyio
 import anyio.to_thread
@@ -16,7 +16,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
 
-PathLike = typing.Union[str, "os.PathLike[str]"]
+PathLike = Union[str, "os.PathLike[str]"]
 
 
 class NotModifiedResponse(Response):
@@ -123,6 +123,9 @@ class StaticFiles:
                 raise HTTPException(status_code=404)
 
             raise exc
+        except ValueError:
+            # Null bytes or other invalid characters in the path.
+            raise HTTPException(status_code=404)
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
@@ -149,6 +152,9 @@ class StaticFiles:
         raise HTTPException(status_code=404)
 
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        # Reject absolute paths so they cannot escape the served directory.
+        if path.startswith(("/", "\\")):
+            return "", None
         for directory in self.all_directories:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:
@@ -201,13 +207,10 @@ class StaticFiles:
         Given the request and response headers, return `True` if an HTTP
         "Not Modified" response could be returned instead.
         """
-        try:
-            if_none_match = request_headers["if-none-match"]
+        if if_none_match := request_headers.get("if-none-match"):
+            # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
-            if etag in [tag.strip(" W/") for tag in if_none_match.split(",")]:
-                return True
-        except KeyError:
-            pass
+            return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])

@@ -5,7 +5,7 @@ about: Please only raise an issue if you've been advised to do so after discussi
 
 The starting point for issues should usually be a discussion...
 
-https://github.com/encode/starlette/discussions
+https://github.com/Kludex/starlette/discussions
 
 Possible bugs may be raised as a "Potential Issue" discussion, feature requests may be raised as an "Ideas" discussion. We can then determine if the discussion needs to be escalated into an "Issue" or not.
 

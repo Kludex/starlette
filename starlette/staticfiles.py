@@ -208,7 +208,8 @@ class StaticFiles:
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
             # Per RFC 7232 §3.2, "If-None-Match: *" matches any current representation.
-            if if_none_match.strip() == "*":
+            # The wildcard is also honored leniently when sent alongside other tags.
+            if any(tag.strip() == "*" for tag in if_none_match.split(",")):
                 return True
             return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
 

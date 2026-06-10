@@ -227,6 +227,10 @@ def test_staticfiles_304_with_if_none_match_wildcard(tmpdir: Path, test_client_f
     response = client.get("/example.txt", headers={"if-none-match": "*"})
     assert response.status_code == 304
     assert response.content == b""
+    # The wildcard is also honored when sent alongside other entity-tags.
+    response = client.get("/example.txt", headers={"if-none-match": '"bogus-etag", *'})
+    assert response.status_code == 304
+    assert response.content == b""
 
 
 def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:

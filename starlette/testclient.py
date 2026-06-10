@@ -364,14 +364,13 @@ class _TestClientTransport(httpx.BaseTransport):
 
         raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
 
-        extensions: dict[str, Any] = {}
+        response = httpx.Response(**raw_kwargs, request=request)
         if debug_info is not None:
-            extensions["http.response.debug"] = debug_info
-
-        response = httpx.Response(**raw_kwargs, request=request, extensions=extensions)
-        if debug_info is not None and "template" in debug_info:
-            response.template = debug_info["template"]  # type: ignore[attr-defined]
-            response.context = debug_info["context"]  # type: ignore[attr-defined]
+            if "template" in debug_info:
+                response.template = debug_info["template"]  # type: ignore[attr-defined]
+                response.context = debug_info["context"]  # type: ignore[attr-defined]
+            else:
+                response.extensions["http.response.debug"] = debug_info
         return response
 
 

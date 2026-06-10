@@ -83,6 +83,17 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
     not be triggered when the `TestClient` is instantiated. You can learn more about it
     [here](lifespan.md#running-lifespan-in-tests).
 
+### Debug information
+
+The `TestClient` supports the ASGI [`http.response.debug`](https://asgi.readthedocs.io/en/latest/extensions.html#debug)
+extension. The `info` dictionary sent by the application is available as
+`response.extensions["http.response.debug"]`, which allows custom response classes to
+expose additional debug information to tests.
+
+As a special case, an `info` dictionary containing a `template` key is exposed as the
+`.template` and `.context` response attributes instead. This is used by template
+responses - see [testing template responses](templates.md#testing-template-responses).
+
 ### Change client address
 
 By default, the TestClient will set the client host to `"testclient"` and the port to `50000`.

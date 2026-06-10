@@ -90,29 +90,45 @@ extension. The `info` dictionary sent by the application is available as
 `response.extensions["http.response.debug"]`, which allows custom response classes to
 expose additional debug information to tests.
 
-This is useful when the response body alone doesn't tell you everything you want to
-assert on. For example, a response class that renders a single block of a template can
-expose which block was rendered:
+This is useful when asserting on the response body would mean parsing HTML. Consider a
+response class that renders a single `{% block %}` of a Jinja2 template, as used for
+partial page updates with libraries like htmx. By sending the inputs of the rendering
+through the debug extension, tests can assert on the data instead of the markup:
 
 ```python
+import jinja2
+
 from starlette.responses import HTMLResponse
 
+env = jinja2.Environment(loader=jinja2.FileSystemLoader("templates"))
 
-class BlockResponse(HTMLResponse):
-    def __init__(self, content, block):
-        self.block = block
+
+class FragmentResponse(HTMLResponse):
+    def __init__(self, template_name, block_name, context):
+        self.template_name = template_name
+        self.block_name = block_name
+        self.context = context
+        template = env.get_template(template_name)
+        content = "".join(template.blocks[block_name](template.new_context(context)))
         super().__init__(content)
 
     async def __call__(self, scope, receive, send):
         if "http.response.debug" in scope.get("extensions", {}):
-            await send({"type": "http.response.debug", "info": {"block": self.block}})
+            info = {
+                "template": self.template_name,
+                "block": self.block_name,
+                "context": self.context,
+            }
+            await send({"type": "http.response.debug", "info": info})
         await super().__call__(scope, receive, send)
 
 
-def test_block():
+def test_search_results():
     client = TestClient(app)
-    response = client.get("/")
-    assert response.extensions["http.response.debug"]["block"] == "header"
+    response = client.get("/search?q=starlette")
+    debug = response.extensions["http.response.debug"]
+    assert debug["block"] == "results"
+    assert [repo.name for repo in debug["context"]["repos"]] == ["starlette", "uvicorn"]
 ```
 
 Template responses use the same extension to expose the `.template` and `.context`

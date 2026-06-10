@@ -42,24 +42,26 @@ full = [
     "python-multipart>=0.0.18",
     "pyyaml",
     "httpx>=0.27.0,<0.29.0",
+    "httpx2>=2.0.0",
 ]
 
 [dependency-groups]
 dev = [
     # We add starlette[full] so `uv sync` considers the extras.
     "starlette[full]",
+    "httpx2[zstd]>=2.0.0",
     "coverage>=7.8.2",
-    "importlib-metadata==8.7.1",
-    "mypy==1.16.1",
-    "ruff==0.15.4",
+    "importlib-metadata==9.0.0",
+    "mypy==2.1.0",
+    "ruff==0.15.14",
     "types-PyYAML==6.0.12.20250516",
-    "pytest==9.0.2",
+    "pytest==9.0.3",
     "trio==0.33.0",
     # Check dist
     "twine==6.2.0",
 ]
 docs = [
-    "black==26.3.1",
+    "black==26.5.1",
     "mkdocstrings>=1.0.2",
     "mkdocstrings-python>=2.0.1",
     "zensical>=0.0.19",
@@ -68,6 +70,7 @@ docs = [
 [tool.uv]
 default-groups = ["dev", "docs"]
 required-version = ">=0.8.6"
+exclude-newer = "7 days"
 
 [project.urls]
 Homepage = "https://github.com/Kludex/starlette"
@@ -113,6 +116,7 @@ filterwarnings = [
     "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:DeprecationWarning",
     "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
+    "ignore: Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
 ]
 
 [tool.coverage.run]

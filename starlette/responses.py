@@ -18,7 +18,7 @@ from urllib.parse import quote
 import anyio
 import anyio.to_thread
 
-from starlette._utils import collapse_excgroups
+from starlette._utils import create_collapsing_task_group
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
@@ -270,15 +270,14 @@ class StreamingResponse(Response):
             except OSError:
                 raise ClientDisconnect()
         else:
-            with collapse_excgroups():
-                async with anyio.create_task_group() as task_group:
+            async with create_collapsing_task_group() as task_group:
 
-                    async def wrap(func: Callable[[], Awaitable[None]]) -> None:
-                        await func()
-                        task_group.cancel_scope.cancel()
+                async def wrap(func: Callable[[], Awaitable[None]]) -> None:
+                    await func()
+                    task_group.cancel_scope.cancel()
 
-                    task_group.start_soon(wrap, partial(self.stream_response, send))
-                    await wrap(partial(self.listen_for_disconnect, receive))
+                task_group.start_soon(wrap, partial(self.stream_response, send))
+                await wrap(partial(self.listen_for_disconnect, receive))
 
         if self.background is not None:
             await self.background()
@@ -312,7 +311,7 @@ class FileResponse(Response):
         self.status_code = status_code
         self.filename = filename
         if media_type is None:
-            media_type = guess_type(filename or path)[0] or "text/plain"
+            media_type = guess_type(filename or path)[0] or "application/octet-stream"
         self.media_type = media_type
         self.background = background
         self.init_headers(headers)
@@ -513,7 +512,7 @@ class FileResponse(Response):
             end_str = end_str.strip()
 
             try:
-                start = int(start_str) if start_str else file_size - int(end_str)
+                start = int(start_str) if start_str else max(file_size - int(end_str), 0)
                 end = int(end_str) + 1 if start_str and end_str and int(end_str) < file_size else file_size
                 ranges.append((start, end))
             except ValueError:

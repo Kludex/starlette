@@ -214,6 +214,9 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     second_resp = client.get("/example.txt", headers={"if-none-match": f'W/{last_etag}, "123"'})
     assert second_resp.status_code == 304
     assert second_resp.content == b""
+    second_resp = client.get("/example.txt", headers={"if-none-match": f'"123",\tW/{last_etag}'})
+    assert second_resp.status_code == 304
+    assert second_resp.content == b""
 
 
 def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:

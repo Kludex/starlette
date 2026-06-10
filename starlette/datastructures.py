@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
-from typing import Any, BinaryIO, NamedTuple, TypeVar, cast
+from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 
 from starlette.concurrency import run_in_threadpool
-from starlette.types import ASGIProtocol, Scope
+from starlette.types import Scope
 
 
 class Address(NamedTuple):
@@ -178,11 +178,11 @@ class URLPath(str):
     Used by the routing to return `url_path_for` matches.
     """
 
-    def __new__(cls, path: str, protocol: ASGIProtocol = "", host: str = "") -> URLPath:
+    def __new__(cls, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> URLPath:
         assert protocol in ("http", "websocket", "")
         return str.__new__(cls, path)
 
-    def __init__(self, path: str, protocol: ASGIProtocol = "", host: str = "") -> None:
+    def __init__(self, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> None:
         self.protocol = protocol
         self.host = host
 

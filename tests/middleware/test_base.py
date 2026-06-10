@@ -46,7 +46,7 @@ def exc(request: Request) -> None:
     raise Exception("Exc")
 
 
-def eg(request: Request) -> None:
+def exc_group(request: Request) -> None:
     raise ExceptionGroup("my exception group", [ValueError("TEST")])
 
 
@@ -85,7 +85,7 @@ app = Starlette(
     routes=[
         Route("/", endpoint=homepage),
         Route("/exc", endpoint=exc),
-        Route("/eg", endpoint=eg),
+        Route("/exc-group", endpoint=exc_group),
         Route("/exc-stream", endpoint=exc_stream),
         Route("/no-response", endpoint=NoResponse),
         WebSocketRoute("/ws", endpoint=websocket_endpoint),
@@ -107,8 +107,10 @@ def test_custom_middleware(test_client_factory: TestClientFactory) -> None:
         response = client.get("/exc-stream")
     assert str(ctx2.value) == "Faulty Stream"
 
-    with pytest.raises(ExceptionGroup, match=r"my exception group \(1 sub-exception\)"):
-        client.get("/eg")
+    with pytest.raises(ExceptionGroup, match="my exception group") as ctx3:
+        client.get("/exc-group")
+    assert len(ctx3.value.exceptions) == 1
+    assert isinstance(ctx3.value.exceptions[0], ValueError)
 
     with pytest.raises(RuntimeError):
         response = client.get("/no-response")

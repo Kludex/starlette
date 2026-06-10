@@ -90,45 +90,38 @@ extension. The `info` dictionary sent by the application is available as
 `response.extensions["http.response.debug"]`, which allows custom response classes to
 expose additional debug information to tests.
 
-This is useful when asserting on the response body would mean parsing HTML. Consider a
-response class that renders a single `{% block %}` of a Jinja2 template, as used for
-partial page updates with libraries like htmx. By sending the inputs of the rendering
-through the debug extension, tests can assert on the data instead of the markup:
+This is useful when asserting on the response body would mean parsing it back. Consider
+a response class that renders rows into a CSV file. By sending the rows through the
+debug extension, tests can assert on the original data instead of the serialized body:
 
 ```python
-import jinja2
+import csv
+import io
 
-from starlette.responses import HTMLResponse
-
-env = jinja2.Environment(loader=jinja2.FileSystemLoader("templates"))
+from starlette.responses import Response
 
 
-class FragmentResponse(HTMLResponse):
-    def __init__(self, template_name, block_name, context):
-        self.template_name = template_name
-        self.block_name = block_name
-        self.context = context
-        template = env.get_template(template_name)
-        content = "".join(template.blocks[block_name](template.new_context(context)))
-        super().__init__(content)
+class CSVResponse(Response):
+    media_type = "text/csv"
+
+    def __init__(self, rows):
+        self.rows = rows
+        buffer = io.StringIO()
+        csv.writer(buffer).writerows(rows)
+        super().__init__(buffer.getvalue())
 
     async def __call__(self, scope, receive, send):
         if "http.response.debug" in scope.get("extensions", {}):
-            info = {
-                "template": self.template_name,
-                "block": self.block_name,
-                "context": self.context,
-            }
-            await send({"type": "http.response.debug", "info": info})
+            await send({"type": "http.response.debug", "info": {"rows": self.rows}})
         await super().__call__(scope, receive, send)
 
 
-def test_search_results():
+def test_export():
     client = TestClient(app)
-    response = client.get("/search?q=starlette")
-    debug = response.extensions["http.response.debug"]
-    assert debug["block"] == "results"
-    assert [repo.name for repo in debug["context"]["repos"]] == ["starlette", "uvicorn"]
+    response = client.get("/export")
+    rows = response.extensions["http.response.debug"]["rows"]
+    assert rows[0] == ("id", "username", "joined")
+    assert len(rows) == 101
 ```
 
 Template responses use the same extension to expose the `.template` and `.context`

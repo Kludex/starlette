@@ -1438,6 +1438,7 @@ dependencies = [
 [package.optional-dependencies]
 full = [
     { name = "httpx" },
+    { name = "httpx2" },
     { name = "itsdangerous" },
     { name = "jinja2" },
     { name = "python-multipart" },
@@ -1468,6 +1469,7 @@ docs = [
 requires-dist = [
     { name = "anyio", specifier = ">=3.6.2,<5" },
     { name = "httpx", marker = "extra == 'full'", specifier = ">=0.27.0,<0.29.0" },
+    { name = "httpx2", marker = "extra == 'full'", specifier = ">=2.0.0" },
     { name = "itsdangerous", marker = "extra == 'full'" },
     { name = "jinja2", marker = "extra == 'full'" },
     { name = "python-multipart", marker = "extra == 'full'", specifier = ">=0.0.18" },

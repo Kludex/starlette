@@ -86,9 +86,33 @@ extension. The `info` dictionary sent by the application is available as
 `response.extensions["http.response.debug"]`, which allows custom response classes to
 expose additional debug information to tests.
 
-As a special case, an `info` dictionary containing a `template` key is exposed as the
-`.template` and `.context` response attributes instead. This is used by template
-responses - see [testing template responses](templates.md#testing-template-responses).
+This is useful when the response body alone doesn't tell you everything you want to
+assert on. For example, a response class that renders a single block of a template can
+expose which block was rendered:
+
+```python
+from starlette.responses import HTMLResponse
+
+
+class BlockResponse(HTMLResponse):
+    def __init__(self, content, block):
+        self.block = block
+        super().__init__(content)
+
+    async def __call__(self, scope, receive, send):
+        if "http.response.debug" in scope.get("extensions", {}):
+            await send({"type": "http.response.debug", "info": {"block": self.block}})
+        await super().__call__(scope, receive, send)
+
+
+def test_block():
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"]["block"] == "header"
+```
+
+Template responses use the same extension to expose the `.template` and `.context`
+response attributes - see [testing template responses](templates.md#testing-template-responses).
 
 ### Change client address
 

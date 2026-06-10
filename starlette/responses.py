@@ -513,7 +513,7 @@ class FileResponse(Response):
             end_str = end_str.strip()
 
             try:
-                start = int(start_str) if start_str else file_size - int(end_str)
+                start = int(start_str) if start_str else max(file_size - int(end_str), 0)
                 end = int(end_str) + 1 if start_str and end_str and int(end_str) < file_size else file_size
                 ranges.append((start, end))
             except ValueError:

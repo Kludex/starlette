@@ -137,6 +137,33 @@ def test_homepage():
     assert "request" in response.context
 ```
 
+The full `info` dictionary sent via the ASGI `http.response.debug` extension is also
+available as `response.extensions["http.response.debug"]`, which allows custom response
+classes to expose additional debug information:
+
+```python
+def test_homepage():
+    client = TestClient(app)
+    response = client.get("/")
+    debug = response.extensions["http.response.debug"]
+    assert debug["template"].name == 'index.html'
+    assert "request" in debug["context"]
+```
+
+## Customizing Jinja2 Environment
+
+`Jinja2Templates` accepts all options supported by Jinja2 `Environment`.
+This will allow more control over the `Environment` instance created by Starlette.
+
+For the list of options available to `Environment` you can check Jinja2 documentation [here](https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment)
+
+```python
+from starlette.templating import Jinja2Templates
+
+
+templates = Jinja2Templates(directory='templates', autoescape=False, auto_reload=True)
+```
+
 ## Asynchronous template rendering
 
 Jinja2 supports async template rendering, however as a general rule

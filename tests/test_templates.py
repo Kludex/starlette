@@ -32,6 +32,8 @@ def test_templates(tmpdir: Path, test_client_factory: TestClientFactory) -> None
     assert response.text == "<html>Hello, <a href='http://testserver/'>world</a></html>"
     assert response.template.name == "index.html"  # type: ignore
     assert set(response.context.keys()) == {"request"}  # type: ignore
+    assert response.extensions["http.response.debug"]["template"].name == "index.html"
+    assert set(response.extensions["http.response.debug"]["context"].keys()) == {"request"}
 
 
 def test_templates_autoescape(tmp_path: Path) -> None:

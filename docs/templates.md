@@ -126,19 +126,6 @@ def test_homepage():
     assert "request" in response.context
 ```
 
-The full `info` dictionary sent via the ASGI `http.response.debug` extension is also
-available as `response.extensions["http.response.debug"]`, which allows custom response
-classes to expose additional debug information:
-
-```python
-def test_homepage():
-    client = TestClient(app)
-    response = client.get("/")
-    debug = response.extensions["http.response.debug"]
-    assert debug["template"].name == 'index.html'
-    assert "request" in debug["context"]
-```
-
 ## Customizing Jinja2 Environment
 
 `Jinja2Templates` accepts all options supported by Jinja2 `Environment`.

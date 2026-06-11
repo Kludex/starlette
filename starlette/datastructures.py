@@ -47,19 +47,19 @@ class URL:
                     break
 
             if host_header is not None and _HOST_RE.fullmatch(host_header):
-                url = f"{scheme}://{host_header}{path}"
-            elif server is None:
-                url = path
-            else:
+                netloc = host_header
+            elif server is not None:
                 host, port = server
                 default_port = {"http": 80, "https": 443, "ws": 80, "wss": 443}[scheme]
-                if port == default_port:
-                    url = f"{scheme}://{host}{path}"
-                else:
-                    url = f"{scheme}://{host}:{port}{path}"
+                netloc = host if port == default_port else f"{host}:{port}"
+            else:
+                netloc = None
 
-            if query_string:
-                url += "?" + query_string.decode()
+            query = query_string.decode()
+            if netloc is not None:
+                url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
+            else:
+                url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
             url = URL("").replace(**components).components.geturl()

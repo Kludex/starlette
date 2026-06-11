@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
@@ -51,16 +50,6 @@ def _user_safe_decode(src: bytes | bytearray, codec: str) -> str:
         return src.decode(codec)
     except (UnicodeDecodeError, LookupError):
         return src.decode("latin-1")
-
-
-def _multipart_parser_supports_header_limits() -> bool:
-    if multipart is None:
-        return False
-    try:
-        parameters = inspect.signature(multipart.MultipartParser.__init__).parameters
-    except (TypeError, ValueError):  # pragma: no cover
-        return False
-    return "max_header_count" in parameters and "max_header_size" in parameters
 
 
 class MultiPartException(Exception):
@@ -270,21 +259,18 @@ class MultiPartParser:
         }
 
         # Create the parser.
-        parser_kwargs: dict[str, int] = {}
-        if _multipart_parser_supports_header_limits():
-            parser_kwargs = {
-                "max_header_count": self.max_header_count,
-                "max_header_size": self.max_header_size,
-            }
-        elif (
-            self.max_header_count != DEFAULT_MAX_MULTIPART_HEADER_COUNT
-            or self.max_header_size != DEFAULT_MAX_MULTIPART_HEADER_SIZE
-        ):
+        try:
+            parser = multipart.MultipartParser(
+                boundary,
+                callbacks,
+                max_header_count=self.max_header_count,
+                max_header_size=self.max_header_size,
+            )
+        except TypeError:
             raise RuntimeError(
                 "The installed `python-multipart` version does not support "
-                "`max_header_count` or `max_header_size`. Upgrade `python-multipart` to configure them."
+                "`max_header_count` or `max_header_size`. Upgrade to `python-multipart>=0.0.27`."
             )
-        parser = multipart.MultipartParser(boundary, callbacks, **parser_kwargs)
         try:
             # Feed the parser with data from the request.
             async for chunk in self.stream:

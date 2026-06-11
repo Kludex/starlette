@@ -1472,7 +1472,7 @@ requires-dist = [
     { name = "httpx2", marker = "extra == 'full'", specifier = ">=2.0.0" },
     { name = "itsdangerous", marker = "extra == 'full'" },
     { name = "jinja2", marker = "extra == 'full'" },
-    { name = "python-multipart", marker = "extra == 'full'", specifier = ">=0.0.18" },
+    { name = "python-multipart", marker = "extra == 'full'", specifier = ">=0.0.27" },
     { name = "pyyaml", marker = "extra == 'full'" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'", specifier = ">=4.10.0" },
 ]

@@ -39,7 +39,7 @@ dependencies = [
 full = [
     "itsdangerous",
     "jinja2",
-    "python-multipart>=0.0.18",
+    "python-multipart>=0.0.27",
     "pyyaml",
     "httpx>=0.27.0,<0.29.0",
     "httpx2>=2.0.0",

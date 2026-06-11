@@ -24,6 +24,9 @@ else:
         multipart = None
         parse_options_header = None
 
+DEFAULT_MAX_MULTIPART_HEADER_COUNT = 8
+DEFAULT_MAX_MULTIPART_HEADER_SIZE = 4096 + 128
+
 
 class FormMessage(Enum):
     FIELD_START = 1
@@ -127,6 +130,10 @@ class MultiPartParser:
     """The maximum size of the spooled temporary file used to store file data."""
     max_part_size = 1024 * 1024  # 1MB
     """The maximum size of a part in the multipart request."""
+    max_header_count = DEFAULT_MAX_MULTIPART_HEADER_COUNT
+    """The maximum number of headers per multipart part."""
+    max_header_size = DEFAULT_MAX_MULTIPART_HEADER_SIZE
+    """The maximum size of a multipart header line."""
 
     def __init__(
         self,
@@ -136,12 +143,16 @@ class MultiPartParser:
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,  # 1MB
+        max_header_count: int = DEFAULT_MAX_MULTIPART_HEADER_COUNT,
+        max_header_size: int = DEFAULT_MAX_MULTIPART_HEADER_SIZE,
     ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
         self.max_files = max_files
         self.max_fields = max_fields
+        self.max_header_count = max_header_count
+        self.max_header_size = max_header_size
         self.items: list[tuple[str, str | UploadFile]] = []
         self._current_files = 0
         self._current_fields = 0
@@ -248,7 +259,18 @@ class MultiPartParser:
         }
 
         # Create the parser.
-        parser = multipart.MultipartParser(boundary, callbacks)
+        try:
+            parser = multipart.MultipartParser(
+                boundary,
+                callbacks,
+                max_header_count=self.max_header_count,
+                max_header_size=self.max_header_size,
+            )
+        except TypeError:
+            raise RuntimeError(
+                "The installed `python-multipart` version does not support "
+                "`max_header_count` or `max_header_size`. Upgrade to `python-multipart>=0.0.27`."
+            )
         try:
             # Feed the parser with data from the request.
             async for chunk in self.stream:

@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## Unreleased
+
+#### Added
+
+* Add `max_header_count` and `max_header_size` parameters to `Request.form()` [#3240](https://github.com/encode/starlette/pull/3240).
+
 ## 1.3.0 (June 11, 2026)
 
 #### Added

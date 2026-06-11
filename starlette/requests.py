@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from python_multipart.multipart import parse_options_header
 
     from starlette.applications import Starlette
+    from starlette.middleware.sessions import Session
     from starlette.routing import Router
 else:
     try:
@@ -142,7 +143,8 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
 
     @property
     def path_params(self) -> dict[str, Any]:
-        return self.scope.get("path_params", {})
+        path_params: dict[str, Any] = self.scope.get("path_params", {})
+        return path_params
 
     @property
     def cookies(self) -> dict[str, str]:
@@ -167,7 +169,11 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
     @property
     def session(self) -> dict[str, Any]:
         assert "session" in self.scope, "SessionMiddleware must be installed to access request.session"
-        return self.scope["session"]  # type: ignore[no-any-return]
+        session: Session = self.scope["session"]
+        # We keep the hasattr in case people actually use their own `SessionMiddleware` implementation.
+        if hasattr(session, "mark_accessed"):  # pragma: no branch
+            session.mark_accessed()
+        return session
 
     @property
     def auth(self) -> Any:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextvars
+import sys
 from collections.abc import AsyncGenerator, AsyncIterator, Generator
 from contextlib import AsyncExitStack
 from pathlib import Path
@@ -22,6 +23,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
+if sys.version_info < (3, 11):  # pragma: no cover
+    from exceptiongroup import ExceptionGroup
+
 
 class CustomMiddleware(BaseHTTPMiddleware):
     async def dispatch(
@@ -40,6 +44,10 @@ def homepage(request: Request) -> PlainTextResponse:
 
 def exc(request: Request) -> None:
     raise Exception("Exc")
+
+
+def exc_group(request: Request) -> None:
+    raise ExceptionGroup("my exception group", [ValueError("TEST")])
 
 
 def exc_stream(request: Request) -> StreamingResponse:
@@ -77,6 +85,7 @@ app = Starlette(
     routes=[
         Route("/", endpoint=homepage),
         Route("/exc", endpoint=exc),
+        Route("/exc-group", endpoint=exc_group),
         Route("/exc-stream", endpoint=exc_stream),
         Route("/no-response", endpoint=NoResponse),
         WebSocketRoute("/ws", endpoint=websocket_endpoint),
@@ -90,13 +99,18 @@ def test_custom_middleware(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.headers["Custom-Header"] == "Example"
 
-    with pytest.raises(Exception) as ctx:
+    with pytest.raises(Exception) as ctx1:
         response = client.get("/exc")
-    assert str(ctx.value) == "Exc"
+    assert str(ctx1.value) == "Exc"
 
-    with pytest.raises(Exception) as ctx:
+    with pytest.raises(Exception) as ctx2:
         response = client.get("/exc-stream")
-    assert str(ctx.value) == "Faulty Stream"
+    assert str(ctx2.value) == "Faulty Stream"
+
+    with pytest.raises(ExceptionGroup, match="my exception group") as ctx3:
+        client.get("/exc-group")
+    assert len(ctx3.value.exceptions) == 1
+    assert isinstance(ctx3.value.exceptions[0], ValueError)
 
     with pytest.raises(RuntimeError):
         response = client.get("/no-response")

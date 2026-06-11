@@ -51,21 +51,15 @@ It is production-ready, and gives you the following:
 
 ## Sponsorship
 
-Starlette is an open-source project that relies on community support. You can help us maintain and improve the framework by [becoming a sponsor](sponsorship.md).
+Help us keep Starlette maintained and sustainable by [becoming a sponsor](https://github.com/sponsors/Kludex).
 
-<div style="text-align: center; margin: 2rem 0;">
-    <h4 style="color: #ffd700; margin-bottom: 1rem;">🏆 Our Gold Sponsor</h4>
-    <a href="https://fastapi.tiangolo.com" style="text-decoration: none;">
-        <div style="width: 200px; background: #f6f8fa; border-radius: 8px; padding: 1rem; text-align: center; margin: 0 auto;">
-            <div style="height: 100px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
-                <img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="FastAPI" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-            </div>
-            <p style="margin: 0; color: #57606a; font-size: 0.9em;">Modern, fast web framework for building APIs with Python 3.8+</p>
-        </div>
+**Current sponsors:**
+
+<div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; margin: 1rem 0;">
+    <a href="https://fastapi.tiangolo.com">
+        <img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="FastAPI" style="height: 80px;">
     </a>
 </div>
-
-
 
 ## Installation
 
@@ -73,7 +67,7 @@ Starlette is an open-source project that relies on community support. You can he
 pip install starlette
 ```
 
-You'll also want to install an ASGI server, such as [uvicorn](https://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://hypercorn.readthedocs.io/en/latest/).
+You'll also want to install an ASGI server, such as [uvicorn](https://www.uvicorn.org/) or any of the [other ASGI server implementations](https://asgi.readthedocs.io/en/latest/implementations.html#servers).
 
 ```shell
 pip install uvicorn
@@ -106,7 +100,7 @@ uvicorn main:app
 
 Starlette only requires `anyio`, and the following dependencies are optional:
 
-* [`httpx`][httpx] - Required if you want to use the `TestClient`.
+* [`httpx2`][httpx2] - Required if you want to use the `TestClient`.
 * [`jinja2`][jinja2] - Required if you want to use `Jinja2Templates`.
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
@@ -141,7 +135,7 @@ Run uvicorn with `--reload` to enable auto-reloading on code changes.
 
 ## Modularity
 
-The modularity that Starlette is designed on promotes building re-usable
+The modularity that Starlette is designed on promotes building reusable
 components that can be shared between any ASGI framework. This should enable
 an ecosystem of shared middleware and mountable applications.
 
@@ -153,7 +147,7 @@ in isolation.
 <p align="center"><i>Starlette is <a href="https://github.com/Kludex/starlette/blob/main/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
 
 [asgi]: https://asgi.readthedocs.io/en/latest/
-[httpx]: https://www.python-httpx.org/
+[httpx2]: https://pypi.org/project/httpx2/
 [jinja2]: https://jinja.palletsprojects.com/
 [python-multipart]: https://multipart.fastapiexpert.com/
 [itsdangerous]: https://itsdangerous.palletsprojects.com/

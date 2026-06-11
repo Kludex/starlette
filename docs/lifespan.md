@@ -114,6 +114,20 @@ async def homepage(request: Request[State]) -> PlainTextResponse:
 app = Starlette(lifespan=lifespan, routes=[Route("/", homepage)])
 ```
 
+This also works with WebSockets:
+
+```python
+async def websocket_endpoint(websocket: WebSocket[State]) -> None:
+    await websocket.accept()
+    client = websocket.state["http_client"]
+    response = await client.get("https://www.example.com")
+    await websocket.send_text(response.text)
+    await websocket.close()
+
+
+app = Starlette(lifespan=lifespan, routes=[WebSocketRoute("/ws", websocket_endpoint)])
+```
+
 !!! note
     There were many attempts to make this work with attribute-style access instead of
     dictionary-style access, but none were satisfactory, given they would have been

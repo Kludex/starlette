@@ -230,6 +230,24 @@ def test_testclient_asgi3(test_client_factory: TestClientFactory) -> None:
     assert response.text == "Hello, world!"
 
 
+def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": {"fragment": "header", "blocks": ["nav", "title"]}})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == {"fragment": "header", "blocks": ["nav", "title"]}
+    assert not hasattr(response, "template")
+
+
 def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> None:
     def app(scope: Scope) -> ASGIInstance:
         async def respond(websocket: WebSocket) -> None:

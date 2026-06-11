@@ -214,6 +214,9 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     second_resp = client.get("/example.txt", headers={"if-none-match": f'W/{last_etag}, "123"'})
     assert second_resp.status_code == 304
     assert second_resp.content == b""
+    second_resp = client.get("/example.txt", headers={"if-none-match": f'"123",\tW/{last_etag}'})
+    assert second_resp.status_code == 304
+    assert second_resp.content == b""
 
 
 def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
@@ -601,6 +604,26 @@ def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"
+
+
+def test_staticfiles_rejects_absolute_paths(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    app = StaticFiles(directory=statics_path)
+
+    full_path, stat_result = app.lookup_path("/etc/passwd")
+    assert full_path == ""
+    assert stat_result is None
+
+
+def test_staticfiles_rejects_absolute_windows_paths(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    app = StaticFiles(directory=statics_path)
+
+    full_path, stat_result = app.lookup_path("\\\\server\\share")
+    assert full_path == ""
+    assert stat_result is None
 
 
 def test_staticfiles_self_symlinks(tmp_path: Path, test_client_factory: TestClientFactory) -> None:

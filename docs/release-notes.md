@@ -6,7 +6,54 @@ toc_depth: 2
 
 #### Added
 
-* Add `max_header_count` and `max_header_size` parameters to `Request.form()`.
+* Add `max_header_count` and `max_header_size` parameters to `Request.form()` [#3240](https://github.com/encode/starlette/pull/3240).
+
+## 1.3.0 (June 11, 2026)
+
+#### Added
+
+* Add `httpx2` to the `full` extra [#3323](https://github.com/encode/starlette/pull/3323).
+* Annotate the `URLPath` `protocol` parameter with `Literal` [#3285](https://github.com/encode/starlette/pull/3285).
+
+#### Fixed
+
+* Build `request.url` from structured components [#3326](https://github.com/encode/starlette/pull/3326).
+* Clamp oversized suffix ranges in `FileResponse` [#3307](https://github.com/encode/starlette/pull/3307).
+* Catch `OSError` alongside `MultiPartException` when closing temp files [#3191](https://github.com/encode/starlette/pull/3191).
+* Avoid collapsing exception groups raised from user code [#2830](https://github.com/encode/starlette/pull/2830).
+* Use `removeprefix` to strip the weak `ETag` indicator in `is_not_modified` [#3193](https://github.com/encode/starlette/pull/3193).
+* Fix `IndexError` in `URL.replace()` on a URL with no authority [#3317](https://github.com/encode/starlette/pull/3317).
+* Adjust `testclient` typing and warnings [#3322](https://github.com/encode/starlette/pull/3322).
+
+## 1.2.1 (May 31, 2026)
+
+#### Fixed
+
+* Use `httpx2` for type checking in the `testclient` module [#3304](https://github.com/encode/starlette/pull/3304).
+* Add assert error for `requires()` when the request parameter is not a `Request` type [#3298](https://github.com/encode/starlette/pull/3298).
+
+## 1.2.0 (May 28, 2026)
+
+#### Added
+
+* Support httpx2 in the test client [#3291](https://github.com/encode/starlette/pull/3291).
+
+## 1.1.0 (May 23, 2026)
+
+#### Added
+
+* Use `"application/octet-stream"` as the `FileResponse` media type fallback [#3283](https://github.com/encode/starlette/pull/3283).
+
+#### Fixed
+
+* Only dispatch standard HTTP verbs in `HTTPEndpoint` [#3286](https://github.com/encode/starlette/pull/3286).
+* Reject absolute paths in `StaticFiles.lookup_path` [#3287](https://github.com/encode/starlette/pull/3287).
+
+## 1.0.1 (May 21, 2026)
+
+#### Fixed
+
+* Ignore malformed `Host` header when constructing `request.url` [#3279](https://github.com/encode/starlette/pull/3279).
 
 ## 1.0.0 (March 22, 2026)
 

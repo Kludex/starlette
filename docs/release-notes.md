@@ -2,6 +2,23 @@
 toc_depth: 2
 ---
 
+## 1.3.0 (June 11, 2026)
+
+#### Added
+
+* Add `httpx2` to the `full` extra [#3323](https://github.com/encode/starlette/pull/3323).
+* Annotate the `URLPath` `protocol` parameter with `Literal` [#3285](https://github.com/encode/starlette/pull/3285).
+
+#### Fixed
+
+* Build `request.url` from structured components [#3326](https://github.com/encode/starlette/pull/3326).
+* Clamp oversized suffix ranges in `FileResponse` [#3307](https://github.com/encode/starlette/pull/3307).
+* Catch `OSError` alongside `MultiPartException` when closing temp files [#3191](https://github.com/encode/starlette/pull/3191).
+* Avoid collapsing exception groups raised from user code [#2830](https://github.com/encode/starlette/pull/2830).
+* Use `removeprefix` to strip the weak `ETag` indicator in `is_not_modified` [#3193](https://github.com/encode/starlette/pull/3193).
+* Fix `IndexError` in `URL.replace()` on a URL with no authority [#3317](https://github.com/encode/starlette/pull/3317).
+* Adjust `testclient` typing and warnings [#3322](https://github.com/encode/starlette/pull/3322).
+
 ## 1.2.1 (May 31, 2026)
 
 #### Fixed

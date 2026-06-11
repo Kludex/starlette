@@ -126,6 +126,10 @@ def test_url_from_scope() -> None:
     assert u == "/path/to/somewhere?abc=123"
     assert repr(u) == "URL('/path/to/somewhere?abc=123')"
 
+    u = URL(scope={"path": "/path/to/somewhere", "query_string": b"", "headers": []})
+    assert u == "/path/to/somewhere"
+    assert repr(u) == "URL('/path/to/somewhere')"
+
     u = URL(
         scope={
             "scheme": "https",
@@ -190,6 +194,33 @@ def test_url_from_scope_with_invalid_host(host: bytes) -> None:
     )
     assert u.path == "/admin"
     assert u.netloc == "example.com"
+
+
+@pytest.mark.parametrize(
+    "path, expected_path",
+    [
+        pytest.param("@google.com", "/@google.com", id="at-sign"),
+        pytest.param("user:pass@google.com", "/user:pass@google.com", id="userinfo"),
+        pytest.param("//google.com/x", "//google.com/x", id="scheme-relative"),
+        pytest.param("http://google.com/x", "/http://google.com/x", id="absolute"),
+    ],
+)
+@pytest.mark.parametrize("with_host_header", [True, False], ids=["host-header", "server-fallback"])
+def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, with_host_header: bool) -> None:
+    """A path must not bleed into the authority."""
+    headers = [(b"host", b"localhost")] if with_host_header else []
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": ("localhost", 80),
+            "path": path,
+            "query_string": b"a=b",
+            "headers": headers,
+        }
+    )
+    assert u.hostname == "localhost"
+    assert u.path == expected_path
+    assert u.query == "a=b"
 
 
 def test_headers() -> None:

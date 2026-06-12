@@ -55,10 +55,19 @@ class MultiPartException(Exception):
 
 
 class FormParser:
-    def __init__(self, headers: Headers, stream: AsyncGenerator[bytes, None]) -> None:
+    def __init__(
+        self,
+        headers: Headers,
+        stream: AsyncGenerator[bytes, None],
+        *,
+        max_fields: int | float = 1000,
+        max_part_size: int = 1024 * 1024,  # 1MB
+    ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
+        self.max_fields = max_fields
+        self.max_part_size = max_part_size
         self.messages: list[tuple[FormMessage, bytes]] = []
 
     def on_field_start(self) -> None:
@@ -97,6 +106,7 @@ class FormParser:
         field_value = bytearray()
 
         items: list[tuple[str, str | UploadFile]] = []
+        field_count = 0
 
         # Feed the parser with data from the request.
         async for chunk in self.stream:
@@ -111,10 +121,17 @@ class FormParser:
                     field_name = bytearray()
                     field_value = bytearray()
                 elif message_type == FormMessage.FIELD_NAME:
+                    if len(field_name) + len(field_value) + len(message_bytes) > self.max_part_size:
+                        raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
                     field_name.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_DATA:
+                    if len(field_name) + len(field_value) + len(message_bytes) > self.max_part_size:
+                        raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
                     field_value.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_END:
+                    field_count += 1
+                    if field_count > self.max_fields:
+                        raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))
                     items.append((name, value))

@@ -465,6 +465,130 @@ def test_multipart_multi_field_app_reads_body(tmpdir: Path, test_client_factory:
     assert response.json() == {"some": "data", "second": "key pair"}
 
 
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
+def test_urlencoded_too_many_fields_raise(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    data = "&".join(f"N{i}=" for i in range(1001))
+    with expectation:
+        res = client.post(
+            "/",
+            content=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 400
+        assert res.text == "Too many fields. Maximum number of fields is 1000."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
+def test_urlencoded_field_exceeds_max_part_size_raise(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    data = "field=" + "x" * (1024 * 1024 + 1)
+    with expectation:
+        res = client.post(
+            "/",
+            content=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 400
+        assert res.text == "Field exceeded maximum size of 1024KB."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
+def test_urlencoded_field_name_exceeds_max_part_size_raise(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    data = "x" * (1024 * 1024 + 1) + "=value"
+    with expectation:
+        res = client.post(
+            "/",
+            content=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 400
+        assert res.text == "Field exceeded maximum size of 1024KB."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (make_app_max_parts(max_fields=1), pytest.raises(MultiPartException)),
+        (
+            Starlette(routes=[Mount("/", app=make_app_max_parts(max_fields=1))]),
+            does_not_raise(),
+        ),
+    ],
+)
+def test_urlencoded_max_fields_is_customizable(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    with expectation:
+        res = client.post(
+            "/",
+            content="a=1&b=2",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 400
+        assert res.text == "Too many fields. Maximum number of fields is 1."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (make_app_max_parts(max_part_size=1024 * 10), pytest.raises(MultiPartException)),
+        (
+            Starlette(routes=[Mount("/", app=make_app_max_parts(max_part_size=1024 * 10))]),
+            does_not_raise(),
+        ),
+    ],
+)
+def test_urlencoded_max_part_size_is_customizable(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    with expectation:
+        res = client.post(
+            "/",
+            content="field=" + "x" * (1024 * 10 + 1),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 400
+        assert res.text == "Field exceeded maximum size of 10KB."
+
+
 def test_user_safe_decode_helper() -> None:
     result = _user_safe_decode(b"\xc4\x99\xc5\xbc\xc4\x87", "utf-8")
     assert result == "ężć"

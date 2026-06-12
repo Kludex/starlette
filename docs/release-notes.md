@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 1.3.1 (June 12, 2026)
+
+#### Fixed
+
+* Enforce `max_fields` and `max_part_size` in `FormParser` [#3329](https://github.com/encode/starlette/pull/3329).
+
 ## 1.3.0 (June 11, 2026)
 
 #### Added

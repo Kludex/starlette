@@ -69,20 +69,32 @@ class FormParser:
         self.max_fields = max_fields
         self.max_part_size = max_part_size
         self.messages: list[tuple[FormMessage, bytes]] = []
+        self._current_field_size = 0
+        self._current_fields = 0
 
     def on_field_start(self) -> None:
+        self._current_field_size = 0
         message = (FormMessage.FIELD_START, b"")
         self.messages.append(message)
 
     def on_field_name(self, data: bytes, start: int, end: int) -> None:
+        self._current_field_size += end - start
+        if self._current_field_size > self.max_part_size:
+            raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
         message = (FormMessage.FIELD_NAME, data[start:end])
         self.messages.append(message)
 
     def on_field_data(self, data: bytes, start: int, end: int) -> None:
+        self._current_field_size += end - start
+        if self._current_field_size > self.max_part_size:
+            raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
         message = (FormMessage.FIELD_DATA, data[start:end])
         self.messages.append(message)
 
     def on_field_end(self) -> None:
+        self._current_fields += 1
+        if self._current_fields > self.max_fields:
+            raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
         message = (FormMessage.FIELD_END, b"")
         self.messages.append(message)
 
@@ -106,7 +118,6 @@ class FormParser:
         field_value = bytearray()
 
         items: list[tuple[str, str | UploadFile]] = []
-        field_count = 0
 
         # Feed the parser with data from the request.
         async for chunk in self.stream:
@@ -121,17 +132,10 @@ class FormParser:
                     field_name = bytearray()
                     field_value = bytearray()
                 elif message_type == FormMessage.FIELD_NAME:
-                    if len(field_name) + len(field_value) + len(message_bytes) > self.max_part_size:
-                        raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
                     field_name.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_DATA:
-                    if len(field_name) + len(field_value) + len(message_bytes) > self.max_part_size:
-                        raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
                     field_value.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_END:
-                    field_count += 1
-                    if field_count > self.max_fields:
-                        raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))
                     items.append((name, value))

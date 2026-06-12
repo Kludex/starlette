@@ -54,6 +54,10 @@ class MultiPartException(Exception):
         self.message = message
 
 
+class MultiPartSizeException(MultiPartException):
+    pass
+
+
 class FormParser:
     def __init__(
         self,
@@ -157,6 +161,7 @@ class MultiPartParser:
         max_files: int | float = 1000,
         max_fields: int | float = 1000,
         max_part_size: int = 1024 * 1024,  # 1MB
+        max_upload_size: int | None = None,
     ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
@@ -174,6 +179,8 @@ class MultiPartParser:
         self._file_parts_to_finish: list[MultipartPart] = []
         self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
         self.max_part_size = max_part_size
+        self.max_upload_size = max_upload_size
+        self._total_upload_size = 0
 
     def on_part_begin(self) -> None:
         self._current_part = MultipartPart()
@@ -282,6 +289,12 @@ class MultiPartParser:
                 for part, data in self._file_parts_to_write:
                     assert part.file  # for type checkers
                     await part.file.write(data)
+                    if self.max_upload_size is not None:
+                        self._total_upload_size += len(data)
+                        if self._total_upload_size > self.max_upload_size:
+                            raise MultiPartSizeException(
+                                f"Uploaded files exceeded maximum total size of {self.max_upload_size} bytes."
+                            )
                 for part in self._file_parts_to_finish:
                     assert part.file  # for type checkers
                     await part.file.seek(0)

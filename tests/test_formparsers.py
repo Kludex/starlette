@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from contextlib import AbstractContextManager, nullcontext as does_not_raise
 from io import BytesIO
 from pathlib import Path
@@ -13,8 +13,8 @@ from unittest import mock
 import pytest
 
 from starlette.applications import Starlette
-from starlette.datastructures import UploadFile
-from starlette.formparsers import MultiPartException, MultiPartParser, _user_safe_decode
+from starlette.datastructures import Headers, UploadFile
+from starlette.formparsers import FormParser, MultiPartException, MultiPartParser, _user_safe_decode
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -587,6 +587,30 @@ def test_urlencoded_max_part_size_is_customizable(
         )
         assert res.status_code == 400
         assert res.text == "Field exceeded maximum size of 10KB."
+
+
+@pytest.mark.anyio
+async def test_urlencoded_limits_stop_parsing_within_a_single_chunk() -> None:
+    async def single_chunk(body: bytes) -> AsyncGenerator[bytes, None]:
+        yield body
+
+    headers = Headers({"content-type": "application/x-www-form-urlencoded"})
+
+    too_many = "&".join(f"f{i}=" for i in range(100_000)).encode()
+    stream = single_chunk(too_many)
+    parser = FormParser(headers, stream, max_fields=10)
+    with pytest.raises(MultiPartException, match="Too many fields"):
+        await parser.parse()
+    await stream.aclose()
+    assert parser._current_fields == 11
+
+    too_big = ("field=" + "x" * (1024 * 1024 * 50)).encode()
+    stream = single_chunk(too_big)
+    parser = FormParser(headers, stream, max_part_size=1024)
+    with pytest.raises(MultiPartException, match="Field exceeded maximum size"):
+        await parser.parse()
+    await stream.aclose()
+    assert sum(len(data) for _, data in parser.messages) <= 1024
 
 
 def test_user_safe_decode_helper() -> None:

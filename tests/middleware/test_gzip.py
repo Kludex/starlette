@@ -8,7 +8,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
-from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
+from starlette.responses import ContentStream, FileResponse, PlainTextResponse, Response, StreamingResponse
 from starlette.routing import Route
 from starlette.types import Message
 from tests.types import TestClientFactory
@@ -161,6 +161,37 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
     assert response.text == "x" * 4000
     assert "Content-Encoding" not in response.headers
     assert "Content-Length" not in response.headers
+
+
+@pytest.mark.parametrize(
+    "content_type,content",
+    [
+        ("image/png", b"\x89PNG\r\n\x1a\n" + b"x" * 1000),
+        ("image/jpeg", b"\xff\xd8\xff" + b"x" * 1000),
+        ("video/mp4", b"x" * 1000),
+        ("audio/mpeg", b"x" * 1000),
+        ("application/zip", b"PK\x03\x04" + b"x" * 1000),
+        ("application/gzip", b"\x1f\x8b" + b"x" * 1000),
+        ("application/x-gzip", b"\x1f\x8b" + b"x" * 1000),
+    ],
+)
+def test_gzip_ignored_on_compressed_content_types(
+    test_client_factory: TestClientFactory, content_type: str, content: bytes
+) -> None:
+    def endpoint(request: Request) -> Response:
+        return Response(content, status_code=200, media_type=content_type)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == content
+    assert "Content-Encoding" not in response.headers
+    assert int(response.headers["Content-Length"]) == len(content)
 
 
 @pytest.mark.anyio

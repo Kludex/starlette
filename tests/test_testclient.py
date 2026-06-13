@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import sys
+import threading
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -17,7 +18,7 @@ from starlette.applications import Starlette
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.routing import Route
 from starlette.testclient import ASGIInstance, TestClient
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -228,6 +229,52 @@ def test_testclient_asgi3(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
+
+
+def test_stream_response_is_available_after_first_chunk(test_client_factory: TestClientFactory) -> None:
+    first_chunk_sent = threading.Event()
+    allow_response_to_finish = threading.Event()
+    stream_opened = threading.Event()
+    worker_errors: list[BaseException] = []
+    body = b""
+
+    def homepage(request: Request) -> StreamingResponse:
+        async def stream() -> AsyncGenerator[bytes, None]:
+            yield b"hello"
+            first_chunk_sent.set()
+            await anyio.to_thread.run_sync(allow_response_to_finish.wait)
+            yield b"world"
+
+        return StreamingResponse(stream(), media_type="text/plain")
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+
+    def make_request() -> None:
+        nonlocal body
+
+        try:
+            with client.stream("GET", "/") as response:
+                assert response.status_code == 200
+                stream_opened.set()
+                body = b"".join(response.iter_raw())
+        except BaseException as exc:  # pragma: no cover
+            worker_errors.append(exc)
+        finally:
+            allow_response_to_finish.set()
+
+    worker = threading.Thread(target=make_request)
+    worker.start()
+
+    assert first_chunk_sent.wait(timeout=1)
+    try:
+        assert stream_opened.wait(timeout=1)
+    finally:
+        allow_response_to_finish.set()
+        worker.join(timeout=1)
+
+    assert not worker.is_alive()
+    assert not worker_errors
+    assert body == b"helloworld"
 
 
 def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> None:

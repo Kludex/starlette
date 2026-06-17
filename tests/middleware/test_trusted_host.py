@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 from starlette.testclient import WebSocketDenialResponse
-from starlette.types import Scope, Receive, Send
+from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from tests.types import TestClientFactory
 
@@ -72,7 +72,7 @@ def test_trusted_host_middleware_websocket(test_client_factory: TestClientFactor
     # 2. Invalid host, raises WebSocketDenialResponse because test client supports websocket.http.response extension
     with pytest.raises(WebSocketDenialResponse) as exc_info:
         with client.websocket_connect("ws://invalidhost/"):
-            pass
+            pass  # pragma: no cover
     assert exc_info.value.status_code == 400
     assert exc_info.value.content == b"Invalid host header"
 
@@ -87,12 +87,17 @@ def test_trusted_host_middleware_websocket_without_denial_extension(test_client_
     app = TrustedHostMiddleware(app, allowed_hosts=["testserver"])
 
     async def mock_asgi_app(scope: Scope, receive: Receive, send: Send) -> None:
-        if "extensions" in scope:
-            scope["extensions"].pop("websocket.http.response", None)
+        scope.setdefault("extensions", {}).pop("websocket.http.response", None)
         await app(scope, receive, send)
 
     client = test_client_factory(mock_asgi_app)
+
+    # 1. Valid host
+    with client.websocket_connect("/") as websocket:
+        assert websocket.receive_text() == "OK"
+
+    # 2. Invalid host
     with pytest.raises(WebSocketDisconnect) as exc_info:
         with client.websocket_connect("ws://invalidhost/"):
-            pass
+            pass  # pragma: no cover
     assert exc_info.value.code == 1008

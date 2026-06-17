@@ -86,6 +86,18 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/"
 
 
+def test_include_query_params_preserves_order() -> None:
+    # Updating an existing key must not move it to the end.
+    u = URL("https://example.org/search?page=2&sort=name&order=asc")
+    assert str(u.include_query_params(sort="date")) == "https://example.org/search?page=2&sort=date&order=asc"
+
+    # Adding a new key appends it at the end.
+    assert str(u.include_query_params(limit=10)) == "https://example.org/search?page=2&sort=name&order=asc&limit=10"
+
+    # Updating multiple keys preserves their respective positions.
+    assert str(u.include_query_params(page=3, order="desc")) == "https://example.org/search?page=3&sort=name&order=desc"
+
+
 def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"

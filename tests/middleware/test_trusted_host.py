@@ -1,14 +1,15 @@
+import pytest
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
+from starlette.testclient import WebSocketDenialResponse
 from starlette.types import Scope, Receive, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
-from starlette.testclient import WebSocketDenialResponse
 from tests.types import TestClientFactory
-import pytest
 
 
 def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None:

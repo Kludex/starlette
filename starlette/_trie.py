@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from re import Pattern
 
-from starlette.convertors import Convertor
+from starlette.convertors import Convertor, PathConvertor, StringConvertor
 
 PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
@@ -38,15 +38,14 @@ def _is_plain_str_param(seg: str, convertors: dict[str, Convertor[object]]) -> b
     if match is None:
         return False
     name, suffix = match.group(1), match.group(2)
-    return suffix in (None, ":str") and convertors.get(name).__class__.__name__ == "StringConvertor"
+    return suffix in (None, ":str") and isinstance(convertors.get(name), StringConvertor)
 
 
 def _is_path_param(seg: str, convertors: dict[str, Convertor[object]]) -> bool:
     match = PARAM_REGEX.fullmatch(seg)
     if match is None:
         return False
-    name = match.group(1)
-    return convertors.get(name).__class__.__name__ == "PathConvertor"
+    return isinstance(convertors.get(match.group(1)), PathConvertor)
 
 
 class RouteTrie:

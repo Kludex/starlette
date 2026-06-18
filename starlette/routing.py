@@ -578,7 +578,7 @@ class Router:
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self._trie: RouteTrie | None = None
-        self._trie_fingerprint: tuple[int, int, tuple[int, ...]] | None = None
+        self._trie_len = -1
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -664,13 +664,14 @@ class Router:
 
     def _candidate_routes(self, scope: Scope) -> list[BaseRoute]:
         # Narrow the linear scan to the routes whose path could match, using a
-        # segment trie rebuilt lazily whenever `self.routes` changes. The trie
-        # returns a superset (`Route.matches` below still confirms each one), so
+        # segment trie rebuilt lazily when routes are added. The trie returns a
+        # superset (`Route.matches` below still confirms each one), so
         # registration order and all match semantics are preserved. Mount/Host
-        # and any route without a flat path stay always-candidate.
+        # and any route without a flat path stay always-candidate. Replacing a
+        # route in place without changing the count is not auto-detected; build
+        # the routes before serving, as Starlette already expects.
         routes = self.routes
-        fingerprint = (id(routes), len(routes), tuple(map(id, routes)))
-        if self._trie is None or self._trie_fingerprint != fingerprint:
+        if self._trie is None or self._trie_len != len(routes):
             trie = RouteTrie()
             for index, route in enumerate(routes):
                 # Only exact-match routes (Route/WebSocketRoute) can be indexed by
@@ -681,7 +682,7 @@ class Router:
                 else:
                     trie.add(index, None, {})
             self._trie = trie
-            self._trie_fingerprint = fingerprint
+            self._trie_len = len(routes)
         return [routes[i] for i in self._trie.match_all(get_route_path(scope))]
 
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:

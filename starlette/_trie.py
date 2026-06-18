@@ -69,12 +69,12 @@ class RouteTrie:
     dispatch stays correct.
     """
 
-    def __init__(self, count: int = 0) -> None:
+    def __init__(self) -> None:
         self.root = Node()
         self.always: list[int] = []
-        # The number of routes this trie was built for; the owner compares it
-        # against the live route count to decide when to rebuild.
-        self.count = count
+        # The number of routes this trie was built for; the owner sets it after
+        # populating and compares it against the live route count to rebuild.
+        self.count = 0
 
     def is_stale(self, count: int) -> bool:
         return self.count != count

@@ -668,7 +668,7 @@ class Router:
         # the routes before serving, as Starlette already expects.
         routes = self.routes
         if self._trie.is_stale(len(routes)):
-            trie = RouteTrie(count=len(routes))
+            trie = RouteTrie()
             for index, route in enumerate(routes):
                 # Only exact-match routes (Route/WebSocketRoute) can be indexed by
                 # their flat path. Mount/Host match by prefix/header, so they are
@@ -677,6 +677,7 @@ class Router:
                     trie.add(index, route.path, route.param_convertors)
                 else:
                     trie.add(index, None, {})
+            trie.count = len(routes)
             self._trie = trie
         return [routes[i] for i in self._trie.match_all(get_route_path(scope))]
 

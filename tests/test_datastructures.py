@@ -98,6 +98,14 @@ def test_include_query_params_preserves_order() -> None:
     assert str(u.include_query_params(page=3, order="desc")) == "https://example.org/search?page=3&sort=name&order=desc"
 
 
+def test_include_query_params_duplicate_key_replaced() -> None:
+    # When a key appears multiple times in the query string and is being replaced,
+    # only the first occurrence is updated; subsequent duplicates are dropped.
+    # This exercises the implicit-else branch in include_query_params (152->148).
+    u = URL("https://example.org/search?page=1&sort=name&page=2")
+    assert str(u.include_query_params(page=3)) == "https://example.org/search?page=3&sort=name"
+
+
 def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"

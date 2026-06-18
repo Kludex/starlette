@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import enum
 import re
 from re import Pattern
 
 from starlette.convertors import Convertor, PathConvertor, StringConvertor
 
+# Owns the canonical path-parameter pattern; `starlette.routing` imports it from
+# here (routing already depends on this module, so this keeps the cycle one-way).
 PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
+
+
+class SegmentKind(enum.Enum):
+    STATIC = enum.auto()
+    STR_PARAM = enum.auto()
+    PATH_PARAM = enum.auto()
+    DYNAMIC = enum.auto()
 
 
 class Node:
@@ -17,6 +27,20 @@ class Node:
         self.dyn: list[tuple[Pattern[str], Node]] = []
         self.path_indices: list[int] = []
         self.indices: list[int] = []
+
+
+def _classify(seg: str, convertors: dict[str, Convertor[object]]) -> SegmentKind:
+    if "{" not in seg:
+        return SegmentKind.STATIC
+    match = PARAM_REGEX.fullmatch(seg)
+    if match is not None:
+        name, suffix = match.group(1), match.group(2)
+        convertor = convertors.get(name)
+        if suffix in (None, ":str") and isinstance(convertor, StringConvertor):
+            return SegmentKind.STR_PARAM
+        if isinstance(convertor, PathConvertor):
+            return SegmentKind.PATH_PARAM
+    return SegmentKind.DYNAMIC
 
 
 def _segment_regex(seg: str, convertors: dict[str, Convertor[object]]) -> Pattern[str]:
@@ -31,21 +55,6 @@ def _segment_regex(seg: str, convertors: dict[str, Convertor[object]]) -> Patter
     body.append(re.escape(seg[idx:]))
     body.append("$")
     return re.compile("".join(body))
-
-
-def _is_plain_str_param(seg: str, convertors: dict[str, Convertor[object]]) -> bool:
-    match = PARAM_REGEX.fullmatch(seg)
-    if match is None:
-        return False
-    name, suffix = match.group(1), match.group(2)
-    return suffix in (None, ":str") and isinstance(convertors.get(name), StringConvertor)
-
-
-def _is_path_param(seg: str, convertors: dict[str, Convertor[object]]) -> bool:
-    match = PARAM_REGEX.fullmatch(seg)
-    if match is None:
-        return False
-    return isinstance(convertors.get(match.group(1)), PathConvertor)
 
 
 class RouteTrie:
@@ -70,17 +79,17 @@ class RouteTrie:
             return
         node = self.root
         for seg in path.lstrip("/").split("/"):
-            if _is_path_param(seg, convertors):
+            kind = _classify(seg, convertors)
+            if kind is SegmentKind.PATH_PARAM:
                 node.path_indices.append(index)
                 return
-            if _is_plain_str_param(seg, convertors):
+            if kind is SegmentKind.STR_PARAM:
                 if node.param is None:
                     node.param = Node()
                 node = node.param
-            elif "{" in seg:
+            elif kind is SegmentKind.DYNAMIC:
                 regex = _segment_regex(seg, convertors)
-                pattern = regex.pattern
-                child = next((c for rx, c in node.dyn if rx.pattern == pattern), None)
+                child = next((c for rx, c in node.dyn if rx.pattern == regex.pattern), None)
                 if child is None:
                     child = Node()
                     node.dyn.append((regex, child))

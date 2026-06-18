@@ -14,7 +14,7 @@ from re import Pattern
 from typing import Any, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
-from starlette._trie import RouteTrie
+from starlette._trie import PARAM_REGEX, RouteTrie
 from starlette._utils import get_route_path, is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
@@ -103,9 +103,6 @@ def replace_params(
             path_params.pop(key)
     return path, path_params
 
-
-# Match parameters in URL paths, eg. '{param}', and '{param:int}'
-PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
 
 def compile_path(

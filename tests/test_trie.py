@@ -88,6 +88,34 @@ def test_custom_convertor() -> None:
         convertors.CONVERTOR_TYPES.pop("hex_trie_test", None)
 
 
+def test_alternation_convertor_in_compound_segment() -> None:
+    # A convertor whose regex uses alternation must keep segment-local precedence;
+    # without grouping, `^x(a|b)y$` would compile as `^xa|by$` and drop `/xby`.
+    class AltConvertor(Convertor[str]):
+        regex = "a|b"
+
+        def convert(self, value: str) -> str:
+            return value
+
+        def to_string(self, value: str) -> str:
+            return value
+
+    register_url_convertor("alt_trie_test", AltConvertor())
+    try:
+        assert_superset(["/x{p:alt_trie_test}y"], ["/xay", "/xby", "/xcy"])
+    finally:
+        convertors.CONVERTOR_TYPES.pop("alt_trie_test", None)
+
+
+def test_slash_capable_convertor_in_compound_segment() -> None:
+    # A `path` convertor embedded in a compound segment can span URL segments,
+    # which the per-segment trie can't index; the route must stay always-candidate.
+    assert_superset(
+        ["/files-{p:path}", "/static/{p:path}"],
+        ["/files-a/b", "/files-a", "/files-", "/static/a/b/c", "/static/"],
+    )
+
+
 def test_shared_param_and_dyn_nodes() -> None:
     # Two routes share a `{str}` param node and a compound `dyn` node.
     assert_superset(

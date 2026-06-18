@@ -42,6 +42,20 @@ def _classify(seg: str, convertors: dict[str, Convertor[object]]) -> SegmentKind
     return SegmentKind.DYNAMIC
 
 
+def _is_slash_capable(seg: str, convertors: dict[str, Convertor[object]]) -> bool:
+    # A segment whose regex can match a '/' (e.g. a `path` convertor or a custom
+    # one with `.*`) may span URL segments, which the per-segment trie can't
+    # represent. Detect it so the route falls back to always-candidate.
+    for match in PARAM_REGEX.finditer(seg):
+        convertor = convertors.get(match.group(1))
+        regex = re.compile(convertor.regex if convertor is not None else "[^/]+")
+        for probe in ("a/b", "/"):
+            hit = regex.match(probe)
+            if hit is not None and "/" in hit.group(0):
+                return True
+    return False
+
+
 def _segment_regex(seg: str, convertors: dict[str, Convertor[object]]) -> Pattern[str]:
     body = ["^"]
     idx = 0
@@ -49,7 +63,9 @@ def _segment_regex(seg: str, convertors: dict[str, Convertor[object]]) -> Patter
         name = match.group(1)
         body.append(re.escape(seg[idx : match.start()]))
         convertor = convertors.get(name)
-        body.append(convertor.regex if convertor is not None else "[^/]+")
+        # Group the convertor regex so alternation keeps segment-local precedence,
+        # mirroring the named group `compile_path` wraps it in.
+        body.append(f"(?:{convertor.regex})" if convertor is not None else "[^/]+")
         idx = match.end()
     body.append(re.escape(seg[idx:]))
     body.append("$")
@@ -93,6 +109,11 @@ class RouteTrie:
                     node.param = Node()
                 node = node.param
             elif kind is SegmentKind.DYNAMIC:
+                if _is_slash_capable(seg, convertors):
+                    # The segment regex can span '/', so the per-segment trie
+                    # can't represent it; keep the route always-candidate.
+                    self.always.append(index)
+                    return
                 regex = _segment_regex(seg, convertors)
                 child = next((c for rx, c in node.dyn if rx.pattern == regex.pattern), None)
                 if child is None:

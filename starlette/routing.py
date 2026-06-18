@@ -14,6 +14,7 @@ from re import Pattern
 from typing import Any, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
+from starlette._trie import RouteTrie
 from starlette._utils import get_route_path, is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
@@ -576,6 +577,8 @@ class Router:
         middleware: Sequence[Middleware] | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
+        self._trie: RouteTrie | None = None
+        self._trie_fingerprint: tuple[int, int, tuple[int, ...]] | None = None
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -659,6 +662,28 @@ class Router:
         """
         await self.middleware_stack(scope, receive, send)
 
+    def _candidate_routes(self, scope: Scope) -> list[BaseRoute]:
+        # Narrow the linear scan to the routes whose path could match, using a
+        # segment trie rebuilt lazily whenever `self.routes` changes. The trie
+        # returns a superset (`Route.matches` below still confirms each one), so
+        # registration order and all match semantics are preserved. Mount/Host
+        # and any route without a flat path stay always-candidate.
+        routes = self.routes
+        fingerprint = (id(routes), len(routes), tuple(map(id, routes)))
+        if self._trie is None or self._trie_fingerprint != fingerprint:
+            trie = RouteTrie()
+            for index, route in enumerate(routes):
+                # Only exact-match routes (Route/WebSocketRoute) can be indexed by
+                # their flat path. Mount/Host match by prefix/header, so they are
+                # always-candidate (passed as path=None).
+                if isinstance(route, (Route, WebSocketRoute)):
+                    trie.add(index, route.path, route.param_convertors)
+                else:
+                    trie.add(index, None, {})
+            self._trie = trie
+            self._trie_fingerprint = fingerprint
+        return [routes[i] for i in self._trie.match_all(get_route_path(scope))]
+
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
@@ -671,7 +696,7 @@ class Router:
 
         partial = None
 
-        for route in self.routes:
+        for route in self._candidate_routes(scope):
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
@@ -699,7 +724,7 @@ class Router:
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
-            for route in self.routes:
+            for route in self._candidate_routes(redirect_scope):
                 match, child_scope = route.matches(redirect_scope)
                 if match != Match.NONE:
                     redirect_url = URL(scope=redirect_scope)

@@ -574,8 +574,7 @@ class Router:
         middleware: Sequence[Middleware] | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
-        self._trie: RouteTrie | None = None
-        self._trie_len = -1
+        self._trie = RouteTrie(count=-1)  # count=-1 is always stale, so it builds on first use
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -668,8 +667,8 @@ class Router:
         # route in place without changing the count is not auto-detected; build
         # the routes before serving, as Starlette already expects.
         routes = self.routes
-        if self._trie is None or self._trie_len != len(routes):
-            trie = RouteTrie()
+        if self._trie.is_stale(len(routes)):
+            trie = RouteTrie(count=len(routes))
             for index, route in enumerate(routes):
                 # Only exact-match routes (Route/WebSocketRoute) can be indexed by
                 # their flat path. Mount/Host match by prefix/header, so they are
@@ -679,7 +678,6 @@ class Router:
                 else:
                     trie.add(index, None, {})
             self._trie = trie
-            self._trie_len = len(routes)
         return [routes[i] for i in self._trie.match_all(get_route_path(scope))]
 
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:

@@ -69,9 +69,15 @@ class RouteTrie:
     dispatch stays correct.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, count: int = 0) -> None:
         self.root = Node()
         self.always: list[int] = []
+        # The number of routes this trie was built for; the owner compares it
+        # against the live route count to decide when to rebuild.
+        self.count = count
+
+    def is_stale(self, count: int) -> bool:
+        return self.count != count
 
     def add(self, index: int, path: str | None, convertors: dict[str, Convertor[object]]) -> None:
         if not path or not path.startswith("/"):
@@ -104,31 +110,30 @@ class RouteTrie:
 
     def match_all(self, path: str) -> list[int]:
         out = list(self.always)
-        _walk(self.root, path.lstrip("/"), out)
+        self._walk(self.root, path.lstrip("/"), out)
         out.sort()
         return out
 
+    def _walk(self, node: Node, rest: str, out: list[int]) -> None:
+        seg, slash, tail = rest.partition("/")
+        last = not slash
 
-def _walk(node: Node, rest: str, out: list[int]) -> None:
-    seg, slash, tail = rest.partition("/")
-    last = not slash
-
-    if last:
-        child = node.static.get(seg)
-        if child is not None:
-            out.extend(child.indices)
-        if seg and node.param is not None:
-            out.extend(node.param.indices)
-        for regex, child in node.dyn:
-            if regex.match(seg):
+        if last:
+            child = node.static.get(seg)
+            if child is not None:
                 out.extend(child.indices)
-    else:
-        child = node.static.get(seg)
-        if child is not None:
-            _walk(child, tail, out)
-        if seg and node.param is not None:
-            _walk(node.param, tail, out)
-        for regex, child in node.dyn:
-            if regex.match(seg):
-                _walk(child, tail, out)
-    out.extend(node.path_indices)
+            if seg and node.param is not None:
+                out.extend(node.param.indices)
+            for regex, child in node.dyn:
+                if regex.match(seg):
+                    out.extend(child.indices)
+        else:
+            child = node.static.get(seg)
+            if child is not None:
+                self._walk(child, tail, out)
+            if seg and node.param is not None:
+                self._walk(node.param, tail, out)
+            for regex, child in node.dyn:
+                if regex.match(seg):
+                    self._walk(child, tail, out)
+        out.extend(node.path_indices)

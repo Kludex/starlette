@@ -6,8 +6,7 @@ from re import Pattern
 
 from starlette.convertors import Convertor, PathConvertor, StringConvertor
 
-# Owns the canonical path-parameter pattern; `starlette.routing` imports it from
-# here (routing already depends on this module, so this keeps the cycle one-way).
+# Match parameters in URL paths, eg. '{param}', and '{param:int}'
 PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
 

@@ -574,7 +574,7 @@ class Router:
         middleware: Sequence[Middleware] | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
-        self._trie = RouteTrie(count=-1)  # count=-1 is always stale, so it builds on first use
+        self._trie = RouteTrie()
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 

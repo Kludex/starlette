@@ -248,6 +248,27 @@ def test_debug_info_in_response_extensions(test_client_factory: TestClientFactor
     assert not hasattr(response, "template")
 
 
+def test_debug_info_in_response_extensions_with_template(test_client_factory: TestClientFactory) -> None:
+    info = {"template": "index.html", "context": {"name": "world"}, "blocks": ["nav"]}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": info})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == info
+    assert response.template == "index.html"  # type: ignore[attr-defined]
+    assert response.context == {"name": "world"}  # type: ignore[attr-defined]
+
+
 def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> None:
     def app(scope: Scope) -> ASGIInstance:
         async def respond(websocket: WebSocket) -> None:

@@ -126,6 +126,8 @@ def test_export():
 
 Template responses use the same extension to expose the `.template` and `.context`
 response attributes - see [testing template responses](templates.md#testing-template-responses).
+The `info` dictionary is always available as `response.extensions["http.response.debug"]`,
+even when it carries `template`/`context` keys.
 
 ### Change client address
 

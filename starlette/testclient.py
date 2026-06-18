@@ -366,11 +366,11 @@ class _TestClientTransport(httpx.BaseTransport):
 
         response = httpx.Response(**raw_kwargs, request=request)
         if debug_info is not None:
+            response.extensions["http.response.debug"] = debug_info
             if "template" in debug_info:
                 response.template = debug_info["template"]  # type: ignore[attr-defined]
+            if "context" in debug_info:
                 response.context = debug_info["context"]  # type: ignore[attr-defined]
-            else:
-                response.extensions["http.response.debug"] = debug_info
         return response
 
 

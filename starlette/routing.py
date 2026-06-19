@@ -104,7 +104,6 @@ def replace_params(
     return path, path_params
 
 
-
 def compile_path(
     path: str,
 ) -> tuple[Pattern[str], str, dict[str, Convertor[Any]]]:

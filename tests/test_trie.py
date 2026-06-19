@@ -6,7 +6,7 @@ import pytest
 
 from starlette import convertors
 from starlette._trie import RouteTrie
-from starlette.convertors import Convertor, register_url_convertor
+from starlette.convertors import Convertor, StringConvertor, register_url_convertor
 from starlette.routing import Route, Router, WebSocketRoute
 
 
@@ -81,7 +81,10 @@ def test_custom_convertor() -> None:
         def to_string(self, value: int) -> str:
             return format(value, "x")
 
-    register_url_convertor("hex_trie_test", HexConvertor())
+    convertor = HexConvertor()
+    assert convertor.convert("ff") == 255
+    assert convertor.to_string(255) == "ff"
+    register_url_convertor("hex_trie_test", convertor)
     try:
         assert_superset(["/h/{x:hex_trie_test}", "/h/{y}"], ["/h/deadbeef", "/h/xyz"])
     finally:
@@ -91,14 +94,8 @@ def test_custom_convertor() -> None:
 def test_alternation_convertor_in_compound_segment() -> None:
     # A convertor whose regex uses alternation must keep segment-local precedence;
     # without grouping, `^x(a|b)y$` would compile as `^xa|by$` and drop `/xby`.
-    class AltConvertor(Convertor[str]):
+    class AltConvertor(StringConvertor):
         regex = "a|b"
-
-        def convert(self, value: str) -> str:
-            return value
-
-        def to_string(self, value: str) -> str:
-            return value
 
     register_url_convertor("alt_trie_test", AltConvertor())
     try:

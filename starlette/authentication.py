@@ -15,7 +15,11 @@ from starlette.websockets import WebSocket
 _P = ParamSpec("_P")
 
 
-def has_required_scope(conn: HTTPConnection, scopes: Sequence[str], all_scopes: bool) -> bool:
+def has_required_scope(
+    conn: HTTPConnection, 
+    scopes: Sequence[str], 
+    all_scopes: bool = True
+) -> bool:
     if all_scopes:
         for scope in scopes:
             if scope not in conn.auth.scopes:

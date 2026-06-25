@@ -431,3 +431,26 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
+
+
+async def query_search_endpoint(request: Request) -> JSONResponse:
+    body = await request.json()
+    return JSONResponse({"method": request.method, "term": body["term"]})
+
+
+def test_query_method(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(routes=[Route("/search", endpoint=query_search_endpoint, methods=["QUERY"])])
+    client = test_client_factory(app)
+
+    response = client.query("/search", json={"term": "fastapi"})
+    assert response.status_code == 200
+    assert response.json() == {"method": "QUERY", "term": "fastapi"}
+
+
+def test_query_method_not_allowed(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(routes=[Route("/search", endpoint=query_search_endpoint, methods=["QUERY"])])
+    client = test_client_factory(app)
+
+    response = client.get("/search")
+    assert response.status_code == 405
+    assert "QUERY" in response.headers["allow"]

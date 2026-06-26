@@ -586,11 +586,8 @@ async def test_request_send_early_hints() -> None:
 async def test_request_send_early_hints_no_extension() -> None:
     sent: list[Message] = []
 
-    async def mock_send(msg: Message) -> None:
-        sent.append(msg)
-
     scope = {"type": "http", "extensions": {}}
-    request = Request(scope, send=mock_send)
+    request = Request(scope)
 
     await request.send_early_hints([EARLY_HINT_LINK])
     assert sent == []

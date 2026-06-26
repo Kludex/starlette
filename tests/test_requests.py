@@ -13,6 +13,8 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
+EARLY_HINT_LINK = b"</style.css>; rel=preload; as=style"
+
 
 def test_request_url(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -562,6 +564,45 @@ def test_request_send_push_promise_without_setting_send(
     client = test_client_factory(app)
     response = client.get("/")
     assert response.json() == {"json": "Send channel not available"}
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints() -> None:
+    sent = []
+
+    async def mock_send(msg):
+        sent.append(msg)
+
+    scope = {"type": "http", "extensions": {"http.response.early_hint": {}}}
+    request = Request(scope, send=mock_send)
+
+    await request.send_early_hints([EARLY_HINT_LINK])
+
+    assert len(sent) == 1
+    assert sent == [{"type": "http.response.early_hint", "links": [EARLY_HINT_LINK]}]
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints_no_extension() -> None:
+    sent = []
+
+    async def mock_send(msg):
+        sent.append(msg)
+
+    scope = {"type": "http", "extensions": {}}
+    request = Request(scope, send=mock_send)
+
+    await request.send_early_hints([EARLY_HINT_LINK])
+    assert sent == []
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints_no_send_channel() -> None:
+    scope = {"type": "http", "extensions": {"http.response.early_hint": {}}}
+    request = Request(scope)
+
+    with pytest.raises(RuntimeError):
+        await request.send_early_hints([EARLY_HINT_LINK])
 
 
 @pytest.mark.parametrize(

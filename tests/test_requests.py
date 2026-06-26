@@ -568,9 +568,9 @@ def test_request_send_push_promise_without_setting_send(
 
 @pytest.mark.anyio
 async def test_request_send_early_hints() -> None:
-    sent = []
+    sent: list[Message] = []
 
-    async def mock_send(msg):
+    async def mock_send(msg: Message) -> None:
         sent.append(msg)
 
     scope = {"type": "http", "extensions": {"http.response.early_hint": {}}}
@@ -584,9 +584,9 @@ async def test_request_send_early_hints() -> None:
 
 @pytest.mark.anyio
 async def test_request_send_early_hints_no_extension() -> None:
-    sent = []
+    sent: list[Message] = []
 
-    async def mock_send(msg):
+    async def mock_send(msg: Message) -> None:
         sent.append(msg)
 
     scope = {"type": "http", "extensions": {}}

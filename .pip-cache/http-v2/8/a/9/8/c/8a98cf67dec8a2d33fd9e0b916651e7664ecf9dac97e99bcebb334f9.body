@@ -1,0 +1,35 @@
+Metadata-Version: 2.4
+Name: jeepney
+Version: 0.9.0
+Summary: Low-level, pure Python DBus protocol wrapper.
+Author-email: Thomas Kluyver <thomas@kluyver.me.uk>
+Requires-Python: >=3.7
+Description-Content-Type: text/x-rst
+License-Expression: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Desktop Environment
+License-File: LICENSE
+Requires-Dist: pytest ; extra == "test"
+Requires-Dist: pytest-trio ; extra == "test"
+Requires-Dist: pytest-asyncio >=0.17 ; extra == "test"
+Requires-Dist: testpath ; extra == "test"
+Requires-Dist: trio ; extra == "test"
+Requires-Dist: async-timeout ; extra == "test" and ( python_version < '3.11')
+Requires-Dist: trio ; extra == "trio"
+Project-URL: Documentation, https://jeepney.readthedocs.io/en/latest/
+Project-URL: Source, https://gitlab.com/takluyver/jeepney
+Provides-Extra: test
+Provides-Extra: trio
+
+Jeepney is a pure Python implementation of D-Bus messaging. It has an `I/O-free
+<https://sans-io.readthedocs.io/>`__ core, and integration modules for different
+event loops.
+
+D-Bus is an inter-process communication system, mainly used in Linux.
+
+To install Jeepney::
+
+    pip install jeepney
+
+`Jeepney docs on Readthedocs <https://jeepney.readthedocs.io/en/latest/>`__
+

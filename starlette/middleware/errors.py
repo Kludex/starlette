@@ -96,16 +96,9 @@ class ServerErrorMiddleware:
         summary = build_chain_header(chain)
         doc = Document(summary, lang="en")
         font_stack = (
-            "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', "
-            "Roboto, 'Helvetica Neue', Arial, sans-serif"
+            "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
         )
-        doc.style(
-            "body {"
-            f"    font-family: {font_stack};"
-            "    line-height: 1.4;"
-            "    margin: 1.5rem;"
-            "}"
-        )
+        doc.style(f"body {{    font-family: {font_stack};    line-height: 1.4;    margin: 1.5rem;}}")
         doc.h1("500 Server Error")
         doc.p(
             "This page is shown for your guidance because the application is "

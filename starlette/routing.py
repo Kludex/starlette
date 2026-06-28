@@ -25,6 +25,8 @@ from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
 
+__tracebackhide__ = "until"
+
 
 class NoMatchFound(Exception):
     """

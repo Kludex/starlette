@@ -52,6 +52,32 @@ def test_debug_html(test_client_factory: TestClientFactory) -> None:
     assert "RuntimeError" in response.text
 
 
+def test_debug_json(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        raise RuntimeError("Something went wrong")
+
+    app = ServerErrorMiddleware(app, debug=True, json=True)
+    client = test_client_factory(app, raise_server_exceptions=False)
+    response = client.get("/", headers={"Accept": "application/json"})
+    assert response.status_code == 500
+    assert response.headers["content-type"].startswith("application/json")
+    data = response.json()
+    assert data["detail"] == "⚠️  Uncaught RuntimeError"
+    assert data["traceback"]
+
+
+def test_debug_json_disabled_by_default(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        raise RuntimeError("Something went wrong")
+
+    app = ServerErrorMiddleware(app, debug=True)
+    client = test_client_factory(app, raise_server_exceptions=False)
+    response = client.get("/", headers={"Accept": "application/json"})
+    assert response.status_code == 500
+    assert response.headers["content-type"].startswith("text/plain")
+    assert "RuntimeError: Something went wrong" in response.text
+
+
 def test_debug_after_response_sent(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         response = Response(b"", status_code=204)

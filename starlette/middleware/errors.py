@@ -1,127 +1,19 @@
 from __future__ import annotations
 
-import html
-import inspect
-import sys
-import traceback
+import io
+from typing import Any
+
+import tracerite  # type: ignore[import-untyped]
+from html5tagger import Document  # type: ignore[import-untyped]
+from tracerite.html import html_traceback  # type: ignore[import-untyped]
+from tracerite.trace import build_chain_header  # type: ignore[import-untyped]
+from tracerite.tty import tty_traceback  # type: ignore[import-untyped]
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, PlainTextResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, ExceptionHandler, Message, Receive, Scope, Send
-
-STYLES = """
-p {
-    color: #211c1c;
-}
-.traceback-container {
-    border: 1px solid #038BB8;
-}
-.traceback-title {
-    background-color: #038BB8;
-    color: lemonchiffon;
-    padding: 12px;
-    font-size: 20px;
-    margin-top: 0px;
-}
-.frame-line {
-    padding-left: 10px;
-    font-family: monospace;
-}
-.frame-filename {
-    font-family: monospace;
-}
-.center-line {
-    background-color: #038BB8;
-    color: #f9f6e1;
-    padding: 5px 0px 5px 5px;
-}
-.lineno {
-    margin-right: 5px;
-}
-.frame-title {
-    font-weight: unset;
-    padding: 10px 10px 10px 10px;
-    background-color: #E4F4FD;
-    margin-right: 10px;
-    color: #191f21;
-    font-size: 17px;
-    border: 1px solid #c7dce8;
-}
-.collapse-btn {
-    float: right;
-    padding: 0px 5px 1px 5px;
-    border: solid 1px #96aebb;
-    cursor: pointer;
-}
-.collapsed {
-  display: none;
-}
-.source-code {
-  font-family: courier;
-  font-size: small;
-  padding-bottom: 10px;
-}
-"""
-
-JS = """
-<script type="text/javascript">
-    function collapse(element){
-        const frameId = element.getAttribute("data-frame-id");
-        const frame = document.getElementById(frameId);
-
-        if (frame.classList.contains("collapsed")){
-            element.innerHTML = "&#8210;";
-            frame.classList.remove("collapsed");
-        } else {
-            element.innerHTML = "+";
-            frame.classList.add("collapsed");
-        }
-    }
-</script>
-"""
-
-TEMPLATE = """
-<html>
-    <head>
-        <style type='text/css'>
-            {styles}
-        </style>
-        <title>Starlette Debugger</title>
-    </head>
-    <body>
-        <h1>500 Server Error</h1>
-        <h2>{error}</h2>
-        <div class="traceback-container">
-            <p class="traceback-title">Traceback</p>
-            <div>{exc_html}</div>
-        </div>
-        {js}
-    </body>
-</html>
-"""
-
-FRAME_TEMPLATE = """
-<div>
-    <p class="frame-title">File <span class="frame-filename">{frame_filename}</span>,
-    line <i>{frame_lineno}</i>,
-    in <b>{frame_name}</b>
-    <span class="collapse-btn" data-frame-id="{frame_filename}-{frame_lineno}" onclick="collapse(this)">{collapse_button}</span>
-    </p>
-    <div id="{frame_filename}-{frame_lineno}" class="source-code {collapsed}">{code_context}</div>
-</div>
-"""  # noqa: E501
-
-LINE = """
-<p><span class="frame-line">
-<span class="lineno">{lineno}.</span> {line}</span></p>
-"""
-
-CENTER_LINE = """
-<p class="center-line"><span class="frame-line center-line">
-<span class="lineno">{lineno}.</span> {line}</span></p>
-"""
 
 
 class ServerErrorMiddleware:
@@ -141,10 +33,12 @@ class ServerErrorMiddleware:
         app: ASGIApp,
         handler: ExceptionHandler | None = None,
         debug: bool = False,
+        json: bool = False,
     ) -> None:
         self.app = app
         self.handler = handler
         self.debug = debug
+        self.json = json
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -185,73 +79,63 @@ class ServerErrorMiddleware:
             # to optionally raise the error within the test case.
             raise exc
 
-    def format_line(self, index: int, line: str, frame_lineno: int, frame_index: int) -> str:
-        values = {
-            # HTML escape - line could contain < or >
-            "line": html.escape(line).replace(" ", "&nbsp"),
-            "lineno": (frame_lineno - frame_index) + index,
-        }
+    def generate_html(
+        self,
+        exc: Exception,
+        limit: int = 7,
+        request: Request | None = None,
+    ) -> str:
+        """
+        Render an HTML traceback page for the given exception.
 
-        if index != frame_index:
-            return LINE.format(**values)
-        return CENTER_LINE.format(**values)
-
-    def generate_frame_html(self, frame: inspect.FrameInfo, is_collapsed: bool) -> str:
-        code_context = "".join(
-            self.format_line(
-                index,
-                line,
-                frame.lineno,
-                frame.index,  # type: ignore[arg-type]
-            )
-            for index, line in enumerate(frame.code_context or [])
+        The ``limit`` parameter is retained for backwards compatibility but is
+        no longer honoured; TraceRite renders the full traceback.
+        """
+        del limit  # TraceRite does not support frame limiting.
+        chain = tracerite.extract_chain(exc)
+        summary = build_chain_header(chain)
+        doc = Document(summary, lang="en")
+        font_stack = (
+            "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', "
+            "Roboto, 'Helvetica Neue', Arial, sans-serif"
         )
-
-        values = {
-            # HTML escape - filename could contain < or >, especially if it's a virtual
-            # file e.g. <stdin> in the REPL
-            "frame_filename": html.escape(frame.filename),
-            "frame_lineno": frame.lineno,
-            # HTML escape - if you try very hard it's possible to name a function with <
-            # or >
-            "frame_name": html.escape(frame.function),
-            "code_context": code_context,
-            "collapsed": "collapsed" if is_collapsed else "",
-            "collapse_button": "+" if is_collapsed else "&#8210;",
-        }
-        return FRAME_TEMPLATE.format(**values)
-
-    def generate_html(self, exc: Exception, limit: int = 7) -> str:
-        traceback_obj = traceback.TracebackException.from_exception(exc, capture_locals=True)
-
-        exc_html = ""
-        is_collapsed = False
-        exc_traceback = exc.__traceback__
-        if exc_traceback is not None:
-            frames = inspect.getinnerframes(exc_traceback, limit)
-            for frame in reversed(frames):
-                exc_html += self.generate_frame_html(frame, is_collapsed)
-                is_collapsed = True
-
-        if sys.version_info >= (3, 13):  # pragma: no cover
-            exc_type_str = traceback_obj.exc_type_str
-        else:  # pragma: no cover
-            exc_type_str = traceback_obj.exc_type.__name__
-
-        # escape error class and text
-        error = f"{html.escape(exc_type_str)}: {html.escape(str(traceback_obj))}"
-
-        return TEMPLATE.format(styles=STYLES, js=JS, error=error, exc_html=exc_html)
+        doc.style(
+            "body {"
+            f"    font-family: {font_stack};"
+            "    line-height: 1.4;"
+            "    margin: 1.5rem;"
+            "}"
+        )
+        doc.h1("500 Server Error")
+        doc.p(
+            "This page is shown for your guidance because the application is "
+            "running in debug mode and has crashed handling this request."
+        )
+        doc(html_traceback(exc=exc, chain=chain, include_js_css=True))
+        return str(doc)
 
     def generate_plain_text(self, exc: Exception) -> str:
-        return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        """Render a plain-text traceback for the given exception."""
+        buffer = io.StringIO()
+        tty_traceback(exc, file=buffer)
+        return buffer.getvalue()
+
+    def generate_json(self, exc: Exception) -> dict[str, Any]:
+        """Render a structured JSON traceback for the given exception."""
+        chain = tracerite.extract_chain(exc)
+        return {
+            "detail": build_chain_header(chain),
+            "traceback": chain,
+        }
 
     def debug_response(self, request: Request, exc: Exception) -> Response:
         accept = request.headers.get("accept", "")
 
         if "text/html" in accept:
-            content = self.generate_html(exc)
+            content = self.generate_html(exc, request=request)
             return HTMLResponse(content, status_code=500)
+        if self.json and "application/json" in accept:
+            return JSONResponse(self.generate_json(exc), status_code=500)
         content = self.generate_plain_text(exc)
         return PlainTextResponse(content, status_code=500)
 

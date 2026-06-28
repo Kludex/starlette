@@ -32,6 +32,7 @@ classifiers = [
 ]
 dependencies = [
     "anyio>=3.6.2,<5",
+    "tracerite>=2.3.1",
     "typing_extensions>=4.10.0; python_version < '3.13'",
 ]
 

@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette_dark.svg" width="420px">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette.svg" width="420px">
-    <img alt="starlette-logo" src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.[REDACTED]_dark.svg" width="420px">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.[REDACTED].svg" width="420px">
+    <img alt="starlette-logo" src="https://raw.githubusercontent.[REDACTED].svg">
   </picture>
 </p>
 
@@ -63,9 +63,10 @@ $ pip install uvicorn
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
+from starlette.requests import Request
 
 
-async def homepage(request):
+async def homepage(request: Request) -> JSONResponse:
     return JSONResponse({'hello': 'world'})
 
 routes = [

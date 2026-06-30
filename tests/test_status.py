@@ -25,6 +25,11 @@ def test_deprecated_types(constant: str, msg: str) -> None:
         assert msg in str(record.list[0])
 
 
+def test_http_103_early_hints() -> None:
+    status = importlib.import_module("starlette.status")
+    assert status.HTTP_103_EARLY_HINTS == 103
+
+
 def test_unknown_status() -> None:
     with pytest.raises(
         AttributeError,

@@ -34,3 +34,23 @@ routes = [
 
 app = Starlette(routes=routes)
 ```
+
+### `Request.send_early_hints`
+
+Used to send HTTP 103 Early Hints with one or more `Link` header values before
+the final response. If Early Hints are not available this method does nothing.
+
+Signature: `send_early_hints(links)`
+
+* `links` - A string, or iterable of strings, containing `Link` header values.
+
+```python
+from starlette.responses import HTMLResponse
+
+
+async def homepage(request):
+    await request.send_early_hints("</static/style.css>; rel=preload; as=style")
+    return HTMLResponse(
+        '<html><head><link rel="stylesheet" href="/static/style.css"/></head></html>'
+    )
+```

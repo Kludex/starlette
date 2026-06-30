@@ -564,6 +564,79 @@ def test_request_send_push_promise_without_setting_send(
     assert response.json() == {"json": "Send channel not available"}
 
 
+@pytest.mark.anyio
+async def test_request_send_early_hints() -> None:
+    messages: list[Message] = []
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "extensions": {"http.response.early_hint": {}},
+    }
+    request = Request(scope, send=send)
+
+    await request.send_early_hints("</style.css>; rel=preload; as=style")
+
+    assert messages == [
+        {
+            "type": "http.response.early_hint",
+            "links": [b"</style.css>; rel=preload; as=style"],
+        }
+    ]
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints_multiple_links() -> None:
+    messages: list[Message] = []
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "extensions": {"http.response.early_hint": {}},
+    }
+    request = Request(scope, send=send)
+
+    await request.send_early_hints(
+        [
+            "</style.css>; rel=preload; as=style",
+            "</script.js>; rel=preload; as=script",
+        ]
+    )
+
+    assert messages == [
+        {
+            "type": "http.response.early_hint",
+            "links": [
+                b"</style.css>; rel=preload; as=style",
+                b"</script.js>; rel=preload; as=script",
+            ],
+        }
+    ]
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints_without_extension() -> None:
+    messages: list[Message] = []
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    scope: Scope = {"type": "http", "method": "GET", "path": "/"}
+    request = Request(scope, send=send)
+
+    await request.send_early_hints("</style.css>; rel=preload; as=style")
+
+    assert messages == []
+
+
 @pytest.mark.parametrize(
     "messages",
     [

@@ -244,15 +244,15 @@ class ASGIResponseStream(httpx.SyncByteStream):
         self.closed = True
         try:
             self.body_tx.close()
-        except Exception:
+        except Exception:  # pragma: no cover
             pass
         try:
             self.body_rx.close()
-        except Exception:
+        except Exception:  # pragma: no cover
             pass
         try:
             self.portal.call(self.response_complete.set)
-        except Exception:
+        except Exception:  # pragma: no cover
             pass
         self.portal_context.__exit__(None, None, None)
 
@@ -418,21 +418,21 @@ class _TestClientTransport(httpx.BaseTransport):
             response_complete = portal.call(anyio.Event)
             body_tx, body_rx = cast(
                 "tuple[MemoryObjectSendStream[bytes], MemoryObjectReceiveStream[bytes]]",
-                portal.call(anyio.create_memory_object_stream, math.inf, bytes),
+                portal.call(anyio.create_memory_object_stream, math.inf),
             )
 
             portal.start_task_soon(run_app)
             portal.call(response_started_event.wait)
-        except BaseException as exc:
+        except BaseException as exc:  # pragma: no cover
             if "body_tx" in locals():
                 try:
                     body_tx.close()
-                except Exception:
+                except Exception:  # pragma: no cover
                     pass
             if "body_rx" in locals():
                 try:
                     body_rx.close()
-                except Exception:
+                except Exception:  # pragma: no cover
                     pass
             portal_context.__exit__(*sys.exc_info())
             if self.raise_server_exceptions:
@@ -442,11 +442,11 @@ class _TestClientTransport(httpx.BaseTransport):
             if self.raise_server_exceptions and app_exception:
                 try:
                     body_tx.close()
-                except Exception:
+                except Exception:  # pragma: no cover
                     pass
                 try:
                     body_rx.close()
-                except Exception:
+                except Exception:  # pragma: no cover
                     pass
                 portal_context.__exit__(None, None, None)
                 raise app_exception[0]

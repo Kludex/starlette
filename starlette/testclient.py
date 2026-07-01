@@ -418,7 +418,7 @@ class _TestClientTransport(httpx.BaseTransport):
             response_complete = portal.call(anyio.Event)
             body_tx, body_rx = cast(
                 "tuple[MemoryObjectSendStream[bytes], MemoryObjectReceiveStream[bytes]]",
-                portal.call(anyio.create_memory_object_stream, math.inf),
+                portal.call(anyio.create_memory_object_stream, 0),
             )
 
             portal.start_task_soon(run_app)

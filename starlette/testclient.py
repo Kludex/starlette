@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import inspect
-import io
 import json
 import math
 import sys
 import warnings
-from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator, Mapping, MutableMapping, Sequence
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from types import GeneratorType
@@ -17,6 +16,7 @@ from urllib.parse import unquote, urljoin
 import anyio
 import anyio.abc
 import anyio.from_thread
+from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
@@ -204,6 +204,59 @@ class WebSocketTestSession:
         return json.loads(text)
 
 
+class ASGIResponseStream(httpx.SyncByteStream):
+    def __init__(
+        self,
+        body_tx: MemoryObjectSendStream[bytes],
+        body_rx: MemoryObjectReceiveStream[bytes],
+        portal: anyio.abc.BlockingPortal,
+        response_complete: anyio.Event,
+        portal_context: AbstractContextManager[anyio.abc.BlockingPortal],
+        app_exception: list[BaseException],
+        raise_server_exceptions: bool,
+    ) -> None:
+        self.body_tx = body_tx
+        self.body_rx = body_rx
+        self.portal = portal
+        self.response_complete = response_complete
+        self.portal_context = portal_context
+        self.app_exception = app_exception
+        self.raise_server_exceptions = raise_server_exceptions
+        self.closed = False
+
+    def __iter__(self) -> Iterator[bytes]:
+        try:
+            while True:
+                try:
+                    chunk = self.portal.call(self.body_rx.receive)
+                    yield chunk
+                except (anyio.EndOfStream, anyio.ClosedResourceError):
+                    break
+        finally:
+            self.close()
+
+        if self.app_exception and self.raise_server_exceptions:
+            raise self.app_exception[0]
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        try:
+            self.body_tx.close()
+        except Exception:
+            pass
+        try:
+            self.body_rx.close()
+        except Exception:
+            pass
+        try:
+            self.portal.call(self.response_complete.set)
+        except Exception:
+            pass
+        self.portal_context.__exit__(None, None, None)
+
+
 class _TestClientTransport(httpx.BaseTransport):
     def __init__(
         self,
@@ -293,7 +346,7 @@ class _TestClientTransport(httpx.BaseTransport):
         request_complete = False
         response_started = False
         response_complete: anyio.Event
-        raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
+        raw_kwargs: dict[str, Any] = {}
         template = None
         context = None
 
@@ -333,38 +386,84 @@ class _TestClientTransport(httpx.BaseTransport):
                 raw_kwargs["status_code"] = message["status"]
                 raw_kwargs["headers"] = [(key.decode(), value.decode()) for key, value in message.get("headers", [])]
                 response_started = True
+                response_started_event.set()
             elif message["type"] == "http.response.body":
                 assert response_started, 'Received "http.response.body" without "http.response.start".'
-                assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
                 if request.method != "HEAD":
-                    raw_kwargs["stream"].write(body)
+                    await body_tx.send(body)
                 if not more_body:
-                    raw_kwargs["stream"].seek(0)
+                    body_tx.close()
                     response_complete.set()
             elif message["type"] == "http.response.debug":
                 template = message["info"]["template"]
                 context = message["info"]["context"]
 
+        app_exception: list[BaseException] = []
+
+        async def run_app() -> None:
+            try:
+                await self.app(scope, receive, send)
+            except BaseException as exc:
+                app_exception.append(exc)
+                response_started_event.set()
+                body_tx.close()
+                response_complete.set()
+
+        portal_context = self.portal_factory()
         try:
-            with self.portal_factory() as portal:
-                response_complete = portal.call(anyio.Event)
-                portal.call(self.app, scope, receive, send)
+            portal = portal_context.__enter__()
+            response_started_event = portal.call(anyio.Event)
+            response_complete = portal.call(anyio.Event)
+            body_tx, body_rx = cast(
+                "tuple[MemoryObjectSendStream[bytes], MemoryObjectReceiveStream[bytes]]",
+                portal.call(anyio.create_memory_object_stream, math.inf, bytes),
+            )
+
+            portal.start_task_soon(run_app)
+            portal.call(response_started_event.wait)
         except BaseException as exc:
+            if "body_tx" in locals():
+                try:
+                    body_tx.close()
+                except Exception:
+                    pass
+            if "body_rx" in locals():
+                try:
+                    body_rx.close()
+                except Exception:
+                    pass
+            portal_context.__exit__(*sys.exc_info())
             if self.raise_server_exceptions:
                 raise exc
 
-        if self.raise_server_exceptions:
-            assert response_started, "TestClient did not receive any response."
-        elif not response_started:
+        if "status_code" not in raw_kwargs:
+            if self.raise_server_exceptions and app_exception:
+                try:
+                    body_tx.close()
+                except Exception:
+                    pass
+                try:
+                    body_rx.close()
+                except Exception:
+                    pass
+                portal_context.__exit__(None, None, None)
+                raise app_exception[0]
             raw_kwargs = {
                 "status_code": 500,
                 "headers": [],
-                "stream": io.BytesIO(),
             }
 
-        raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
+        raw_kwargs["stream"] = ASGIResponseStream(
+            body_tx=body_tx,
+            body_rx=body_rx,
+            portal=portal,
+            response_complete=response_complete,
+            portal_context=portal_context,
+            app_exception=app_exception,
+            raise_server_exceptions=self.raise_server_exceptions,
+        )
 
         response = httpx.Response(**raw_kwargs, request=request)
         if template is not None:

@@ -74,7 +74,10 @@ def test_trusted_host_middleware_ipv6(test_client_factory: TestClientFactory) ->
     response = client.get("/")
     assert response.status_code == 400
 
-    # a malformed IPv6 host header (no closing bracket) is rejected
+    # a malformed IPv6 host header is rejected and trailing content after the
+    # closing bracket must not be discarded (which would allow a spoofed host
+    # to masquerade as the allowed one)
     client = test_client_factory(app, base_url="http://[::1]")
-    response = client.get("/", headers={"host": "[::1"})
-    assert response.status_code == 400
+    for spoofed in ("[::1", "[::1]evil.com", "[::1]@attacker", "[::1].", "[::1]:evil"):
+        response = client.get("/", headers={"host": spoofed})
+        assert response.status_code == 400, spoofed

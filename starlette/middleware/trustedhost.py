@@ -41,9 +41,16 @@ class TrustedHostMiddleware:
         if host_header.startswith("["):
             # An IPv6 literal is enclosed in brackets and may be followed by a
             # port, e.g. "[::1]:8000". Keep the brackets, matching the form
-            # used in `allowed_hosts`.
-            bracketed_host, bracket, _ = host_header.partition("]")
-            host = bracketed_host + bracket if bracket else host_header
+            # used in `allowed_hosts`. Anything other than an optional
+            # ``:port`` after the closing bracket makes the header invalid, so
+            # that e.g. "[::1]evil.com" is not accepted as "[::1]".
+            bracketed_host, bracket, rest = host_header.partition("]")
+            if bracket and (rest == "" or (rest[0] == ":" and rest[1:].isdigit())):
+                host = bracketed_host + bracket
+            else:
+                # Malformed IPv6 host header; leave it unchanged so it does not
+                # match any entry in ``allowed_hosts``.
+                host = host_header
         else:
             host = host_header.split(":")[0]
         is_valid_host = False

@@ -13,7 +13,7 @@ def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
-        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["testserver", "*.testserver"])],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["testserver", "*.testserver", "[::1]"])],
     )
 
     client = test_client_factory(app)
@@ -24,7 +24,15 @@ def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None
     response = client.get("/")
     assert response.status_code == 200
 
+    client = test_client_factory(app, base_url="http://[::1]")
+    response = client.get("/")
+    assert response.status_code == 200
+
     client = test_client_factory(app, base_url="http://invalidhost")
+    response = client.get("/")
+    assert response.status_code == 400
+
+    client = test_client_factory(app, base_url="http://")
     response = client.get("/")
     assert response.status_code == 400
 

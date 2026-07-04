@@ -53,9 +53,9 @@ dev = [
     "coverage>=7.8.2",
     "importlib-metadata==9.0.0",
     "mypy==2.1.0",
-    "ruff==0.15.14",
+    "ruff==0.15.19",
     "types-PyYAML==6.0.12.20250516",
-    "pytest==9.0.3",
+    "pytest==9.1.1",
     "trio==0.33.0",
     # Check dist
     "twine==6.2.0",

@@ -488,7 +488,7 @@ def test_duplicate_close(test_client_factory: TestClientFactory) -> None:
         await websocket.close()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 

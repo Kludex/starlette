@@ -37,7 +37,12 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        host = headers.get("host", "").split(":")[0]
+        host_header = headers.get("host", "")
+        if host_header.startswith("["):
+            # IPv6 address: "[::1]" or "[::1]:port"
+            host = host_header.split("]")[0] + "]"
+        else:
+            host = host_header.split(":")[0]
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:

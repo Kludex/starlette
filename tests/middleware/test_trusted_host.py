@@ -35,6 +35,27 @@ def test_default_allowed_hosts() -> None:
     assert middleware.allowed_hosts == ["*"]
 
 
+def test_trusted_host_middleware_ipv6(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("OK", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]"])],
+    )
+
+    client = test_client_factory(app)
+
+    response = client.get("/", headers={"host": "[::1]"})
+    assert response.status_code == 200
+
+    response = client.get("/", headers={"host": "[::1]:8000"})
+    assert response.status_code == 200
+
+    response = client.get("/", headers={"host": "invalidhost"})
+    assert response.status_code == 400
+
+
 def test_www_redirect(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("OK", status_code=200)

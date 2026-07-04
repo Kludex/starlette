@@ -48,3 +48,36 @@ def test_www_redirect(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.url == "https://www.example.com/"
+
+
+def test_trusted_host_middleware_ipv6(test_client_factory: TestClientFactory) -> None:
+    # https://github.com/encode/starlette/issues/3357
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("OK", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]"])],
+    )
+
+    client = test_client_factory(app, base_url="http://[::1]")
+    response = client.get("/")
+    assert response.status_code == 200
+
+    # the port must be stripped without breaking the bracketed IPv6 literal
+    client = test_client_factory(app, base_url="http://[::1]:8000")
+    response = client.get("/")
+    assert response.status_code == 200
+
+    # a different IPv6 address is still rejected
+    client = test_client_factory(app, base_url="http://[2001:db8::1]")
+    response = client.get("/")
+    assert response.status_code == 400
+
+    # a malformed IPv6 host header is rejected and trailing content after the
+    # closing bracket must not be discarded (which would allow a spoofed host
+    # to masquerade as the allowed one)
+    client = test_client_factory(app, base_url="http://[::1]")
+    for spoofed in ("[::1", "[::1]evil.com", "[::1]@attacker", "[::1].", "[::1]:evil"):
+        response = client.get("/", headers={"host": spoofed})
+        assert response.status_code == 400, spoofed

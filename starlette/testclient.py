@@ -231,7 +231,13 @@ class _TestClientTransport(httpx.BaseTransport):
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
 
-        if ":" in netloc:
+        if netloc.startswith("[") and "]" in netloc:
+            # An IPv6 literal is enclosed in brackets and may be followed by a
+            # port, e.g. "[::1]" or "[::1]:8000".
+            bracketed_host, _, port_suffix = netloc.rpartition("]")
+            host = bracketed_host[1:]
+            port = int(port_suffix[1:]) if port_suffix.startswith(":") else default_port
+        elif ":" in netloc:
             host, port_string = netloc.split(":", 1)
             port = int(port_string)
         else:
@@ -239,12 +245,13 @@ class _TestClientTransport(httpx.BaseTransport):
             port = default_port
 
         # Include the 'host' header.
+        host_header = f"[{host}]" if ":" in host else host
         if "host" in request.headers:
             headers: list[tuple[bytes, bytes]] = []
         elif port == default_port:  # pragma: no cover
-            headers = [(b"host", host.encode())]
+            headers = [(b"host", host_header.encode())]
         else:  # pragma: no cover
-            headers = [(b"host", (f"{host}:{port}").encode())]
+            headers = [(b"host", (f"{host_header}:{port}").encode())]
 
         # Include other request headers.
         headers += [(key.lower().encode(), value.encode()) for key, value in request.headers.multi_items()]

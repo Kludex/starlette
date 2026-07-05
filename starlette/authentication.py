@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 import inspect
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable
 from typing import Any, ParamSpec
 from urllib.parse import urlencode
 
@@ -15,19 +15,18 @@ from starlette.websockets import WebSocket
 _P = ParamSpec("_P")
 
 
-def has_required_scope(conn: HTTPConnection, scopes: Sequence[str]) -> bool:
-    for scope in scopes:
-        if scope not in conn.auth.scopes:
-            return False
-    return True
+def has_required_scope(conn: HTTPConnection, scopes: Iterable[str]) -> bool:
+    if not isinstance(scopes, set):
+        scopes = set(scopes)
+    return scopes.issubset(conn.auth.scopes)
 
 
 def requires(
-    scopes: str | Sequence[str],
+    scopes: str | Iterable[str],
     status_code: int = 403,
     redirect: str | None = None,
 ) -> Callable[[Callable[_P, Any]], Callable[_P, Any]]:
-    scopes_list = [scopes] if isinstance(scopes, str) else list(scopes)
+    scopes_list = {scopes} if isinstance(scopes, str) else set(scopes)
 
     def decorator(
         func: Callable[_P, Any],
@@ -108,8 +107,8 @@ class AuthenticationBackend:
 
 
 class AuthCredentials:
-    def __init__(self, scopes: Sequence[str] | None = None):
-        self.scopes = [] if scopes is None else list(scopes)
+    def __init__(self, scopes: Iterable[str] | None = None):
+        self.scopes = set() if scopes is None else set(scopes)
 
 
 class BaseUser:

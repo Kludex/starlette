@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -621,6 +621,12 @@ def test_standalone_ws_route_does_not_match(
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/invalid"):
             pass  # pragma: no cover
+
+
+def test_ws_route_does_not_match_http_scope() -> None:
+    route = WebSocketRoute("/", ws_helloworld)
+    match, _ = route.matches({"type": "http", "method": "GET", "path": "/", "headers": []})
+    assert match == Match.NONE
 
 
 def test_lifespan_state_unsupported(test_client_factory: TestClientFactory) -> None:

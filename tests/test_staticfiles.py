@@ -651,3 +651,15 @@ def test_staticfiles_relative_directory_symlinks(test_client_factory: TestClient
     response = client.get("/example.txt")
     assert response.status_code == 200
     assert response.text == "123\n"
+
+
+def test_static_files_cache_control(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    cache_control = "public, max-age=604800"
+    path = tmp_path / "example.txt"
+    path.write_text("<file content>")
+
+    app = StaticFiles(directory=tmp_path, cache_control=cache_control)
+    client = test_client_factory(app)
+    response = client.get("/example.txt")
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == cache_control

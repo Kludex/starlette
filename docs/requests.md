@@ -113,14 +113,25 @@ state with `disconnected = await request.is_disconnected()`.
 
 Request files are normally sent as multipart form data (`multipart/form-data`).
 
-Signature: `request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024)`
+Signature: `request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024, spool_max_size=1024*1024)`
 
-You can configure the number of maximum fields or files with the parameters `max_files` and `max_fields`; and part size using `max_part_size`:
+You can configure the number of maximum fields or files with the parameters `max_files` and `max_fields`; part size using `max_part_size`; and the in-memory spool size before uploaded files roll over to disk using `spool_max_size`:
 
 ```python
-async with request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024):
+async with request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024, spool_max_size=1024*1024):
     ...
 ```
+
+The defaults for `max_part_size` and `spool_max_size` are read from class attributes on `MultiPartParser` (both default to 1MB). You can set them globally:
+
+```python
+from starlette.formparsers import MultiPartParser
+
+MultiPartParser.spool_max_size = 100 * 1024 * 1024  # 100 MB
+MultiPartParser.max_part_size = 10 * 1024 * 1024  # 10 MB
+```
+
+These defaults apply whenever `request.form()` is called without explicit values.
 
 !!! info
     These limits are for security reasons, allowing an unlimited number of fields or files could lead to a denial of service attack by consuming a lot of CPU and memory parsing too many empty fields.

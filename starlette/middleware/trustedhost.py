@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 
 from starlette.datastructures import URL, Headers
@@ -7,6 +8,8 @@ from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 ENFORCE_DOMAIN_WILDCARD = "Domain wildcard patterns must be like '*.example.com'."
+
+host_validation_re = re.compile(r"^([a-z0-9.-]+|\[[a-f0-9]*:[a-f0-9.:]+])(?::([0-9]+))?$")
 
 
 class TrustedHostMiddleware:
@@ -37,10 +40,12 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        host = headers.get("host", "").split(":")[0]
+        host = headers.get("host", "")
+        host = split_domain(host)
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:
+            pattern = pattern.lower()
             if host == pattern or (pattern.startswith("*") and host.endswith(pattern[1:])):
                 is_valid_host = True
                 break
@@ -58,3 +63,11 @@ class TrustedHostMiddleware:
             else:
                 response = PlainTextResponse("Invalid host header", status_code=400)
             await response(scope, receive, send)
+
+
+def split_domain(host: str) -> str:
+    if match := host_validation_re.fullmatch(host.lower()):
+        domain, _ = match.groups(default="")
+        # Remove a trailing dot (if present) from the domain.
+        return domain.removesuffix(".")
+    return ""

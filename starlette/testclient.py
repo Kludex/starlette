@@ -5,6 +5,7 @@ import inspect
 import io
 import json
 import math
+import re
 import sys
 import warnings
 from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, MutableMapping, Sequence
@@ -231,8 +232,8 @@ class _TestClientTransport(httpx.BaseTransport):
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
 
-        if ":" in netloc:
-            host, port_string = netloc.split(":", 1)
+        if re.search(r":\d+$", netloc):
+            host, port_string = netloc.rsplit(":", 1)
             port = int(port_string)
         else:
             host = netloc

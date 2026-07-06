@@ -115,6 +115,7 @@ filterwarnings = [
     "ignore: run_until_first_complete is deprecated and will be removed in a future version.:starlette.exceptions.StarletteDeprecationWarning",
     "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:starlette.exceptions.StarletteDeprecationWarning",
     "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
+    "ignore: Async generator 'starlette.requests.Request._stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
     "ignore: Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
 ]

@@ -48,6 +48,17 @@ def create_user(request: Request) -> None:
     pass  # pragma: no cover
 
 
+def query_users(request: Request) -> None:
+    """
+    responses:
+      200:
+        description: Users matching a query.
+        examples:
+          [{"username": "tom"}]
+    """
+    pass  # pragma: no cover
+
+
 class OrganisationsEndpoint(HTTPEndpoint):
     def get(self, request: Request) -> None:
         """
@@ -119,6 +130,7 @@ app = Starlette(
         Route("/users/{id:int}", endpoint=get_user, methods=["GET"]),
         Route("/users", endpoint=list_users, methods=["GET", "HEAD"]),
         Route("/users", endpoint=create_user, methods=["POST"]),
+        Route("/users", endpoint=query_users, methods=["QUERY"]),
         Route("/orgs", endpoint=OrganisationsEndpoint),
         Route("/regular-docstring-and-schema", endpoint=regular_docstring_and_schema),
         Route("/regular-docstring", endpoint=regular_docstring),
@@ -173,6 +185,14 @@ def test_schema_generation() -> None:
                     }
                 },
                 "post": {"responses": {200: {"description": "A user.", "examples": {"username": "tom"}}}},
+                "query": {
+                    "responses": {
+                        200: {
+                            "description": "Users matching a query.",
+                            "examples": [{"username": "tom"}],
+                        }
+                    }
+                },
             },
             "/users/{id}": {
                 "get": {
@@ -237,6 +257,12 @@ paths:
           description: A user.
           examples:
             username: tom
+    query:
+      responses:
+        200:
+          description: Users matching a query.
+          examples:
+          - username: tom
   /users/{id}:
     get:
       responses:

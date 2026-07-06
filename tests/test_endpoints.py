@@ -18,6 +18,9 @@ class Homepage(HTTPEndpoint):
             return PlainTextResponse("Hello, world!")
         return PlainTextResponse(f"Hello, {username}!")
 
+    async def query(self, request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Hello, QUERY!")
+
 
 app = Router(routes=[Route("/", endpoint=Homepage), Route("/{username}", endpoint=Homepage)])
 
@@ -44,7 +47,13 @@ def test_http_endpoint_route_method(client: TestClient) -> None:
     response = client.post("/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
-    assert response.headers["allow"] == "GET"
+    assert response.headers["allow"] == "GET, QUERY"
+
+
+def test_http_endpoint_route_query_method(client: TestClient) -> None:
+    response = client.request("QUERY", "/")
+    assert response.status_code == 200
+    assert response.text == "Hello, QUERY!"
 
 
 def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: TestClientFactory) -> None:

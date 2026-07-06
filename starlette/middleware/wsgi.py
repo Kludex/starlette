@@ -10,12 +10,15 @@ from typing import Any
 import anyio
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
+from starlette._utils import create_collapsing_task_group
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import Receive, Scope, Send
 
 warnings.warn(
     "starlette.middleware.wsgi is deprecated and will be removed in a future release. "
     "Please refer to https://github.com/abersheeran/a2wsgi as a replacement.",
-    DeprecationWarning,
+    StarletteDeprecationWarning,
+    stacklevel=2,
 )
 
 
@@ -103,7 +106,7 @@ class WSGIResponder:
             more_body = message.get("more_body", False)
         environ = build_environ(self.scope, body)
 
-        async with anyio.create_task_group() as task_group:
+        async with create_collapsing_task_group() as task_group:
             task_group.start_soon(self.sender, send)
             async with self.stream_send:
                 await anyio.to_thread.run_sync(self.wsgi, environ, self.start_response)

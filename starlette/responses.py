@@ -6,7 +6,6 @@ import json
 import os
 import stat
 import sys
-import warnings
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Mapping, Sequence
 from datetime import datetime
 from email.utils import format_datetime, formatdate
@@ -19,12 +18,12 @@ from urllib.parse import quote
 import anyio
 import anyio.to_thread
 
-from starlette._utils import collapse_excgroups
+from starlette._utils import create_collapsing_task_group
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
 from starlette.requests import ClientDisconnect
-from starlette.types import Receive, Scope, Send
+from starlette.types import Message, Receive, Scope, Send
 
 
 class Response:
@@ -152,16 +151,20 @@ class Response:
             samesite=samesite,
         )
 
+    def _wrap_websocket_denial_send(self, send: Send) -> Send:
+        async def wrapped(message: Message) -> None:
+            message_type = message["type"]
+            if message_type in {"http.response.start", "http.response.body"}:  # pragma: no branch
+                message = {**message, "type": "websocket." + message_type}
+            await send(message)
+
+        return wrapped
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        prefix = "websocket." if scope["type"] == "websocket" else ""
-        await send(
-            {
-                "type": prefix + "http.response.start",
-                "status": self.status_code,
-                "headers": self.raw_headers,
-            }
-        )
-        await send({"type": prefix + "http.response.body", "body": self.body})
+        if scope["type"] == "websocket":
+            send = self._wrap_websocket_denial_send(send)
+        await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
+        await send({"type": "http.response.body", "body": self.body})
 
         if self.background is not None:
             await self.background()
@@ -243,13 +246,7 @@ class StreamingResponse(Response):
                 break
 
     async def stream_response(self, send: Send) -> None:
-        await send(
-            {
-                "type": "http.response.start",
-                "status": self.status_code,
-                "headers": self.raw_headers,
-            }
-        )
+        await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         async for chunk in self.body_iterator:
             if not isinstance(chunk, bytes | memoryview):
                 chunk = chunk.encode(self.charset)
@@ -258,6 +255,13 @@ class StreamingResponse(Response):
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "websocket":
+            send = self._wrap_websocket_denial_send(send)
+            await self.stream_response(send)
+            if self.background is not None:
+                await self.background()
+            return
+
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
         if spec_version >= (2, 4):
@@ -266,15 +270,14 @@ class StreamingResponse(Response):
             except OSError:
                 raise ClientDisconnect()
         else:
-            with collapse_excgroups():
-                async with anyio.create_task_group() as task_group:
+            async with create_collapsing_task_group() as task_group:
 
-                    async def wrap(func: Callable[[], Awaitable[None]]) -> None:
-                        await func()
-                        task_group.cancel_scope.cancel()
+                async def wrap(func: Callable[[], Awaitable[None]]) -> None:
+                    await func()
+                    task_group.cancel_scope.cancel()
 
-                    task_group.start_soon(wrap, partial(self.stream_response, send))
-                    await wrap(partial(self.listen_for_disconnect, receive))
+                task_group.start_soon(wrap, partial(self.stream_response, send))
+                await wrap(partial(self.listen_for_disconnect, receive))
 
         if self.background is not None:
             await self.background()
@@ -302,19 +305,13 @@ class FileResponse(Response):
         background: BackgroundTask | None = None,
         filename: str | None = None,
         stat_result: os.stat_result | None = None,
-        method: str | None = None,
         content_disposition_type: str = "attachment",
     ) -> None:
         self.path = path
         self.status_code = status_code
         self.filename = filename
-        if method is not None:
-            warnings.warn(
-                "The 'method' parameter is not used, and it will be removed.",
-                DeprecationWarning,
-            )
         if media_type is None:
-            media_type = guess_type(filename or path)[0] or "text/plain"
+            media_type = guess_type(filename or path)[0] or "application/octet-stream"
         self.media_type = media_type
         self.background = background
         self.init_headers(headers)
@@ -341,8 +338,11 @@ class FileResponse(Response):
         self.headers.setdefault("etag", etag)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        send_header_only: bool = scope["method"].upper() == "HEAD"
-        send_pathsend: bool = "http.response.pathsend" in scope.get("extensions", {})
+        scope_type = scope["type"]
+        send_header_only = scope_type == "http" and scope["method"].upper() == "HEAD"
+        send_pathsend = scope_type == "http" and "http.response.pathsend" in scope.get("extensions", {})
+        if scope_type == "websocket":
+            send = self._wrap_websocket_denial_send(send)
 
         if self.stat_result is None:
             try:
@@ -369,7 +369,7 @@ class FileResponse(Response):
             except MalformedRangeHeader as exc:
                 return await PlainTextResponse(exc.content, status_code=400)(scope, receive, send)
             except RangeNotSatisfiable as exc:
-                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"*/{exc.max_size}"})
+                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
                 return await response(scope, receive, send)
 
             if len(ranges) == 1:
@@ -398,9 +398,10 @@ class FileResponse(Response):
     async def _handle_single_range(
         self, send: Send, start: int, end: int, file_size: int, send_header_only: bool
     ) -> None:
-        self.headers["content-range"] = f"bytes {start}-{end - 1}/{file_size}"
-        self.headers["content-length"] = str(end - start)
-        await send({"type": "http.response.start", "status": 206, "headers": self.raw_headers})
+        headers = MutableHeaders(raw=list(self.raw_headers))
+        headers["content-range"] = f"bytes {start}-{end - 1}/{file_size}"
+        headers["content-length"] = str(end - start)
+        await send({"type": "http.response.start", "status": 206, "headers": headers.raw})
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
@@ -425,9 +426,10 @@ class FileResponse(Response):
         content_length, header_generator = self.generate_multipart(
             ranges, boundary, file_size, self.headers["content-type"]
         )
-        self.headers["content-range"] = f"multipart/byteranges; boundary={boundary}"
-        self.headers["content-length"] = str(content_length)
-        await send({"type": "http.response.start", "status": 206, "headers": self.raw_headers})
+        headers = MutableHeaders(raw=list(self.raw_headers))
+        headers["content-type"] = f"multipart/byteranges; boundary={boundary}"
+        headers["content-length"] = str(content_length)
+        await send({"type": "http.response.start", "status": 206, "headers": headers.raw})
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
@@ -439,11 +441,11 @@ class FileResponse(Response):
                         chunk = await file.read(min(self.chunk_size, end - start))
                         start += len(chunk)
                         await send({"type": "http.response.body", "body": chunk, "more_body": True})
-                    await send({"type": "http.response.body", "body": b"\n", "more_body": True})
+                    await send({"type": "http.response.body", "body": b"\r\n", "more_body": True})
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": f"\n--{boundary}--\n".encode("latin-1"),
+                        "body": f"--{boundary}--".encode("latin-1"),
                         "more_body": False,
                     }
                 )
@@ -478,19 +480,13 @@ class FileResponse(Response):
         if len(ranges) == 1:
             return ranges
 
-        # Merge ranges
-        result: list[tuple[int, int]] = []
-        for start, end in ranges:
-            for p in range(len(result)):
-                p_start, p_end = result[p]
-                if start > p_end:
-                    continue
-                elif end < p_start:
-                    result.insert(p, (start, end))  # THIS IS NOT REACHED!
-                    break
-                else:
-                    result[p] = (min(start, p_start), max(end, p_end))
-                    break
+        # Merge overlapping ranges
+        ranges.sort()
+        result: list[tuple[int, int]] = [ranges[0]]
+        for start, end in ranges[1:]:
+            last_start, last_end = result[-1]
+            if start <= last_end:
+                result[-1] = (last_start, max(last_end, end))
             else:
                 result.append((start, end))
 
@@ -516,7 +512,7 @@ class FileResponse(Response):
             end_str = end_str.strip()
 
             try:
-                start = int(start_str) if start_str else file_size - int(end_str)
+                start = int(start_str) if start_str else max(file_size - int(end_str), 0)
                 end = int(end_str) + 1 if start_str and end_str and int(end_str) < file_size else file_size
                 ranges.append((start, end))
             except ValueError:
@@ -536,31 +532,36 @@ class FileResponse(Response):
         Multipart response headers generator.
 
         ```
-        --{boundary}\n
-        Content-Type: {content_type}\n
-        Content-Range: bytes {start}-{end-1}/{max_size}\n
-        \n
-        ..........content...........\n
-        --{boundary}\n
-        Content-Type: {content_type}\n
-        Content-Range: bytes {start}-{end-1}/{max_size}\n
-        \n
-        ..........content...........\n
-        --{boundary}--\n
+        --{boundary}\r\n
+        Content-Type: {content_type}\r\n
+        Content-Range: bytes {start}-{end-1}/{max_size}\r\n
+        \r\n
+        ..........content...........\r\n
+        --{boundary}\r\n
+        Content-Type: {content_type}\r\n
+        Content-Range: bytes {start}-{end-1}/{max_size}\r\n
+        \r\n
+        ..........content...........\r\n
+        --{boundary}--
         ```
         """
         boundary_len = len(boundary)
-        static_header_part_len = 44 + boundary_len + len(content_type) + len(str(max_size))
+        static_header_part_len = 49 + boundary_len + len(content_type) + len(str(max_size))
         content_length = sum(
             (len(str(start)) + len(str(end - 1)) + static_header_part_len)  # Headers
             + (end - start)  # Content
             for start, end in ranges
         ) + (
-            5 + boundary_len  # --boundary--\n
+            4 + boundary_len  # --boundary--
         )
         return (
             content_length,
             lambda start, end: (
-                f"--{boundary}\nContent-Type: {content_type}\nContent-Range: bytes {start}-{end - 1}/{max_size}\n\n"
+                f"""\
+--{boundary}\r
+Content-Type: {content_type}\r
+Content-Range: bytes {start}-{end - 1}/{max_size}\r
+\r
+"""
             ).encode("latin-1"),
         )

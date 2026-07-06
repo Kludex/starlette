@@ -55,25 +55,46 @@ class MultiPartException(Exception):
 
 
 class FormParser:
-    def __init__(self, headers: Headers, stream: AsyncGenerator[bytes, None]) -> None:
+    def __init__(
+        self,
+        headers: Headers,
+        stream: AsyncGenerator[bytes, None],
+        *,
+        max_fields: int | float = 1000,
+        max_part_size: int = 1024 * 1024,  # 1MB
+    ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
+        self.max_fields = max_fields
+        self.max_part_size = max_part_size
         self.messages: list[tuple[FormMessage, bytes]] = []
+        self._current_field_size = 0
+        self._current_fields = 0
 
     def on_field_start(self) -> None:
+        self._current_field_size = 0
         message = (FormMessage.FIELD_START, b"")
         self.messages.append(message)
 
     def on_field_name(self, data: bytes, start: int, end: int) -> None:
+        self._current_field_size += end - start
+        if self._current_field_size > self.max_part_size:
+            raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
         message = (FormMessage.FIELD_NAME, data[start:end])
         self.messages.append(message)
 
     def on_field_data(self, data: bytes, start: int, end: int) -> None:
+        self._current_field_size += end - start
+        if self._current_field_size > self.max_part_size:
+            raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
         message = (FormMessage.FIELD_DATA, data[start:end])
         self.messages.append(message)
 
     def on_field_end(self) -> None:
+        self._current_fields += 1
+        if self._current_fields > self.max_fields:
+            raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
         message = (FormMessage.FIELD_END, b"")
         self.messages.append(message)
 
@@ -93,8 +114,8 @@ class FormParser:
 
         # Create the parser.
         parser = multipart.QuerystringParser(callbacks)
-        field_name = b""
-        field_value = b""
+        field_name = bytearray()
+        field_value = bytearray()
 
         items: list[tuple[str, str | UploadFile]] = []
 
@@ -108,12 +129,12 @@ class FormParser:
             self.messages.clear()
             for message_type, message_bytes in messages:
                 if message_type == FormMessage.FIELD_START:
-                    field_name = b""
-                    field_value = b""
+                    field_name = bytearray()
+                    field_value = bytearray()
                 elif message_type == FormMessage.FIELD_NAME:
-                    field_name += message_bytes
+                    field_name.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_DATA:
-                    field_value += message_bytes
+                    field_value.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_END:
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))
@@ -266,11 +287,11 @@ class MultiPartParser:
                     await part.file.seek(0)
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()
-        except MultiPartException as exc:
+            parser.finalize()
+        except (MultiPartException, OSError) as exc:
             # Close all the files if there was an error.
             for file in self._files_to_close_on_error:
                 file.close()
             raise exc
 
-        parser.finalize()
         return FormData(self.items)

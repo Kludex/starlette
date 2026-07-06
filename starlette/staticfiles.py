@@ -123,6 +123,9 @@ class StaticFiles:
                 raise HTTPException(status_code=404)
 
             raise exc
+        except ValueError:
+            # Null bytes or other invalid characters in the path.
+            raise HTTPException(status_code=404)
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
@@ -149,6 +152,9 @@ class StaticFiles:
         raise HTTPException(status_code=404)
 
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        # Reject absolute paths so they cannot escape the served directory.
+        if path.startswith(("/", "\\")):
+            return "", None
         for directory in self.all_directories:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:
@@ -204,7 +210,7 @@ class StaticFiles:
         if if_none_match := request_headers.get("if-none-match"):
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
-            return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
+            return etag in [tag.strip().removeprefix("W/") for tag in if_none_match.split(",")]
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])

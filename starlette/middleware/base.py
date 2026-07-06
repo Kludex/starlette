@@ -5,7 +5,7 @@ from typing import Any, TypeVar
 
 import anyio
 
-from starlette._utils import collapse_excgroups
+from starlette._utils import create_collapsing_task_group
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -188,8 +188,8 @@ class BaseHTTPMiddleware:
 
         streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
         send_stream, recv_stream = streams
-        with recv_stream, send_stream, collapse_excgroups():
-            async with anyio.create_task_group() as task_group:
+        with recv_stream, send_stream:
+            async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)
                 await response(scope, wrapped_receive, send)
                 response_sent.set()

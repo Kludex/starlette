@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import functools
 import sys
-from collections.abc import Awaitable, Callable, Generator
-from contextlib import AbstractAsyncContextManager, contextmanager
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any, Generic, Protocol, TypeVar, overload
+
+import anyio.abc
 
 from starlette.types import Scope
 
@@ -16,12 +18,14 @@ else:  # pragma: no cover
 
     from typing_extensions import TypeIs
 
-has_exceptiongroups = True
 if sys.version_info < (3, 11):  # pragma: no cover
     try:
-        from exceptiongroup import BaseExceptionGroup  # type: ignore[unused-ignore,import-not-found]
+        from exceptiongroup import BaseExceptionGroup
     except ImportError:
-        has_exceptiongroups = False
+
+        class BaseExceptionGroup(BaseException):  # type: ignore[no-redef]
+            pass
+
 
 T = TypeVar("T")
 AwaitableCallable = Callable[..., Awaitable[T]]
@@ -45,7 +49,9 @@ def is_async_callable(obj: Any) -> Any:
 T_co = TypeVar("T_co", covariant=True)
 
 
-class AwaitableOrContextManager(Awaitable[T_co], AbstractAsyncContextManager[T_co], Protocol[T_co]): ...
+class AwaitableOrContextManager(
+    Awaitable[T_co], AbstractAsyncContextManager[T_co], Protocol[T_co]
+): ...  # pragma: no branch
 
 
 class SupportsAsyncClose(Protocol):
@@ -73,16 +79,18 @@ class AwaitableOrContextManagerWrapper(Generic[SupportsAsyncCloseType]):
         return None
 
 
-@contextmanager
-def collapse_excgroups() -> Generator[None, None, None]:
+@asynccontextmanager
+async def create_collapsing_task_group() -> AsyncGenerator[anyio.abc.TaskGroup, None]:
     try:
-        yield
-    except BaseException as exc:
-        if has_exceptiongroups:  # pragma: no cover
-            while isinstance(exc, BaseExceptionGroup) and len(exc.exceptions) == 1:
-                exc = exc.exceptions[0]
+        async with anyio.create_task_group() as tg:
+            yield tg
+    except BaseExceptionGroup as excs:
+        if len(excs.exceptions) != 1:
+            raise
 
-        raise exc
+        exc = excs.exceptions[0]
+        context = None if exc.__suppress_context__ else exc.__context__
+        raise exc from exc.__cause__ or context
 
 
 def get_route_path(scope: Scope) -> str:

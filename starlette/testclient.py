@@ -11,13 +11,7 @@ from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, M
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from types import GeneratorType
-from typing import (
-    Any,
-    Literal,
-    TypedDict,
-    TypeGuard,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeGuard, cast
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -26,6 +20,7 @@ import anyio.from_thread
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
 
@@ -34,14 +29,27 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import Self
 
-try:
-    import httpx
-except ModuleNotFoundError:  # pragma: no cover
-    raise RuntimeError(
-        "The starlette.testclient module requires the httpx package to be installed.\n"
-        "You can install this with:\n"
-        "    $ pip install httpx\n"
-    )
+if TYPE_CHECKING:
+    import httpx2 as httpx
+else:
+    try:
+        import httpx2 as httpx
+    except ModuleNotFoundError:  # pragma: no cover
+        try:
+            import httpx
+        except ModuleNotFoundError:
+            raise RuntimeError(
+                "The starlette.testclient module requires the httpx2 package to be installed.\n"
+                "You can install this with:\n"
+                "    $ pip install httpx2\n"
+            ) from None
+        else:
+            warnings.warn(
+                "Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.",
+                StarletteDeprecationWarning,
+                stacklevel=2,
+            )
+
 _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
@@ -104,7 +112,7 @@ class WebSocketTestSession:
         self.portal_factory = portal_factory
         self.extra_headers = None
 
-    def __enter__(self) -> WebSocketTestSession:
+    def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
             self.portal = portal = stack.enter_context(self.portal_factory())
             fut, cs = portal.start_task(self._run)
@@ -439,7 +447,8 @@ class TestClient(httpx.Client):
             warnings.warn(
                 "You should not use the 'timeout' argument with the TestClient. "
                 "See https://github.com/Kludex/starlette/issues/1108 for more information.",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
+                stacklevel=2,
             )
         url = self._merge_url(url)
         return super().request(

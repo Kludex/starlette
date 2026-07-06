@@ -44,7 +44,7 @@ class BaseSchemaGenerator:
         - path
             eg: /users/
         - http_method
-            one of 'get', 'post', 'put', 'patch', 'delete', 'options'
+            one of 'get', 'post', 'put', 'patch', 'delete', 'options', 'query'
         - func
             method ready to extract the docstring
         """
@@ -78,7 +78,7 @@ class BaseSchemaGenerator:
                     endpoints_info.append(EndpointInfo(path, method.lower(), route.endpoint))
             else:
                 path = self._remove_converter(route.path)
-                for method in ["get", "post", "put", "patch", "delete", "options"]:
+                for method in ["get", "post", "put", "patch", "delete", "options", "query"]:
                     if not hasattr(route.endpoint, method):
                         continue
                     func = getattr(route.endpoint, method)

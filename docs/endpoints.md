@@ -31,6 +31,8 @@ class Homepage(HTTPEndpoint):
     async def get(self, request):
         return PlainTextResponse(f"Hello, world!")
 
+    async def query(self, request):
+        return PlainTextResponse(f"Hello, query!")
 
 class User(HTTPEndpoint):
     async def get(self, request):
@@ -47,6 +49,10 @@ app = Starlette(routes=routes)
 
 HTTP endpoint classes will respond with "405 Method not allowed" responses for any
 request methods which do not map to a corresponding handler.
+
+You can define a handler for any supported HTTP method by adding a matching
+lowercase method name, for example `async def query(self, request):` to handle
+`QUERY` requests.
 
 ### WebSocketEndpoint
 

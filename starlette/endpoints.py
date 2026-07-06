@@ -22,7 +22,7 @@ class HTTPEndpoint:
         self.send = send
         self._allowed_methods = [
             method
-            for method in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            for method in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY")
             if getattr(self, method.lower(), None) is not None
         ]
 

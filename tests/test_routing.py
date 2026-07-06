@@ -79,6 +79,10 @@ def contact(request: Request) -> Response:
     return Response("Hello, POST!", media_type="text/plain")
 
 
+def search(request: Request) -> Response:
+    return Response("Hello, QUERY!", media_type="text/plain")
+
+
 def int_convertor(request: Request) -> JSONResponse:
     number = request.path_params["param"]
     return JSONResponse({"int": number})
@@ -147,6 +151,7 @@ app = Router(
         Mount("/static", app=Response("xxxxx", media_type="image/png")),
         Route("/func", endpoint=func_homepage, methods=["GET"]),
         Route("/func", endpoint=contact, methods=["POST"]),
+        Route("/search", endpoint=search, methods=["QUERY"]),
         Route("/int/{param:int}", endpoint=int_convertor, name="int-convertor"),
         Route("/float/{param:float}", endpoint=float_convertor, name="float-convertor"),
         Route("/path/{param:path}", endpoint=path_convertor, name="path-convertor"),
@@ -301,6 +306,17 @@ def test_router_duplicate_path(client: TestClient) -> None:
     response = client.post("/func")
     assert response.status_code == 200
     assert response.text == "Hello, POST!"
+
+
+def test_router_query_method(client: TestClient) -> None:
+    response = client.request("QUERY", "/search")
+    assert response.status_code == 200
+    assert response.text == "Hello, QUERY!"
+
+    response = client.get("/search")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "QUERY"
 
 
 def test_router_add_websocket_route(client: TestClient) -> None:

@@ -425,6 +425,28 @@ def test_websocket_raw_path_without_params(test_client_factory: TestClientFactor
         assert data == b"/hello-world"
 
 
+def test_testclient_ipv6_base_url(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["server"] == ["::1", 8000]
+        response = Response("OK")
+        await response(scope, receive, send)
+
+    client = test_client_factory(app, base_url="http://[::1]:8000")
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+def test_testclient_ipv6_base_url_default_port(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["server"] == ["::1", 80]
+        response = Response("OK")
+        await response(scope, receive, send)
+
+    client = test_client_factory(app, base_url="http://[::1]")
+    response = client.get("/")
+    assert response.status_code == 200
+
+
 def test_timeout_deprecation() -> None:
     with pytest.warns(
         StarletteDeprecationWarning, match="You should not use the 'timeout' argument with the TestClient."

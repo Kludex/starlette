@@ -2,11 +2,13 @@ from collections.abc import Iterator
 
 import pytest
 
+from starlette import status
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router
 from starlette.testclient import TestClient
+from starlette.types import Message
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
@@ -163,6 +165,76 @@ def test_websocket_endpoint_on_default(test_client_factory: TestClientFactory) -
         websocket.send_text("Hello, world!")
         _text = websocket.receive_text()
         assert _text == "Message text was: Hello, world!"
+
+
+def test_websocket_endpoint_on_default_with_empty_text(
+    test_client_factory: TestClientFactory,
+) -> None:
+    class WebSocketApp(WebSocketEndpoint):
+        encoding = None
+
+        async def on_receive(self, websocket: WebSocket, data: str) -> None:
+            await websocket.send_text(f"Message text was: {data!r}")
+
+    client = test_client_factory(WebSocketApp)
+    with client.websocket_connect("/ws") as websocket:
+        websocket.send_text("")
+        _text = websocket.receive_text()
+        assert _text == "Message text was: ''"
+
+
+@pytest.mark.anyio
+async def test_websocket_endpoint_decode_text_rejects_message_without_text() -> None:
+    # Per the ASGI spec, "one or both keys may be present" on a receive event, so a
+    # compliant server may send both "text" and "bytes", with "text" set to None.
+    class Echo(WebSocketEndpoint):
+        encoding = "text"
+
+        async def on_receive(self, websocket: WebSocket, data: str) -> None:
+            raise AssertionError("on_receive should not be called")  # pragma: no cover
+
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        raise AssertionError("receive should not be called")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    ep = Echo({"type": "websocket", "path": "/", "headers": [], "query_string": b""}, receive=receive, send=send)
+    websocket = WebSocket(ep.scope, receive=ep.receive, send=send)
+    message: Message = {"type": "websocket.receive", "text": None, "bytes": b"hello"}
+
+    with pytest.raises(RuntimeError, match="Expected text websocket messages, but got bytes"):
+        await ep.decode(websocket, message)
+
+    assert sent == [{"type": "websocket.close", "code": status.WS_1003_UNSUPPORTED_DATA, "reason": ""}]
+
+
+@pytest.mark.anyio
+async def test_websocket_endpoint_decode_bytes_rejects_message_without_bytes() -> None:
+    class Echo(WebSocketEndpoint):
+        encoding = "bytes"
+
+        async def on_receive(self, websocket: WebSocket, data: bytes) -> None:
+            raise AssertionError("on_receive should not be called")  # pragma: no cover
+
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        raise AssertionError("receive should not be called")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    ep = Echo({"type": "websocket", "path": "/", "headers": [], "query_string": b""}, receive=receive, send=send)
+    websocket = WebSocket(ep.scope, receive=ep.receive, send=send)
+    message: Message = {"type": "websocket.receive", "text": "hi", "bytes": None}
+
+    with pytest.raises(RuntimeError, match="Expected bytes websocket messages, but got text"):
+        await ep.decode(websocket, message)
+
+    assert sent == [{"type": "websocket.close", "code": status.WS_1003_UNSUPPORTED_DATA, "reason": ""}]
 
 
 def test_websocket_endpoint_on_disconnect(

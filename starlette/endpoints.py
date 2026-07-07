@@ -90,13 +90,13 @@ class WebSocketEndpoint:
 
     async def decode(self, websocket: WebSocket, message: Message) -> Any:
         if self.encoding == "text":
-            if "text" not in message:
+            if message.get("text") is None:
                 await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 raise RuntimeError("Expected text websocket messages, but got bytes")
             return message["text"]
 
         elif self.encoding == "bytes":
-            if "bytes" not in message:
+            if message.get("bytes") is None:
                 await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 raise RuntimeError("Expected bytes websocket messages, but got text")
             return message["bytes"]

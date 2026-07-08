@@ -344,6 +344,18 @@ other_app = Starlette(
 )
 
 
+def test_simple_user_identity() -> None:
+    user = SimpleUser("tomchristie")
+    assert user.identity == "tomchristie"
+
+
+def test_unauthenticated_user_identity() -> None:
+    from starlette.authentication import UnauthenticatedUser
+
+    user = UnauthenticatedUser()
+    assert user.identity == ""
+
+
 def test_custom_on_error(test_client_factory: TestClientFactory) -> None:
     with test_client_factory(other_app) as client:
         response = client.get("/control-panel", auth=("tomchristie", "example"))

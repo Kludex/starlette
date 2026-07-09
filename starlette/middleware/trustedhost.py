@@ -57,4 +57,11 @@ class TrustedHostMiddleware:
                 response = RedirectResponse(url=str(redirect_url))
             else:
                 response = PlainTextResponse("Invalid host header", status_code=400)
-            await response(scope, receive, send)
+
+            if scope["type"] == "websocket":
+                if "websocket.http.response" in scope.get("extensions", {}):
+                    await response(scope, receive, send)
+                else:
+                    await send({"type": "websocket.close", "code": 1008})
+            else:
+                await response(scope, receive, send)

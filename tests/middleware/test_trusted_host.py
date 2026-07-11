@@ -50,11 +50,6 @@ def test_www_redirect(test_client_factory: TestClientFactory) -> None:
     assert response.url == "https://www.example.com/"
 
 
-def test_ipv6_host_extraction() -> None:
-    """Test that IPv6 addresses are extracted correctly from the Host header."""
-    async def app(scope, receive, send):  # type: ignore[no-untyped-def]
-        pass
-
     # Simulate the middleware's host extraction logic
     test_cases = [
         ("[::1]:8000", "::1"),

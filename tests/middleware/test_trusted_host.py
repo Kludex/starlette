@@ -52,8 +52,6 @@ def test_www_redirect(test_client_factory: TestClientFactory) -> None:
 
 def test_ipv6_host_extraction() -> None:
     """Test that IPv6 addresses are extracted correctly from the Host header."""
-    from starlette.datastructures import Headers
-
     async def app(scope, receive, send):  # type: ignore[no-untyped-def]
         pass
 

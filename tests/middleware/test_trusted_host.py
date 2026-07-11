@@ -57,8 +57,6 @@ def test_ipv6_host_extraction() -> None:
     async def app(scope, receive, send):  # type: ignore[no-untyped-def]
         pass
 
-    middleware = TrustedHostMiddleware(app, allowed_hosts=["::1"])
-
     # Simulate the middleware's host extraction logic
     test_cases = [
         ("[::1]:8000", "::1"),

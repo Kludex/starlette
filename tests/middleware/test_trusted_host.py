@@ -54,7 +54,7 @@ def test_ipv6_host_extraction() -> None:
     """Test that IPv6 addresses are extracted correctly from the Host header."""
     from starlette.datastructures import Headers
 
-    async def app(scope, receive, send):
+    async def app(scope: dict, receive: object, send: object) -> None:
         pass
 
     middleware = TrustedHostMiddleware(app, allowed_hosts=["::1"])

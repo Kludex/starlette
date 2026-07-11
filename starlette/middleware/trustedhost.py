@@ -41,16 +41,16 @@ class TrustedHostMiddleware:
         if host_header.startswith("["):
             # IPv6: extract [::1] from [::1]:8000
             # Validate that after ] only :port or nothing follows
-            bracket_end = host_header.find("]")  # pragma: no cover
-            if bracket_end != -1:  # pragma: no cover
-                suffix = host_header[bracket_end + 1:]  # pragma: no cover
-                if suffix == "" or suffix.startswith(":"):  # pragma: no cover
-                    host = host_header[1:bracket_end]  # pragma: no cover
-                else:  # pragma: no cover
+            bracket_end = host_header.find("]")
+            if bracket_end != -1:
+                suffix = host_header[bracket_end + 1:]
+                if suffix == "" or suffix.startswith(":"):
+                    host = host_header[1:bracket_end]
+                else:
                     # Malformed: not a real IPv6, fall back to treating entire header as host
-                    host = host_header  # pragma: no cover
-            else:  # pragma: no cover
-                host = host_header  # pragma: no cover
+                    host = host_header
+            else:
+                host = host_header
         else:
             host = host_header.split(":")[0]
         is_valid_host = False

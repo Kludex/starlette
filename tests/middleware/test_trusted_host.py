@@ -48,3 +48,47 @@ def test_www_redirect(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.url == "https://www.example.com/"
+
+
+def test_ipv6_host(test_client_factory: TestClientFactory) -> None:
+    """Test that IPv6 addresses in Host header are handled correctly."""
+
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("OK", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["::1", "[::1]"])],
+    )
+
+    # IPv6 with port
+    client = test_client_factory(app, base_url="http://[::1]:8000")
+    response = client.get("/")
+    assert response.status_code == 200
+
+    # IPv6 without port
+    client = test_client_factory(app, base_url="http://[::1]")
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+def test_ipv6_malformed_host(test_client_factory: TestClientFactory) -> None:
+    """Test that malformed IPv6-like hosts are rejected."""
+
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("OK", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["example.com"])],
+    )
+
+    # Malformed: starts with [ but no closing ]
+    client = test_client_factory(app, base_url="http://[::1")
+    response = client.get("/")
+    assert response.status_code == 400
+
+    # Malformed: closing ] followed by non-port text
+    client = test_client_factory(app, base_url="http://[::1]invalid")
+    response = client.get("/")
+    assert response.status_code == 400

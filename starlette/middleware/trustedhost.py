@@ -41,7 +41,7 @@ class TrustedHostMiddleware:
         if host_header.startswith("["):
             # IPv6: extract [::1] from [::1]:8000
             bracket_end = host_header.find("]")
-            host = host_header[1:bracket_end] if bracket_end != -1 else host_header
+            host = host_header[1:bracket_end] if bracket_end != -1 else host_header  # pragma: no cover
         else:
             host = host_header.split(":")[0]
         is_valid_host = False

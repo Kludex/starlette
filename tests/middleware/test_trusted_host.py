@@ -59,33 +59,15 @@ def test_ipv6_host(test_client_factory: TestClientFactory) -> None:
         middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]"])],
     )
 
-    # Test the middleware's host parsing directly
-    middleware = TrustedHostMiddleware(app, allowed_hosts=["[::1]"])
+    client = test_client_factory(app, base_url="http://[::1]")
+    response = client.get("/")
+    assert response.status_code == 200
 
-    # Simulate IPv6 host header with port
-    scope = {"type": "http", "headers": [(b"host", b"[::1]:8000")]}
-    host = dict(scope["headers"]).get(b"host", b"").decode()
-    # Our fix: extract IPv6 address
-    if host.startswith("["):
-        parsed_host = host.split("]")[0] + "]"
-    else:
-        parsed_host = host.split(":")[0]
-    assert parsed_host == "[::1]", f"Expected [::1], got {parsed_host}"
-
-    # Simulate IPv6 host header without port
-    scope = {"type": "http", "headers": [(b"host", b"[::1]")]}
-    host = dict(scope["headers"]).get(b"host", b"").decode()
-    if host.startswith("["):
-        parsed_host = host.split("]")[0] + "]"
-    else:
-        parsed_host = host.split(":")[0]
-    assert parsed_host == "[::1]", f"Expected [::1], got {parsed_host}"
-
-    # Regular IPv4 should still work
-    scope = {"type": "http", "headers": [(b"host", b"example.com:8000")]}
-    host = dict(scope["headers"]).get(b"host", b"").decode()
-    if host.startswith("["):
-        parsed_host = host.split("]")[0] + "]"
-    else:
-        parsed_host = host.split(":")[0]
-    assert parsed_host == "example.com", f"Expected example.com, got {parsed_host}"
+    # IPv4 still works
+    app2 = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["example.com"])],
+    )
+    client2 = test_client_factory(app2, base_url="http://example.com")
+    response2 = client2.get("/")
+    assert response2.status_code == 200

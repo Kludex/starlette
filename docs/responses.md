@@ -50,6 +50,8 @@ Conversely, Starlette also provides a `delete_cookie` method to manually expire 
 
 Signature: `Response.delete_cookie(key, path='/', domain=None, secure=False, httponly=False, samesite="lax", partitioned=False)`
 
+* `partitioned` - A bool that indicates to user agents that these cross-site cookies should only be available in the same top-level context that the cookie was first set in. Only available for Python 3.14+, otherwise an error will be raised. `Optional`
+
 
 ### HTMLResponse
 

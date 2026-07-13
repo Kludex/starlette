@@ -521,13 +521,11 @@ def test_delete_cookie_partitioned(test_client_factory: TestClientFactory) -> No
         )
         await response(scope, receive, send)
 
+    partitioned_text = "Partitioned" if sys.version_info >= (3, 14) else ""
+
     client = test_client_factory(app)
     response = client.get("/")
-    set_cookie = response.headers["set-cookie"]
-    if sys.version_info >= (3, 14):
-        assert "Partitioned" in set_cookie
-    else:
-        assert "Partitioned" not in set_cookie
+    assert partitioned_text in response.headers["set-cookie"]
 
 
 def test_populate_headers(test_client_factory: TestClientFactory) -> None:

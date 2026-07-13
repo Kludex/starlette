@@ -139,6 +139,7 @@ class Response:
         secure: bool = False,
         httponly: bool = False,
         samesite: Literal["lax", "strict", "none"] | None = "lax",
+        partitioned: bool = False,
     ) -> None:
         self.set_cookie(
             key,
@@ -149,6 +150,7 @@ class Response:
             secure=secure,
             httponly=httponly,
             samesite=samesite,
+            partitioned=partitioned,
         )
 
     def _wrap_websocket_denial_send(self, send: Send) -> Send:

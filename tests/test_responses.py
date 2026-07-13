@@ -512,6 +512,24 @@ def test_delete_cookie(test_client_factory: TestClientFactory) -> None:
     assert not response.cookies.get("mycookie")
 
 
+def test_delete_cookie_partitioned(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response("Hello, world!", media_type="text/plain")
+        response.delete_cookie(
+            "mycookie",
+            partitioned=True if sys.version_info >= (3, 14) else False,
+        )
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    set_cookie = response.headers["set-cookie"]
+    if sys.version_info >= (3, 14):
+        assert "Partitioned" in set_cookie
+    else:
+        assert "Partitioned" not in set_cookie
+
+
 def test_populate_headers(test_client_factory: TestClientFactory) -> None:
     app = Response(content="hi", headers={}, media_type="text/html")
     client = test_client_factory(app)

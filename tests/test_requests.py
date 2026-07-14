@@ -669,3 +669,29 @@ def test_request_url_starlette_context(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     client.get("/home")
     assert url_for == URL("http://testserver/home")
+
+
+def test_request_read_n_bytes(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+
+        chunk1 = await request.read(5)
+        chunk2 = await request.read(5)
+        chunk3 = await request.read(5)  # less than 5 bytes remain
+
+        response = JSONResponse(
+            {
+                "chunk1": chunk1.decode(),
+                "chunk2": chunk2.decode(),
+                "chunk3": chunk3.decode(),
+            }
+        )
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.post("/", content=b"HELLO WORLD!!!")
+    assert response.json() == {
+        "chunk1": "HELLO",
+        "chunk2": " WORL",
+        "chunk3": "D!!!",
+    }

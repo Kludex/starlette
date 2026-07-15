@@ -377,10 +377,40 @@ def test_mount_urls(test_client_factory: TestClientFactory) -> None:
     mounted = Router([Mount("/users", ok, name="users")])
     client = test_client_factory(mounted)
     assert client.get("/users").status_code == 200
-    assert client.get("/users").url == "http://testserver/users/"
+    assert client.get("/users").url == "http://testserver/users"
     assert client.get("/users/").status_code == 200
+    assert client.get("/users/").url == "http://testserver/users/"
     assert client.get("/users/a").status_code == 200
     assert client.get("/usersa").status_code == 404
+
+
+def test_mount_trailing_slash_with_child_routes(test_client_factory: TestClientFactory) -> None:
+    mounted = Router(
+        [
+            Mount(
+                "/users",
+                routes=[
+                    Route("/", users, name="users"),
+                    Route("/{username}", user, name="user"),
+                ],
+            )
+        ]
+    )
+    client = test_client_factory(mounted)
+
+    response = client.get("/users")
+    assert response.status_code == 200
+    assert response.url == "http://testserver/users"
+    assert response.text == "All users"
+
+    response = client.get("/users/")
+    assert response.status_code == 200
+    assert response.url == "http://testserver/users/"
+    assert response.text == "All users"
+
+    response = client.get("/users/tom")
+    assert response.status_code == 200
+    assert response.text == "User tom"
 
 
 def test_reverse_mount_urls() -> None:

@@ -379,6 +379,16 @@ class Mount(BaseRoute):
                 self.app = cls(self.app, *args, **kwargs)
         self.name = name
         self.path_regex, self.path_format, self.param_convertors = compile_path(self.path + "/{path:path}")
+        if self.path:
+            # A mount path of `/users` should match both `/users` and `/users/`.
+            # Rewrite the catch-all `path` parameter so that the trailing slash
+            # is optional, while `/usersa` still does not match.
+            path_regex = self.path_regex.pattern
+            path_convertor_regex = self.param_convertors["path"].regex
+            suffix = f"/(?P<path>{path_convertor_regex})$"
+            if path_regex.endswith(suffix):
+                path_regex = path_regex[: -len(suffix)] + f"(?P<path>(?:/.*)?)$"
+                self.path_regex = re.compile(path_regex)
 
     @property
     def routes(self) -> list[BaseRoute]:
@@ -394,8 +404,17 @@ class Mount(BaseRoute):
                 matched_params = match.groupdict()
                 for key, value in matched_params.items():
                     matched_params[key] = self.param_convertors[key].convert(value)
-                remaining_path = "/" + matched_params.pop("path")
-                matched_path = route_path[: -len(remaining_path)]
+                path_value = matched_params.pop("path")
+                if not route_path.endswith("/") and path_value in (None, ""):
+                    # The request path matched the mount point without a trailing
+                    # slash (e.g. `/users`). Route it the same as `/users/` so
+                    # child routes like `Route("/", ...)` resolve correctly.
+                    matched_path = route_path
+                    scope["path"] = scope["path"] + "/"
+                    remaining_path = "/"
+                else:
+                    remaining_path = path_value if path_value else "/"
+                    matched_path = route_path[: -len(remaining_path)]
                 path_params = dict(scope.get("path_params", {}))
                 path_params.update(matched_params)
                 child_scope = {

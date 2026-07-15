@@ -387,7 +387,7 @@ class Mount(BaseRoute):
             path_convertor_regex = self.param_convertors["path"].regex
             suffix = f"/(?P<path>{path_convertor_regex})$"
             if path_regex.endswith(suffix):
-                path_regex = path_regex[: -len(suffix)] + f"(?P<path>(?:/.*)?)$"
+                path_regex = path_regex[: -len(suffix)] + r"(?P<path>(?:/.*)?)$"
                 self.path_regex = re.compile(path_regex)
 
     @property

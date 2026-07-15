@@ -412,6 +412,10 @@ def test_mount_trailing_slash_with_child_routes(test_client_factory: TestClientF
     assert response.status_code == 200
     assert response.text == "User tom"
 
+    response = client.get("/users/tom/")
+    assert response.status_code == 200
+    assert response.text == "User tom"
+
 
 def test_reverse_mount_urls() -> None:
     mounted = Router([Mount("/users", ok, name="users")])

@@ -231,7 +231,14 @@ class _TestClientTransport(httpx.BaseTransport):
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
 
-        if ":" in netloc:
+        if netloc.startswith("["):
+            if "]:" in netloc:
+                host, port_string = netloc.rsplit(":", 1)
+                port = int(port_string)
+            else:
+                host = netloc
+                port = default_port
+        elif ":" in netloc:
             host, port_string = netloc.split(":", 1)
             port = int(port_string)
         else:

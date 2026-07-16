@@ -29,6 +29,20 @@ def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None
     assert response.status_code == 400
 
 
+def test_trusted_host_middleware_with_ipv6(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("OK", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]"])],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"host": "[::1]:8000"})
+    assert response.status_code == 200
+
+
 def test_default_allowed_hosts() -> None:
     app = Starlette()
     middleware = TrustedHostMiddleware(app)

@@ -37,7 +37,13 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        host = headers.get("host", "").split(":")[0]
+        host = headers.get("host", "")
+        if host.startswith("["):
+            closing_bracket = host.find("]")
+            if closing_bracket != -1 and (closing_bracket == len(host) - 1 or host[closing_bracket + 1] == ":"):
+                host = host[: closing_bracket + 1]
+        else:
+            host = host.split(":", 1)[0]
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:

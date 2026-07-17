@@ -117,6 +117,36 @@ def test_app():
        ...
 ```
 
+### Testing streaming responses
+
+You can test streaming responses by using `client.stream()` as a context manager, which allows you to read the response body incrementally:
+
+```python
+from starlette.responses import StreamingResponse
+from starlette.testclient import TestClient
+
+
+async def numbers_stream():
+    for i in range(1, 4):
+        yield f"number {i}\n"
+
+
+async def app(scope, receive, send):
+    assert scope["type"] == "http"
+    response = StreamingResponse(numbers_stream(), media_type="text/plain")
+    await response(scope, receive, send)
+
+
+def test_streaming_response():
+    client = TestClient(app)
+    with client.stream("GET", "/") as response:
+        assert response.status_code == 200
+        iterator = response.iter_text()
+        assert next(iterator) == "number 1\n"
+        assert next(iterator) == "number 2\n"
+        assert next(iterator) == "number 3\n"
+```
+
 ### Testing WebSocket sessions
 
 You can also test websocket sessions with the test client.

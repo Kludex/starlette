@@ -431,3 +431,69 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
+
+
+def test_testclient_stream_response(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["type"] == "http"
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"hello ", "more_body": True})
+        await send({"type": "http.response.body", "body": b"world", "more_body": False})
+
+    client = test_client_factory(app)
+    with client.stream("GET", "/") as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/plain"
+        iterator = response.iter_bytes()
+        assert next(iterator) == b"hello "
+        assert next(iterator) == b"world"
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+
+def test_testclient_stream_response_exception(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["type"] == "http"
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"hello ", "more_body": True})
+        raise RuntimeError("Something went wrong")
+
+    client = test_client_factory(app, raise_server_exceptions=True)
+    with pytest.raises(RuntimeError, match="Something went wrong"):
+        with client.stream("GET", "/") as response:
+            iterator = response.iter_bytes()
+            assert next(iterator) == b"hello "
+            next(iterator)
+
+
+def test_testclient_stream_response_exception_no_raise(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["type"] == "http"
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"hello ", "more_body": True})
+        raise RuntimeError("Something went wrong")
+
+    client = test_client_factory(app, raise_server_exceptions=False)
+    with client.stream("GET", "/") as response:
+        iterator = response.iter_bytes()
+        assert next(iterator) == b"hello "
+        with pytest.raises(StopIteration):
+            next(iterator)

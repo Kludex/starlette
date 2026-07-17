@@ -42,6 +42,12 @@ def test_trusted_host_middleware_with_ipv6(test_client_factory: TestClientFactor
     response = client.get("/", headers={"host": "[::1]:8000"})
     assert response.status_code == 200
 
+    response = client.get("/", headers={"host": "[::1]:attacker"})
+    assert response.status_code == 400
+
+    response = client.get("/", headers={"host": "[::1]:"})
+    assert response.status_code == 400
+
 
 def test_default_allowed_hosts() -> None:
     app = Starlette()

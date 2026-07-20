@@ -114,7 +114,7 @@ class WebSocketEndpoint:
                 raise RuntimeError("Malformed JSON data received.")
 
         assert self.encoding is None, f"Unsupported 'encoding' attribute {self.encoding}"
-        return message["text"] if message.get("text") else message["bytes"]
+        return message["text"] if message.get("text") is not None else message["bytes"]
 
     async def on_connect(self, websocket: WebSocket) -> None:
         """Override to handle an incoming websocket connection"""

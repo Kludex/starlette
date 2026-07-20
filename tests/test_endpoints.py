@@ -165,6 +165,22 @@ def test_websocket_endpoint_on_default(test_client_factory: TestClientFactory) -
         assert _text == "Message text was: Hello, world!"
 
 
+def test_websocket_endpoint_on_default_empty_text(
+    test_client_factory: TestClientFactory,
+) -> None:
+    class WebSocketApp(WebSocketEndpoint):
+        encoding = None
+
+        async def on_receive(self, websocket: WebSocket, data: str) -> None:
+            await websocket.send_text(f"Message text was: {data!r}")
+
+    client = test_client_factory(WebSocketApp)
+    with client.websocket_connect("/ws") as websocket:
+        websocket.send_text("")
+        _text = websocket.receive_text()
+        assert _text == "Message text was: ''"
+
+
 def test_websocket_endpoint_on_disconnect(
     test_client_factory: TestClientFactory,
 ) -> None:

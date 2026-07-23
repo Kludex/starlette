@@ -472,6 +472,7 @@ def test_staticfiles_null_byte_in_path(tmpdir: Path, test_client_factory: TestCl
     assert response.status_code == 404
 
 
+@pytest.mark.skipif(not hasattr(os, "pathconf"), reason="os.pathconf is Unix-only")
 def test_staticfiles_filename_too_long(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
     app = Starlette(routes=routes)

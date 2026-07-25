@@ -15,6 +15,7 @@ class WebSocketState(enum.Enum):
     CONNECTED = 1
     DISCONNECTED = 2
     RESPONSE = 3
+    RESPONSE_COMPLETE = 4
 
 
 class WebSocketDisconnect(Exception):
@@ -92,8 +93,10 @@ class WebSocket(HTTPConnection[StateT]):
             if message_type != "websocket.http.response.body":
                 raise RuntimeError(f'Expected ASGI message "websocket.http.response.body", but got {message_type!r}')
             if not message.get("more_body", False):
-                self.application_state = WebSocketState.DISCONNECTED
+                self.application_state = WebSocketState.RESPONSE_COMPLETE
             await self._send(message)
+        elif self.application_state == WebSocketState.RESPONSE_COMPLETE:
+            raise RuntimeError('Cannot call "send" once an HTTP denial response has been completed.')
         else:
             # Already disconnected: raise WebSocketDisconnect so concurrent
             # close/send paths can handle this like a normal disconnect (#2766).

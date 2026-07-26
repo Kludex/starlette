@@ -390,7 +390,7 @@ class TestClient(httpx.Client):
         headers: dict[str, str] | None = None,
         follow_redirects: bool = True,
         client: tuple[str, int] = ("testclient", 50000),
-    ) -> None:
+    ) -> None:    
         self.async_backend = _AsyncBackend(backend=backend, backend_options=backend_options or {})
         if _is_asgi3(app):
             asgi_app = app
@@ -417,7 +417,16 @@ class TestClient(httpx.Client):
             follow_redirects=follow_redirects,
             cookies=cookies,
         )
+        
+    @property
+    def auth(self) -> httpx.Auth | None:
+        """
+        Authentication class used when none is passed at the request-level.
 
+        See also [HTTPX Authentication](https://www.python-httpx.org/quickstart/#authentication).
+        """
+        return self._auth
+    
     @contextlib.contextmanager
     def _portal_factory(self) -> Generator[anyio.abc.BlockingPortal, None, None]:
         if self.portal is not None:

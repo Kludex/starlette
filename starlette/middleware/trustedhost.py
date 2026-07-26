@@ -41,7 +41,9 @@ class TrustedHostMiddleware:
         if host.startswith("["):
             closing_bracket = host.find("]")
             suffix = host[closing_bracket + 1 :] if closing_bracket != -1 else ""
-            if closing_bracket != -1 and (not suffix or (suffix.startswith(":") and suffix[1:].isdigit())):
+            if closing_bracket != -1 and (
+                not suffix or (suffix.startswith(":") and suffix[1:].isascii() and suffix[1:].isdigit())
+            ):
                 host = host[: closing_bracket + 1]
         else:
             host = host.split(":", 1)[0]

@@ -970,7 +970,8 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
     start_message: dict[str, Any] = {}
 
     async def receive() -> Message:
-        raise NotImplementedError("Should not be called!")
+        await anyio.sleep(5)
+        return {}  # pragma: no cover
 
     async def send(message: Message) -> None:
         if message["type"] == "http.response.start":

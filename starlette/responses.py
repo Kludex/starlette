@@ -239,7 +239,8 @@ class StreamingResponse(Response):
         self.background = background
         self.init_headers(headers)
 
-    async def listen_for_disconnect(self, receive: Receive) -> None:
+    @staticmethod
+    async def listen_for_disconnect(receive: Receive) -> None:
         while True:
             message = await receive()
             if message["type"] == "http.disconnect":
@@ -258,15 +259,20 @@ class StreamingResponse(Response):
         if scope["type"] == "websocket":
             send = self._wrap_websocket_denial_send(send)
             await self.stream_response(send)
-            if self.background is not None:
-                await self.background()
-            return
+        else:
+            await self.safe_stream(scope, receive, send, self.stream_response)
+        if self.background is not None:
+            await self.background()
 
+    @classmethod
+    async def safe_stream(
+        cls, scope: Scope, receive: Receive, send: Send, callback: Callable[[Send], Awaitable[None]]
+    ) -> None:
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
         if spec_version >= (2, 4):
             try:
-                await self.stream_response(send)
+                await callback(send)
             except OSError:
                 raise ClientDisconnect()
         else:
@@ -276,11 +282,8 @@ class StreamingResponse(Response):
                     await func()
                     task_group.cancel_scope.cancel()
 
-                task_group.start_soon(wrap, partial(self.stream_response, send))
-                await wrap(partial(self.listen_for_disconnect, receive))
-
-        if self.background is not None:
-            await self.background()
+                task_group.start_soon(wrap, partial(callback, send))
+                await wrap(partial(cls.listen_for_disconnect, receive))
 
 
 class MalformedRangeHeader(Exception):
@@ -362,7 +365,13 @@ class FileResponse(Response):
         http_if_range = headers.get("if-range")
 
         if http_range is None or (http_if_range is not None and not self._should_use_range(http_if_range)):
-            await self._handle_simple(send, send_header_only, send_pathsend)
+            await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
+            if send_header_only:
+                await send({"type": "http.response.body", "body": b"", "more_body": False})
+            elif send_pathsend:
+                await send({"type": "http.response.pathsend", "path": str(self.path)})
+            else:
+                await StreamingResponse.safe_stream(scope, receive, send, self._handle_simple)
         else:
             try:
                 ranges = self._parse_range_header(http_range, stat_result.st_size)
@@ -374,29 +383,28 @@ class FileResponse(Response):
 
             if len(ranges) == 1:
                 start, end = ranges[0]
-                await self._handle_single_range(send, start, end, stat_result.st_size, send_header_only)
+                callback = partial(self._handle_single_range, start, end, stat_result.st_size, send_header_only)
             else:
-                await self._handle_multiple_ranges(send, ranges, stat_result.st_size, send_header_only)
+                callback = partial(self._handle_multiple_ranges, ranges, stat_result.st_size, send_header_only)
+            await StreamingResponse.safe_stream(scope, receive, send, callback)
 
         if self.background is not None:
             await self.background()
 
-    async def _handle_simple(self, send: Send, send_header_only: bool, send_pathsend: bool) -> None:
-        await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
-        if send_header_only:
-            await send({"type": "http.response.body", "body": b"", "more_body": False})
-        elif send_pathsend:
-            await send({"type": "http.response.pathsend", "path": str(self.path)})
-        else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
-                more_body = True
-                while more_body:
-                    chunk = await file.read(self.chunk_size)
-                    more_body = len(chunk) == self.chunk_size
-                    await send({"type": "http.response.body", "body": chunk, "more_body": more_body})
+    async def _handle_simple(self, send: Send) -> None:
+        file = await anyio.open_file(self.path, mode="rb")
+        try:
+            more_body = True
+            while more_body:
+                chunk = await file.read(self.chunk_size)
+                more_body = len(chunk) == self.chunk_size
+                await send({"type": "http.response.body", "body": chunk, "more_body": more_body})
+        finally:
+            with anyio.CancelScope(shield=True):
+                await file.aclose()
 
     async def _handle_single_range(
-        self, send: Send, start: int, end: int, file_size: int, send_header_only: bool
+        self, start: int, end: int, file_size: int, send_header_only: bool, send: Send
     ) -> None:
         headers = MutableHeaders(raw=list(self.raw_headers))
         headers["content-range"] = f"bytes {start}-{end - 1}/{file_size}"
@@ -405,7 +413,8 @@ class FileResponse(Response):
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            file = await anyio.open_file(self.path, mode="rb")
+            try:
                 await file.seek(start)
                 more_body = True
                 while more_body:
@@ -413,13 +422,16 @@ class FileResponse(Response):
                     start += len(chunk)
                     more_body = len(chunk) == self.chunk_size and start < end
                     await send({"type": "http.response.body", "body": chunk, "more_body": more_body})
+            finally:
+                with anyio.CancelScope(shield=True):
+                    await file.aclose()
 
     async def _handle_multiple_ranges(
         self,
-        send: Send,
         ranges: list[tuple[int, int]],
         file_size: int,
         send_header_only: bool,
+        send: Send,
     ) -> None:
         # In firefox and chrome, they use boundary with 95-96 bits entropy (that's roughly 13 bytes).
         boundary = token_hex(13)
@@ -433,7 +445,8 @@ class FileResponse(Response):
         if send_header_only:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
         else:
-            async with await anyio.open_file(self.path, mode="rb") as file:
+            file = await anyio.open_file(self.path, mode="rb")
+            try:
                 for start, end in ranges:
                     await send({"type": "http.response.body", "body": header_generator(start, end), "more_body": True})
                     await file.seek(start)
@@ -449,6 +462,9 @@ class FileResponse(Response):
                         "more_body": False,
                     }
                 )
+            finally:
+                with anyio.CancelScope(shield=True):
+                    await file.aclose()
 
     def _should_use_range(self, http_if_range: str) -> bool:
         return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]

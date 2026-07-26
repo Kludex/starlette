@@ -427,6 +427,10 @@ class TestClient(httpx.Client):
         """
         return self._auth
 
+    @auth.setter
+    def auth(self, auth: httpx._types.AuthTypes) -> None:
+        self._auth = self._build_auth(auth)
+
     @contextlib.contextmanager
     def _portal_factory(self) -> Generator[anyio.abc.BlockingPortal, None, None]:
         if self.portal is not None:

@@ -69,27 +69,27 @@ class IdentityResponder:
                 await self.send(message)
             elif not more_body:
                 # Standard response.
-                body = self.apply_compression(body, more_body=False)
+                compressed_body = self.apply_compression(body, more_body=False)
 
                 headers = MutableHeaders(raw=self.initial_message["headers"])
                 headers.add_vary_header("Accept-Encoding")
-                if body != message["body"]:
+                if compressed_body != body:
                     headers["Content-Encoding"] = self.content_encoding
-                    headers["Content-Length"] = str(len(body))
-                    message["body"] = body
+                    headers["Content-Length"] = str(len(compressed_body))
+                    message["body"] = compressed_body
 
                 await self.send(self.initial_message)
                 await self.send(message)
             else:
                 # Initial body in streaming response.
-                body = self.apply_compression(body, more_body=True)
+                compressed_body = self.apply_compression(body, more_body=True)
 
                 headers = MutableHeaders(raw=self.initial_message["headers"])
                 headers.add_vary_header("Accept-Encoding")
-                if body != message["body"]:
+                if compressed_body != body:
                     headers["Content-Encoding"] = self.content_encoding
                     del headers["Content-Length"]
-                    message["body"] = body
+                    message["body"] = compressed_body
 
                 await self.send(self.initial_message)
                 await self.send(message)

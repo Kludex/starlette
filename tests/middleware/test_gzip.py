@@ -10,7 +10,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
-from starlette.types import Message
+from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
@@ -114,6 +114,32 @@ def test_gzip_streaming_response_identity(test_client_factory: TestClientFactory
     assert "Content-Encoding" not in response.headers
     assert response.headers["Vary"] == "Accept-Encoding"
     assert "Content-Length" not in response.headers
+
+
+async def streaming_app_without_body_key(scope: Scope, receive: Receive, send: Send) -> None:
+    """An app that omits the optional `body` key on the first `http.response.body` message."""
+    await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/plain")]})
+    await send({"type": "http.response.body", "more_body": True})
+    await send({"type": "http.response.body", "body": b"x" * 4000, "more_body": False})
+
+
+def test_gzip_streaming_response_without_body_key(test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(GZipMiddleware(streaming_app_without_body_key))
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.text == "x" * 4000
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.headers["Vary"] == "Accept-Encoding"
+    assert "Content-Length" not in response.headers
+
+
+def test_gzip_streaming_response_identity_without_body_key(test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(GZipMiddleware(streaming_app_without_body_key))
+    response = client.get("/", headers={"accept-encoding": "identity"})
+    assert response.status_code == 200
+    assert response.text == "x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert response.headers["Vary"] == "Accept-Encoding"
 
 
 def test_gzip_ignored_for_responses_with_encoding_set(

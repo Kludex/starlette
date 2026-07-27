@@ -56,9 +56,9 @@ def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASG
                 raise RuntimeError("Caught handled exception, but response already started.") from exc
 
             if is_async_callable(handler):
-                response = await handler(conn, exc)
+                response = await handler(conn, exc)  # type: ignore[arg-type]
             else:
-                response = await run_in_threadpool(handler, conn, exc)
+                response = await run_in_threadpool(handler, conn, exc)  # type: ignore[arg-type]
             if response is not None:
                 await response(scope, receive, sender)
 

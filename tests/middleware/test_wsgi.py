@@ -4,7 +4,6 @@ from typing import Any
 
 import pytest
 
-from starlette._utils import collapse_excgroups
 from starlette.middleware.wsgi import WSGIMiddleware, build_environ
 from tests.conftest import skip_on_wasm
 from tests.types import TestClientFactory
@@ -90,7 +89,7 @@ def test_wsgi_exception(test_client_factory: TestClientFactory) -> None:
     # The HTTP protocol implementations would catch this error and return 500.
     app = WSGIMiddleware(raise_exception)
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError), collapse_excgroups():
+    with pytest.raises(RuntimeError):
         client.get("/")
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
-from typing import Any, BinaryIO, NamedTuple, TypeVar, cast
+from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 
 from starlette.concurrency import run_in_threadpool
@@ -47,19 +47,19 @@ class URL:
                     break
 
             if host_header is not None and _HOST_RE.fullmatch(host_header):
-                url = f"{scheme}://{host_header}{path}"
-            elif server is None:
-                url = path
-            else:
+                netloc = host_header
+            elif server is not None:
                 host, port = server
                 default_port = {"http": 80, "https": 443, "ws": 80, "wss": 443}[scheme]
-                if port == default_port:
-                    url = f"{scheme}://{host}{path}"
-                else:
-                    url = f"{scheme}://{host}:{port}{path}"
+                netloc = host if port == default_port else f"{host}:{port}"
+            else:
+                netloc = None
 
-            if query_string:
-                url += "?" + query_string.decode()
+            query = query_string.decode()
+            if netloc is not None:
+                url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
+            else:
+                url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
             url = URL("").replace(**components).components.geturl()
@@ -123,7 +123,7 @@ class URL:
                 netloc = self.netloc
                 _, _, hostname = netloc.rpartition("@")
 
-                if hostname[-1] != "]":
+                if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
 
             netloc = hostname
@@ -178,11 +178,11 @@ class URLPath(str):
     Used by the routing to return `url_path_for` matches.
     """
 
-    def __new__(cls, path: str, protocol: str = "", host: str = "") -> URLPath:
+    def __new__(cls, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> URLPath:
         assert protocol in ("http", "websocket", "")
         return str.__new__(cls, path)
 
-    def __init__(self, path: str, protocol: str = "", host: str = "") -> None:
+    def __init__(self, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> None:
         self.protocol = protocol
         self.host = host
 

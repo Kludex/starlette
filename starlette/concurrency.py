@@ -11,6 +11,8 @@ from typing import IO, Any, Generic, ParamSpec, Protocol, TypeVar, cast
 import anyio
 import anyio.to_thread
 
+from starlette.exceptions import StarletteDeprecationWarning
+
 P = ParamSpec("P")
 T = TypeVar("T")
 FileContent = TypeVar("FileContent", str, bytes)
@@ -78,7 +80,7 @@ async def open_file(path: str | os.PathLike[str], mode: str = "r") -> _AsyncFile
 async def run_until_first_complete(*args: tuple[Callable, dict]) -> None:  # type: ignore[type-arg]
     warnings.warn(
         "run_until_first_complete is deprecated and will be removed in a future version.",
-        DeprecationWarning,
+        StarletteDeprecationWarning,
     )
 
     async with anyio.create_task_group() as task_group:

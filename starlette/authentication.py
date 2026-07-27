@@ -45,7 +45,10 @@ def requires(
             @functools.wraps(func)
             async def websocket_wrapper(*args: _P.args, **kwargs: _P.kwargs) -> None:
                 websocket = kwargs.get("websocket", args[idx] if idx < len(args) else None)
-                assert isinstance(websocket, WebSocket)
+                assert isinstance(websocket, WebSocket), (
+                    "Parameter with name 'websocket' is required to be of type 'WebSocket'"
+                    f" not '{type(websocket).__name__}'"
+                )
 
                 if not has_required_scope(websocket, scopes_list):
                     await websocket.close()
@@ -59,7 +62,9 @@ def requires(
             @functools.wraps(func)
             async def async_wrapper(*args: _P.args, **kwargs: _P.kwargs) -> Any:
                 request = kwargs.get("request", args[idx] if idx < len(args) else None)
-                assert isinstance(request, Request)
+                assert isinstance(request, Request), (
+                    f"Parameter with name 'request' is required to be of type 'Request' not '{type(request).__name__}'"
+                )
 
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:
@@ -76,7 +81,9 @@ def requires(
             @functools.wraps(func)
             def sync_wrapper(*args: _P.args, **kwargs: _P.kwargs) -> Any:
                 request = kwargs.get("request", args[idx] if idx < len(args) else None)
-                assert isinstance(request, Request)
+                assert isinstance(request, Request), (
+                    f"Parameter with name 'request' is required to be of type 'Request' not '{type(request).__name__}'"
+                )
 
                 if not has_required_scope(request, scopes_list):
                     if redirect is not None:

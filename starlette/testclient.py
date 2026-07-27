@@ -11,7 +11,6 @@ import warnings
 from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable, Mapping, MutableMapping, Sequence
 from contextlib import AbstractContextManager
 from types import GeneratorType
-
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -23,7 +22,6 @@ from typing import (
     cast,
     overload,
 )
-from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeGuard, cast
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -61,8 +59,6 @@ else:
                 StarletteDeprecationWarning,
                 stacklevel=2,
             )
-
-_PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
 ASGI2App = Callable[[Scope], ASGIInstance]

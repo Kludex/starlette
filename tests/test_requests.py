@@ -9,6 +9,7 @@ from starlette.datastructures import URL, Address, State
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
+from tests.conftest import skip_on_wasm
 from tests.types import TestClientFactory
 
 
@@ -39,6 +40,7 @@ def test_request_query_params(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"params": {"a": "123", "b": "456"}}
 
 
+@skip_on_wasm("zstd support is unavailable in the Pyodide test environment.")
 @pytest.mark.skipif(
     any(module in sys.modules for module in ("brotli", "brotlicffi")),
     reason='urllib3 includes "br" to the "accept-encoding" headers.',

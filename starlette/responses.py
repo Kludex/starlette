@@ -15,8 +15,6 @@ from secrets import token_hex
 from typing import Any, Literal
 from urllib.parse import quote
 
-import anyio
-
 from starlette._utils import create_collapsing_task_group
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool, open_file, run_in_threadpool

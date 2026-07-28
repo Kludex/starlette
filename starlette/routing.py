@@ -14,6 +14,7 @@ from re import Pattern
 from typing import Any, Protocol, SupportsIndex, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
+from starlette._trie import RouteTrie
 
 # `get_route_path` is part of the public API: route lookup implementations need it to
 # resolve the path a router matches against, with `root_path` stripped.
@@ -670,6 +671,38 @@ class _StrictRouteLookup:
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.lookup!r})"
+
+
+class TrieRouteLookup:
+    """A `RouteLookupFactory` backed by a segment trie.
+
+    Narrows the routes a router checks by walking the path one segment at a time,
+    instead of running every route's `path_regex`. It returns a superset of the
+    routes that could match, in registration order, so `Route.matches()` still
+    decides and every routing behaviour is preserved.
+
+        app.route_lookup_factory = TrieRouteLookup
+
+    `Route` and `WebSocketRoute` are indexed by path. `Mount`, `Host`, route
+    subclasses and anything else are always-candidates, and so are paths the trie
+    cannot represent exactly, such as a segment whose convertor could match a '/'.
+    """
+
+    def __init__(self, routes: Sequence[BaseRoute]) -> None:
+        self.routes = tuple(routes)
+        trie = RouteTrie()
+        for index, route in enumerate(self.routes):
+            # Exact type check: a subclass may override `matches()` and match paths
+            # its own `path` does not describe.
+            if type(route) is Route or type(route) is WebSocketRoute:
+                trie.add(index, route.path, route.param_convertors)
+            else:
+                trie.add_always(index)
+        self.trie = trie
+
+    def candidates(self, scope: Scope, /) -> list[BaseRoute]:
+        routes = self.routes
+        return [routes[index] for index in self.trie.match_all(get_route_path(scope))]
 
 
 def _get_router(app: ASGIApp) -> Router | None:

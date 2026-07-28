@@ -345,19 +345,39 @@ candidate, so path parameters, convertors, `Mount`, `Host`, WebSockets, trailing
 slash redirects, `405 Method Not Allowed` and first-registered-wins ordering all
 behave exactly as before.
 
-Install one by assigning a factory:
+Starlette ships one, `TrieRouteLookup`, and you can write your own. Install it by
+assigning a factory:
 
 ```python
 from starlette.applications import Starlette
+from starlette.routing import TrieRouteLookup
 
 app = Starlette(routes=routes)
-app.route_lookup_factory = SomeRouteLookup
+app.route_lookup_factory = TrieRouteLookup
 ```
 
 The assignment applies to the whole routing tree: mounted applications, routers
 behind `Host`, nested mounts, and routers mounted later all inherit it, and each
 one compiles its own lookup from its own routes. A nested router that was given a
 lookup of its own keeps it. Assign `None` to go back to the plain linear scan.
+
+### The built-in trie
+
+`TrieRouteLookup` indexes route paths in a segment trie, so a request walks the
+path one segment at a time instead of running every route's regex. It is worth
+turning on when you have a few hundred routes, or a lot of traffic that matches
+nothing, such as bots and scanners: a trie stops at the first segment that leads
+nowhere, while the linear scan has to run every regex before concluding there is
+no match.
+
+`Route` and `WebSocketRoute` are indexed by path. `Mount`, `Host`, route
+subclasses, and any segment the trie cannot represent exactly, such as one whose
+convertor could match a `/`, are checked on every request, so behaviour never
+changes, only the number of routes that get checked.
+
+Custom convertors are indexed too, as long as their regex can be shown not to
+match a `/`. When that cannot be proven, the route stays a candidate for every
+request.
 
 ### Writing a route lookup
 

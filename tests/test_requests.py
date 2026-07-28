@@ -289,6 +289,157 @@ def test_request_is_disconnected(test_client_factory: TestClientFactory) -> None
     assert disconnected_after_response
 
 
+def test_request_is_disconnected_does_not_consume_body(
+    anyio_backend_name: str,
+    anyio_backend_options: dict[str, Any],
+) -> None:
+    """
+    `is_disconnected()` polls `receive()`, which may hand back a body message that the
+    server had already buffered. That message must be kept for `stream()`, not dropped.
+    """
+    result: dict[str, Any] = {}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        result["disconnected"] = await request.is_disconnected()
+        result["body"] = await request.body()
+
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"chunk-1", "more_body": True},
+        {"type": "http.request", "body": b"chunk-2", "more_body": False},
+    ]
+
+    async def receiver() -> Message:
+        # Model a server that already holds the body: `receive()` returns without
+        # suspending, so the pre-cancelled scope in `is_disconnected()` never fires.
+        return messages.pop(0)
+
+    scope = {"type": "http", "method": "POST", "path": "/"}
+    anyio.run(
+        app,  # type: ignore
+        scope,
+        receiver,
+        None,
+        backend=anyio_backend_name,
+        backend_options=anyio_backend_options,
+    )
+    assert result == {"disconnected": False, "body": b"chunk-1chunk-2"}
+
+
+def test_request_is_disconnected_keeps_every_polled_message(
+    anyio_backend_name: str,
+    anyio_backend_options: dict[str, Any],
+) -> None:
+    """
+    Repeated `is_disconnected()` calls must buffer every message they pull, in order.
+    """
+    result: dict[str, Any] = {}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        await request.is_disconnected()
+        await request.is_disconnected()
+        result["body"] = await request.body()
+
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"chunk-1", "more_body": True},
+        {"type": "http.request", "body": b"chunk-2", "more_body": True},
+        {"type": "http.request", "body": b"chunk-3", "more_body": False},
+    ]
+
+    async def receiver() -> Message:
+        return messages.pop(0)
+
+    scope = {"type": "http", "method": "POST", "path": "/"}
+    anyio.run(
+        app,  # type: ignore
+        scope,
+        receiver,
+        None,
+        backend=anyio_backend_name,
+        backend_options=anyio_backend_options,
+    )
+    assert result == {"body": b"chunk-1chunk-2chunk-3"}
+
+
+def test_request_is_disconnected_keeps_the_disconnect_message(
+    anyio_backend_name: str,
+    anyio_backend_options: dict[str, Any],
+) -> None:
+    """
+    A poll that consumes the disconnect must keep it too. The buffered body still
+    streams first, and then the stream ends where the disconnect arrived, instead of
+    waiting on a receive channel that has nothing left to give.
+    """
+    result: dict[str, Any] = {}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        result["first_poll"] = await request.is_disconnected()
+        result["second_poll"] = await request.is_disconnected()
+        chunks: list[bytes] = []
+        with pytest.raises(ClientDisconnect):
+            async for chunk in request.stream():
+                chunks.append(chunk)
+        result["chunks"] = chunks
+
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"chunk-1", "more_body": True},
+        {"type": "http.disconnect"},
+    ]
+
+    async def receiver() -> Message:
+        # The client is gone, so nothing further will ever arrive on this channel.
+        # Reading past the disconnect would block a real server forever.
+        assert messages, "receive() called after the channel was exhausted"
+        return messages.pop(0)
+
+    scope = {"type": "http", "method": "POST", "path": "/"}
+    anyio.run(
+        app,  # type: ignore
+        scope,
+        receiver,
+        None,
+        backend=anyio_backend_name,
+        backend_options=anyio_backend_options,
+    )
+    assert result == {"first_poll": False, "second_poll": True, "chunks": [b"chunk-1"]}
+
+
+def test_request_body_after_is_disconnected_polled_the_disconnect(
+    anyio_backend_name: str,
+    anyio_backend_options: dict[str, Any],
+) -> None:
+    """
+    `body()` raises `ClientDisconnect` when the disconnect was consumed by a poll,
+    exactly as it does when `stream()` reads that disconnect itself.
+    """
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        assert await request.is_disconnected()
+        # Already disconnected, so this must answer from the flag without polling again.
+        assert await request.is_disconnected()
+        with pytest.raises(ClientDisconnect):
+            await request.body()
+
+    messages: list[Message] = [{"type": "http.disconnect"}]
+
+    async def receiver() -> Message:
+        assert messages, "receive() called after the channel was exhausted"
+        return messages.pop(0)
+
+    scope = {"type": "http", "method": "POST", "path": "/"}
+    anyio.run(
+        app,  # type: ignore
+        scope,
+        receiver,
+        None,
+        backend=anyio_backend_name,
+        backend_options=anyio_backend_options,
+    )
+
+
 def test_request_state_object() -> None:
     scope = {"state": {"old": "foo"}}
 

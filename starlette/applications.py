@@ -9,7 +9,7 @@ from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import BaseRoute, Router
+from starlette.routing import BaseRoute, RouteLookupFactory, Router
 from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope, Send
 
 AppType = TypeVar("AppType", bound="Starlette")
@@ -79,6 +79,24 @@ class Starlette:
     @property
     def routes(self) -> list[BaseRoute]:
         return self.router.routes
+
+    @property
+    def route_lookup_factory(self) -> RouteLookupFactory | None:
+        """The `RouteLookupFactory` used to narrow route matching.
+
+        Assigning applies to the whole routing tree, including mounted
+        sub-applications and routers mounted later:
+
+            app.route_lookup_factory = ffroute.RouteLookup
+
+        See `starlette.routing.RouteLookup` for the contract an implementation has
+        to honour.
+        """
+        return self.router.route_lookup_factory
+
+    @route_lookup_factory.setter
+    def route_lookup_factory(self, factory: RouteLookupFactory | None) -> None:
+        self.router.route_lookup_factory = factory
 
     def url_path_for(self, name: str, /, **path_params: Any) -> URLPath:
         return self.router.url_path_for(name, **path_params)

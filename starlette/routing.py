@@ -7,14 +7,17 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Generator, Iterable, Iterator, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
-from typing import Any, TypeVar
+from typing import Any, Protocol, SupportsIndex, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
-from starlette._utils import get_route_path, is_async_callable
+
+# `get_route_path` is part of the public API: route lookup implementations need it to
+# resolve the path a router matches against, with `root_path` stripped.
+from starlette._utils import get_route_path as get_route_path, is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
@@ -563,6 +566,242 @@ class _DefaultLifespan:
         return self
 
 
+class RouteLookup(Protocol):
+    """Narrows the routes a `Router` has to check for an incoming scope.
+
+    A route lookup never decides a match: `Router` still calls `BaseRoute.matches()`
+    on every candidate, so path params, method handling, mounts, hosts and
+    registration order stay Starlette's business. The lookup only answers "which
+    routes could possibly match?", which lets an implementation replace the linear
+    scan with a trie, a radix tree, a native extension, or anything else.
+
+    Implementations must honour the following contract. Breaking it means routes
+    silently stop being reachable:
+
+    * `candidates()` must return a **superset** of the routes whose `matches()`
+      would return `Match.FULL` **or** `Match.PARTIAL`. Never filter on
+      `scope["method"]` or `scope["type"]`: dropping method mismatches turns a
+      `405 Method Not Allowed` into a `404 Not Found`.
+    * Candidates must be yielded in registration order, without duplicates.
+    * Only routes from the `routes` sequence the lookup was built with may be
+      returned.
+    * A route may only be indexed by its path when its type is understood
+      exactly. Use `type(route) is Route`, not `isinstance()`: a subclass may
+      override `matches()` and match paths its own `path` does not describe.
+      Anything else must be treated as an always-candidate.
+    * `candidates()` is called at least once per request, and again with a
+      modified scope for the trailing-slash redirect check, so it must not cache
+      results by scope identity, and must return a fresh iterable every call.
+    * It must be sync, must not mutate the scope, and must not receive or send
+      ASGI messages.
+    * Candidates may be consumed lazily and abandoned as soon as a route matches,
+      so a generator must not hold locks or other resources across a yield.
+
+    Use `starlette.routing.StrictRouteLookup` in tests to verify the contract.
+    """
+
+    def candidates(self, scope: Scope, /) -> Iterable[BaseRoute]: ...
+
+
+# Builds a `RouteLookup` for one router's route table. Receives an immutable
+# snapshot of the routes, so the lookup can compile them once, up front.
+RouteLookupFactory = Callable[[Sequence[BaseRoute]], RouteLookup]
+
+
+class RouteLookupError(RuntimeError):
+    """Raised by `StrictRouteLookup` when a `RouteLookup` breaks its contract."""
+
+
+class StrictRouteLookup:
+    """A `RouteLookupFactory` wrapper that verifies another factory's output.
+
+    Runs the plain linear scan alongside the wrapped lookup and raises
+    `RouteLookupError` when a route that would have matched is missing from the
+    candidates, when candidates are out of registration order, duplicated, or
+    foreign to the route table.
+
+    Intended for tests, CI and staging. It is slower than no lookup at all.
+
+        app.route_lookup_factory = StrictRouteLookup(ffroute.RouteLookup)
+    """
+
+    def __init__(self, factory: RouteLookupFactory) -> None:
+        self.factory = factory
+
+    def __call__(self, routes: Sequence[BaseRoute]) -> _StrictRouteLookup:
+        return _StrictRouteLookup(self.factory(routes), routes)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.factory!r})"
+
+
+class _StrictRouteLookup:
+    def __init__(self, lookup: RouteLookup, routes: Sequence[BaseRoute]) -> None:
+        self.lookup = lookup
+        self.routes = routes
+        self.positions = {id(route): index for index, route in enumerate(routes)}
+
+    def candidates(self, scope: Scope, /) -> list[BaseRoute]:
+        candidates = list(self.lookup.candidates(scope))
+        seen: set[int] = set()
+        previous = -1
+        for route in candidates:
+            position = self.positions.get(id(route), -1)
+            if position == -1:
+                raise RouteLookupError(f"{self.lookup!r} returned {route!r}, which is not in the route table.")
+            if id(route) in seen:
+                raise RouteLookupError(f"{self.lookup!r} returned {route!r} more than once.")
+            if position < previous:
+                raise RouteLookupError(f"{self.lookup!r} returned {route!r} out of registration order.")
+            seen.add(id(route))
+            previous = position
+
+        for route in self.routes:
+            if id(route) in seen:
+                continue
+            match, _ = route.matches(scope)
+            if match != Match.NONE:
+                raise RouteLookupError(
+                    f"{self.lookup!r} dropped {route!r}, which matches "
+                    f"{scope['type']} {get_route_path(scope)!r} with {match}."
+                )
+
+        return candidates
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.lookup!r})"
+
+
+def _get_router(app: ASGIApp) -> Router | None:
+    if isinstance(app, Router):
+        return app
+    # `Starlette` and FastAPI applications keep their router on `.router`.
+    router = getattr(app, "router", None)
+    return router if isinstance(router, Router) else None
+
+
+def iter_child_routers(route: BaseRoute) -> Iterator[Router]:
+    """Yield the routers nested inside a route, so a route lookup can be applied
+    to a whole routing tree.
+
+    Handles `Mount` and `Host`, whether they wrap a `Router`, a `Starlette`
+    application, or an application exposing a `.router`. Mounts wrapping opaque
+    ASGI apps, such as `StaticFiles`, yield nothing. Custom route containers can
+    take part by implementing `iter_child_routers()` themselves.
+    """
+    hook = getattr(route, "iter_child_routers", None)
+    if hook is not None:
+        yield from hook()
+        return
+
+    if isinstance(route, Mount):
+        # `_base_app` is the unwrapped app: `route.app` may be a middleware stack,
+        # and middleware does not expose the router underneath it.
+        app: ASGIApp = route._base_app
+    elif isinstance(route, Host):
+        app = route.app
+    else:
+        return
+
+    router = _get_router(app)
+    if router is not None:
+        yield router
+
+
+class _Unset:
+    def __repr__(self) -> str:  # pragma: no cover
+        return "<unset>"
+
+
+# Distinguishes "no route lookup configured, inherit one from a parent router" from
+# `None`, which means "explicitly no route lookup".
+UNSET: Any = _Unset()
+
+
+class _RouteList(list[BaseRoute]):
+    """A list that counts its own mutations.
+
+    `Router.routes` is public and mutated in place all over Starlette, FastAPI and
+    user code. A compiled route lookup has to be rebuilt when that happens, and
+    checking route identity on every request would put an O(N) scan back on the hot
+    path, which is the cost the lookup exists to remove.
+    """
+
+    __slots__ = ("generation",)
+
+    def __init__(self, routes: Iterable[BaseRoute] = ()) -> None:
+        super().__init__(routes)
+        self.generation = 0
+
+    def append(self, route: BaseRoute) -> None:
+        super().append(route)
+        self.generation += 1
+
+    def extend(self, routes: Iterable[BaseRoute]) -> None:
+        super().extend(routes)
+        self.generation += 1
+
+    def insert(self, index: Any, route: BaseRoute) -> None:
+        super().insert(index, route)
+        self.generation += 1
+
+    def remove(self, route: BaseRoute) -> None:
+        super().remove(route)
+        self.generation += 1
+
+    def pop(self, index: SupportsIndex = -1) -> BaseRoute:
+        route = super().pop(index)
+        self.generation += 1
+        return route
+
+    def clear(self) -> None:
+        super().clear()
+        self.generation += 1
+
+    def sort(self, **kwargs: Any) -> None:
+        super().sort(**kwargs)
+        self.generation += 1
+
+    def reverse(self) -> None:
+        super().reverse()
+        self.generation += 1
+
+    def __setitem__(self, index: Any, route: Any) -> None:
+        super().__setitem__(index, route)
+        self.generation += 1
+
+    def __delitem__(self, index: Any) -> None:
+        super().__delitem__(index)
+        self.generation += 1
+
+    def __iadd__(self, routes: Iterable[BaseRoute]) -> _RouteList:  # type: ignore[override,misc]
+        super().__iadd__(routes)
+        self.generation += 1
+        return self
+
+    def __imul__(self, value: SupportsIndex) -> _RouteList:
+        super().__imul__(value)
+        self.generation += 1
+        return self
+
+
+class _RouteTable:
+    """An immutable snapshot of a router's routes and the lookup compiled for them."""
+
+    __slots__ = ("source", "generation", "routes", "lookup")
+
+    def __init__(
+        self,
+        source: _RouteList,
+        routes: tuple[BaseRoute, ...],
+        lookup: RouteLookup | None,
+    ) -> None:
+        self.source = source
+        self.generation = source.generation
+        self.routes = routes
+        self.lookup = lookup
+
+
 class Router:
     def __init__(
         self,
@@ -575,6 +814,9 @@ class Router:
         *,
         middleware: Sequence[Middleware] | None = None,
     ) -> None:
+        self._route_lookup_factory: RouteLookupFactory | None = UNSET
+        self._route_lookup_inherited = False
+        self._route_table: _RouteTable | None = None
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
@@ -602,6 +844,113 @@ class Router:
         if middleware:
             for cls, args, kwargs in reversed(middleware):
                 self.middleware_stack = cls(self.middleware_stack, *args, **kwargs)
+
+    @property
+    def routes(self) -> list[BaseRoute]:
+        return self._routes
+
+    @routes.setter
+    def routes(self, routes: Sequence[BaseRoute]) -> None:
+        self._routes = _RouteList(routes)
+        self.invalidate_route_lookup()
+
+    @property
+    def route_lookup_factory(self) -> RouteLookupFactory | None:
+        """The `RouteLookupFactory` used to narrow route matching.
+
+        Assigning applies to this router *and every nested router below it*, so a
+        single assignment covers mounted sub-applications, routers behind `Host`,
+        and routers mounted later:
+
+            app.route_lookup_factory = ffroute.RouteLookup
+
+        Each router compiles its own lookup from its own routes. A nested router
+        that was configured explicitly keeps its own lookup; assign `None` to turn
+        the lookup off for a subtree and go back to the plain linear scan.
+        """
+        factory = self._route_lookup_factory
+        return None if factory is UNSET else factory
+
+    @route_lookup_factory.setter
+    def route_lookup_factory(self, factory: RouteLookupFactory | None) -> None:
+        self._route_lookup_factory = factory
+        # Explicit beats inherited: a parent will not overwrite this one.
+        self._route_lookup_inherited = False
+        self.invalidate_route_lookup()
+
+    @property
+    def route_lookup(self) -> RouteLookup | None:
+        """The compiled lookup currently in use, or `None` for the linear scan.
+
+        Read-only, and `None` until the lookup is built. Useful to check whether a
+        third-party lookup is actually active.
+        """
+        table = self._route_table
+        return None if table is None else table.lookup
+
+    def invalidate_route_lookup(self) -> None:
+        """Drop the compiled route table so it is rebuilt on next use.
+
+        Adding, removing or replacing routes is detected automatically. Call this
+        after mutating a route object in place, which is invisible from the
+        outside:
+
+            route.path = "/changed"
+            router.invalidate_route_lookup()
+        """
+        self._route_table = None
+
+    def build_route_lookup(self) -> None:
+        """Compile the route lookup for this router and every nested router.
+
+        Called on lifespan startup, so a broken lookup fails at boot instead of on
+        the first request, and no request pays the build cost. Call it directly for
+        apps that never run a lifespan.
+        """
+        visited: set[int] = set()
+        stack: list[Router] = [self]
+        while stack:
+            router = stack.pop()
+            if id(router) in visited:
+                continue
+            visited.add(id(router))
+            table = router._build_route_table()
+            for route in table.routes:
+                stack.extend(iter_child_routers(route))
+
+    def _build_route_table(self) -> _RouteTable:
+        source = self._routes
+        routes = tuple(source)
+        factory = self._route_lookup_factory
+        factory = None if factory is UNSET else factory
+
+        # Push the factory down as part of the build: routers mounted after the
+        # assignment inherit it too, without the route list having to know about
+        # lookups at all.
+        for route in routes:
+            for child in iter_child_routers(route):
+                child._inherit_route_lookup(factory)
+
+        table = _RouteTable(source, routes, None if factory is None else factory(routes))
+        self._route_table = table
+        return table
+
+    def _inherit_route_lookup(self, factory: RouteLookupFactory | None) -> None:
+        if self._route_lookup_factory is not UNSET and not self._route_lookup_inherited:
+            return  # Configured explicitly on this router: leave it alone.
+        if self._route_lookup_inherited and self._route_lookup_factory is factory:
+            return
+        self._route_lookup_factory = factory
+        self._route_lookup_inherited = True
+        self.invalidate_route_lookup()
+
+    def _route_candidates(self, scope: Scope) -> Iterable[BaseRoute]:
+        table = self._route_table
+        routes = self._routes
+        if table is None or table.source is not routes or table.generation != routes.generation:
+            table = self._build_route_table()
+        lookup = table.lookup
+        return table.routes if lookup is None else lookup.candidates(scope)
 
     async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
@@ -633,6 +982,8 @@ class Router:
         """
         started = False
         app: Any = scope.get("app")
+        # Compile now, so a broken route lookup fails startup rather than requests.
+        self.build_route_lookup()
         await receive()
         try:
             async with self.lifespan_context(app) as maybe_state:
@@ -671,7 +1022,7 @@ class Router:
 
         partial = None
 
-        for route in self.routes:
+        for route in self._route_candidates(scope):
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
@@ -699,7 +1050,7 @@ class Router:
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
-            for route in self.routes:
+            for route in self._route_candidates(redirect_scope):
                 match, child_scope = route.matches(redirect_scope)
                 if match != Match.NONE:
                     redirect_url = URL(scope=redirect_scope)

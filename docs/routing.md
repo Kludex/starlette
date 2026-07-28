@@ -331,3 +331,114 @@ The `endpoint` argument can be one of:
 
 * An async function, which accepts a single `websocket` argument.
 * A class that implements the ASGI interface, such as Starlette's [WebSocketEndpoint](endpoints.md#websocketendpoint).
+
+## Route lookups
+
+By default a `Router` scans its routes in order, calling `matches()` on each one
+until a route matches. That is simple and predictable, but the cost grows with the
+number of routes, and a request that matches nothing pays for the full scan.
+
+A **route lookup** replaces that scan with something faster, such as a trie or a
+native extension, without changing what a match means. The lookup only narrows the
+routes a router has to check. Starlette still calls `BaseRoute.matches()` on every
+candidate, so path parameters, convertors, `Mount`, `Host`, WebSockets, trailing
+slash redirects, `405 Method Not Allowed` and first-registered-wins ordering all
+behave exactly as before.
+
+Install one by assigning a factory:
+
+```python
+from starlette.applications import Starlette
+
+app = Starlette(routes=routes)
+app.route_lookup_factory = SomeRouteLookup
+```
+
+The assignment applies to the whole routing tree: mounted applications, routers
+behind `Host`, nested mounts, and routers mounted later all inherit it, and each
+one compiles its own lookup from its own routes. A nested router that was given a
+lookup of its own keeps it. Assign `None` to go back to the plain linear scan.
+
+### Writing a route lookup
+
+A lookup is any object with a `candidates()` method, and a factory is anything that
+builds one from a sequence of routes:
+
+```python
+from starlette.routing import Route, get_route_path
+
+
+class PrefixRouteLookup:
+    def __init__(self, routes):
+        self.positions = {id(route): index for index, route in enumerate(routes)}
+        self.buckets = {}
+        self.always = []
+        for route in routes:
+            # Exact type check: a `Route` subclass may override `matches()` and
+            # match paths its own `path` does not describe.
+            first = route.path.lstrip("/").split("/")[0] if type(route) is Route else ""
+            if first and "{" not in first:
+                self.buckets.setdefault(first, []).append(route)
+            else:
+                self.always.append(route)
+
+    def candidates(self, scope):
+        first = get_route_path(scope).lstrip("/").split("/")[0]
+        bucket = self.buckets.get(first, [])
+        return sorted(self.always + bucket, key=lambda route: self.positions[id(route)])
+```
+
+Implementations have to honour the following contract, because a route that never
+reaches `matches()` silently becomes unreachable:
+
+* `candidates()` must return a **superset** of the routes whose `matches()` would
+  return `Match.FULL` or `Match.PARTIAL`. Never filter on `scope["method"]`:
+  dropping method mismatches turns a `405 Method Not Allowed` into a `404 Not Found`.
+* Candidates must come back in registration order, without duplicates, and must
+  come from the route table the lookup was built with.
+* Only index a route by its path when you understand its type exactly. Use
+  `type(route) is Route`, not `isinstance()`. Anything else, including `Mount`,
+  `Host` and custom `BaseRoute` implementations, should be treated as an
+  always-candidate.
+* `candidates()` is called at least once per request, and again with a modified
+  scope for the trailing slash redirect check, so it must return a fresh iterable
+  every time and must not cache by scope identity.
+* It must be sync, must not mutate the scope, and must not send or receive ASGI
+  messages.
+* Candidates may be consumed lazily and abandoned as soon as a route matches, so a
+  generator must not hold locks across a yield.
+
+Use `starlette.routing.get_route_path()` to get the path a router matches against.
+It strips `root_path`, which matters for mounted applications.
+
+### Checking a lookup
+
+`StrictRouteLookup` wraps another factory and verifies the contract on every
+request, raising `RouteLookupError` when a candidate is dropped, duplicated,
+reordered, or foreign to the route table:
+
+```python
+from starlette.routing import StrictRouteLookup
+
+app.route_lookup_factory = StrictRouteLookup(PrefixRouteLookup)
+```
+
+It runs the linear scan alongside the lookup, so it is meant for tests, CI and
+staging rather than production.
+
+### Rebuilding
+
+Lookups are compiled from a snapshot of `router.routes`, and rebuilt automatically
+whenever routes are added, removed, replaced or reordered. Mutating a route object
+in place is invisible, so tell the router about it:
+
+```python
+route.path = "/changed"
+app.router.invalidate_route_lookup()
+```
+
+Lookups are compiled during lifespan startup, so a failing lookup surfaces at boot
+instead of on the first request. Applications that never run a lifespan can build
+them explicitly with `app.router.build_route_lookup()`, and
+`app.router.route_lookup` shows the compiled lookup currently in use, or `None`
+when the linear scan is being used.

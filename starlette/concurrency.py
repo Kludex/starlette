@@ -16,6 +16,7 @@ from starlette.exceptions import StarletteDeprecationWarning
 P = ParamSpec("P")
 T = TypeVar("T")
 FileContent = TypeVar("FileContent", str, bytes)
+FileContent_co = TypeVar("FileContent_co", str, bytes, covariant=True)
 
 
 _NO_THREAD_PLATFORMS = {"emscripten"}
@@ -25,8 +26,8 @@ def _threadpool_available() -> bool:
     return sys.platform not in _NO_THREAD_PLATFORMS
 
 
-class _AsyncFile(Protocol[FileContent]):
-    async def __aenter__(self) -> _AsyncFile[FileContent]: ...
+class _AsyncFile(Protocol[FileContent_co]):
+    async def __aenter__(self) -> _AsyncFile[FileContent_co]: ...
 
     async def __aexit__(
         self,
@@ -35,7 +36,7 @@ class _AsyncFile(Protocol[FileContent]):
         tb: TracebackType | None,
     ) -> None: ...
 
-    async def read(self, size: int = -1) -> FileContent: ...
+    async def read(self, size: int = -1) -> FileContent_co: ...
 
     async def seek(self, offset: int) -> int: ...
 

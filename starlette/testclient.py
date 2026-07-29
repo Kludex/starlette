@@ -97,14 +97,20 @@ def _in_pyodide() -> bool:  # pragma: no cover
     return sys.platform == "emscripten"
 
 
+class _TaskHandle(Protocol):
+    """Handle for a task started by a portal."""
+
+    def result(self) -> Any: ...
+
+
 class _Portal(Protocol):
     """anyio.abc.BlockingPortal-compatible interface for test client."""
 
     @overload
-    def call(self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T: ...
+    def call(self, func: Callable[..., Awaitable[T]], *args: Any) -> T: ...
 
     @overload
-    def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T: ...
+    def call(self, func: Callable[..., T], *args: Any) -> T: ...
 
     def start_task_soon(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any) -> _TaskHandle: ...
 
@@ -112,12 +118,6 @@ class _Portal(Protocol):
 
 
 _PortalFactoryType = Callable[[], AbstractContextManager[_Portal]]
-
-
-class _TaskHandle(Protocol):
-    """Handle for a task started by a portal."""
-
-    def result(self) -> Any: ...
 
 
 def _pyodide_run_sync(awaitable: Awaitable[T]) -> T:  # pragma: no cover
@@ -134,6 +134,21 @@ class _PyodideTaskStatus:  # pragma: no cover
         self.future.set_result(value)
 
 
+def _propagate_task_status_result(  # pragma: no cover
+    status_future: asyncio.Future[Any],
+    task: asyncio.Task[Any],
+) -> None:
+    if status_future.done():
+        return
+
+    if task.cancelled():
+        status_future.cancel()
+    elif (exc := task.exception()) is not None:
+        status_future.set_exception(exc)
+    else:
+        status_future.set_exception(RuntimeError("Task exited without calling task_status.started()"))
+
+
 class _PyodideTask:  # pragma: no cover
     def __init__(self, task: asyncio.Task[Any]) -> None:
         self.task = task
@@ -147,15 +162,15 @@ class _PyodideTask:  # pragma: no cover
 
 class _PyodideBlockingPortal:  # pragma: no cover
     @overload
-    def call(self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T: ...
+    def call(self, func: Callable[..., Awaitable[T]], *args: Any) -> T: ...
 
     @overload
-    def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T: ...
+    def call(self, func: Callable[..., T], *args: Any) -> T: ...
 
-    def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
-        value = func(*args, **kwargs)
+    def call(self, func: Callable[..., Any], *args: Any) -> Any:
+        value = func(*args)
         if inspect.isawaitable(value):
-            return cast(T, _pyodide_run_sync(value))
+            return _pyodide_run_sync(value)
         return value
 
     def start_task_soon(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any) -> _PyodideTask:
@@ -165,6 +180,7 @@ class _PyodideBlockingPortal:  # pragma: no cover
     def start_task(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any) -> tuple[_PyodideTask, Any]:
         task_status = _PyodideTaskStatus()
         task: asyncio.Task[Any] = asyncio.create_task(func(*args, task_status=task_status))
+        task.add_done_callback(lambda task: _propagate_task_status_result(task_status.future, task))
 
         started_value = _pyodide_run_sync(task_status.future)
         return _PyodideTask(task), started_value
@@ -771,13 +787,7 @@ class TestClient(httpx.Client):
 
     def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
-            portal: _Portal
-            if _in_pyodide():  # pragma: no cover
-                self.portal = portal = stack.enter_context(_pyodide_portal_factory())
-            else:
-                self.portal = portal = stack.enter_context(
-                    anyio.from_thread.start_blocking_portal(**self.async_backend)
-                )
+            self.portal = portal = stack.enter_context(self._portal_factory())
 
             @stack.callback
             def reset_portal() -> None:

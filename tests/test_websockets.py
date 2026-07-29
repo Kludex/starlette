@@ -76,7 +76,7 @@ def test_websocket_query_params(test_client_factory: TestClientFactory) -> None:
         assert data == {"params": {"a": "abc", "b": "456"}}
 
 
-@skip_on_wasm("zstd support is unavailable in the Pyodide test environment.")
+@skip_on_wasm("zstd support is unavailable on WASM")
 @pytest.mark.skipif(
     any(module in sys.modules for module in ("brotli", "brotlicffi")),
     reason='urllib3 includes "br" to the "accept-encoding" headers.',

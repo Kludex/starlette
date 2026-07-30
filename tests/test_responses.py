@@ -810,10 +810,17 @@ def test_file_response_range_must_be_requested(file_response_client: TestClient)
     assert response.text == "Range header: range must be requested"
 
 
-def test_file_response_start_must_be_less_than_end(file_response_client: TestClient) -> None:
-    response = file_response_client.get("/", headers={"Range": "bytes=100-0"})
+@pytest.mark.parametrize("header", ["bytes=5-4", "bytes=0--1", "bytes=0-1, 5-4"])
+def test_file_response_empty_range(file_response_client: TestClient, header: str) -> None:
+    response = file_response_client.get("/", headers={"Range": header})
     assert response.status_code == 400
     assert response.text == "Range header: start must be less than end"
+
+
+def test_file_response_single_byte_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=5-5"})
+    assert response.status_code == 206
+    assert response.headers["content-length"] == "1"
 
 
 def test_file_response_merge_ranges(file_response_client: TestClient) -> None:

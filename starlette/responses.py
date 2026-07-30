@@ -474,8 +474,7 @@ class FileResponse(Response):
         if any(not (0 <= start < file_size) for start, _ in ranges):
             raise RangeNotSatisfiable(file_size)
 
-        # Half-open ranges: empty ranges (start == end) are unsatisfiable, e.g. bytes=5-4
-        # parses to (5, 5). One-byte range bytes=5-5 parses to (5, 6). Issue #3388.
+        # An empty half-open range is not a valid range.
         if any(start >= end for start, end in ranges):
             raise MalformedRangeHeader("Range header: start must be less than end")
 

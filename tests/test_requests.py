@@ -440,6 +440,55 @@ def test_request_body_after_is_disconnected_polled_the_disconnect(
     )
 
 
+def test_request_receive_property_hands_out_polled_messages(
+    anyio_backend_name: str,
+    anyio_backend_options: dict[str, Any],
+) -> None:
+    """
+    `request.receive` is how the channel travels onward — to a sub-app, or as the
+    `receive` argument of `await response(scope, request.receive, send)`. A message
+    polled by `is_disconnected()` must reach those consumers too, not only `stream()`.
+    """
+    result: dict[str, Any] = {}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        result["disconnected"] = await request.is_disconnected()
+
+        async def delegated(scope: Scope, receive: Receive, send: Send) -> None:
+            # Consume the channel the way a delegated ASGI app would: through the
+            # `receive` callable alone, never through the Request object.
+            chunks: list[bytes] = []
+            while True:
+                message = await receive()
+                assert message["type"] == "http.request"
+                chunks.append(message.get("body", b""))
+                if not message.get("more_body", False):
+                    break
+            result["delegated_body"] = b"".join(chunks)
+
+        await delegated(scope, request.receive, send)
+
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"chunk-1", "more_body": True},
+        {"type": "http.request", "body": b"chunk-2", "more_body": False},
+    ]
+
+    async def receiver() -> Message:
+        return messages.pop(0)
+
+    scope = {"type": "http", "method": "POST", "path": "/"}
+    anyio.run(
+        app,  # type: ignore
+        scope,
+        receiver,
+        None,
+        backend=anyio_backend_name,
+        backend_options=anyio_backend_options,
+    )
+    assert result == {"disconnected": False, "delegated_body": b"chunk-1chunk-2"}
+
+
 def test_request_state_object() -> None:
     scope = {"state": {"old": "foo"}}
 

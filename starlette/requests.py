@@ -231,7 +231,15 @@ class Request(HTTPConnection[StateT]):
 
     @property
     def receive(self) -> Receive:
-        return self._receive
+        return self._receive_message
+
+    async def _receive_message(self) -> Message:
+        # `is_disconnected()` may have polled messages off the channel; hand those out
+        # before reading the channel again, so every consumer of `receive` — `stream()`
+        # or anything the request is delegated to — sees the channel in order.
+        if self._polled_messages:
+            return self._polled_messages.popleft()
+        return await self._receive()
 
     async def stream(self) -> AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):
@@ -241,7 +249,7 @@ class Request(HTTPConnection[StateT]):
         if self._stream_consumed:
             raise RuntimeError("Stream consumed")
         while not self._stream_consumed:
-            message = self._polled_messages.popleft() if self._polled_messages else await self._receive()
+            message = await self._receive_message()
             if message["type"] == "http.request":
                 body = message.get("body", b"")
                 if not message.get("more_body", False):

@@ -375,6 +375,24 @@ class MultiDict(ImmutableMultiDict[Any, Any]):
         self._dict.update(value)
 
 
+def _parse_query_string(query: str) -> list[tuple[str, str]]:
+    """Equivalent to ``parse_qsl(query, keep_blank_values=True)``.
+
+    ``parse_qsl`` unconditionally runs both halves of every field through
+    ``unquote_plus``. When the query string contains no ``%`` and no ``+`` there
+    is nothing to decode, so the split is all the work that is needed.
+    """
+    if "%" in query or "+" in query:
+        return parse_qsl(query, keep_blank_values=True)
+
+    items = []
+    for field in query.split("&"):
+        if field:
+            key, _, value = field.partition("=")
+            items.append((key, value))
+    return items
+
+
 class QueryParams(ImmutableMultiDict[str, str]):
     """
     An immutable multidict.
@@ -388,6 +406,16 @@ class QueryParams(ImmutableMultiDict[str, str]):
         assert len(args) < 2, "Too many arguments."
 
         value = args[0] if args else []
+
+        if isinstance(value, (str, bytes)) and not kwargs:
+            # A query string always yields str keys and str values, so the
+            # normalisation below is a no-op on this path. It is still required
+            # when kwargs are present, because those values may be any type.
+            query = value.decode("latin-1") if isinstance(value, bytes) else value
+            items = _parse_query_string(query)
+            self._list = items
+            self._dict = dict(items)
+            return
 
         if isinstance(value, str):
             super().__init__(parse_qsl(value, keep_blank_values=True), **kwargs)

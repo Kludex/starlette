@@ -369,6 +369,26 @@ def test_queryparams() -> None:
     assert QueryParams(q) == q
 
 
+def test_queryparams_empty_fields() -> None:
+    assert QueryParams("a=1&&b=2") == QueryParams("a=1&b=2")
+    assert QueryParams("&") == QueryParams()
+    assert QueryParams("a") == QueryParams([("a", "")])
+    assert QueryParams("=v") == QueryParams([("", "v")])
+
+
+def test_queryparams_keyword_arguments() -> None:
+    """Keyword-argument values are not necessarily strings, and are normalised.
+
+    A query string on its own always yields str keys and values, but kwargs are
+    merged in by ImmutableMultiDict and may be any type.
+    """
+    assert QueryParams("a=1", b=2) == QueryParams([("a", "1"), ("b", "2")])
+    assert QueryParams(b"a=1", b=2) == QueryParams([("a", "1"), ("b", "2")])
+    assert QueryParams(a=1) == QueryParams([("a", "1")])
+    assert dict(QueryParams("a=1", b=2)) == {"a": "1", "b": "2"}
+    assert QueryParams("a=1", a=2) == QueryParams([("a", "1"), ("a", "2")])
+
+
 @pytest.mark.anyio
 async def test_upload_file_file_input() -> None:
     """Test passing file/stream into the UploadFile constructor"""

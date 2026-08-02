@@ -1,5 +1,7 @@
 import re
 
+import pytest
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import Session, SessionMiddleware
@@ -17,6 +19,18 @@ def view_session(request: Request) -> JSONResponse:
 async def update_session(request: Request) -> JSONResponse:
     data = await request.json()
     request.session.update(data)
+    return JSONResponse({"session": request.session})
+
+
+async def inplace_update_session(request: Request) -> JSONResponse:
+    data = await request.json()
+    session = request.session
+    session |= data
+    return JSONResponse({"session": request.session})
+
+
+async def popitem_session(request: Request) -> JSONResponse:
+    request.session.popitem()
     return JSONResponse({"session": request.session})
 
 
@@ -285,3 +299,59 @@ def test_session_tracks_modification() -> None:
     session = Session({"a": "1"})
     session.setdefault("a", "2")
     assert not session.modified
+
+    # popitem
+    session = Session({"a": "1"})
+    session.popitem()
+    assert session.modified
+
+    # popitem on an empty session raises and leaves the session untouched
+    session = Session()
+    with pytest.raises(KeyError):
+        session.popitem()
+    assert not session.modified
+
+    # in-place update
+    session = Session({"a": "1"})
+    session |= {"b": "2"}
+    assert session.modified
+
+
+def test_session_persists_inplace_update(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/inplace_update_session", endpoint=inplace_update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/inplace_update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+    assert "set-cookie" in response.headers
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {"some": "data"}}
+
+
+def test_session_persists_popitem(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/popitem_session", endpoint=popitem_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"a": "1", "b": "2"})
+    assert response.json() == {"session": {"a": "1", "b": "2"}}
+
+    response = client.post("/popitem_session")
+    assert response.json() == {"session": {"a": "1"}}
+    assert "set-cookie" in response.headers
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": {"a": "1"}}

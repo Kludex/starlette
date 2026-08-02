@@ -115,6 +115,11 @@ class Session(dict[str, typing.Any]):
         self.modified = self.modified or key in self
         return super().pop(key, *args)
 
+    def popitem(self) -> tuple[str, typing.Any]:
+        item = super().popitem()
+        self.mark_modified()
+        return item
+
     def setdefault(self, key: str, default: typing.Any = None) -> typing.Any:
         if key not in self:
             self.mark_modified()
@@ -123,3 +128,10 @@ class Session(dict[str, typing.Any]):
     def update(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         self.mark_modified()
         super().update(*args, **kwargs)
+
+    # `dict.__ior__` updates in place without going through `__setitem__`, so it needs to be
+    # tracked explicitly. mypy requires `__ior__` to line up with the widening `dict.__or__`
+    # overloads, which a `dict` subclass returning itself cannot satisfy.
+    def __ior__(self, other: typing.Any, /) -> Session:  # type: ignore[override,misc]
+        self.mark_modified()
+        return super().__ior__(other)

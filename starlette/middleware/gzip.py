@@ -99,7 +99,7 @@ class IdentityResponder:
                 await self.send(message)
             elif not more_body:
                 # Standard response.
-                body = await self._apply_compression(body, more_body=False)
+                body = await self.apply_compression(body, more_body=False)
 
                 headers = MutableHeaders(raw=self.initial_message["headers"])
                 headers.add_vary_header("Accept-Encoding")
@@ -112,7 +112,7 @@ class IdentityResponder:
                 await self.send(message)
             else:
                 # Initial body in streaming response.
-                body = await self._apply_compression(body, more_body=True)
+                body = await self.apply_compression(body, more_body=True)
 
                 headers = MutableHeaders(raw=self.initial_message["headers"])
                 headers.add_vary_header("Accept-Encoding")
@@ -128,7 +128,7 @@ class IdentityResponder:
             body = message.get("body", b"")
             more_body = message.get("more_body", False)
 
-            message["body"] = await self._apply_compression(body, more_body=more_body)
+            message["body"] = await self.apply_compression(body, more_body=more_body)
 
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
@@ -136,10 +136,7 @@ class IdentityResponder:
             await self.send(self.initial_message)
             await self.send(message)
 
-    async def _apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
-        return self.apply_compression(body, more_body=more_body)
-
-    def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
+    async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         """Apply compression on the response body.
 
         If more_body is False, any compression file should be closed. If it
@@ -186,7 +183,7 @@ class GZipResponder(IdentityResponder):
         with self._gzip_context:
             await super().__call__(scope, receive, send)
 
-    async def _apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
+    async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         if len(body) >= self.offload_to_thread_minimum_size:
             return await anyio.to_thread.run_sync(
                 self._compress_body,
@@ -195,9 +192,6 @@ class GZipResponder(IdentityResponder):
                 True,
                 limiter=gzip_capacity_limiter(),
             )
-        return self.apply_compression(body, more_body=more_body)
-
-    def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         return self._compress_body(body, more_body, False)
 
     def _compress_body(self, body: bytes, more_body: bool, flush_buffer: bool) -> bytes:

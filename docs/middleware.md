@@ -243,9 +243,15 @@ The following arguments are supported:
 * `compresslevel` - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to `9`. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.
 * `offload_to_thread_minimum_size` - Compress body chunks at least this large in a worker thread, keeping the event loop responsive. Defaults to `32768` (32 KiB).
 
-GZip compression uses a dedicated, single-token capacity limiter for each event
-loop. It therefore does not consume AnyIO's default worker-thread capacity or
-increase the number of GZip operations that can run concurrently.
+GZip compression uses a dedicated capacity limiter with 40 tokens for each
+event loop, so it does not consume AnyIO's default worker-thread capacity. You
+can adjust the number of concurrent GZip operations from an async context:
+
+```python
+from starlette.middleware.gzip import get_gzip_capacity_limiter
+
+get_gzip_capacity_limiter().total_tokens = 100
+```
 
 The middleware won't GZip responses that already have either a `Content-Encoding` set, to prevent them from
 being encoded twice, or a `Content-Type` set to `text/event-stream`, to avoid compressing server-sent events.

@@ -4,19 +4,21 @@ import gzip
 import hashlib
 import io
 import json
+from collections.abc import Coroutine
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
-from starlette.middleware.gzip import GZipResponder
-from starlette.types import Receive, Scope, Send
+from starlette.middleware.gzip import GZipMiddleware, GZipResponder
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 KiB = 1024
 MiB = 1024 * KiB
 
 PayloadKind = Literal["json", "text", "incompressible"]
+BypassReason = Literal["below-minimum-size", "content-encoding", "event-stream", "pathsend"]
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,45 @@ class BenchmarkCase:
     def id(self) -> str:
         size = f"{self.size // MiB}MiB" if self.size >= MiB else f"{self.size // KiB}KiB"
         return f"{self.payload_kind}-{size}-level-{self.level}"
+
+
+@dataclass(frozen=True)
+class BypassCase:
+    reason: BypassReason
+    body_size: int
+
+
+class StaticResponseApp:
+    def __init__(self, messages: tuple[Message, ...]) -> None:
+        self.messages = messages
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        for message in self.messages:
+            await send(message)
+
+
+class ASGIRunner:
+    """Drive an ASGI app that does not suspend on external I/O."""
+
+    def __init__(self) -> None:
+        self.messages: list[Message] = []
+
+    async def receive(self) -> Message:
+        raise AssertionError("The benchmark app must not receive a request body")
+
+    async def send(self, message: Message) -> None:
+        self.messages.append(message)
+
+    def run(self, app: ASGIApp, scope: Scope) -> list[Message]:
+        self.messages.clear()
+        awaitable = app(scope, self.receive, self.send)
+        coroutine = cast(Coroutine[object, object, None], awaitable)
+        try:
+            yielded = coroutine.send(None)
+        except StopIteration:
+            return self.messages
+        coroutine.close()
+        raise AssertionError(f"The benchmark app unexpectedly suspended with {yielded!r}")
 
 
 # All compression levels are compared at 1 MiB. The size curve uses three
@@ -113,6 +154,21 @@ def compress(payload: bytes, level: int) -> bytes:
         return responder.apply_compression(payload, more_body=False)
 
 
+def make_bypass_messages(case: BypassCase) -> tuple[Message, ...]:
+    headers = [(b"content-type", b"application/json"), (b"content-length", str(case.body_size).encode())]
+    if case.reason == "content-encoding":
+        headers.append((b"content-encoding", b"br"))
+    elif case.reason == "event-stream":
+        headers[0] = (b"content-type", b"text/event-stream")
+
+    response_start: Message = {"type": "http.response.start", "status": 200, "headers": headers}
+    if case.reason == "pathsend":
+        response_body: Message = {"type": "http.response.pathsend", "path": "/tmp/starlette-benchmark"}
+    else:
+        response_body = {"type": "http.response.body", "body": b"x" * case.body_size}
+    return response_start, response_body
+
+
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
 @pytest.mark.benchmark(max_time=0.5, max_rounds=10)
 def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
@@ -125,3 +181,29 @@ def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     benchmark.extra_info["input_bytes"] = len(payload)
     benchmark.extra_info["output_bytes"] = len(compressed)
     benchmark.extra_info["compression_ratio"] = len(compressed) / len(payload)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        BypassCase("below-minimum-size", 499),
+        BypassCase("content-encoding", MiB),
+        BypassCase("event-stream", MiB),
+        BypassCase("pathsend", MiB),
+    ),
+    ids=lambda case: case.reason,
+)
+@pytest.mark.benchmark(max_time=0.5, max_rounds=10)
+def test_gzip_bypass(benchmark: BenchmarkFixture, case: BypassCase) -> None:
+    # The response and payload are constructed outside the measured region.
+    # The benchmark covers the complete GZipMiddleware ASGI call, including
+    # responder and compressor initialization for responses that pass through.
+    expected = make_bypass_messages(case)
+    app = GZipMiddleware(StaticResponseApp(expected), minimum_size=500)
+    runner = ASGIRunner()
+
+    sent = benchmark(runner.run, app, {"type": "http", "headers": [(b"accept-encoding", b"gzip")]})
+
+    assert sent == list(expected)
+    benchmark.extra_info["response_bytes"] = case.body_size
+    benchmark.extra_info["bypass_reason"] = case.reason

@@ -5,12 +5,11 @@ import gzip
 import hashlib
 import io
 import json
-from collections.abc import Coroutine, Iterator
+from collections.abc import Iterator
 from contextlib import ExitStack, closing, contextmanager
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Literal
 
-import anyio
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
@@ -54,30 +53,6 @@ class StaticResponseApp:
             await send(outgoing_message)
 
 
-class ASGIRunner:
-    """Drive an ASGI app that does not suspend on external I/O."""
-
-    def __init__(self) -> None:
-        self.messages: list[Message] = []
-
-    async def receive(self) -> Message:
-        raise AssertionError("The benchmark app must not receive a request body")
-
-    async def send(self, message: Message) -> None:
-        self.messages.append(message)
-
-    def run(self, app: ASGIApp, scope: Scope) -> list[Message]:
-        self.messages.clear()
-        awaitable = app(scope, self.receive, self.send)
-        coroutine = cast(Coroutine[object, object, None], awaitable)
-        try:
-            yielded = coroutine.send(None)
-        except StopIteration:
-            return self.messages
-        coroutine.close()
-        raise AssertionError(f"The benchmark app unexpectedly suspended with {yielded!r}")
-
-
 async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
     messages: list[Message] = []
 
@@ -91,6 +66,17 @@ async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
     return messages
 
 
+class ASGIRunner:
+    def __init__(self) -> None:
+        self.loop = asyncio.new_event_loop()
+
+    def run(self, app: ASGIApp, scope: Scope) -> list[Message]:
+        return self.loop.run_until_complete(run_asgi(app, scope))
+
+    def close(self) -> None:
+        self.loop.close()
+
+
 @dataclass
 class ResponsePair:
     loop: asyncio.AbstractEventLoop
@@ -100,9 +86,6 @@ class ResponsePair:
     payload: bytes
     large_task: asyncio.Task[list[Message]] | None = None
     tiny_messages: list[Message] | None = None
-
-    async def warm_worker(self) -> None:
-        await anyio.to_thread.run_sync(bool)
 
     def run_until_tiny_response(self) -> None:
         self.loop.run_until_complete(self._run_until_tiny_response())
@@ -138,7 +121,6 @@ class ResponsePair:
 def response_pair(large_app: ASGIApp, tiny_app: ASGIApp, scope: Scope, payload: bytes) -> Iterator[ResponsePair]:
     with closing(asyncio.new_event_loop()) as loop:
         pair = ResponsePair(loop, large_app, tiny_app, scope, payload)
-        loop.run_until_complete(pair.warm_worker())
         yield pair
         pair.drain_and_validate()
 
@@ -272,7 +254,8 @@ def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     )
     app = GZipMiddleware(StaticResponseApp(messages), minimum_size=0, compresslevel=case.level)
     scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
-    sent = benchmark.pedantic(ASGIRunner().run, args=(app, scope), rounds=1)
+    with closing(ASGIRunner()) as runner:
+        sent = benchmark.pedantic(runner.run, args=(app, scope), rounds=1)
 
     assert len(sent) == 2
     assert sent[0]["type"] == "http.response.start"
@@ -343,7 +326,8 @@ def test_gzip_bypass(benchmark: BenchmarkFixture, case: BypassCase) -> None:
     scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
     if case.reason == "pathsend":
         scope["extensions"] = {"http.response.pathsend": {}}
-    sent = benchmark.pedantic(ASGIRunner().run, args=(app, scope), rounds=1)
+    with closing(ASGIRunner()) as runner:
+        sent = benchmark.pedantic(runner.run, args=(app, scope), rounds=1)
 
     assert sent == list(expected)
     benchmark.extra_info["response_bytes"] = case.body_size

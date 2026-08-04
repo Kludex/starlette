@@ -1,19 +1,44 @@
 import gzip
 import io
+import zlib
 from contextlib import ExitStack
 from typing import NoReturn
+
+import anyio
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
+DEFAULT_GZIP_OFFLOAD_MINIMUM_SIZE = 32 * 1024
+"""Minimum body-chunk size that is compressed outside the event loop."""
+
+_gzip_capacity_limiter: anyio.lowlevel.RunVar[anyio.CapacityLimiter] = anyio.lowlevel.RunVar("_gzip_capacity_limiter")
+
+
+def _get_gzip_capacity_limiter() -> anyio.CapacityLimiter:
+    try:
+        return _gzip_capacity_limiter.get()
+    except LookupError:
+        # Inline compression is effectively serialized by the event loop today.
+        # Keep that bound while allowing unrelated event-loop work to continue.
+        limiter = anyio.CapacityLimiter(1)
+        _gzip_capacity_limiter.set(limiter)
+        return limiter
 
 
 class GZipMiddleware:
-    def __init__(self, app: ASGIApp, minimum_size: int = 500, compresslevel: int = 9) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        minimum_size: int = 500,
+        compresslevel: int = 9,
+        offload_minimum_size: int = DEFAULT_GZIP_OFFLOAD_MINIMUM_SIZE,
+    ) -> None:
         self.app = app
         self.minimum_size = minimum_size
         self.compresslevel = compresslevel
+        self.offload_minimum_size = max(minimum_size, offload_minimum_size)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":  # pragma: no cover
@@ -23,7 +48,12 @@ class GZipMiddleware:
         headers = Headers(scope=scope)
         responder: ASGIApp
         if "gzip" in headers.get("Accept-Encoding", ""):
-            responder = GZipResponder(self.app, self.minimum_size, compresslevel=self.compresslevel)
+            responder = GZipResponder(
+                self.app,
+                self.minimum_size,
+                compresslevel=self.compresslevel,
+                offload_minimum_size=self.offload_minimum_size,
+            )
         else:
             responder = IdentityResponder(self.app, self.minimum_size)
 
@@ -120,13 +150,21 @@ class IdentityResponder:
 class GZipResponder(IdentityResponder):
     content_encoding = "gzip"
 
-    def __init__(self, app: ASGIApp, minimum_size: int, compresslevel: int = 9) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        minimum_size: int,
+        compresslevel: int = 9,
+        offload_minimum_size: int = DEFAULT_GZIP_OFFLOAD_MINIMUM_SIZE,
+    ) -> None:
         super().__init__(app, minimum_size)
 
         self.compresslevel = compresslevel
+        self.offload_minimum_size = max(minimum_size, offload_minimum_size)
         self._gzip_buffer: io.BytesIO | None = None
         self._gzip_file: gzip.GzipFile | None = None
         self._gzip_context = ExitStack()
+        self._precompressed: bytes | None = None
 
     @property
     def gzip_buffer(self) -> io.BytesIO:
@@ -146,9 +184,35 @@ class GZipResponder(IdentityResponder):
         with self._gzip_context:
             await super().__call__(scope, receive, send)
 
+    async def send_with_compression(self, message: Message) -> None:
+        body = message.get("body", b"")
+        if (
+            message["type"] == "http.response.body"
+            and not self.content_encoding_set
+            and not self.content_type_is_excluded
+            and len(body) >= self.offload_minimum_size
+        ):
+            self._precompressed = await anyio.to_thread.run_sync(
+                self._compress_body,
+                body,
+                message.get("more_body", False),
+                limiter=_get_gzip_capacity_limiter(),
+            )
+        await super().send_with_compression(message)
+
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
+        if self._precompressed is not None:
+            body = self._precompressed
+            self._precompressed = None
+            return body
+
+        return self._compress_body(body, more_body)
+
+    def _compress_body(self, body: bytes, more_body: bool) -> bytes:
         self.gzip_file.write(body)
-        if not more_body:
+        if more_body:
+            self.gzip_file.flush(zlib.Z_NO_FLUSH)
+        else:
             self.gzip_file.close()
 
         body = self.gzip_buffer.getvalue()

@@ -6,7 +6,7 @@ import hashlib
 import io
 import json
 from collections.abc import Coroutine, Iterator
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, closing, contextmanager
 from dataclasses import dataclass
 from typing import Literal, cast
 
@@ -93,7 +93,7 @@ async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
 
 @dataclass
 class ResponsePair:
-    runner: asyncio.Runner
+    loop: asyncio.AbstractEventLoop
     large_app: ASGIApp
     tiny_app: ASGIApp
     scope: Scope
@@ -105,7 +105,7 @@ class ResponsePair:
         await anyio.to_thread.run_sync(bool)
 
     def run_until_tiny_response(self) -> None:
-        self.runner.run(self._run_until_tiny_response())
+        self.loop.run_until_complete(self._run_until_tiny_response())
 
     async def _run_until_tiny_response(self) -> None:
         self.large_task = asyncio.create_task(run_asgi(self.large_app, self.scope))
@@ -113,7 +113,7 @@ class ResponsePair:
         self.tiny_messages = await tiny_task
 
     def drain_and_validate(self) -> None:
-        self.runner.run(self._drain_and_validate())
+        self.loop.run_until_complete(self._drain_and_validate())
 
     async def _drain_and_validate(self) -> None:
         assert self.large_task is not None
@@ -136,9 +136,9 @@ class ResponsePair:
 
 @contextmanager
 def response_pair(large_app: ASGIApp, tiny_app: ASGIApp, scope: Scope, payload: bytes) -> Iterator[ResponsePair]:
-    with asyncio.Runner() as runner:
-        pair = ResponsePair(runner, large_app, tiny_app, scope, payload)
-        runner.run(pair.warm_worker())
+    with closing(asyncio.new_event_loop()) as loop:
+        pair = ResponsePair(loop, large_app, tiny_app, scope, payload)
+        loop.run_until_complete(pair.warm_worker())
         yield pair
         pair.drain_and_validate()
 

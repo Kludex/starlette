@@ -248,9 +248,9 @@ event loop, so it does not consume AnyIO's default worker-thread capacity. You
 can adjust the number of concurrent GZip operations from an async context:
 
 ```python
-from starlette.middleware.gzip import get_gzip_capacity_limiter
+from starlette.middleware.gzip import gzip_capacity_limiter
 
-get_gzip_capacity_limiter().total_tokens = 100
+gzip_capacity_limiter().total_tokens = 100
 ```
 
 The middleware won't GZip responses that already have either a `Content-Encoding` set, to prevent them from

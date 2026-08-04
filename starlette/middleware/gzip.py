@@ -14,7 +14,7 @@ DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
 _gzip_capacity_limiter: anyio.lowlevel.RunVar[anyio.CapacityLimiter] = anyio.lowlevel.RunVar("_gzip_capacity_limiter")
 
 
-def get_gzip_capacity_limiter() -> anyio.CapacityLimiter:
+def gzip_capacity_limiter() -> anyio.CapacityLimiter:
     """Return the capacity limiter used for worker-thread GZip compression."""
     try:
         return _gzip_capacity_limiter.get()
@@ -193,7 +193,7 @@ class GZipResponder(IdentityResponder):
                 body,
                 more_body,
                 True,
-                limiter=get_gzip_capacity_limiter(),
+                limiter=gzip_capacity_limiter(),
             )
         return self.apply_compression(body, more_body=more_body)
 

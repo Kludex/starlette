@@ -17,10 +17,12 @@ uv run pytest benchmarks/gzip_benchmark.py --codspeed
 
 Payload construction, middleware configuration, and decompression validation
 are outside the measured region. The measured call includes responder
-construction, header handling, compression, and resource cleanup. Each case
-creates only one input payload, so the largest case does not leave all benchmark
-inputs resident in memory. CodSpeed CI records simulated CPU performance, peak
-heap usage, and allocation counts.
+construction, fresh mutable ASGI message containers, header handling,
+compression, and resource cleanup. Recreating the message containers prevents
+CodSpeed warmups from mutating the response used by the measured invocation.
+Each case creates only one input payload, so the largest case does not leave all
+benchmark inputs resident in memory. CodSpeed CI records simulated CPU
+performance, peak heap usage, and allocation counts.
 
 The end-to-end bypass benchmarks run the complete `GZipMiddleware` ASGI path
 for responses below `minimum_size`, responses with an existing

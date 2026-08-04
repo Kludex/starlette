@@ -45,7 +45,10 @@ class StaticResponseApp:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         for message in self.messages:
-            await send(message)
+            outgoing_message = dict(message)
+            if "headers" in outgoing_message:
+                outgoing_message["headers"] = list(outgoing_message["headers"])
+            await send(outgoing_message)
 
 
 class ASGIRunner:
@@ -202,9 +205,9 @@ def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
 )
 @pytest.mark.benchmark(max_time=0.5, max_rounds=10)
 def test_gzip_bypass(benchmark: BenchmarkFixture, case: BypassCase) -> None:
-    # The response and payload are constructed outside the measured region.
-    # The benchmark covers the complete GZipMiddleware ASGI call, including
-    # responder construction and teardown for responses passed through uncompressed.
+    # The response payload is constructed outside the measured region. The
+    # benchmark covers the complete GZipMiddleware ASGI call, including fresh
+    # ASGI message containers, responder construction, and teardown.
     expected = make_bypass_messages(case)
     app = GZipMiddleware(StaticResponseApp(expected), minimum_size=500)
     scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}

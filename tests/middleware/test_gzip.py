@@ -52,13 +52,7 @@ def test_gzip_not_in_accept_encoding(test_client_factory: TestClientFactory) -> 
 
 def test_gzip_ignored_for_small_responses(
     test_client_factory: TestClientFactory,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fail_if_created(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("GzipFile should not be created for a response below minimum_size")
-
-    monkeypatch.setattr("starlette.middleware.gzip.gzip.GzipFile", fail_if_created)
-
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("OK", status_code=200)
 

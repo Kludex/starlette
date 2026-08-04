@@ -45,7 +45,10 @@ class StaticResponseApp:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         for message in self.messages:
-            await send(message)
+            outgoing: Message = dict(message)
+            if "headers" in outgoing:
+                outgoing["headers"] = list(outgoing["headers"])
+            await send(outgoing)
 
 
 class ASGIRunner:

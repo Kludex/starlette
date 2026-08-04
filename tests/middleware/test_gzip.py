@@ -150,7 +150,7 @@ async def test_gzip_offloaded_streaming_chunk_is_compressed_eagerly() -> None:
         await send({"type": "http.response.body", "body": chunk, "more_body": True})
         await send({"type": "http.response.body", "body": b"tail"})
 
-    messages = await collect_gzip_response(GZipMiddleware(app))
+    messages = await collect_gzip_response(GZipMiddleware(app, minimum_size=10 * 1024 * 1024))
 
     first_body = messages[1]["body"]
     assert isinstance(first_body, bytes)

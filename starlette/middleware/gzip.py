@@ -10,8 +10,6 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
-DEFAULT_GZIP_OFFLOAD_MINIMUM_SIZE = 32 * 1024
-"""Minimum body-chunk size that is compressed outside the event loop."""
 
 _gzip_capacity_limiter: anyio.lowlevel.RunVar[anyio.CapacityLimiter] = anyio.lowlevel.RunVar("_gzip_capacity_limiter")
 
@@ -33,12 +31,12 @@ class GZipMiddleware:
         app: ASGIApp,
         minimum_size: int = 500,
         compresslevel: int = 9,
-        offload_minimum_size: int = DEFAULT_GZIP_OFFLOAD_MINIMUM_SIZE,
+        offload_to_thread_minimum_size: int = 32 * 1024,  # 32 KiB
     ) -> None:
         self.app = app
         self.minimum_size = minimum_size
         self.compresslevel = compresslevel
-        self.offload_minimum_size = max(minimum_size, offload_minimum_size)
+        self.offload_to_thread_minimum_size = offload_to_thread_minimum_size
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":  # pragma: no cover
@@ -52,7 +50,7 @@ class GZipMiddleware:
                 self.app,
                 self.minimum_size,
                 compresslevel=self.compresslevel,
-                offload_minimum_size=self.offload_minimum_size,
+                offload_to_thread_minimum_size=self.offload_to_thread_minimum_size,
             )
         else:
             responder = IdentityResponder(self.app, self.minimum_size)
@@ -100,7 +98,7 @@ class IdentityResponder:
                 await self.send(message)
             elif not more_body:
                 # Standard response.
-                body = self.apply_compression(body, more_body=False)
+                body = await self._apply_compression(body, more_body=False)
 
                 headers = MutableHeaders(raw=self.initial_message["headers"])
                 headers.add_vary_header("Accept-Encoding")
@@ -113,7 +111,7 @@ class IdentityResponder:
                 await self.send(message)
             else:
                 # Initial body in streaming response.
-                body = self.apply_compression(body, more_body=True)
+                body = await self._apply_compression(body, more_body=True)
 
                 headers = MutableHeaders(raw=self.initial_message["headers"])
                 headers.add_vary_header("Accept-Encoding")
@@ -129,13 +127,16 @@ class IdentityResponder:
             body = message.get("body", b"")
             more_body = message.get("more_body", False)
 
-            message["body"] = self.apply_compression(body, more_body=more_body)
+            message["body"] = await self._apply_compression(body, more_body=more_body)
 
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
             # Don't apply GZip to pathsend responses
             await self.send(self.initial_message)
             await self.send(message)
+
+    async def _apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
+        return self.apply_compression(body, more_body=more_body)
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         """Apply compression on the response body.
@@ -155,16 +156,16 @@ class GZipResponder(IdentityResponder):
         app: ASGIApp,
         minimum_size: int,
         compresslevel: int = 9,
-        offload_minimum_size: int = DEFAULT_GZIP_OFFLOAD_MINIMUM_SIZE,
+        *,
+        offload_to_thread_minimum_size: int,
     ) -> None:
         super().__init__(app, minimum_size)
 
         self.compresslevel = compresslevel
-        self.offload_minimum_size = max(minimum_size, offload_minimum_size)
+        self.offload_to_thread_minimum_size = offload_to_thread_minimum_size
         self._gzip_buffer: io.BytesIO | None = None
         self._gzip_file: gzip.GzipFile | None = None
         self._gzip_context = ExitStack()
-        self._precompressed: bytes | None = None
 
     @property
     def gzip_buffer(self) -> io.BytesIO:
@@ -184,35 +185,25 @@ class GZipResponder(IdentityResponder):
         with self._gzip_context:
             await super().__call__(scope, receive, send)
 
-    async def send_with_compression(self, message: Message) -> None:
-        body = message.get("body", b"")
-        if (
-            message["type"] == "http.response.body"
-            and not self.content_encoding_set
-            and not self.content_type_is_excluded
-            and len(body) >= self.offload_minimum_size
-        ):
-            self._precompressed = await anyio.to_thread.run_sync(
+    async def _apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
+        if len(body) >= self.offload_to_thread_minimum_size:
+            return await anyio.to_thread.run_sync(
                 self._compress_body,
                 body,
-                message.get("more_body", False),
+                more_body,
+                True,
                 limiter=_get_gzip_capacity_limiter(),
             )
-        await super().send_with_compression(message)
+        return self.apply_compression(body, more_body=more_body)
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
-        if self._precompressed is not None:
-            body = self._precompressed
-            self._precompressed = None
-            return body
+        return self._compress_body(body, more_body, False)
 
-        return self._compress_body(body, more_body)
-
-    def _compress_body(self, body: bytes, more_body: bool) -> bytes:
+    def _compress_body(self, body: bytes, more_body: bool, flush_buffer: bool) -> bytes:
         self.gzip_file.write(body)
-        if more_body:
+        if more_body and flush_buffer:
             self.gzip_file.flush(zlib.Z_NO_FLUSH)
-        else:
+        elif not more_body:
             self.gzip_file.close()
 
         body = self.gzip_buffer.getvalue()

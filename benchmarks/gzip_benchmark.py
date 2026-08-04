@@ -181,7 +181,8 @@ def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     assert sent[0]["type"] == "http.response.start"
     assert (b"content-encoding", b"gzip") in sent[0]["headers"]
     assert sent[1]["type"] == "http.response.body"
-    compressed = cast(bytes, sent[1]["body"])
+    compressed = sent[1]["body"]
+    assert isinstance(compressed, bytes)
 
     assert gzip.decompress(compressed) == payload
     benchmark.extra_info["input_bytes"] = len(payload)

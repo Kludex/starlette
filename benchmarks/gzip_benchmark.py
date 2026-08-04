@@ -6,7 +6,7 @@ import io
 import json
 from collections.abc import Coroutine
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
@@ -45,10 +45,7 @@ class StaticResponseApp:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         for message in self.messages:
-            outgoing: Message = dict(message)
-            if "headers" in outgoing:
-                outgoing["headers"] = list(outgoing["headers"])
-            await send(outgoing)
+            await send(message)
 
 
 class ASGIRunner:
@@ -172,6 +169,15 @@ def make_bypass_messages(case: BypassCase) -> tuple[Message, ...]:
     return response_start, response_body
 
 
+def setup_bypass(case: BypassCase) -> tuple[tuple[ASGIRunner, ASGIApp, Scope], dict[str, Any]]:
+    messages = make_bypass_messages(case)
+    app = GZipMiddleware(StaticResponseApp(messages), minimum_size=500)
+    scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
+    if case.reason == "pathsend":
+        scope["extensions"] = {"http.response.pathsend": {}}
+    return (ASGIRunner(), app, scope), {}
+
+
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
 @pytest.mark.benchmark(max_time=0.5, max_rounds=10)
 def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
@@ -202,10 +208,7 @@ def test_gzip_bypass(benchmark: BenchmarkFixture, case: BypassCase) -> None:
     # The benchmark covers the complete GZipMiddleware ASGI call, including
     # responder and compressor initialization for responses that pass through.
     expected = make_bypass_messages(case)
-    app = GZipMiddleware(StaticResponseApp(expected), minimum_size=500)
-    runner = ASGIRunner()
-
-    sent = benchmark(runner.run, app, {"type": "http", "headers": [(b"accept-encoding", b"gzip")]})
+    sent = benchmark.pedantic(ASGIRunner.run, setup=lambda: setup_bypass(case), rounds=1)
 
     assert sent == list(expected)
     benchmark.extra_info["response_bytes"] = case.body_size

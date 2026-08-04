@@ -1,5 +1,6 @@
 import gzip
 import io
+from contextlib import ExitStack
 from typing import NoReturn
 
 from starlette.datastructures import Headers, MutableHeaders
@@ -122,14 +123,28 @@ class GZipResponder(IdentityResponder):
     def __init__(self, app: ASGIApp, minimum_size: int, compresslevel: int = 9) -> None:
         super().__init__(app, minimum_size)
 
-        self.gzip_buffer = io.BytesIO()
-        self.gzip_file = gzip.GzipFile(mode="wb", fileobj=self.gzip_buffer, compresslevel=compresslevel)
+        self.compresslevel = compresslevel
+        self.gzip_buffer: io.BytesIO | None = None
+        self.gzip_file: gzip.GzipFile | None = None
+        self._gzip_context = ExitStack()
+
+    def _ensure_compression_started(self) -> None:
+        if self.gzip_buffer is None:
+            self.gzip_buffer = self._gzip_context.enter_context(io.BytesIO())
+        if self.gzip_file is None:
+            self.gzip_file = self._gzip_context.enter_context(
+                gzip.GzipFile(mode="wb", fileobj=self.gzip_buffer, compresslevel=self.compresslevel)
+            )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        with self.gzip_buffer, self.gzip_file:
+        with self._gzip_context:
             await super().__call__(scope, receive, send)
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
+        self._ensure_compression_started()
+        assert self.gzip_file is not None
+        assert self.gzip_buffer is not None
+
         self.gzip_file.write(body)
         if not more_body:
             self.gzip_file.close()

@@ -6,36 +6,32 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
-  workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: read
 
 jobs:
   benchmarks:
-    name: GZip benchmarks
-    runs-on: ubuntu-24.04
+    name: Run benchmarks
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           persist-credentials: false
-
-      # CodSpeed's tracing instrument requires setup-python rather than a Python
-      # installation managed by uv.
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
-        with:
-          python-version: "3.14.5"
 
       - name: Install uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
+          python-version: "3.13"
           enable-cache: true
 
       - name: Install dependencies
         run: scripts/install
+        shell: bash
 
-      - name: Run benchmarks
+      - name: Run the benchmarks
         uses: CodSpeedHQ/action@0ca9cbbf4623b599a6c3ed4fc8a922942705d9f1 # v5.0.2
         with:
           run: uv run pytest benchmarks/gzip_benchmark.py --codspeed

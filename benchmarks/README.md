@@ -18,3 +18,9 @@ Payload construction and decompression validation are outside the measured
 region. Each case creates only one input payload, so the largest case does not
 leave all benchmark inputs resident in memory. CodSpeed CI records simulated
 CPU performance, peak heap usage, and allocation counts.
+
+The end-to-end bypass benchmarks run the complete `GZipMiddleware` ASGI path
+for responses below `minimum_size`, responses with an existing
+`Content-Encoding`, `text/event-stream` responses, and
+`http.response.pathsend`. Their response payloads are also constructed outside
+the measured region, isolating middleware allocation overhead.

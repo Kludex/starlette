@@ -6,12 +6,12 @@ import io
 import json
 from collections.abc import Coroutine
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
-from starlette.middleware.gzip import GZipMiddleware, GZipResponder
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 KiB = 1024
@@ -86,10 +86,6 @@ CASES = tuple(
 )
 
 
-async def unused_app(scope: Scope, receive: Receive, send: Send) -> None:
-    raise AssertionError("The benchmark calls GZipResponder directly")
-
-
 def make_json_payload(size: int) -> bytes:
     """Build a deterministic, valid JSON document of exactly ``size`` bytes."""
     prefix = b'{"requests":['
@@ -148,12 +144,6 @@ def make_payload(kind: PayloadKind, size: int) -> bytes:
     return hashlib.shake_256(b"starlette-gzip-benchmark-v1").digest(size)
 
 
-def compress(payload: bytes, level: int) -> bytes:
-    responder = GZipResponder(unused_app, minimum_size=0, compresslevel=level)
-    with responder.gzip_buffer, responder.gzip_file:
-        return responder.apply_compression(payload, more_body=False)
-
-
 def make_bypass_messages(case: BypassCase) -> tuple[Message, ...]:
     headers = [(b"content-type", b"application/json"), (b"content-length", str(case.body_size).encode())]
     if case.reason == "content-encoding":
@@ -169,22 +159,29 @@ def make_bypass_messages(case: BypassCase) -> tuple[Message, ...]:
     return response_start, response_body
 
 
-def setup_bypass(case: BypassCase) -> tuple[tuple[ASGIRunner, ASGIApp, Scope], dict[str, Any]]:
-    messages = make_bypass_messages(case)
-    app = GZipMiddleware(StaticResponseApp(messages), minimum_size=500)
-    scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
-    if case.reason == "pathsend":
-        scope["extensions"] = {"http.response.pathsend": {}}
-    return (ASGIRunner(), app, scope), {}
-
-
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
 @pytest.mark.benchmark(max_time=0.5, max_rounds=10)
 def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     # Payload construction is intentionally outside the measured region. Cases
     # are function-scoped, so only one source payload is resident at a time.
     payload = make_payload(case.payload_kind, case.size)
-    compressed = benchmark(compress, payload, case.level)
+    messages: tuple[Message, ...] = (
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(payload)).encode())],
+        },
+        {"type": "http.response.body", "body": payload},
+    )
+    app = GZipMiddleware(StaticResponseApp(messages), minimum_size=0, compresslevel=case.level)
+    scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
+    sent = benchmark.pedantic(ASGIRunner().run, args=(app, scope), rounds=1)
+
+    assert len(sent) == 2
+    assert sent[0]["type"] == "http.response.start"
+    assert (b"content-encoding", b"gzip") in sent[0]["headers"]
+    assert sent[1]["type"] == "http.response.body"
+    compressed = cast(bytes, sent[1]["body"])
 
     assert gzip.decompress(compressed) == payload
     benchmark.extra_info["input_bytes"] = len(payload)
@@ -206,9 +203,13 @@ def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
 def test_gzip_bypass(benchmark: BenchmarkFixture, case: BypassCase) -> None:
     # The response and payload are constructed outside the measured region.
     # The benchmark covers the complete GZipMiddleware ASGI call, including
-    # responder and compressor initialization for responses that pass through.
+    # responder construction and teardown for responses passed through uncompressed.
     expected = make_bypass_messages(case)
-    sent = benchmark.pedantic(ASGIRunner.run, setup=lambda: setup_bypass(case), rounds=1)
+    app = GZipMiddleware(StaticResponseApp(expected), minimum_size=500)
+    scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
+    if case.reason == "pathsend":
+        scope["extensions"] = {"http.response.pathsend": {}}
+    sent = benchmark.pedantic(ASGIRunner().run, args=(app, scope), rounds=1)
 
     assert sent == list(expected)
     benchmark.extra_info["response_bytes"] = case.body_size

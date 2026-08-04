@@ -53,6 +53,7 @@ dev = [
     "coverage>=7.8.2",
     "importlib-metadata==9.0.0",
     "mypy==2.1.0",
+    "pytest-codspeed==5.0.3",
     "ruff==0.15.19",
     "types-PyYAML==6.0.12.20250516",
     "pytest==9.1.1",

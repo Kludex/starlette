@@ -124,27 +124,29 @@ class GZipResponder(IdentityResponder):
         super().__init__(app, minimum_size)
 
         self.compresslevel = compresslevel
-        self.gzip_buffer: io.BytesIO | None = None
-        self.gzip_file: gzip.GzipFile | None = None
+        self._gzip_buffer: io.BytesIO | None = None
+        self._gzip_file: gzip.GzipFile | None = None
         self._gzip_context = ExitStack()
 
-    def _ensure_compression_started(self) -> None:
-        if self.gzip_buffer is None:
-            self.gzip_buffer = self._gzip_context.enter_context(io.BytesIO())
-        if self.gzip_file is None:
-            self.gzip_file = self._gzip_context.enter_context(
+    @property
+    def gzip_buffer(self) -> io.BytesIO:
+        if self._gzip_buffer is None:
+            self._gzip_buffer = self._gzip_context.enter_context(io.BytesIO())
+        return self._gzip_buffer
+
+    @property
+    def gzip_file(self) -> gzip.GzipFile:
+        if self._gzip_file is None:
+            self._gzip_file = self._gzip_context.enter_context(
                 gzip.GzipFile(mode="wb", fileobj=self.gzip_buffer, compresslevel=self.compresslevel)
             )
+        return self._gzip_file
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         with self._gzip_context:
             await super().__call__(scope, receive, send)
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
-        self._ensure_compression_started()
-        assert self.gzip_file is not None
-        assert self.gzip_buffer is not None
-
         self.gzip_file.write(body)
         if not more_body:
             self.gzip_file.close()

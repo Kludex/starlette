@@ -261,8 +261,8 @@ async def test_gzip_responder_does_not_allocate_for_bypassed_responses(
     responder = GZipResponder(app, minimum_size=minimum_size)
     await responder({"type": "http"}, receive, send)
 
-    assert responder.gzip_buffer is None
-    assert responder.gzip_file is None
+    assert responder._gzip_buffer is None
+    assert responder._gzip_file is None
 
 
 @pytest.mark.anyio

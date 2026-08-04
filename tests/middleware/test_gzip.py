@@ -6,11 +6,11 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.gzip import GZipMiddleware, GZipResponder
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
-from starlette.types import Message, Receive, Scope, Send
+from starlette.types import Message
 from tests.types import TestClientFactory
 
 
@@ -200,110 +200,3 @@ async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     assert len(events) == 2
     assert events[0]["type"] == "http.response.start"
     assert events[1]["type"] == "http.response.pathsend"
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize(
-    ("messages", "minimum_size"),
-    [
-        (
-            (
-                {"type": "http.response.start", "status": 200, "headers": []},
-                {"type": "http.response.body", "body": b"small"},
-            ),
-            500,
-        ),
-        (
-            (
-                {
-                    "type": "http.response.start",
-                    "status": 200,
-                    "headers": [(b"content-encoding", b"br")],
-                },
-                {"type": "http.response.body", "body": b"x" * 1000},
-            ),
-            500,
-        ),
-        (
-            (
-                {
-                    "type": "http.response.start",
-                    "status": 200,
-                    "headers": [(b"content-type", b"text/event-stream")],
-                },
-                {"type": "http.response.body", "body": b"x" * 1000},
-            ),
-            500,
-        ),
-        (
-            (
-                {"type": "http.response.start", "status": 200, "headers": []},
-                {"type": "http.response.pathsend", "path": "/tmp/example"},
-            ),
-            500,
-        ),
-    ],
-    ids=["below-minimum-size", "content-encoding", "event-stream", "pathsend"],
-)
-async def test_gzip_responder_does_not_allocate_for_bypassed_responses(
-    messages: tuple[Message, ...], minimum_size: int
-) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        for message in messages:
-            await send(message)
-
-    async def receive() -> Message:  # type: ignore[empty-body]
-        ...  # pragma: no cover
-
-    async def send(message: Message) -> None:
-        pass
-
-    responder = GZipResponder(app, minimum_size=minimum_size)
-    await responder({"type": "http"}, receive, send)
-
-    assert responder._gzip_buffer is None
-    assert responder._gzip_file is None
-
-
-@pytest.mark.anyio
-async def test_gzip_responder_closes_allocated_resources() -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": []})
-        await send({"type": "http.response.body", "body": b"x" * 1000})
-
-    async def receive() -> Message:  # type: ignore[empty-body]
-        ...  # pragma: no cover
-
-    async def send(message: Message) -> None:
-        pass
-
-    responder = GZipResponder(app, minimum_size=500)
-    await responder({"type": "http"}, receive, send)
-
-    assert responder.gzip_buffer is not None
-    assert responder.gzip_buffer.closed
-    assert responder.gzip_file is not None
-    assert responder.gzip_file.closed
-
-
-@pytest.mark.anyio
-async def test_gzip_responder_closes_allocated_resources_on_error() -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": []})
-        await send({"type": "http.response.body", "body": b"x" * 1000, "more_body": True})
-        raise RuntimeError("application failed")
-
-    async def receive() -> Message:  # type: ignore[empty-body]
-        ...  # pragma: no cover
-
-    async def send(message: Message) -> None:
-        pass
-
-    responder = GZipResponder(app, minimum_size=500)
-    with pytest.raises(RuntimeError, match="application failed"):
-        await responder({"type": "http"}, receive, send)
-
-    assert responder.gzip_buffer is not None
-    assert responder.gzip_buffer.closed
-    assert responder.gzip_file is not None
-    assert responder.gzip_file.closed

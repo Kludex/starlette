@@ -252,8 +252,8 @@ async def test_gzip_responder_does_not_allocate_for_bypassed_responses(
         for message in messages:
             await send(message)
 
-    async def receive() -> Message:
-        return {"type": "http.request"}
+    async def receive() -> Message:  # type: ignore[empty-body]
+        ...  # pragma: no cover
 
     async def send(message: Message) -> None:
         pass
@@ -271,8 +271,8 @@ async def test_gzip_responder_closes_allocated_resources() -> None:
         await send({"type": "http.response.start", "status": 200, "headers": []})
         await send({"type": "http.response.body", "body": b"x" * 1000})
 
-    async def receive() -> Message:
-        return {"type": "http.request"}
+    async def receive() -> Message:  # type: ignore[empty-body]
+        ...  # pragma: no cover
 
     async def send(message: Message) -> None:
         pass
@@ -293,8 +293,8 @@ async def test_gzip_responder_closes_allocated_resources_on_error() -> None:
         await send({"type": "http.response.body", "body": b"x" * 1000, "more_body": True})
         raise RuntimeError("application failed")
 
-    async def receive() -> Message:
-        return {"type": "http.request"}
+    async def receive() -> Message:  # type: ignore[empty-body]
+        ...  # pragma: no cover
 
     async def send(message: Message) -> None:
         pass

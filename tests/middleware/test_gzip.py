@@ -22,7 +22,7 @@ async def collect_gzip_response(app: ASGIApp) -> list[Message]:
     scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
 
     async def receive() -> Message:
-        raise AssertionError("The app must not receive a request body")
+        raise AssertionError("The app must not receive a request body")  # pragma: no cover
 
     async def send(message: Message) -> None:
         messages.append(message)

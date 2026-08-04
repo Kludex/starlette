@@ -29,3 +29,11 @@ for responses below `minimum_size`, responses with an existing
 `Content-Encoding`, `text/event-stream` responses, and
 `http.response.pathsend`. Their response payloads are also constructed outside
 the measured region, isolating middleware allocation overhead.
+
+The responsiveness benchmark schedules a 10 MiB JSON response immediately
+before a tiny response that bypasses compression. CodSpeed measures the work
+needed for the tiny response to complete, then drains and validates the large
+response outside the measured region. This provides a stable CPU-simulation
+benchmark for detecting event-loop starvation without relying on wall-clock
+timing or concurrent request storms. The existing `json-10MiB-level-9`
+compression case separately measures the large response's total completion.

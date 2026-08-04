@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import gzip
 import hashlib
 import io
 import json
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Iterator
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from typing import Literal, cast
 
+import anyio
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
@@ -73,6 +76,97 @@ class ASGIRunner:
             return self.messages
         coroutine.close()
         raise AssertionError(f"The benchmark app unexpectedly suspended with {yielded!r}")
+
+
+async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
+    messages: list[Message] = []
+
+    async def receive() -> Message:
+        raise AssertionError("The benchmark app must not receive a request body")
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    await app(scope, receive, send)
+    return messages
+
+
+@dataclass
+class ResponsePair:
+    runner: asyncio.Runner
+    large_app: ASGIApp
+    tiny_app: ASGIApp
+    scope: Scope
+    payload: bytes
+    large_task: asyncio.Task[list[Message]] | None = None
+    tiny_messages: list[Message] | None = None
+
+    async def warm_worker(self) -> None:
+        await anyio.to_thread.run_sync(bool)
+
+    def run_until_tiny_response(self) -> None:
+        self.runner.run(self._run_until_tiny_response())
+
+    async def _run_until_tiny_response(self) -> None:
+        self.large_task = asyncio.create_task(run_asgi(self.large_app, self.scope))
+        tiny_task = asyncio.create_task(run_asgi(self.tiny_app, self.scope))
+        self.tiny_messages = await tiny_task
+
+    def drain_and_validate(self) -> None:
+        self.runner.run(self._drain_and_validate())
+
+    async def _drain_and_validate(self) -> None:
+        assert self.large_task is not None
+        large_messages = await self.large_task
+        assert self.tiny_messages is not None
+
+        assert len(large_messages) == 2
+        assert large_messages[0]["type"] == "http.response.start"
+        assert (b"content-encoding", b"gzip") in large_messages[0]["headers"]
+        assert large_messages[1]["type"] == "http.response.body"
+        compressed = large_messages[1]["body"]
+        assert isinstance(compressed, bytes)
+        assert gzip.decompress(compressed) == self.payload
+
+        assert len(self.tiny_messages) == 2
+        assert self.tiny_messages[0]["type"] == "http.response.start"
+        assert (b"content-encoding", b"gzip") not in self.tiny_messages[0]["headers"]
+        assert self.tiny_messages[1] == {"type": "http.response.body", "body": b"{}"}
+
+
+@contextmanager
+def response_pair(large_app: ASGIApp, tiny_app: ASGIApp, scope: Scope, payload: bytes) -> Iterator[ResponsePair]:
+    with asyncio.Runner() as runner:
+        pair = ResponsePair(runner, large_app, tiny_app, scope, payload)
+        runner.run(pair.warm_worker())
+        yield pair
+        pair.drain_and_validate()
+
+
+class ResponsivenessBenchmark:
+    def __init__(self, large_app: ASGIApp, tiny_app: ASGIApp, scope: Scope, payload: bytes) -> None:
+        self.large_app = large_app
+        self.tiny_app = tiny_app
+        self.scope = scope
+        self.payload = payload
+        self._stack: ExitStack | None = None
+        self._pair: ResponsePair | None = None
+
+    def setup(self) -> None:
+        stack = ExitStack()
+        pair = stack.enter_context(response_pair(self.large_app, self.tiny_app, self.scope, self.payload))
+        self._stack = stack
+        self._pair = pair
+
+    def run_until_tiny_response(self) -> None:
+        assert self._pair is not None
+        self._pair.run_until_tiny_response()
+
+    def teardown(self) -> None:
+        assert self._stack is not None
+        self._stack.close()
+        self._stack = None
+        self._pair = None
 
 
 # All compression levels are compared at 1 MiB. The size curve uses three
@@ -191,6 +285,42 @@ def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     benchmark.extra_info["input_bytes"] = len(payload)
     benchmark.extra_info["output_bytes"] = len(compressed)
     benchmark.extra_info["compression_ratio"] = len(compressed) / len(payload)
+
+
+@pytest.mark.benchmark(max_time=0.5, max_rounds=1)
+def test_gzip_event_loop_responsiveness(benchmark: BenchmarkFixture) -> None:
+    payload = make_json_payload(10 * MiB)
+    large_messages: tuple[Message, ...] = (
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(payload)).encode())],
+        },
+        {"type": "http.response.body", "body": payload},
+    )
+    tiny_messages: tuple[Message, ...] = (
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json"), (b"content-length", b"2")],
+        },
+        {"type": "http.response.body", "body": b"{}"},
+    )
+    large_app = GZipMiddleware(StaticResponseApp(large_messages), compresslevel=9)
+    tiny_app = GZipMiddleware(StaticResponseApp(tiny_messages), compresslevel=9)
+    scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
+    responsiveness = ResponsivenessBenchmark(large_app, tiny_app, scope, payload)
+
+    benchmark.pedantic(
+        responsiveness.run_until_tiny_response,
+        setup=responsiveness.setup,
+        teardown=responsiveness.teardown,
+        rounds=1,
+    )
+
+    benchmark.extra_info["large_response_bytes"] = len(payload)
+    benchmark.extra_info["compression_level"] = 9
+    benchmark.extra_info["tiny_response_bytes"] = len(b"{}")
 
 
 @pytest.mark.parametrize(

@@ -18,9 +18,9 @@ def _get_gzip_capacity_limiter() -> anyio.CapacityLimiter:
     try:
         return _gzip_capacity_limiter.get()
     except LookupError:
-        # Inline compression is effectively serialized by the event loop today.
-        # Keep that bound while allowing unrelated event-loop work to continue.
-        limiter = anyio.CapacityLimiter(1)
+        # Keep gzip compression isolated from AnyIO's default worker-thread
+        # capacity limiter while matching its default concurrency.
+        limiter = anyio.CapacityLimiter(40)
         _gzip_capacity_limiter.set(limiter)
         return limiter
 

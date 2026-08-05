@@ -128,16 +128,11 @@ class GZipResponder(IdentityResponder):
     @property
     def compressor(self) -> zlib._Compress:
         if self._compressor is None:
-            # wbits=16 + zlib.MAX_WBITS produces a gzip-wrapped stream
-            # (header, CRC32 and size trailer), matching gzip.GzipFile output.
             self._compressor = zlib.compressobj(self.compresslevel, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         return self._compressor
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         if more_body:
-            # Rely on the compressor's internal buffering: emitting compressed
-            # bytes only when zlib produces them avoids the overhead of
-            # flushing every small streamed chunk (see docs/middleware.md).
             return self.compressor.compress(body)
         return self.compressor.compress(body) + self.compressor.flush()
 

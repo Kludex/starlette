@@ -5,10 +5,10 @@ import gzip
 import hashlib
 import io
 import json
-from collections.abc import Coroutine, Iterator
+from collections.abc import Iterator
 from contextlib import ExitStack, closing, contextmanager
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Literal
 
 import anyio
 import pytest
@@ -55,27 +55,14 @@ class StaticResponseApp:
 
 
 class ASGIRunner:
-    """Drive an ASGI app that does not suspend on external I/O."""
-
     def __init__(self) -> None:
-        self.messages: list[Message] = []
-
-    async def receive(self) -> Message:
-        raise AssertionError("The benchmark app must not receive a request body")
-
-    async def send(self, message: Message) -> None:
-        self.messages.append(message)
+        self.loop = asyncio.new_event_loop()
 
     def run(self, app: ASGIApp, scope: Scope) -> list[Message]:
-        self.messages.clear()
-        awaitable = app(scope, self.receive, self.send)
-        coroutine = cast(Coroutine[object, object, None], awaitable)
-        try:
-            yielded = coroutine.send(None)
-        except StopIteration:
-            return self.messages
-        coroutine.close()
-        raise AssertionError(f"The benchmark app unexpectedly suspended with {yielded!r}")
+        return self.loop.run_until_complete(run_asgi(app, scope))
+
+    def close(self) -> None:
+        self.loop.close()
 
 
 async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
@@ -272,7 +259,8 @@ def test_gzip(benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     )
     app = GZipMiddleware(StaticResponseApp(messages), minimum_size=0, compresslevel=case.level)
     scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
-    sent = benchmark.pedantic(ASGIRunner().run, args=(app, scope), rounds=1)
+    with closing(ASGIRunner()) as runner:
+        sent = benchmark.pedantic(runner.run, args=(app, scope), rounds=1)
 
     assert len(sent) == 2
     assert sent[0]["type"] == "http.response.start"
@@ -343,7 +331,8 @@ def test_gzip_bypass(benchmark: BenchmarkFixture, case: BypassCase) -> None:
     scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
     if case.reason == "pathsend":
         scope["extensions"] = {"http.response.pathsend": {}}
-    sent = benchmark.pedantic(ASGIRunner().run, args=(app, scope), rounds=1)
+    with closing(ASGIRunner()) as runner:
+        sent = benchmark.pedantic(runner.run, args=(app, scope), rounds=1)
 
     assert sent == list(expected)
     benchmark.extra_info["response_bytes"] = case.body_size

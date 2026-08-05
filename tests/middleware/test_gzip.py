@@ -112,7 +112,7 @@ def test_gzip_streaming_response(test_client_factory: TestClientFactory) -> None
 
 @pytest.mark.anyio
 async def test_gzip_offloads_without_using_default_capacity_limiter() -> None:
-    payload = b"x" * (32 * 1024)
+    payload = b"x" * (128 * 1024)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send(

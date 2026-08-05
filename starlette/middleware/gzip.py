@@ -31,7 +31,7 @@ class GZipMiddleware:
         app: ASGIApp,
         minimum_size: int = 500,
         compresslevel: int = 9,
-        offload_to_thread_minimum_size: int = 32 * 1024,  # 32 KiB
+        offload_to_thread_minimum_size: int = 128 * 1024,  # 128 KiB
     ) -> None:
         self.app = app
         self.minimum_size = minimum_size

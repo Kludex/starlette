@@ -103,7 +103,7 @@ def test_gzip_offloaded_compression(test_client_factory: TestClientFactory) -> N
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
         # Ensure the response body takes the worker-thread compression path.
-        middleware=[Middleware(GZipMiddleware, offload_to_thread_minimum_size=len(payload))],
+        middleware=[Middleware(GZipMiddleware, offload_minimum_size=len(payload))],
     )
 
     client = test_client_factory(app)
@@ -123,7 +123,7 @@ def test_gzip_offloaded_streaming(test_client_factory: TestClientFactory) -> Non
         await send({"type": "http.response.body", "body": b"tail"})
 
     # Ensure the streamed chunk takes the worker-thread compression path.
-    middleware = GZipMiddleware(app, offload_to_thread_minimum_size=len(chunk))
+    middleware = GZipMiddleware(app, offload_minimum_size=len(chunk))
 
     client = test_client_factory(middleware)
     response = client.get("/", headers={"accept-encoding": "gzip"})

@@ -1,6 +1,6 @@
-import gzip
-import io
-from contextlib import ExitStack
+from __future__ import annotations
+
+import zlib
 from typing import NoReturn
 
 from starlette.datastructures import Headers, MutableHeaders
@@ -110,9 +110,8 @@ class IdentityResponder:
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         """Apply compression on the response body.
 
-        If more_body is False, any compression file should be closed. If it
-        isn't, it won't be closed automatically until all background tasks
-        complete.
+        If more_body is False, the compression stream is finalized. Compression
+        resources are only allocated once a body is actually compressed.
         """
         return body
 
@@ -124,38 +123,18 @@ class GZipResponder(IdentityResponder):
         super().__init__(app, minimum_size)
 
         self.compresslevel = compresslevel
-        self._gzip_buffer: io.BytesIO | None = None
-        self._gzip_file: gzip.GzipFile | None = None
-        self._gzip_context = ExitStack()
+        self._compressor: zlib._Compress | None = None
 
     @property
-    def gzip_buffer(self) -> io.BytesIO:
-        if self._gzip_buffer is None:
-            self._gzip_buffer = self._gzip_context.enter_context(io.BytesIO())
-        return self._gzip_buffer
-
-    @property
-    def gzip_file(self) -> gzip.GzipFile:
-        if self._gzip_file is None:
-            self._gzip_file = self._gzip_context.enter_context(
-                gzip.GzipFile(mode="wb", fileobj=self.gzip_buffer, compresslevel=self.compresslevel)
-            )
-        return self._gzip_file
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        with self._gzip_context:
-            await super().__call__(scope, receive, send)
+    def compressor(self) -> zlib._Compress:
+        if self._compressor is None:
+            self._compressor = zlib.compressobj(self.compresslevel, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        return self._compressor
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
-        self.gzip_file.write(body)
-        if not more_body:
-            self.gzip_file.close()
-
-        body = self.gzip_buffer.getvalue()
-        self.gzip_buffer.seek(0)
-        self.gzip_buffer.truncate()
-
-        return body
+        if more_body:
+            return self.compressor.compress(body)
+        return self.compressor.compress(body) + self.compressor.flush()
 
 
 async def unattached_send(message: Message) -> NoReturn:

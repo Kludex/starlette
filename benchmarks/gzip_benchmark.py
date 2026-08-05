@@ -10,6 +10,7 @@ from contextlib import ExitStack, closing, contextmanager
 from dataclasses import dataclass
 from typing import Literal
 
+import anyio
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
@@ -53,6 +54,17 @@ class StaticResponseApp:
             await send(outgoing_message)
 
 
+class ASGIRunner:
+    def __init__(self) -> None:
+        self.loop = asyncio.new_event_loop()
+
+    def run(self, app: ASGIApp, scope: Scope) -> list[Message]:
+        return self.loop.run_until_complete(run_asgi(app, scope))
+
+    def close(self) -> None:
+        self.loop.close()
+
+
 async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
     messages: list[Message] = []
 
@@ -66,17 +78,6 @@ async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
     return messages
 
 
-class ASGIRunner:
-    def __init__(self) -> None:
-        self.loop = asyncio.new_event_loop()
-
-    def run(self, app: ASGIApp, scope: Scope) -> list[Message]:
-        return self.loop.run_until_complete(run_asgi(app, scope))
-
-    def close(self) -> None:
-        self.loop.close()
-
-
 @dataclass
 class ResponsePair:
     loop: asyncio.AbstractEventLoop
@@ -86,6 +87,9 @@ class ResponsePair:
     payload: bytes
     large_task: asyncio.Task[list[Message]] | None = None
     tiny_messages: list[Message] | None = None
+
+    async def warm_worker(self) -> None:
+        await anyio.to_thread.run_sync(bool)
 
     def run_until_tiny_response(self) -> None:
         self.loop.run_until_complete(self._run_until_tiny_response())
@@ -121,6 +125,7 @@ class ResponsePair:
 def response_pair(large_app: ASGIApp, tiny_app: ASGIApp, scope: Scope, payload: bytes) -> Iterator[ResponsePair]:
     with closing(asyncio.new_event_loop()) as loop:
         pair = ResponsePair(loop, large_app, tiny_app, scope, payload)
+        loop.run_until_complete(pair.warm_worker())
         yield pair
         pair.drain_and_validate()
 

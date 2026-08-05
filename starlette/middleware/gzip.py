@@ -153,7 +153,7 @@ class GZipResponder(IdentityResponder):
         minimum_size: int,
         compresslevel: int = 9,
         *,
-        thread_minimum_size: int,
+        thread_minimum_size: int = 128 * 1024,  # 128 KiB
     ) -> None:
         super().__init__(app, minimum_size)
 

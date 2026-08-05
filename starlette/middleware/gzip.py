@@ -135,9 +135,10 @@ class GZipResponder(IdentityResponder):
 
     def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         if more_body:
-            # Z_SYNC_FLUSH ensures each streamed chunk is immediately
-            # decodable by the client, matching GzipFile.flush() behavior.
-            return self.compressor.compress(body) + self.compressor.flush(zlib.Z_SYNC_FLUSH)
+            # Rely on the compressor's internal buffering: emitting compressed
+            # bytes only when zlib produces them avoids the overhead of
+            # flushing every small streamed chunk (see docs/middleware.md).
+            return self.compressor.compress(body)
         return self.compressor.compress(body) + self.compressor.flush()
 
 

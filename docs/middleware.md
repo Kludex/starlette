@@ -243,11 +243,9 @@ The following arguments are supported:
 * `compresslevel` - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to `9`. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.
 * `thread_minimum_size` - Compress body chunks at least this large in a worker thread, keeping the event loop responsive. Defaults to `131072` (128 KiB). Chunks below this size compress inline in at most a couple of milliseconds, while the fixed cost of dispatching to a worker thread would dominate.
 
-GZip compression in worker threads uses a dedicated capacity limiter with 40
-tokens per event loop, so it doesn't compete for AnyIO's default worker-thread
-capacity (used by `run_in_threadpool`, `FileResponse`, and others). Tokens
-beyond the machine's CPU count don't increase compression throughput. The
-limit can be adjusted from an async context:
+GZip compression in worker threads uses a dedicated capacity limiter with 40 tokens per event loop, so it doesn't
+compete for AnyIO's default worker-thread capacity (used by `run_in_threadpool`, `FileResponse`, and others). Tokens
+beyond the machine's CPU count don't increase compression throughput. The limit can be adjusted from an async context:
 
 ```python
 from starlette.middleware.gzip import gzip_capacity_limiter

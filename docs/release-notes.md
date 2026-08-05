@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## 1.4.1 (August 5, 2026)
+
+#### Fixed
+
+* Default `thread_minimum_size` to 128 KiB in `GZipResponder`, keeping it usable without the new keyword argument [#3415](https://github.com/encode/starlette/pull/3415).
+
 ## 1.4.0 (August 5, 2026)
 
 #### Added

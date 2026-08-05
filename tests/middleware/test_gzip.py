@@ -94,7 +94,7 @@ def test_gzip_streaming_response(test_client_factory: TestClientFactory) -> None
     assert "Content-Length" not in response.headers
 
 
-def test_gzip_offloaded_compression(test_client_factory: TestClientFactory) -> None:
+def test_gzip_compression_in_thread(test_client_factory: TestClientFactory) -> None:
     payload = "x" * (128 * 1024)
 
     def homepage(request: Request) -> PlainTextResponse:
@@ -103,7 +103,7 @@ def test_gzip_offloaded_compression(test_client_factory: TestClientFactory) -> N
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
         # Ensure the response body takes the worker-thread compression path.
-        middleware=[Middleware(GZipMiddleware, offload_minimum_size=len(payload))],
+        middleware=[Middleware(GZipMiddleware, thread_minimum_size=len(payload))],
     )
 
     client = test_client_factory(app)
@@ -114,7 +114,7 @@ def test_gzip_offloaded_compression(test_client_factory: TestClientFactory) -> N
     assert int(response.headers["Content-Length"]) < len(payload)
 
 
-def test_gzip_offloaded_streaming(test_client_factory: TestClientFactory) -> None:
+def test_gzip_streaming_compression_in_thread(test_client_factory: TestClientFactory) -> None:
     chunk = hashlib.shake_256(b"starlette-gzip-stream").digest(256 * 1024)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -123,7 +123,7 @@ def test_gzip_offloaded_streaming(test_client_factory: TestClientFactory) -> Non
         await send({"type": "http.response.body", "body": b"tail"})
 
     # Ensure the streamed chunk takes the worker-thread compression path.
-    middleware = GZipMiddleware(app, offload_minimum_size=len(chunk))
+    middleware = GZipMiddleware(app, thread_minimum_size=len(chunk))
 
     client = test_client_factory(middleware)
     response = client.get("/", headers={"accept-encoding": "gzip"})

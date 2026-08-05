@@ -13,7 +13,7 @@ DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
 _gzip_capacity_limiter: anyio.lowlevel.RunVar[anyio.CapacityLimiter] = anyio.lowlevel.RunVar("_gzip_capacity_limiter")
 
 
-def gzip_capacity_limiter() -> anyio.CapacityLimiter:
+def _get_gzip_capacity_limiter() -> anyio.CapacityLimiter:
     """Return the capacity limiter used for worker-thread GZip compression."""
     try:
         return _gzip_capacity_limiter.get()
@@ -170,7 +170,7 @@ class GZipResponder(IdentityResponder):
     async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
         if len(body) >= self.thread_minimum_size:
             # Compressing large chunks inline would block the event loop.
-            limiter = gzip_capacity_limiter()
+            limiter = _get_gzip_capacity_limiter()
             return await anyio.to_thread.run_sync(self._compress_body, body, more_body, limiter=limiter)
         return self._compress_body(body, more_body)
 

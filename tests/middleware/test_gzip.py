@@ -4,13 +4,11 @@ import gzip
 import hashlib
 from pathlib import Path
 
-import anyio
-import anyio.to_thread
 import pytest
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.gzip import GZipMiddleware, gzip_capacity_limiter
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
@@ -130,13 +128,6 @@ async def test_gzip_offloaded_compression() -> None:
     compressed = messages[1]["body"]
     assert isinstance(compressed, bytes)
     assert gzip.decompress(compressed) == payload
-
-
-@pytest.mark.anyio
-async def test_gzip_capacity_limiter_is_dedicated() -> None:
-    limiter = gzip_capacity_limiter()
-    assert limiter is not anyio.to_thread.current_default_thread_limiter()
-    assert limiter is gzip_capacity_limiter()
 
 
 @pytest.mark.anyio

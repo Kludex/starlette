@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
-from starlette.types import Message
+from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
@@ -91,6 +92,44 @@ def test_gzip_streaming_response(test_client_factory: TestClientFactory) -> None
     assert response.headers["Content-Encoding"] == "gzip"
     assert response.headers["Vary"] == "Accept-Encoding"
     assert "Content-Length" not in response.headers
+
+
+def test_gzip_compression_in_thread(test_client_factory: TestClientFactory) -> None:
+    payload = "x" * (128 * 1024)
+
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(payload, status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        # Ensure the response body takes the worker-thread compression path.
+        middleware=[Middleware(GZipMiddleware, thread_minimum_size=len(payload))],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.text == payload
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert int(response.headers["Content-Length"]) < len(payload)
+
+
+def test_gzip_streaming_compression_in_thread(test_client_factory: TestClientFactory) -> None:
+    chunk = hashlib.shake_256(b"starlette-gzip-stream").digest(256 * 1024)
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json")]})
+        await send({"type": "http.response.body", "body": chunk, "more_body": True})
+        await send({"type": "http.response.body", "body": b"tail"})
+
+    # Ensure the streamed chunk takes the worker-thread compression path.
+    middleware = GZipMiddleware(app, thread_minimum_size=len(chunk))
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == chunk + b"tail"
+    assert response.headers["Content-Encoding"] == "gzip"
 
 
 def test_gzip_streaming_response_identity(test_client_factory: TestClientFactory) -> None:

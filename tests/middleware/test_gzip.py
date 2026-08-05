@@ -5,11 +5,12 @@ import hashlib
 from pathlib import Path
 
 import anyio
+import anyio.to_thread
 import pytest
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.gzip import GZipMiddleware, gzip_capacity_limiter
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
@@ -111,7 +112,7 @@ def test_gzip_streaming_response(test_client_factory: TestClientFactory) -> None
 
 
 @pytest.mark.anyio
-async def test_gzip_offloads_without_using_default_capacity_limiter() -> None:
+async def test_gzip_offloaded_compression() -> None:
     payload = b"x" * (128 * 1024)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -124,21 +125,18 @@ async def test_gzip_offloads_without_using_default_capacity_limiter() -> None:
         )
         await send({"type": "http.response.body", "body": payload})
 
-    limiter = anyio.to_thread.current_default_thread_limiter()
-    borrowers = [object() for _ in range(int(limiter.total_tokens))]
-    for borrower in borrowers:
-        await limiter.acquire_on_behalf_of(borrower)
-
-    try:
-        with anyio.fail_after(5):
-            messages = await collect_gzip_response(GZipMiddleware(app))
-    finally:
-        for borrower in borrowers:
-            limiter.release_on_behalf_of(borrower)
+    messages = await collect_gzip_response(GZipMiddleware(app))
 
     compressed = messages[1]["body"]
     assert isinstance(compressed, bytes)
     assert gzip.decompress(compressed) == payload
+
+
+@pytest.mark.anyio
+async def test_gzip_capacity_limiter_is_dedicated() -> None:
+    limiter = gzip_capacity_limiter()
+    assert limiter is not anyio.to_thread.current_default_thread_limiter()
+    assert limiter is gzip_capacity_limiter()
 
 
 @pytest.mark.anyio

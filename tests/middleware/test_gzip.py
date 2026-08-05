@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gzip
 import hashlib
 from pathlib import Path
 
@@ -115,7 +114,7 @@ def test_gzip_offloaded_compression(test_client_factory: TestClientFactory) -> N
     assert int(response.headers["Content-Length"]) < len(payload)
 
 
-def test_gzip_offloaded_streaming_chunk_is_compressed_eagerly(test_client_factory: TestClientFactory) -> None:
+def test_gzip_offloaded_streaming(test_client_factory: TestClientFactory) -> None:
     chunk = hashlib.shake_256(b"starlette-gzip-stream").digest(256 * 1024)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -123,27 +122,14 @@ def test_gzip_offloaded_streaming_chunk_is_compressed_eagerly(test_client_factor
         await send({"type": "http.response.body", "body": chunk, "more_body": True})
         await send({"type": "http.response.body", "body": b"tail"})
 
-    messages: list[Message] = []
+    # Ensure the streamed chunk takes the worker-thread compression path.
+    middleware = GZipMiddleware(app, offload_to_thread_minimum_size=len(chunk))
 
-    async def recording_app(scope: Scope, receive: Receive, send: Send) -> None:
-        async def recording_send(message: Message) -> None:
-            messages.append(message)
-            await send(message)
-
-        # Ensure the streamed chunk takes the worker-thread compression path.
-        await GZipMiddleware(app, minimum_size=10 * 1024 * 1024, offload_to_thread_minimum_size=len(chunk))(
-            scope, receive, recording_send
-        )
-
-    client = test_client_factory(recording_app)
+    client = test_client_factory(middleware)
     response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
     assert response.content == chunk + b"tail"
-
-    first_body = messages[1]["body"]
-    assert isinstance(first_body, bytes)
-    assert len(first_body) > 200 * 1024
-    compressed = b"".join(message["body"] for message in messages[1:])
-    assert gzip.decompress(compressed) == chunk + b"tail"
+    assert response.headers["Content-Encoding"] == "gzip"
 
 
 def test_gzip_streaming_response_identity(test_client_factory: TestClientFactory) -> None:

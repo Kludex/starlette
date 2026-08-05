@@ -12,22 +12,8 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
-
-
-async def collect_gzip_response(app: ASGIApp) -> list[Message]:
-    messages: list[Message] = []
-    scope: Scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
-
-    async def receive() -> Message:
-        raise AssertionError("The app must not receive a request body")  # pragma: no cover
-
-    async def send(message: Message) -> None:
-        messages.append(message)
-
-    await app(scope, receive, send)
-    return messages
 
 
 def test_gzip_responses(test_client_factory: TestClientFactory) -> None:
@@ -109,29 +95,27 @@ def test_gzip_streaming_response(test_client_factory: TestClientFactory) -> None
     assert "Content-Length" not in response.headers
 
 
-@pytest.mark.anyio
-async def test_gzip_offloaded_compression() -> None:
-    payload = b"x" * (128 * 1024)
+def test_gzip_offloaded_compression(test_client_factory: TestClientFactory) -> None:
+    payload = "x" * (128 * 1024)
 
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send(
-            {
-                "type": "http.response.start",
-                "status": 200,
-                "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(payload)).encode())],
-            }
-        )
-        await send({"type": "http.response.body", "body": payload})
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(payload, status_code=200)
 
-    messages = await collect_gzip_response(GZipMiddleware(app))
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        # Ensure the response body takes the worker-thread compression path.
+        middleware=[Middleware(GZipMiddleware, offload_to_thread_minimum_size=len(payload))],
+    )
 
-    compressed = messages[1]["body"]
-    assert isinstance(compressed, bytes)
-    assert gzip.decompress(compressed) == payload
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.text == payload
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert int(response.headers["Content-Length"]) < len(payload)
 
 
-@pytest.mark.anyio
-async def test_gzip_offloaded_streaming_chunk_is_compressed_eagerly() -> None:
+def test_gzip_offloaded_streaming_chunk_is_compressed_eagerly(test_client_factory: TestClientFactory) -> None:
     chunk = hashlib.shake_256(b"starlette-gzip-stream").digest(256 * 1024)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -139,7 +123,21 @@ async def test_gzip_offloaded_streaming_chunk_is_compressed_eagerly() -> None:
         await send({"type": "http.response.body", "body": chunk, "more_body": True})
         await send({"type": "http.response.body", "body": b"tail"})
 
-    messages = await collect_gzip_response(GZipMiddleware(app, minimum_size=10 * 1024 * 1024))
+    messages: list[Message] = []
+
+    async def recording_app(scope: Scope, receive: Receive, send: Send) -> None:
+        async def recording_send(message: Message) -> None:
+            messages.append(message)
+            await send(message)
+
+        # Ensure the streamed chunk takes the worker-thread compression path.
+        await GZipMiddleware(app, minimum_size=10 * 1024 * 1024, offload_to_thread_minimum_size=len(chunk))(
+            scope, receive, recording_send
+        )
+
+    client = test_client_factory(recording_app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.content == chunk + b"tail"
 
     first_body = messages[1]["body"]
     assert isinstance(first_body, bytes)

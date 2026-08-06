@@ -13,6 +13,13 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
+# When brotli (or brotlicffi) is importable, urllib3 advertises it in Accept-Encoding.
+ACCEPT_ENCODING = (
+    "gzip, deflate, br, zstd"
+    if any(module in sys.modules for module in ("brotli", "brotlicffi"))
+    else "gzip, deflate, zstd"
+)
+
 
 def test_request_url(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -41,10 +48,6 @@ def test_request_query_params(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"params": {"a": "123", "b": "456"}}
 
 
-@pytest.mark.skipif(
-    any(module in sys.modules for module in ("brotli", "brotlicffi")),
-    reason='urllib3 includes "br" to the "accept-encoding" headers.',
-)
 def test_request_headers(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
@@ -58,7 +61,7 @@ def test_request_headers(test_client_factory: TestClientFactory) -> None:
         "headers": {
             "host": "example.org",
             "user-agent": "testclient",
-            "accept-encoding": "gzip, deflate, zstd",
+            "accept-encoding": ACCEPT_ENCODING,
             "accept": "*/*",
             "connection": "keep-alive",
         }

@@ -14,6 +14,13 @@ from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 from tests.types import TestClientFactory
 
+# When brotli (or brotlicffi) is importable, urllib3 advertises it in Accept-Encoding.
+ACCEPT_ENCODING = (
+    "gzip, deflate, br, zstd"
+    if any(module in sys.modules for module in ("brotli", "brotlicffi"))
+    else "gzip, deflate, zstd"
+)
+
 
 def test_websocket_url(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -75,10 +82,6 @@ def test_websocket_query_params(test_client_factory: TestClientFactory) -> None:
         assert data == {"params": {"a": "abc", "b": "456"}}
 
 
-@pytest.mark.skipif(
-    any(module in sys.modules for module in ("brotli", "brotlicffi")),
-    reason='urllib3 includes "br" to the "accept-encoding" headers.',
-)
 def test_websocket_headers(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)
@@ -91,7 +94,7 @@ def test_websocket_headers(test_client_factory: TestClientFactory) -> None:
     with client.websocket_connect("/") as websocket:
         expected_headers = {
             "accept": "*/*",
-            "accept-encoding": "gzip, deflate, zstd",
+            "accept-encoding": ACCEPT_ENCODING,
             "connection": "upgrade",
             "host": "testserver",
             "user-agent": "testclient",

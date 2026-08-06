@@ -244,7 +244,7 @@ The following arguments are supported:
 * `exclude_content_types` - Content types that are never compressed. A response is excluded when its `Content-Type` media type equals one of these values, or matches a `type/*` entry like `"image/*"` - matching is case-insensitive and ignores parameters like `charset`. Defaults to `DEFAULT_EXCLUDED_CONTENT_TYPES` (importable, to extend rather than replace): `text/event-stream` plus already-compressed formats - zip and gzip archives, common raster image types, `video/*`, `audio/*`, and WOFF fonts. `image/svg+xml` is deliberately not excluded, since SVG is text and compresses well.
 
 The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being
-encoded twice, partial content responses (status `206` or a `Content-Range` header), to keep range semantics
+encoded twice, partial content responses (status `206`), to keep range semantics
 intact, or responses with a `Content-Type` in `exclude_content_types` - by default `text/event-stream`, to
 avoid compressing server-sent events, and already-compressed formats, where compression wastes CPU for no
 gain.

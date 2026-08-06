@@ -246,6 +246,59 @@ The following arguments are supported:
 The middleware won't GZip responses that already have either a `Content-Encoding` set, to prevent them from
 being encoded twice, or a `Content-Type` set to `text/event-stream`, to avoid compressing server-sent events.
 
+## BrotliMiddleware
+
+Handles Brotli responses for any request that includes `"br"` in the `Accept-Encoding` header.
+
+The middleware will handle both standard and streaming responses.
+
+??? info "Buffer on streaming responses"
+    On streaming responses, the middleware will buffer the response before compressing it.
+
+    The idea is that we don't want to compress every small chunk of data, as it would be inefficient.
+    Instead, we buffer the response until it reaches a certain size, and then compress it.
+
+    This may cause a delay in the response, as the middleware waits for the buffer to fill up before compressing it.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.brotli import BrotliMiddleware
+
+
+routes = ...
+
+middleware = [
+    Middleware(BrotliMiddleware, minimum_size=400, quality=4, mode="text")
+]
+
+app = Starlette(routes=routes, middleware=middleware)
+```
+
+!!! tip "Installation"
+    The Brotli middleware requires the `brotli` package. Install it with the `brotli` extra:
+
+    ```bash
+    pip install "starlette[brotli]"
+    ```
+    Or include it with the full extra:
+    ```bash
+    pip install "starlette[full]"
+    ```
+
+The following arguments are supported:
+
+* `minimum_size` - Do not Brotli responses that are smaller than this minimum size in bytes. Defaults to `400`.
+* `quality` - Compression quality from 0 to 11. Defaults to `4`. Higher values give better compression but are slower.
+* `mode` - Compression mode: `"text"` (default), `"generic"`, or `"font"`.
+* `lgwin` - Base-2 logarithm of the sliding window size (10-24). Defaults to `22`.
+* `lgblock` - Base-2 logarithm of the maximum input block size (0-24). Defaults to `0` (automatic).
+* `gzip_fallback` - If `True` (default), fall back to GZip when client doesn't accept `br` but accepts `gzip`.
+* `excluded_handlers` - List of regex patterns for request paths to skip compression entirely.
+* `thread_minimum_size` - Compress body chunks at least this large in a worker thread. Defaults to `131072` (128 KiB).
+
+The middleware won't Brotli responses that already have a `Content-Encoding` set, to prevent double-encoding, or a `Content-Type` of `text/event-stream`, to avoid compressing server-sent events.
+
 ## BaseHTTPMiddleware
 
 An abstract class that allows you to write ASGI middleware against a request/response

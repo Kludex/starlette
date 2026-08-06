@@ -242,9 +242,11 @@ The following arguments are supported:
 * `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
 * `compresslevel` - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to `9`. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.
 * `thread_minimum_size` - Compress body chunks at least this large in a worker thread, keeping the event loop responsive. Defaults to `131072` (128 KiB). Chunks below this size compress inline in at most a couple of milliseconds, while the fixed cost of dispatching to a worker thread would dominate.
+* `exclude_content_types` - Content types that are never compressed. A response is excluded when its `Content-Type` media type equals one of these values, or matches a `type/*` entry like `"image/*"` - matching is case-insensitive and ignores parameters like `charset`. Defaults to `("text/event-stream",)`, importable as `DEFAULT_EXCLUDED_CONTENT_TYPES` to extend rather than replace.
 
-The middleware won't GZip responses that already have either a `Content-Encoding` set, to prevent them from
-being encoded twice, or a `Content-Type` set to `text/event-stream`, to avoid compressing server-sent events.
+The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being
+encoded twice, or a `Content-Type` in `exclude_content_types` - by default `text/event-stream`, to avoid
+compressing server-sent events.
 
 ## BaseHTTPMiddleware
 

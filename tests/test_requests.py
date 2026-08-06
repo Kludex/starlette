@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys
+import importlib.util
 from collections.abc import Iterator
 from typing import Any
 
@@ -16,7 +16,7 @@ from tests.types import TestClientFactory
 # When brotli (or brotlicffi) is importable, urllib3 advertises it in Accept-Encoding.
 ACCEPT_ENCODING = (
     "gzip, deflate, br, zstd"
-    if any(module in sys.modules for module in ("brotli", "brotlicffi"))
+    if any(importlib.util.find_spec(module) for module in ("brotli", "brotlicffi"))
     else "gzip, deflate, zstd"
 )
 

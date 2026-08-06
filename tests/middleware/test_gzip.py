@@ -255,6 +255,47 @@ async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     assert events[1]["type"] == "http.response.pathsend"
 
 
+def test_gzip_ignored_on_range_responses(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    path = tmp_path / "example.txt"
+    path.write_text("x" * 4000)
+
+    def homepage(request: Request) -> FileResponse:
+        return FileResponse(path)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": "gzip", "range": "bytes=0-1999"})
+    assert response.status_code == 206
+    assert response.content == b"x" * 2000
+    assert "Content-Encoding" not in response.headers
+    assert int(response.headers["Content-Length"]) == 2000
+
+
+def test_gzip_ignored_when_content_range_set(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [(b"content-type", b"text/plain"), (b"content-range", b"bytes 0-3999/8000")],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = GZipMiddleware(app)
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
 def test_gzip_streaming_response_emits_output_per_chunk(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/plain")]})

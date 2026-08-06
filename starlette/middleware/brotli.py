@@ -116,6 +116,8 @@ class BrotliMiddleware:
                 if param.startswith("q="):
                     try:
                         q = float(param[2:])
+                        if not 0.0 <= q <= 1.0:
+                            q = 1.0
                     except ValueError:
                         q = 1.0
             codings[coding] = q

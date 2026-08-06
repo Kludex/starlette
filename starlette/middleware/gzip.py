@@ -191,7 +191,9 @@ class GZipResponder(IdentityResponder):
 
     def _compress_body(self, body: bytes, more_body: bool) -> bytes:
         if more_body:
-            return self.compressor.compress(body)
+            # Emit everything compressed so far: streamed chunks must reach the
+            # client as the application sends them, not when the buffer fills.
+            return self.compressor.compress(body) + self.compressor.flush(zlib.Z_SYNC_FLUSH)
         return self.compressor.compress(body) + self.compressor.flush()
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import zlib
 from pathlib import Path
 
 import pytest
@@ -124,12 +125,25 @@ def test_gzip_streaming_compression_in_thread(test_client_factory: TestClientFac
 
     # Ensure the streamed chunk takes the worker-thread compression path.
     middleware = GZipMiddleware(app, thread_minimum_size=len(chunk))
+    events: list[Message] = []
 
-    client = test_client_factory(middleware)
+    async def recording_app(scope: Scope, receive: Receive, send: Send) -> None:
+        async def record(message: Message) -> None:
+            events.append(message)
+            await send(message)
+
+        await middleware(scope, receive, record)
+
+    client = test_client_factory(recording_app)
     response = client.get("/", headers={"accept-encoding": "gzip"})
     assert response.status_code == 200
     assert response.content == chunk + b"tail"
     assert response.headers["Content-Encoding"] == "gzip"
+
+    assert len(events) == 3
+    decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    assert decompressor.decompress(events[1]["body"]) == chunk
+    assert decompressor.decompress(events[2]["body"]) == b"tail"
 
 
 def test_gzip_streaming_response_identity(test_client_factory: TestClientFactory) -> None:
@@ -239,6 +253,39 @@ async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     assert len(events) == 2
     assert events[0]["type"] == "http.response.start"
     assert events[1]["type"] == "http.response.pathsend"
+
+
+def test_gzip_streaming_response_emits_output_per_chunk(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/plain")]})
+        await send({"type": "http.response.body", "body": b"data: first\n\n", "more_body": True})
+        await send({"type": "http.response.body", "body": b"", "more_body": True})
+        await send({"type": "http.response.body", "body": b"data: last\n\n"})
+
+    middleware = GZipMiddleware(app)
+    events: list[Message] = []
+
+    async def recording_app(scope: Scope, receive: Receive, send: Send) -> None:
+        async def record(message: Message) -> None:
+            events.append(message)
+            await send(message)
+
+        await middleware(scope, receive, record)
+
+    client = test_client_factory(recording_app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.text == "data: first\n\ndata: last\n\n"
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.headers["Vary"] == "Accept-Encoding"
+    assert "Content-Length" not in response.headers
+
+    assert len(events) == 4
+    decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    assert decompressor.decompress(events[1]["body"]) == b"data: first\n\n"
+    assert decompressor.decompress(events[2]["body"]) == b""
+    assert decompressor.decompress(events[3]["body"]) == b"data: last\n\n"
+    assert decompressor.eof
 
 
 def test_gzip_custom_exclude_content_types(test_client_factory: TestClientFactory) -> None:

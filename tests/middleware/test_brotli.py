@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
+import httpx2 as httpx
 import pytest
 
 from starlette.applications import Starlette
@@ -19,7 +21,7 @@ from tests.types import TestClientFactory
 # ---------------------------------------------------------------------------
 
 
-def _make_app(**mw_kwargs) -> Starlette:
+def _make_app(**mw_kwargs: Any) -> Starlette:
     """Build a Starlette app with several routes wrapped in BrotliMiddleware."""
 
     async def big(request: Request) -> Response:
@@ -38,10 +40,6 @@ def _make_app(**mw_kwargs) -> Starlette:
 
         return StreamingResponse(gen(), media_type="text/plain")
 
-    async def already_encoded(request: Request) -> Response:
-        # Pre-set Content-Encoding to ensure we don't double-compress.
-        return PlainTextResponse("a" * 4000, headers={"Content-Encoding": "gzip"})
-
     async def sse(request: Request) -> Response:
         async def gen() -> ContentStream:
             yield b"data: hello\n\n"
@@ -57,7 +55,6 @@ def _make_app(**mw_kwargs) -> Starlette:
         Route("/big", big),
         Route("/small", small),
         Route("/stream", stream),
-        Route("/already", already_encoded),
         Route("/sse", sse),
         Route("/size", size_endpoint),
     ]
@@ -65,7 +62,7 @@ def _make_app(**mw_kwargs) -> Starlette:
     return Starlette(routes=routes, middleware=middleware)
 
 
-def _compressed_len(r) -> int | None:
+def _compressed_len(r: httpx.Response) -> int:
     """Return the on-wire compressed body length.
 
     httpx auto-decompresses brotli/gzip, so r.content is the decompressed
@@ -73,9 +70,7 @@ def _compressed_len(r) -> int | None:
     for non-streaming responses.
     """
     cl = r.headers.get("content-length")
-    if cl is None:
-        # Streaming responses don't have Content-Length; fall back to None.
-        return None
+    assert cl is not None
     return int(cl)
 
 
@@ -213,6 +208,7 @@ def test_brotli_ignored_for_responses_with_encoding_set() -> None:
     received: list[Message] = []
 
     async def inner_app(scope: Scope, receive: Receive, send: Send) -> None:
+        _ = await receive()  # consume the (empty) request body
         await send(
             {
                 "type": "http.response.start",
@@ -299,6 +295,7 @@ def test_brotli_pathsend_event_is_passed_through_unchanged() -> None:
     async def inner_app(scope: Scope, receive: Receive, send: Send) -> None:
         # Emit a normal start + a pathsend event (what FileResponse does when
         # the server advertises pathsend support).
+        _ = await receive()  # consume the (empty) request body
         await send(
             {
                 "type": "http.response.start",

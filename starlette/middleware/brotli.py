@@ -4,7 +4,7 @@ import re
 from typing import NoReturn
 
 import anyio
-from brotli import MODE_FONT, MODE_GENERIC, MODE_TEXT, Compressor
+from brotli import MODE_FONT, MODE_GENERIC, MODE_TEXT, Compressor  # type: ignore[import-untyped]
 
 from starlette.datastructures import Headers, MutableHeaders  # noqa: F401  (re-exported for parity with gzip.py)
 from starlette.middleware.gzip import (
@@ -143,9 +143,9 @@ class BrotliResponder(IdentityResponder):
 
     def _compress_body(self, body: bytes, more_body: bool) -> bytes:
         # For streaming chunks call flush() to emit partial output; for final chunk call finish().
-        if more_body:
-            return self.compressor.process(body) + self.compressor.flush()
-        return self.compressor.process(body) + self.compressor.finish()
+        chunk: bytes = self.compressor.process(body)
+        tail: bytes = self.compressor.flush() if more_body else self.compressor.finish()
+        return chunk + tail
 
 
 async def unattached_send(message: Message) -> NoReturn:

@@ -192,6 +192,59 @@ def test_brotli_wins_over_gzip_when_both_accepted(test_client_factory: TestClien
 
 
 # ---------------------------------------------------------------------------
+# Accept-Encoding parsing (case-insensitivity, q-values, substring safety)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("accept_encoding", "expected_encoding"),
+    [
+        ("br", "br"),
+        # Content codings are case-insensitive (RFC 7231 5.3.4).
+        ("BR", "br"),
+        # q=0 explicitly refuses the coding.
+        ("br;q=0", None),
+        ("gzip;q=0", None),
+        # A token that merely contains "br" as a substring must not match.
+        ("zbr", None),
+        # Higher q-value wins.
+        ("gzip;q=1.0, br;q=0.5", "gzip"),
+        ("br;q=0.5, gzip;q=1.0", "gzip"),
+        # Equal q-values -> prefer brotli (better compression).
+        ("br, gzip", "br"),
+    ],
+)
+def test_brotli_accept_encoding_parsing(
+    test_client_factory: TestClientFactory, accept_encoding: str, expected_encoding: str | None
+) -> None:
+    app = _make_app()
+    client = test_client_factory(app)
+    response = client.get("/big", headers={"accept-encoding": accept_encoding})
+    assert response.status_code == 200
+    assert response.text == "a" * 4000
+    if expected_encoding is None:
+        assert "Content-Encoding" not in response.headers
+        assert int(response.headers["Content-Length"]) == 4000
+    else:
+        assert response.headers["Content-Encoding"] == expected_encoding
+        assert int(response.headers["Content-Length"]) < 4000
+
+
+def test_parse_accept_encoding_handles_malformed_input() -> None:
+    parse = BrotliMiddleware(_make_app())._parse_accept_encoding
+    # Empty segments (e.g. trailing comma) are skipped.
+    assert parse("br,") == {"br": 1.0}
+    # Empty coding token (e.g. ";q=0.5") is skipped.
+    assert parse(";q=0.5") == {}
+    # Malformed q-value falls back to 1.0.
+    assert parse("br;q=abc") == {"br": 1.0}
+    # Non-q parameters are ignored.
+    assert parse("br;ext=1") == {"br": 1.0}
+    # q=0 parses to 0.0 (explicit refusal).
+    assert parse("gzip;q=0") == {"gzip": 0.0}
+
+
+# ---------------------------------------------------------------------------
 # Bypass paths
 # ---------------------------------------------------------------------------
 

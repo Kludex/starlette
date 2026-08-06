@@ -61,9 +61,13 @@ class BrotliMiddleware:
             return
 
         headers = Headers(scope=scope)
-        accept_encoding = headers.get("Accept-Encoding", "")
+        codings = self._parse_accept_encoding(headers.get("Accept-Encoding", ""))
+        br_q = codings.get("br", 0.0)
+        gzip_q = codings.get("gzip", 0.0)
 
-        if "br" in accept_encoding:
+        # Honor q-values: q=0 explicitly refuses a coding; on a tie brotli wins
+        # (better compression than gzip).
+        if br_q > 0 and br_q >= gzip_q:
             responder = BrotliResponder(
                 self.app,
                 self.minimum_size,
@@ -76,7 +80,7 @@ class BrotliMiddleware:
             await responder(scope, receive, send)
             return
 
-        if self.gzip_fallback and "gzip" in accept_encoding:
+        if self.gzip_fallback and gzip_q > 0:
             # Delegate to Starlette's GZipResponder.
             gzip_responder = GZipResponder(
                 self.app,
@@ -87,13 +91,35 @@ class BrotliMiddleware:
             await gzip_responder(scope, receive, send)
             return
 
-        # Client accepts neither br nor gzip (or gzip_fallback=False): pass
-        # through unchanged.
+        # Client accepts neither br nor gzip (or refused both): pass through unchanged.
         await self.app(scope, receive, send)
 
     def _is_handler_excluded(self, scope: Scope) -> bool:
         path = scope.get("path", "")
         return any(pattern.search(path) for pattern in self.excluded_handlers)
+
+    def _parse_accept_encoding(self, header: str) -> dict[str, float]:
+        # Parse Accept-Encoding into {coding: q-value}. Content codings are
+        # case-insensitive (RFC 7231 §5.3.4); q defaults to 1.0 and q=0 refuses.
+        codings: dict[str, float] = {}
+        for part in header.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            pieces = part.split(";")
+            coding = pieces[0].strip().lower()
+            if not coding:
+                continue
+            q = 1.0
+            for param in pieces[1:]:
+                param = param.strip()
+                if param.startswith("q="):
+                    try:
+                        q = float(param[2:])
+                    except ValueError:
+                        q = 1.0
+            codings[coding] = q
+        return codings
 
 
 class BrotliResponder(IdentityResponder):

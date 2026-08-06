@@ -9,6 +9,7 @@ import anyio.to_thread
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+# TODO(v2): We should rename `DEFAULT_EXCLUDED_CONTENT_TYPES` to `DEFAULT_EXCLUDE_CONTENT_TYPES`.
 DEFAULT_EXCLUDED_CONTENT_TYPES = (
     "application/gzip",
     "application/x-gzip",

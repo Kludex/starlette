@@ -7,10 +7,12 @@ import anyio
 from brotli import MODE_FONT, MODE_GENERIC, MODE_TEXT, Compressor  # type: ignore[import-untyped]
 
 from starlette.datastructures import Headers, MutableHeaders  # noqa: F401  (re-exported for parity with gzip.py)
-from starlette.middleware.gzip import (
+from starlette.middleware.gzip import (  # consider moving these into a common file
+    DEFAULT_EXCLUDED_CONTENT_TYPES,
     GZipResponder,
     IdentityResponder,
     _get_gzip_capacity_limiter,
+    _normalize_content_types,
 )
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -35,6 +37,7 @@ class BrotliMiddleware:
         gzip_fallback: bool = True,
         excluded_handlers: list[str] | None = None,
         thread_minimum_size: int = DEFAULT_THREAD_MIN_SIZE,
+        exclude_content_types: tuple[str, ...] = DEFAULT_EXCLUDED_CONTENT_TYPES,
     ) -> None:
         self.app = app
         self.quality = quality
@@ -46,6 +49,7 @@ class BrotliMiddleware:
         self.minimum_size = minimum_size
         self.gzip_fallback = gzip_fallback
         self.thread_minimum_size = thread_minimum_size
+        self.exclude_content_types = _normalize_content_types(exclude_content_types)
         if excluded_handlers:
             self.excluded_handlers: list[re.Pattern[str]] = [re.compile(p) for p in excluded_handlers]
         else:
@@ -77,6 +81,7 @@ class BrotliMiddleware:
                 lgwin=self.lgwin,
                 lgblock=self.lgblock,
                 thread_minimum_size=self.thread_minimum_size,
+                exclude_content_types=self.exclude_content_types,
             )
             await responder(scope, receive, send)
             return
@@ -88,6 +93,7 @@ class BrotliMiddleware:
                 self.minimum_size,
                 compresslevel=9,
                 thread_minimum_size=self.thread_minimum_size,
+                exclude_content_types=self.exclude_content_types,
             )
             await gzip_responder(scope, receive, send)
             return
@@ -138,8 +144,9 @@ class BrotliResponder(IdentityResponder):
         lgwin: int,
         lgblock: int,
         thread_minimum_size: int,
+        exclude_content_types: tuple[str, ...] = DEFAULT_EXCLUDED_CONTENT_TYPES,
     ) -> None:
-        super().__init__(app, minimum_size)
+        super().__init__(app, minimum_size, exclude_content_types=exclude_content_types)
         self.quality = quality
         self.mode = mode
         self.lgwin = lgwin

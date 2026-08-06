@@ -494,3 +494,103 @@ def test_brotli_websocket_scope_passes_through(test_client_factory: TestClientFa
     with client.websocket_connect("/ws") as ws:
         msg = ws.receive_text()
     assert msg == "hello"
+
+
+# ---------------------------------------------------------------------------
+# Exclude content types
+# ---------------------------------------------------------------------------
+
+
+def test_brotli_custom_exclude_content_types(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/zip")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = BrotliMiddleware(app, exclude_content_types=("application/zip",))
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "br"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
+def test_brotli_cleared_exclude_content_types(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/event-stream")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = BrotliMiddleware(app, exclude_content_types=())
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "br"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert response.headers["Content-Encoding"] == "br"
+    assert response.headers["Vary"] == "Accept-Encoding"
+
+
+def test_brotli_exclude_content_types_for_identity_client(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/zip")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = BrotliMiddleware(app, exclude_content_types=("application/zip",))
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "identity"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
+@pytest.mark.parametrize(
+    ("exclude_content_types", "content_type"),
+    [
+        pytest.param(("text/event-stream",), b"Text/Event-Stream; charset=utf-8", id="header-is-normalized"),
+        pytest.param(("Application/ZIP; charset=utf-8",), b"application/zip", id="configured-value-is-normalized"),
+        pytest.param(("image/*",), b"image/png", id="wildcard"),
+    ],
+)
+def test_brotli_exclude_content_types_matching(
+    exclude_content_types: tuple[str, ...], content_type: bytes, test_client_factory: TestClientFactory
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", content_type)]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = BrotliMiddleware(app, exclude_content_types=exclude_content_types)
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "br"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
+def test_brotli_responder_normalizes_content_types(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/zip")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    from starlette.middleware.brotli import BrotliResponder
+
+    responder = BrotliResponder(
+        app,
+        500,
+        quality=4,
+        mode=Mode.text,
+        lgwin=22,
+        lgblock=0,
+        thread_minimum_size=128 * 1024,
+        exclude_content_types=("Application/ZIP; charset=utf-8",),
+    )
+
+    client = test_client_factory(responder)
+    response = client.get("/", headers={"accept-encoding": "br"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers

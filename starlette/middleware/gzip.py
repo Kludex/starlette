@@ -96,7 +96,7 @@ class IdentityResponder:
             self.initial_message = message
             headers = Headers(raw=self.initial_message["headers"])
             self.content_encoding_set = "content-encoding" in headers
-            self.partial_response = message["status"] == 206 or "content-range" in headers
+            self.partial_response = message["status"] == 206
             media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
             media_types = {media_type, media_type.partition("/")[0] + "/*"}
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)

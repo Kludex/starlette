@@ -68,7 +68,7 @@ class BrotliMiddleware:
 
         # Honor q-values: q=0 explicitly refuses a coding; on a tie brotli wins
         # (better compression than gzip).
-        if br_q > 0 and br_q >= gzip_q:
+        if br_q > 0 and (not self.gzip_fallback or br_q >= gzip_q):
             responder = BrotliResponder(
                 self.app,
                 self.minimum_size,

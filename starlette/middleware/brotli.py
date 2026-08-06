@@ -62,8 +62,9 @@ class BrotliMiddleware:
 
         headers = Headers(scope=scope)
         codings = self._parse_accept_encoding(headers.get("Accept-Encoding", ""))
-        br_q = codings.get("br", 0.0)
-        gzip_q = codings.get("gzip", 0.0)
+        wildcard_q = codings.get("*", 0.0)
+        br_q = codings.get("br", wildcard_q)
+        gzip_q = codings.get("gzip", wildcard_q)
 
         # Honor q-values: q=0 explicitly refuses a coding; on a tie brotli wins
         # (better compression than gzip).

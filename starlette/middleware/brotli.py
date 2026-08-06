@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import re
@@ -49,9 +47,7 @@ class BrotliMiddleware:
         self.gzip_fallback = gzip_fallback
         self.thread_minimum_size = thread_minimum_size
         if excluded_handlers:
-            self.excluded_handlers: list[re.Pattern[str]] = [
-                re.compile(p) for p in excluded_handlers
-            ]
+            self.excluded_handlers: list[re.Pattern[str]] = [re.compile(p) for p in excluded_handlers]
         else:
             self.excluded_handlers = []
 
@@ -142,9 +138,7 @@ class BrotliResponder(IdentityResponder):
         if len(body) >= self.thread_minimum_size:
             # Offload large bodies to worker thread via Starlette's gzip capacity limiter.
             limiter = _get_gzip_capacity_limiter()
-            return await anyio.to_thread.run_sync(
-                self._compress_body, body, more_body, limiter=limiter
-            )
+            return await anyio.to_thread.run_sync(self._compress_body, body, more_body, limiter=limiter)
         return self._compress_body(body, more_body)
 
     def _compress_body(self, body: bytes, more_body: bool) -> bytes:

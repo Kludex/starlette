@@ -7,7 +7,7 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.gzip import GZipMiddleware, GZipResponder
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
@@ -239,3 +239,87 @@ async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     assert len(events) == 2
     assert events[0]["type"] == "http.response.start"
     assert events[1]["type"] == "http.response.pathsend"
+
+
+def test_gzip_custom_exclude_content_types(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/zip")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = GZipMiddleware(app, exclude_content_types=("application/zip",))
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
+def test_gzip_cleared_exclude_content_types(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/event-stream")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = GZipMiddleware(app, exclude_content_types=())
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.headers["Vary"] == "Accept-Encoding"
+
+
+def test_gzip_exclude_content_types_for_identity_client(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/zip")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = GZipMiddleware(app, exclude_content_types=("application/zip",))
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "identity"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
+@pytest.mark.parametrize(
+    ("exclude_content_types", "content_type"),
+    [
+        pytest.param(("text/event-stream",), b"Text/Event-Stream; charset=utf-8", id="header-is-normalized"),
+        pytest.param(("Application/ZIP; charset=utf-8",), b"application/zip", id="configured-value-is-normalized"),
+        pytest.param(("image/*",), b"image/png", id="wildcard"),
+    ],
+)
+def test_gzip_exclude_content_types_matching(
+    exclude_content_types: tuple[str, ...], content_type: bytes, test_client_factory: TestClientFactory
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", content_type)]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = GZipMiddleware(app, exclude_content_types=exclude_content_types)
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
+def test_gzip_responder_normalizes_content_types(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/zip")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    responder = GZipResponder(app, 500, exclude_content_types=("Application/ZIP; charset=utf-8",))
+
+    client = test_client_factory(responder)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers

@@ -7,7 +7,8 @@ import pytest
 from starlette import convertors
 from starlette._trie import RouteTrie
 from starlette.convertors import Convertor, StringConvertor, register_url_convertor
-from starlette.routing import Route, Router, WebSocketRoute
+from starlette.routing import Match, Route, Router, WebSocketRoute
+from starlette.types import Scope
 
 
 def build(paths: list[str]) -> tuple[RouteTrie, list[Route]]:
@@ -92,8 +93,8 @@ def test_custom_convertor() -> None:
 
 
 def test_alternation_convertor_in_compound_segment() -> None:
-    # A convertor whose regex uses alternation must keep segment-local precedence;
-    # without grouping, `^x(a|b)y$` would compile as `^xa|by$` and drop `/xby`.
+    # Compound segments are never indexed, whatever their convertor does, so an
+    # alternation regex such as `a|b` cannot lose segment-local precedence.
     class AltConvertor(StringConvertor):
         regex = "a|b"
 
@@ -113,11 +114,31 @@ def test_slash_capable_convertor_in_compound_segment() -> None:
     )
 
 
-def test_shared_param_and_dyn_nodes() -> None:
-    # Two routes share a `{str}` param node and a compound `dyn` node.
+def test_convertor_subclass_is_always_candidate() -> None:
+    # A subclass of a built-in convertor may widen the regex to span segments, so
+    # only exact built-in convertor types are indexed.
+    class SneakyConvertor(StringConvertor):
+        regex = ".*"
+
+    register_url_convertor("sneaky_trie_test", SneakyConvertor())
+    try:
+        trie, _ = build(["/s/{x:sneaky_trie_test}"])
+        assert trie.match_all("/unrelated") == [0]
+        assert_superset(["/s/{x:sneaky_trie_test}"], ["/s/a/b", "/s/a"])
+    finally:
+        convertors.CONVERTOR_TYPES.pop("sneaky_trie_test", None)
+
+
+def test_compound_segment_is_always_candidate() -> None:
+    trie, _ = build(["/v{n:int}", "/plain"])
+    assert trie.match_all("/unrelated") == [0]
+
+
+def test_shared_param_nodes() -> None:
+    # Two routes share a `{str}` param node; typed params share it too.
     assert_superset(
-        ["/a/{x}/b", "/a/{y}/c", "/v{n:int}/x", "/v{m:int}/y"],
-        ["/a/1/b", "/a/1/c", "/v5/x", "/v5/y"],
+        ["/a/{x}/b", "/a/{y}/c", "/a/{n:int}/d"],
+        ["/a/1/b", "/a/1/c", "/a/1/d", "/a/x/d"],
     )
 
 
@@ -148,6 +169,26 @@ def _scope(path: str) -> dict[str, object]:
 
 def _names(router: Router, path: str) -> list[str]:
     return [r.path for r in router._candidate_routes(_scope(path)) if isinstance(r, Route)]
+
+
+def test_route_subclass_overriding_matches_is_always_candidate() -> None:
+    class RewritingRoute(Route):
+        def matches(self, scope: Scope) -> tuple[Match, Scope]:
+            return super().matches(dict(scope, path="/actual"))
+
+    route = RewritingRoute("/actual", endpoint=lambda r: None)
+    match, _ = route.matches(_scope("/something/else"))
+    assert match == Match.FULL  # it matches a path its own `path` never describes...
+    router = Router(routes=[route])
+    assert _names(router, "/something/else") == ["/actual"]  # ...so it must always be a candidate
+
+
+def test_route_subclass_inheriting_matches_is_indexed() -> None:
+    class PlainSubclass(Route):
+        pass
+
+    router = Router(routes=[PlainSubclass("/a", endpoint=lambda r: None), Route("/b", endpoint=lambda r: None)])
+    assert _names(router, "/a") == ["/a"]
 
 
 def test_router_cache_rebuilds_when_routes_added() -> None:

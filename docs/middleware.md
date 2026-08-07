@@ -214,13 +214,12 @@ Handles GZip responses for any request that includes `"gzip"` in the `Accept-Enc
 
 The middleware will handle both standard and streaming responses.
 
-??? info "Buffer on streaming responses"
-    On streaming responses, the middleware will buffer the response before compressing it.
+??? info "Compression of streaming responses"
+    On streaming responses, the middleware compresses and emits output for every chunk the application sends,
+    so chunks reach the client as they are produced instead of waiting for the compressor's buffer to fill.
 
-    The idea is that we don't want to compress every small chunk of data, as it would be inefficient.
-    Instead, we buffer the response until it reaches a certain size, and then compress it.
-
-    This may cause a delay in the response, as the middleware waits for the buffer to fill up before compressing it.
+    This favors timely delivery over compression ratio: many small chunks compress less effectively than a few
+    large ones. Batch the chunks you yield if you want to maximize compression.
 
 ```python
 from starlette.applications import Starlette

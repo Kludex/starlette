@@ -192,7 +192,7 @@ class GZipResponder(IdentityResponder):
 
     def _compress_body(self, body: bytes, more_body: bool) -> bytes:
         if more_body:
-            return self.compressor.compress(body)
+            return self.compressor.compress(body) + self.compressor.flush(zlib.Z_SYNC_FLUSH)
         return self.compressor.compress(body) + self.compressor.flush()
 
 

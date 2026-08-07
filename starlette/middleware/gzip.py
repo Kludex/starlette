@@ -10,7 +10,21 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # TODO(v2): We should rename `DEFAULT_EXCLUDED_CONTENT_TYPES` to `DEFAULT_EXCLUDE_CONTENT_TYPES`.
-DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
+DEFAULT_EXCLUDED_CONTENT_TYPES = (
+    "application/gzip",
+    "application/x-gzip",
+    "application/zip",
+    "audio/*",
+    "font/woff",
+    "font/woff2",
+    "image/avif",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "text/event-stream",
+    "video/*",
+)
 
 _gzip_capacity_limiter: anyio.lowlevel.RunVar[anyio.CapacityLimiter] = anyio.lowlevel.RunVar("_gzip_capacity_limiter")
 
@@ -82,6 +96,7 @@ class IdentityResponder:
         self.started = False
         self.content_encoding_set = False
         self.content_type_is_excluded = False
+        self.partial_response = False
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         self.send = send
@@ -95,10 +110,13 @@ class IdentityResponder:
             self.initial_message = message
             headers = Headers(raw=self.initial_message["headers"])
             self.content_encoding_set = "content-encoding" in headers
+            self.partial_response = message["status"] == 206
             media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
             media_types = {media_type, media_type.partition("/")[0] + "/*"}
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
-        elif message_type == "http.response.body" and (self.content_encoding_set or self.content_type_is_excluded):
+        elif message_type == "http.response.body" and (
+            self.content_encoding_set or self.partial_response or self.content_type_is_excluded
+        ):
             if not self.started:
                 self.started = True
                 await self.send(self.initial_message)
@@ -192,7 +210,7 @@ class GZipResponder(IdentityResponder):
 
     def _compress_body(self, body: bytes, more_body: bool) -> bytes:
         if more_body:
-            return self.compressor.compress(body)
+            return self.compressor.compress(body) + self.compressor.flush(zlib.Z_SYNC_FLUSH)
         return self.compressor.compress(body) + self.compressor.flush()
 
 

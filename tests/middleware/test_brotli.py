@@ -238,6 +238,9 @@ def test_parse_accept_encoding_handles_malformed_input() -> None:
     assert parse(";q=0.5") == {}
     # Malformed q-value falls back to 1.0.
     assert parse("br;q=abc") == {"br": 1.0}
+    # Out-of-range q-values (>1.0 or <0.0) fall back to 1.0.
+    assert parse("br;q=1.5") == {"br": 1.0}
+    assert parse("br;q=-0.5") == {"br": 1.0}
     # Non-q parameters are ignored.
     assert parse("br;ext=1") == {"br": 1.0}
     # q=0 parses to 0.0 (explicit refusal).

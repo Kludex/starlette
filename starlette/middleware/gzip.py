@@ -82,6 +82,7 @@ class IdentityResponder:
         self.started = False
         self.content_encoding_set = False
         self.content_type_is_excluded = False
+        self.partial_response = False
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         self.send = send
@@ -95,10 +96,13 @@ class IdentityResponder:
             self.initial_message = message
             headers = Headers(raw=self.initial_message["headers"])
             self.content_encoding_set = "content-encoding" in headers
+            self.partial_response = message["status"] == 206
             media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
             media_types = {media_type, media_type.partition("/")[0] + "/*"}
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
-        elif message_type == "http.response.body" and (self.content_encoding_set or self.content_type_is_excluded):
+        elif message_type == "http.response.body" and (
+            self.content_encoding_set or self.partial_response or self.content_type_is_excluded
+        ):
             if not self.started:
                 self.started = True
                 await self.send(self.initial_message)

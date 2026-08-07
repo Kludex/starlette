@@ -244,8 +244,9 @@ The following arguments are supported:
 * `exclude_content_types` - Content types that are never compressed. A response is excluded when its `Content-Type` media type equals one of these values, or matches a `type/*` entry like `"image/*"` - matching is case-insensitive and ignores parameters like `charset`. Defaults to `("text/event-stream",)`, importable as `DEFAULT_EXCLUDED_CONTENT_TYPES` to extend rather than replace.
 
 The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being
-encoded twice, or a `Content-Type` in `exclude_content_types` - by default `text/event-stream`, to avoid
-compressing server-sent events.
+encoded twice, partial content responses (status `206`), to keep range semantics
+intact, or responses with a `Content-Type` in `exclude_content_types` - by default `text/event-stream`, to
+avoid compressing server-sent events.
 
 ## BaseHTTPMiddleware
 

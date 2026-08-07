@@ -1,5 +1,27 @@
 # Benchmarks
 
+## Routing
+
+The routing benchmark exercises `Router` dispatch through its ASGI interface
+against a synthetic REST-style route table (120 routes as 30 resource groups
+of four routes each, plus a 20-route variant for small applications).
+
+The scenarios pin down the cases that scale differently with table size:
+a static hit on an early route, a static and a parameterized hit on the last
+routes, a full miss, and a wrong-method request (`405`). Each measured call
+dispatches one request through the router, with a fresh ASGI scope built per
+dispatch so CodSpeed warmup runs cannot pollute the measured one; response
+status is validated on the benchmark's return value, outside the measured
+region.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/routing_benchmark.py --codspeed
+```
+
+## GZip
+
 The gzip benchmark exercises Starlette's `GZipMiddleware` through its ASGI
 interface with deterministic payloads representing valid JSON, repetitive
 text, and incompressible bytes.

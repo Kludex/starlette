@@ -17,7 +17,7 @@ region.
 Run it locally with:
 
 ```console
-uv run pytest benchmarks/test_routing.py --codspeed
+uv run pytest benchmarks/routing_benchmark.py --codspeed
 ```
 
 ## GZip
@@ -34,7 +34,7 @@ product of every level and large size.
 Run it locally with:
 
 ```console
-uv run pytest benchmarks/test_gzip.py --codspeed
+uv run pytest benchmarks/gzip_benchmark.py --codspeed
 ```
 
 Payload construction, middleware configuration, and decompression validation

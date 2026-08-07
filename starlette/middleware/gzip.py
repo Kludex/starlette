@@ -10,7 +10,21 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # TODO(v2): We should rename `DEFAULT_EXCLUDED_CONTENT_TYPES` to `DEFAULT_EXCLUDE_CONTENT_TYPES`.
-DEFAULT_EXCLUDED_CONTENT_TYPES = ("text/event-stream",)
+DEFAULT_EXCLUDED_CONTENT_TYPES = (
+    "application/gzip",
+    "application/x-gzip",
+    "application/zip",
+    "audio/*",
+    "font/woff",
+    "font/woff2",
+    "image/avif",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "text/event-stream",
+    "video/*",
+)
 
 _gzip_capacity_limiter: anyio.lowlevel.RunVar[anyio.CapacityLimiter] = anyio.lowlevel.RunVar("_gzip_capacity_limiter")
 

@@ -308,6 +308,40 @@ def test_gzip_streaming_response_emits_output_per_chunk(test_client_factory: Tes
     assert decompressor.eof
 
 
+@pytest.mark.parametrize(
+    "content_type",
+    [b"application/zip", b"audio/mpeg", b"font/woff2", b"image/png", b"video/mp4"],
+)
+def test_gzip_default_exclude_content_types(content_type: bytes, test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", content_type)]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = GZipMiddleware(app)
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert "Content-Encoding" not in response.headers
+    assert "Vary" not in response.headers
+
+
+def test_gzip_compresses_svg_by_default(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"image/svg+xml")]})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    middleware = GZipMiddleware(app)
+
+    client = test_client_factory(middleware)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.content == b"x" * 4000
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.headers["Vary"] == "Accept-Encoding"
+
+
 def test_gzip_custom_exclude_content_types(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/zip")]})

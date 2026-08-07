@@ -127,6 +127,18 @@ an ecosystem of shared middleware and mountable applications.
 The clean API separation also means it's easier to understand each component
 in isolation.
 
+## Alternative API Reference
+
+A machine-generated, navigable API reference for Starlette is available,
+produced by [Sourcey](https://sourcey.com) from the Starlette source at
+commit `99b7cc62e0c2` via an OpenAPI 3.0.3 adapter. The reference covers
+31 operations across 9 tag groups (applications, routing, requests,
+responses, middleware, authentication, static files, schemas, and
+endpoints) in a single-page format.
+
+This complements the hand-written docs at [starlette.dev](https://starlette.dev)
+with a structured, searchable view of the public API surface.
+
 ---
 
 <p align="center"><i>Starlette is <a href="https://github.com/Kludex/starlette/blob/main/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>

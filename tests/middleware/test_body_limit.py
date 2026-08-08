@@ -68,7 +68,6 @@ def test_route_override_applies_when_middleware_defers_response_start(test_clien
     client = test_client_factory(app)
 
     response = client.post("/", content=b"12345678")
-
     assert response.status_code == 200
     assert response.text == "response"
 
@@ -134,9 +133,8 @@ def test_received_bytes_are_counted_with_unreliable_content_length(test_client_f
     client = test_client_factory(app)
 
     response = client.post("/", content=b"123456", headers={"Content-Length": "1"})
-
     assert response.status_code == 413
-
+    assert response.text == "Content Too Large"
     response = client.post("/", content=b"12345", headers={"Content-Length": "invalid"})
 
     assert response.status_code == 200
@@ -262,7 +260,6 @@ def test_starlette_limit_applies_before_user_middleware(
     client = test_client_factory(app)
 
     response = client.post("/", content=b"123456")
-
     assert response.status_code == 413
 
 
@@ -292,7 +289,6 @@ def test_route_can_lower_application_limit(test_client_factory: TestClientFactor
     client = test_client_factory(app)
 
     response = client.post("/", content=b"123456")
-
     assert response.status_code == 413
 
 
@@ -310,7 +306,6 @@ def test_mount_can_override_application_limit(test_client_factory: TestClientFac
     client = test_client_factory(app)
 
     response = client.post("/upload/", content=b"12345678")
-
     assert response.status_code == 200
     assert response.content == b"12345678"
 
@@ -320,7 +315,6 @@ def test_router_limit(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
 
     response = client.post("/", content=b"123456")
-
     assert response.status_code == 413
 
 
@@ -340,7 +334,6 @@ def test_route_override_survives_shallow_scope_copy(test_client_factory: TestCli
     client = test_client_factory(app)
 
     response = client.post("/", content=b"12345678")
-
     assert response.status_code == 200
     assert response.content == b"12345678"
 
@@ -358,7 +351,6 @@ def test_stricter_route_rejects_body_read_by_middleware(test_client_factory: Tes
     client = test_client_factory(app)
 
     response = client.post("/", content=b"123456")
-
     assert response.status_code == 413
 
 
@@ -372,6 +364,5 @@ def test_multipart_file_counts_towards_limit(test_client_factory: TestClientFact
         max_body_size=512,
     )
     client = test_client_factory(app)
-
     response = client.post("/", files={"file": ("example.txt", b"x" * 1024)})
     assert response.status_code == 413

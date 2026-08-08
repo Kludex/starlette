@@ -480,7 +480,7 @@ class FileResponse(Response):
         if any(not (0 <= start < file_size) for start, _ in ranges):
             raise RangeNotSatisfiable(file_size)
 
-        if any(start > end for start, end in ranges):
+        if any(start >= end for start, end in ranges):
             raise MalformedRangeHeader("Range header: start must be less than end")
 
         if len(ranges) == 1:

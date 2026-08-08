@@ -833,6 +833,19 @@ def test_file_response_start_must_be_less_than_end(file_response_client: TestCli
     assert response.text == "Range header: start must be less than end"
 
 
+def test_file_response_inverted_single_byte_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=5-4"})
+    assert response.status_code == 400
+    assert response.text == "Range header: start must be less than end"
+
+
+def test_file_response_single_byte_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=5-5"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 5-5/{len(README.encode('utf8'))}"
+    assert response.headers["content-length"] == "1"
+
+
 def test_file_response_merge_ranges(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=0-100, 50-200"})
     assert response.status_code == 206

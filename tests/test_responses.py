@@ -782,6 +782,23 @@ def test_file_response_range_multi_head(file_response_client: TestClient) -> Non
     assert response.status_code == 206
 
 
+def test_file_response_range_count_limit(file_response_client: TestClient) -> None:
+    ranges = ",".join(f"{index}-{index}" for index in range(0, 200, 2))
+    response = file_response_client.get("/", headers={"Range": f"bytes={ranges}"})
+
+    assert response.status_code == 206
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+
+
+def test_file_response_range_count_limit_exceeded(file_response_client: TestClient) -> None:
+    ranges = ",".join(f"{index}-{index}" for index in range(0, 202, 2))
+    response = file_response_client.get("/", headers={"Range": f"bytes={ranges}"})
+
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.text == README
+
+
 def test_file_response_range_invalid(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": "bytes: 0-1000"})
     assert response.status_code == 400

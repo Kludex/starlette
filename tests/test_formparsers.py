@@ -441,6 +441,37 @@ def test_no_request_data(tmpdir: Path, test_client_factory: TestClientFactory) -
     assert response.json() == {}
 
 
+@pytest.mark.anyio
+async def test_multipart_closes_files_on_stream_error() -> None:
+    files: list[SpooledTemporaryFile[bytes]] = []
+
+    def make_file(*, max_size: int) -> SpooledTemporaryFile[bytes]:
+        file = SpooledTemporaryFile[bytes](max_size=max_size)
+        files.append(file)
+        return file
+
+    async def stream() -> AsyncGenerator[bytes, None]:
+        yield (
+            b"--boundary\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="example.txt"\r\n'
+            b"Content-Type: text/plain\r\n\r\n"
+            b"content"
+        )
+        raise RuntimeError("stream failed")
+
+    parser = MultiPartParser(
+        Headers({"Content-Type": "multipart/form-data; boundary=boundary"}),
+        stream(),
+    )
+
+    with mock.patch("starlette.formparsers.SpooledTemporaryFile", side_effect=make_file):
+        with pytest.raises(RuntimeError, match="stream failed"):
+            await parser.parse()
+
+    assert len(files) == 1
+    assert files[0].closed
+
+
 def test_urlencoded_percent_encoding(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.post("/", data={"some": "da ta"})

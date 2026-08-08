@@ -46,12 +46,27 @@ class RequestBodyLimitResponder:
     def __init__(self, app: ASGIApp, max_body_size: int) -> None:
         self.app = app
         self.max_body_size = max_body_size
-        self.scope: Scope | None = None
-        self.receive: Receive | None = None
-        self.send: Send | None = None
+        self._scope: Scope | None = None
+        self._receive: Receive | None = None
+        self._send: Send | None = None
         self.content_length: int | None = None
         self.total_size = 0
         self.response_started = False
+
+    @property
+    def scope(self) -> Scope:
+        assert self._scope is not None
+        return self._scope
+
+    @property
+    def receive(self) -> Receive:
+        assert self._receive is not None
+        return self._receive
+
+    @property
+    def send(self) -> Send:
+        assert self._send is not None
+        return self._send
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         previous_scope_limit = cast(int | _Missing, scope.get(MAX_BODY_SIZE_SCOPE_KEY, _MISSING))
@@ -64,15 +79,10 @@ class RequestBodyLimitResponder:
                 raise _RequestBodyTooLarge
             return await self.app(scope, receive, send)
 
-        self.scope = scope
-        self.receive = receive
-        self.send = send
-        content_length_header = Headers(scope=scope).get("content-length")
-        if content_length_header is not None:
-            try:
-                self.content_length = int(content_length_header)
-            except ValueError:
-                pass
+        self._scope = scope
+        self._receive = receive
+        self._send = send
+        self.content_length = _get_content_length(scope)
         scope[_BODY_LIMIT_RESPONDER_SCOPE_KEY] = self
 
         try:
@@ -95,7 +105,6 @@ class RequestBodyLimitResponder:
         if self.content_length is not None and self.content_length > self.max_body_size:
             raise _RequestBodyTooLarge
 
-        assert self.receive is not None
         message = await self.receive()
         if message["type"] == "http.request":
             self.total_size += len(message.get("body", b""))
@@ -104,10 +113,6 @@ class RequestBodyLimitResponder:
         return message
 
     async def send_with_limit(self, message: Message) -> None:
-        assert self.scope is not None
-        assert self.receive is not None
-        assert self.send is not None
-
         if message["type"] == "http.response.start":
             if self.content_length is not None and self.content_length > self.max_body_size:
                 self.response_started = True
@@ -116,3 +121,13 @@ class RequestBodyLimitResponder:
                 raise _RequestBodyLimitResponseSent
             self.response_started = True
         await self.send(message)
+
+
+def _get_content_length(scope: Scope) -> int | None:
+    content_length = Headers(scope=scope).get("content-length")
+    if content_length is None:
+        return None
+    try:
+        return int(content_length)
+    except ValueError:
+        return None

@@ -951,6 +951,32 @@ def test_max_part_size_exceeds_custom_limit(
         assert response.text == "Part exceeded maximum size of 10KB."
 
 
+@pytest.mark.anyio
+async def test_multipart_closes_tempfile_on_stream_error() -> None:
+    async def stream() -> AsyncGenerator[bytes, None]:
+        yield (
+            b"--boundary\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="example.txt"\r\n'
+            b"Content-Type: text/plain\r\n\r\n"
+            b"content"
+        )
+        raise RuntimeError("stream failed")
+
+    parser = MultiPartParser(
+        Headers({"Content-Type": "multipart/form-data; boundary=boundary"}),
+        stream(),
+    )
+    tempfile = SpooledTemporaryFile[bytes]()
+
+    with (
+        mock.patch("starlette.formparsers.SpooledTemporaryFile", return_value=tempfile),
+        pytest.raises(RuntimeError, match="stream failed"),
+    ):
+        await parser.parse()
+
+    assert tempfile.closed
+
+
 def test_multipart_closes_tempfile_on_oserror(
     test_client_factory: TestClientFactory,
 ) -> None:

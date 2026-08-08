@@ -2,6 +2,13 @@
 toc_depth: 2
 ---
 
+## 1.6.0 (August 8, 2026)
+
+#### Added
+
+* Add `max_body_size` to `Starlette` and route classes [#3431](https://github.com/encode/starlette/pull/3431).
+* Expose `http.response.debug` information via response extensions [#3130](https://github.com/encode/starlette/pull/3130).
+
 ## 1.5.1 (August 8, 2026)
 
 #### Fixed

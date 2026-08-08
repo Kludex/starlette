@@ -298,6 +298,14 @@ def test_router_add_route(client: TestClient) -> None:
     assert response.text == "Hello, world!"
 
 
+def test_mount_does_not_match_outside_its_prefix() -> None:
+    # The router narrows a `Mount` to paths under its prefix, so this is the only
+    # place the `Match.NONE` branch is reachable from.
+    route = Mount("/mounted", app=PlainTextResponse("hello"))
+    match, _ = route.matches({"type": "http", "method": "GET", "path": "/elsewhere", "headers": []})
+    assert match == Match.NONE
+
+
 def test_router_duplicate_path(client: TestClient) -> None:
     response = client.post("/func")
     assert response.status_code == 200

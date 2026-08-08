@@ -669,16 +669,14 @@ class Router:
         if self._trie.is_stale(len(routes)):
             trie = RouteTrie()
             for index, route in enumerate(routes):
-                # A route can be indexed by its flat path only when we know its
-                # `matches()` is driven by that path. A subclass overriding
-                # `matches()` may match paths its `path` never describes, and
-                # Mount/Host match by prefix/header, so those stay
-                # always-candidate (passed as path=None).
-                if isinstance(route, (Route, WebSocketRoute)) and type(route).matches in (
-                    Route.matches,
-                    WebSocketRoute.matches,
-                ):
+                # A route is indexed by its `path`, so a subclass must not match
+                # paths its `path` does not describe. A `Mount` is the `{path:path}`
+                # tail its own `path_regex` is built from. `Host` matches on the
+                # header, so it has no path to index (passed as None).
+                if isinstance(route, (Route, WebSocketRoute)):
                     trie.add(index, route.path, route.param_convertors)
+                elif isinstance(route, Mount):
+                    trie.add(index, route.path + "/{path:path}", route.param_convertors)
                 else:
                     trie.add(index, None, {})
             trie.count = len(routes)

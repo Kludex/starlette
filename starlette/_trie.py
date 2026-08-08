@@ -6,7 +6,6 @@ from starlette.convertors import (
     Convertor,
     FloatConvertor,
     IntegerConvertor,
-    PathConvertor,
     StringConvertor,
     UUIDConvertor,
 )
@@ -19,12 +18,13 @@ _SEGMENT_CONVERTORS = (StringConvertor, IntegerConvertor, FloatConvertor, UUIDCo
 
 
 class Node:
-    __slots__ = ("static", "param", "path_indices", "indices")
+    __slots__ = ("static", "param", "tail", "indices")
 
     def __init__(self) -> None:
         self.static: dict[str, Node] = {}
         self.param: Node | None = None
-        self.path_indices: list[int] = []
+        # Routes that match any remainder of the path from this node.
+        self.tail: list[int] = []
         self.indices: list[int] = []
 
 
@@ -35,16 +35,17 @@ class RouteTrie:
     path, in registration order; the caller still runs `Route.matches` on each
     candidate, so the trie never decides a match on its own.
 
-    A route is indexed only when every segment of its path is either static, a
-    lone parameter whose convertor is exactly a built-in single-segment one, or a
-    `path` parameter. Everything else - compound segments, custom convertors,
-    routes without a flat path - is reported as a candidate for every path, so
-    dispatch stays correct by construction rather than by regex analysis.
+    Segments are read while they are static or a lone parameter using exactly a
+    built-in single-segment convertor. The first segment that cannot be read that
+    way - a `path` parameter, a compound segment, a custom convertor - makes the
+    route a tail on the node reached so far, so it stays a candidate only for
+    paths under the literal prefix it does have. A route with no usable path is a
+    tail on the root, and so a candidate for every path.
     """
 
     def __init__(self) -> None:
         self.root = Node()
-        self.always: list[int] = []
+        self.indexed = False
         # The number of routes this trie was built for. The owner compares it
         # against the live route count to rebuild. Replacing or reordering routes
         # at the same count is not detected: build the route table before
@@ -56,7 +57,7 @@ class RouteTrie:
 
     def add(self, index: int, path: str | None, convertors: dict[str, Convertor[object]]) -> None:
         if not path or not path.startswith("/"):
-            self.always.append(index)
+            self.root.tail.append(index)
             return
         node = self.root
         for seg in path.lstrip("/").split("/"):
@@ -73,17 +74,20 @@ class RouteTrie:
                 if node.param is None:
                     node.param = Node()
                 node = node.param
-            elif type(convertor) is PathConvertor:
-                # Consumes the rest of the path, so the route ends here.
-                node.path_indices.append(index)
-                return
-            else:
-                self.always.append(index)
-                return
+                continue
+            node.tail.append(index)
+            if node is not self.root:
+                self.indexed = True
+            return
         node.indices.append(index)
+        self.indexed = True
 
     def match_all(self, path: str) -> list[int]:
-        out = list(self.always)
+        if not self.indexed:
+            # Nothing to narrow with, so skip the walk and the sort: the root tail
+            # is already every route, in registration order.
+            return self.root.tail
+        out: list[int] = []
         self._walk(self.root, path.lstrip("/"), out)
         out.sort()
         return out
@@ -104,6 +108,6 @@ class RouteTrie:
             if seg and node.param is not None:
                 self._walk(node.param, tail, out)
 
-        # A `path` parameter registered here matches whatever is left, including
-        # the empty string.
-        out.extend(node.path_indices)
+        # A tail registered here matches whatever is left, including the empty
+        # string.
+        out.extend(node.tail)

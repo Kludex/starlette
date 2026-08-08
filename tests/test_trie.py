@@ -7,8 +7,11 @@ import pytest
 from starlette import convertors
 from starlette._trie import RouteTrie
 from starlette.convertors import Convertor, StringConvertor, register_url_convertor
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 from starlette.routing import Match, Route, Router, WebSocketRoute
 from starlette.types import Scope
+from tests.types import TestClientFactory
 
 
 def build(paths: list[str]) -> tuple[RouteTrie, list[Route]]:
@@ -114,16 +117,17 @@ def test_slash_capable_convertor_in_compound_segment() -> None:
     )
 
 
-def test_convertor_subclass_is_always_candidate() -> None:
+def test_convertor_subclass_becomes_a_tail() -> None:
     # A subclass of a built-in convertor may widen the regex to span segments, so
-    # only exact built-in convertor types are indexed.
+    # the route is a candidate for anything under its literal prefix, but only there.
     class SneakyConvertor(StringConvertor):
         regex = ".*"
 
     register_url_convertor("sneaky_trie_test", SneakyConvertor())
     try:
         trie, _ = build(["/s/{x:sneaky_trie_test}"])
-        assert trie.match_all("/unrelated") == [0]
+        assert trie.match_all("/s/a/b") == [0]
+        assert trie.match_all("/unrelated") == []
         assert_superset(["/s/{x:sneaky_trie_test}"], ["/s/a/b", "/s/a"])
     finally:
         convertors.CONVERTOR_TYPES.pop("sneaky_trie_test", None)
@@ -171,24 +175,22 @@ def _names(router: Router, path: str) -> list[str]:
     return [r.path for r in router._candidate_routes(_scope(path)) if isinstance(r, Route)]
 
 
-def test_route_subclass_overriding_matches_is_always_candidate() -> None:
-    class RewritingRoute(Route):
+def test_route_subclass_annotating_matches_is_indexed(test_client_factory: TestClientFactory) -> None:
+    # The shape FastAPI's `APIRoute` uses: override `matches()` to annotate the
+    # child scope, but leave path matching to `Route`. It has to stay indexed,
+    # or every FastAPI route becomes an always-candidate and narrowing does nothing.
+    class AnnotatingRoute(Route):
         def matches(self, scope: Scope) -> tuple[Match, Scope]:
-            return super().matches(dict(scope, path="/actual"))
+            match, child_scope = super().matches(scope)
+            child_scope["route"] = self
+            return match, child_scope
 
-    route = RewritingRoute("/actual", endpoint=lambda r: None)
-    match, _ = route.matches(_scope("/something/else"))
-    assert match == Match.FULL  # it matches a path its own `path` never describes...
-    router = Router(routes=[route])
-    assert _names(router, "/something/else") == ["/actual"]  # ...so it must always be a candidate
+    def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(type(request.scope["route"]).__name__)
 
-
-def test_route_subclass_inheriting_matches_is_indexed() -> None:
-    class PlainSubclass(Route):
-        pass
-
-    router = Router(routes=[PlainSubclass("/a", endpoint=lambda r: None), Route("/b", endpoint=lambda r: None)])
-    assert _names(router, "/a") == ["/a"]
+    router = Router(routes=[AnnotatingRoute("/a", endpoint=endpoint), Route("/b", endpoint=endpoint)])
+    assert test_client_factory(router).get("/a").text == "AnnotatingRoute"
+    assert _names(router, "/nope") == []
 
 
 def test_router_cache_rebuilds_when_routes_added() -> None:

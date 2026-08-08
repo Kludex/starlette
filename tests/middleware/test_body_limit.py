@@ -49,6 +49,16 @@ def test_body_over_limit_is_rejected(test_client_factory: TestClientFactory) -> 
     assert response.text == "Content Too Large"
 
 
+def test_no_limit_is_no_op(test_client_factory: TestClientFactory) -> None:
+    app = RequestBodyLimitMiddleware(Starlette(routes=[Route("/", echo, methods=["POST"])]))
+    client = test_client_factory(app)
+
+    response = client.post("/", content=b"123456")
+
+    assert response.status_code == 200
+    assert response.content == b"123456"
+
+
 def test_content_length_is_checked_without_reading_body(
     test_client_factory: TestClientFactory,
 ) -> None:

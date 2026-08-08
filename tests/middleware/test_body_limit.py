@@ -5,12 +5,12 @@ from collections.abc import Awaitable, Callable
 import pytest
 
 from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.body_limit import (
     MAX_BODY_SIZE_SCOPE_KEY,
     RequestBodyLimitMiddleware,
-    _RequestBodyTooLarge,
 )
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
@@ -206,8 +206,10 @@ async def test_limit_exceeded_after_response_started_is_raised() -> None:
     scope: Scope = {"type": "http", "method": "POST", "path": "/", "headers": []}
     middleware = RequestBodyLimitMiddleware(app, max_body_size=5)
 
-    with pytest.raises(_RequestBodyTooLarge):
+    with pytest.raises(HTTPException) as exc_info:
         await middleware(scope, receive, send)
+
+    assert exc_info.value.status_code == 413
 
 
 @pytest.mark.anyio

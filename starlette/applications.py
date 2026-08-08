@@ -27,6 +27,7 @@ class Starlette:
         middleware: Sequence[Middleware] | None = None,
         exception_handlers: Mapping[Any, ExceptionHandler] | None = None,
         lifespan: Lifespan[AppType] | None = None,
+        *,
         max_body_size: int | None = None,
     ) -> None:
         """Initializes the application.

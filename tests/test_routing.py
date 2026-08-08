@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import BaseRoute, Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -304,6 +304,31 @@ def test_mount_does_not_match_outside_its_prefix() -> None:
     route = Mount("/mounted", app=PlainTextResponse("hello"))
     match, _ = route.matches({"type": "http", "method": "GET", "path": "/elsewhere", "headers": []})
     assert match == Match.NONE
+
+
+def test_router_resolve() -> None:
+    route = Route("/func", endpoint=func_homepage, methods=["GET"])
+    router = Router(routes=[route])
+
+    resolved = router.resolve({"type": "http", "method": "GET", "path": "/func", "headers": []})
+    assert resolved is not None
+    assert resolved[0] is route
+
+    # A partial match is what produces the 405, so it is resolved too.
+    partial = router.resolve({"type": "http", "method": "POST", "path": "/func", "headers": []})
+    assert partial is not None
+    assert partial[0] is route
+
+    assert router.resolve({"type": "http", "method": "GET", "path": "/nope", "headers": []}) is None
+
+
+def test_router_resolve_can_be_overridden(test_client_factory: TestClientFactory) -> None:
+    class OnlyLastRoute(Router):
+        def resolve(self, scope: Scope) -> tuple[BaseRoute, Scope] | None:
+            return (self.routes[-1], {}) if self.routes else None
+
+    router = OnlyLastRoute(routes=[Route("/first", endpoint=homepage), Route("/second", endpoint=func_homepage)])
+    assert test_client_factory(router).get("/first").text == "Hello, world!"
 
 
 def test_router_duplicate_path(client: TestClient) -> None:

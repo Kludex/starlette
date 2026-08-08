@@ -683,6 +683,25 @@ class Router:
             self._trie = trie
         return [routes[i] for i in self._trie.match_all(get_route_path(scope))]
 
+    def resolve(self, scope: Scope) -> tuple[BaseRoute, Scope] | None:
+        """Pick the route that should handle `scope`, and the scope it needs.
+
+        Returns the first route that fully matches, or else the first that
+        partially matches, which is how a `405 Method Not Allowed` is produced.
+        Returns `None` when nothing matches.
+
+        Override this to change how routes are found, without reimplementing the
+        rest of dispatch.
+        """
+        partial: tuple[BaseRoute, Scope] | None = None
+        for route in self._candidate_routes(scope):
+            match, child_scope = route.matches(scope)
+            if match == Match.FULL:
+                return route, child_scope
+            if match == Match.PARTIAL and partial is None:
+                partial = (route, child_scope)
+        return partial
+
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
@@ -693,26 +712,11 @@ class Router:
             await self.lifespan(scope, receive, send)
             return
 
-        partial = None
-
-        for route in self._candidate_routes(scope):
-            # Determine if any route matches the incoming scope,
-            # and hand over to the matching route if found.
-            match, child_scope = route.matches(scope)
-            if match == Match.FULL:
-                scope.update(child_scope)
-                await route.handle(scope, receive, send)
-                return
-            elif match == Match.PARTIAL and partial is None:
-                partial = route
-                partial_scope = child_scope
-
-        if partial is not None:
-            #  Handle partial matches. These are cases where an endpoint is
-            # able to handle the request, but is not a preferred option.
-            # We use this in particular to deal with "405 Method Not Allowed".
-            scope.update(partial_scope)
-            await partial.handle(scope, receive, send)
+        resolved = self.resolve(scope)
+        if resolved is not None:
+            route, child_scope = resolved
+            scope.update(child_scope)
+            await route.handle(scope, receive, send)
             return
 
         route_path = get_route_path(scope)
@@ -723,13 +727,11 @@ class Router:
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
-            for route in self._candidate_routes(redirect_scope):
-                match, child_scope = route.matches(redirect_scope)
-                if match != Match.NONE:
-                    redirect_url = URL(scope=redirect_scope)
-                    response = RedirectResponse(url=str(redirect_url))
-                    await response(scope, receive, send)
-                    return
+            if self.resolve(redirect_scope) is not None:
+                redirect_url = URL(scope=redirect_scope)
+                response = RedirectResponse(url=str(redirect_url))
+                await response(scope, receive, send)
+                return
 
         await self.default(scope, receive, send)
 

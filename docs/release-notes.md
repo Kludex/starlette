@@ -2,6 +2,13 @@
 toc_depth: 2
 ---
 
+## 1.5.1 (August 8, 2026)
+
+#### Fixed
+
+* Reject inverted single-byte ranges in `FileResponse` [#3389](https://github.com/encode/starlette/pull/3389).
+* Limit `FileResponse` to 100 ranges [#3430](https://github.com/encode/starlette/pull/3430).
+
 ## 1.5.0 (August 8, 2026)
 
 #### Added

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 from starlette.datastructures import Headers
 from starlette.exceptions import HTTPException
@@ -9,7 +9,13 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 MAX_BODY_SIZE_SCOPE_KEY = "starlette.max_body_size"
 _BODY_LIMIT_RESPONDER_SCOPE_KEY = "starlette._body_limit_responder"
-_MISSING = object()
+
+
+class _Missing:
+    __slots__ = ()
+
+
+_MISSING = _Missing()
 
 
 class _RequestBodyTooLarge(HTTPException):
@@ -48,7 +54,7 @@ class RequestBodyLimitResponder:
         self.response_started = False
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        previous_scope_limit: Any = scope.get(MAX_BODY_SIZE_SCOPE_KEY, _MISSING)
+        previous_scope_limit = cast(int | _Missing, scope.get(MAX_BODY_SIZE_SCOPE_KEY, _MISSING))
         scope[MAX_BODY_SIZE_SCOPE_KEY] = self.max_body_size
 
         active_responder = cast(RequestBodyLimitResponder | None, scope.get(_BODY_LIMIT_RESPONDER_SCOPE_KEY))
@@ -56,8 +62,7 @@ class RequestBodyLimitResponder:
             active_responder.max_body_size = self.max_body_size
             if active_responder.total_size > active_responder.max_body_size:
                 raise _RequestBodyTooLarge
-            await self.app(scope, receive, send)
-            return
+            return await self.app(scope, receive, send)
 
         self.scope = scope
         self.receive = receive
@@ -81,7 +86,7 @@ class RequestBodyLimitResponder:
             pass
         finally:
             scope.pop(_BODY_LIMIT_RESPONDER_SCOPE_KEY, None)
-            if previous_scope_limit is _MISSING:
+            if isinstance(previous_scope_limit, _Missing):
                 scope.pop(MAX_BODY_SIZE_SCOPE_KEY, None)
             else:
                 scope[MAX_BODY_SIZE_SCOPE_KEY] = previous_scope_limit

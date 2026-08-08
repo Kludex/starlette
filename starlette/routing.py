@@ -611,10 +611,7 @@ class Router:
             for cls, args, kwargs in reversed(middleware):
                 self.middleware_stack = cls(self.middleware_stack, *args, **kwargs)
         if max_body_size is not None:
-            self.middleware_stack = RequestBodyLimitMiddleware(
-                self.middleware_stack,
-                max_body_size=max_body_size,
-            )
+            self.middleware_stack = RequestBodyLimitMiddleware(self.middleware_stack, max_body_size=max_body_size)
 
     async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":

@@ -817,15 +817,12 @@ def test_file_response_start_must_be_less_than_end(file_response_client: TestCli
 
 
 def test_file_response_inverted_single_byte_range(file_response_client: TestClient) -> None:
-    # "bytes=5-4" parses to the empty half-open range (5, 5); rejecting it needs
-    # start >= end, not start > end (which only catches clearly reversed ranges).
     response = file_response_client.get("/", headers={"Range": "bytes=5-4"})
     assert response.status_code == 400
     assert response.text == "Range header: start must be less than end"
 
 
 def test_file_response_single_byte_range(file_response_client: TestClient) -> None:
-    # "bytes=5-5" is a valid one-byte request and must keep working.
     response = file_response_client.get("/", headers={"Range": "bytes=5-5"})
     assert response.status_code == 206
     assert response.headers["content-range"] == f"bytes 5-5/{len(README.encode('utf8'))}"

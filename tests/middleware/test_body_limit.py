@@ -28,12 +28,10 @@ def test_body_size_limit(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
 
     response = client.post("/", content=b"12345")
-
     assert response.status_code == 200
     assert response.content == b"12345"
 
     response = client.post("/", content=b"123456")
-
     assert response.status_code == 413
     assert response.text == "Content Too Large"
 
@@ -51,20 +49,15 @@ def test_content_length_is_checked_without_reading_body(
     client = test_client_factory(app)
 
     response = client.post("/", content=b"123456")
-
     assert response.status_code == 413
+    assert response.text == "Content Too Large"
 
 
-def test_route_override_applies_when_middleware_defers_response_start(
-    test_client_factory: TestClientFactory,
-) -> None:
+def test_route_override_applies_when_middleware_defers_response_start(test_client_factory: TestClientFactory) -> None:
     async def endpoint(request: Request) -> PlainTextResponse:
         return PlainTextResponse("response")
 
-    async def passthrough(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
+    async def passthrough(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         return await call_next(request)
 
     app = Starlette(
@@ -102,7 +95,6 @@ async def test_content_length_rejects_before_receiving_body() -> None:
     middleware = RequestBodyLimitMiddleware(app, max_body_size=5)
 
     await middleware(scope, receive, send)
-
     assert sent[0]["status"] == 413
 
 
@@ -131,13 +123,10 @@ async def test_received_bytes_are_counted_without_content_length() -> None:
     middleware = RequestBodyLimitMiddleware(app, max_body_size=5)
 
     await middleware(scope, receive, send)
-
     assert sent[0]["status"] == 413
 
 
-def test_received_bytes_are_counted_with_unreliable_content_length(
-    test_client_factory: TestClientFactory,
-) -> None:
+def test_received_bytes_are_counted_with_unreliable_content_length(test_client_factory: TestClientFactory) -> None:
     app = RequestBodyLimitMiddleware(
         Starlette(routes=[Route("/", echo, methods=["POST"])]),
         max_body_size=5,
@@ -356,9 +345,7 @@ def test_route_override_survives_shallow_scope_copy(test_client_factory: TestCli
     assert response.content == b"12345678"
 
 
-def test_stricter_route_rejects_body_read_by_middleware(
-    test_client_factory: TestClientFactory,
-) -> None:
+def test_stricter_route_rejects_body_read_by_middleware(test_client_factory: TestClientFactory) -> None:
     async def read_body(
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],

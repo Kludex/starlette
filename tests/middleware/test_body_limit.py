@@ -346,10 +346,7 @@ def test_route_override_survives_shallow_scope_copy(test_client_factory: TestCli
 
 
 def test_stricter_route_rejects_body_read_by_middleware(test_client_factory: TestClientFactory) -> None:
-    async def read_body(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
+    async def read_body(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         await request.body()
         return await call_next(request)
 
@@ -377,5 +374,4 @@ def test_multipart_file_counts_towards_limit(test_client_factory: TestClientFact
     client = test_client_factory(app)
 
     response = client.post("/", files={"file": ("example.txt", b"x" * 1024)})
-
     assert response.status_code == 413

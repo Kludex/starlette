@@ -293,6 +293,9 @@ class RangeNotSatisfiable(Exception):
         self.max_size = max_size
 
 
+_MAX_RANGES = 100
+
+
 class FileResponse(Response):
     chunk_size = 64 * 1024
 
@@ -372,7 +375,9 @@ class FileResponse(Response):
                 response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
                 return await response(scope, receive, send)
 
-            if len(ranges) == 1:
+            if ranges is None:
+                await self._handle_simple(send, send_header_only, send_pathsend)
+            elif len(ranges) == 1:
                 start, end = ranges[0]
                 await self._handle_single_range(send, start, end, stat_result.st_size, send_header_only)
             else:
@@ -454,7 +459,7 @@ class FileResponse(Response):
         return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]
 
     @classmethod
-    def _parse_range_header(cls, http_range: str, file_size: int) -> list[tuple[int, int]]:
+    def _parse_range_header(cls, http_range: str, file_size: int) -> list[tuple[int, int]] | None:
         ranges: list[tuple[int, int]] = []
         try:
             units, range_ = http_range.split("=", 1)
@@ -465,6 +470,9 @@ class FileResponse(Response):
 
         if units != "bytes":
             raise MalformedRangeHeader("Only support bytes range")
+
+        if range_.count(",") + 1 > _MAX_RANGES:
+            return None
 
         ranges = cls._parse_ranges(range_, file_size)
 

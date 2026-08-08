@@ -782,6 +782,21 @@ def test_file_response_range_multi_head(file_response_client: TestClient) -> Non
     assert response.status_code == 206
 
 
+@pytest.mark.parametrize(("range_count", "expected_status"), [(100, 206), (101, 200)])
+def test_file_response_range_count_limit(
+    file_response_client: TestClient, range_count: int, expected_status: int
+) -> None:
+    ranges = ",".join(f"{index}-{index}" for index in range(0, range_count * 2, 2))
+    response = file_response_client.get("/", headers={"Range": f"bytes={ranges}"})
+
+    assert response.status_code == expected_status
+    if expected_status == 206:
+        assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+    else:
+        assert "content-range" not in response.headers
+        assert response.text == README
+
+
 def test_file_response_range_invalid(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": "bytes: 0-1000"})
     assert response.status_code == 400

@@ -441,37 +441,6 @@ def test_no_request_data(tmpdir: Path, test_client_factory: TestClientFactory) -
     assert response.json() == {}
 
 
-@pytest.mark.anyio
-async def test_multipart_closes_files_on_stream_error() -> None:
-    files: list[SpooledTemporaryFile[bytes]] = []
-
-    def make_file(*, max_size: int) -> SpooledTemporaryFile[bytes]:
-        file = SpooledTemporaryFile[bytes](max_size=max_size)
-        files.append(file)
-        return file
-
-    async def stream() -> AsyncGenerator[bytes, None]:
-        yield (
-            b"--boundary\r\n"
-            b'Content-Disposition: form-data; name="file"; filename="example.txt"\r\n'
-            b"Content-Type: text/plain\r\n\r\n"
-            b"content"
-        )
-        raise RuntimeError("stream failed")
-
-    parser = MultiPartParser(
-        Headers({"Content-Type": "multipart/form-data; boundary=boundary"}),
-        stream(),
-    )
-
-    with mock.patch("starlette.formparsers.SpooledTemporaryFile", side_effect=make_file):
-        with pytest.raises(RuntimeError, match="stream failed"):
-            await parser.parse()
-
-    assert len(files) == 1
-    assert files[0].closed
-
-
 def test_urlencoded_percent_encoding(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.post("/", data={"some": "da ta"})
@@ -980,6 +949,32 @@ def test_max_part_size_exceeds_custom_limit(
         response = client.post("/", content=multipart_data, headers=headers)
         assert response.status_code == 400
         assert response.text == "Part exceeded maximum size of 10KB."
+
+
+@pytest.mark.anyio
+async def test_multipart_closes_tempfile_on_stream_error() -> None:
+    async def stream() -> AsyncGenerator[bytes, None]:
+        yield (
+            b"--boundary\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="example.txt"\r\n'
+            b"Content-Type: text/plain\r\n\r\n"
+            b"content"
+        )
+        raise RuntimeError("stream failed")
+
+    parser = MultiPartParser(
+        Headers({"Content-Type": "multipart/form-data; boundary=boundary"}),
+        stream(),
+    )
+    tempfile = SpooledTemporaryFile[bytes]()
+
+    with (
+        mock.patch("starlette.formparsers.SpooledTemporaryFile", return_value=tempfile),
+        pytest.raises(RuntimeError, match="stream failed"),
+    ):
+        await parser.parse()
+
+    assert tempfile.closed
 
 
 def test_multipart_closes_tempfile_on_oserror(

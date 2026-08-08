@@ -231,7 +231,7 @@ app = Starlette(routes=routes, middleware=middleware)
 
 The following argument is supported:
 
-* `max_body_size` - The maximum request body size in bytes.
+* `max_body_size` - The non-negative maximum request body size in bytes.
 
 The middleware uses `Content-Length` to reject an oversized body before reading
 it when possible, and always counts the body bytes received from the ASGI server.

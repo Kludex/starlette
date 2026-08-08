@@ -295,9 +295,10 @@ app = Router(routes=[
 
 ## Request body size limits
 
-Use `max_body_size` to limit the total number of request body bytes accepted by
-an application. The limit includes multipart file data and multipart encoding
-overhead. It defaults to `None`, which preserves the existing unlimited behavior.
+Use a non-negative `max_body_size` to limit the total number of request body
+bytes accepted by an application. The limit includes multipart file data and
+multipart encoding overhead. It defaults to `None`, which preserves the existing
+unlimited behavior.
 
 ```python
 app = Starlette(

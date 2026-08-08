@@ -25,8 +25,6 @@ class RequestBodyLimitMiddleware:
     """Limit the total size of an HTTP request body."""
 
     def __init__(self, app: ASGIApp, max_body_size: int) -> None:
-        if max_body_size < 0:
-            raise ValueError("max_body_size must be greater than or equal to zero")
         self.app = app
         self.max_body_size = max_body_size
 

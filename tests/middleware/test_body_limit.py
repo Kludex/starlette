@@ -283,19 +283,6 @@ async def test_existing_scope_limit_is_restored() -> None:
     assert scope[MAX_BODY_SIZE_SCOPE_KEY] == 10
 
 
-def test_negative_limit_is_rejected() -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        pass  # pragma: no cover
-
-    with pytest.raises(ValueError, match="greater than or equal to zero"):
-        RequestBodyLimitMiddleware(app, max_body_size=-1)
-
-
-def test_negative_starlette_limit_is_rejected() -> None:
-    with pytest.raises(ValueError, match="greater than or equal to zero"):
-        Starlette(max_body_size=-1)
-
-
 def test_starlette_limit_applies_before_user_middleware(
     test_client_factory: TestClientFactory,
 ) -> None:

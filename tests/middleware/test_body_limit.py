@@ -49,6 +49,49 @@ def test_body_over_limit_is_rejected(test_client_factory: TestClientFactory) -> 
     assert response.text == "Content Too Large"
 
 
+def test_content_length_is_checked_without_reading_body(
+    test_client_factory: TestClientFactory,
+) -> None:
+    async def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("response")
+
+    app = Starlette(
+        routes=[Route("/", endpoint, methods=["POST"])],
+        max_body_size=5,
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/", content=b"123456")
+
+    assert response.status_code == 413
+    assert response.text == "Content Too Large"
+
+
+def test_route_override_applies_when_middleware_defers_response_start(
+    test_client_factory: TestClientFactory,
+) -> None:
+    async def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("response")
+
+    async def passthrough(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        routes=[Route("/", endpoint, methods=["POST"], max_body_size=10)],
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        max_body_size=5,
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/", content=b"12345678")
+
+    assert response.status_code == 200
+    assert response.text == "response"
+
+
 @pytest.mark.anyio
 async def test_content_length_rejects_before_receiving_body() -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -211,6 +254,31 @@ async def test_non_request_message_passes_through() -> None:
     await middleware(scope, receive, send)
 
     assert received is message
+
+
+@pytest.mark.anyio
+async def test_existing_scope_limit_is_restored() -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope[MAX_BODY_SIZE_SCOPE_KEY] == 5
+
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b""}  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        pass  # pragma: no cover
+
+    scope: Scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/",
+        "headers": [],
+        MAX_BODY_SIZE_SCOPE_KEY: 10,
+    }
+    middleware = RequestBodyLimitMiddleware(app, max_body_size=5)
+
+    await middleware(scope, receive, send)
+
+    assert scope[MAX_BODY_SIZE_SCOPE_KEY] == 10
 
 
 def test_negative_limit_is_rejected() -> None:

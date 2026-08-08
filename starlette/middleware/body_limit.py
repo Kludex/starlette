@@ -17,6 +17,10 @@ class _RequestBodyTooLarge(HTTPException):
         super().__init__(status_code=413, detail="Content Too Large")
 
 
+class _RequestBodyLimitResponseSent(Exception):
+    pass
+
+
 class _BodySizeState:
     def __init__(self, content_length: int | None) -> None:
         self.content_length = content_length
@@ -57,7 +61,6 @@ class RequestBodyLimitMiddleware:
 
         assert state is not None
 
-        previous_state_limit = state.max_body_size
         state.max_body_size = self.max_body_size
 
         try:
@@ -73,14 +76,16 @@ class RequestBodyLimitMiddleware:
                 raise
             response = PlainTextResponse("Content Too Large", status_code=413)
             await response(scope, receive, send)
+        except _RequestBodyLimitResponseSent:
+            if not is_outermost:
+                raise
         finally:
-            state.max_body_size = previous_state_limit
             if is_outermost:
                 scope.pop(_BODY_SIZE_STATE_SCOPE_KEY, None)
-            if previous_scope_limit is _MISSING:
-                scope.pop(MAX_BODY_SIZE_SCOPE_KEY, None)
-            else:
-                scope[MAX_BODY_SIZE_SCOPE_KEY] = previous_scope_limit
+                if previous_scope_limit is _MISSING:
+                    scope.pop(MAX_BODY_SIZE_SCOPE_KEY, None)
+                else:
+                    scope[MAX_BODY_SIZE_SCOPE_KEY] = previous_scope_limit
 
     async def _run_with_limit(
         self,
@@ -102,6 +107,11 @@ class RequestBodyLimitMiddleware:
 
         async def tracked_send(message: Message) -> None:
             if message["type"] == "http.response.start":
+                if state.content_length is not None and state.content_length > state.max_body_size:
+                    state.response_started = True
+                    response = PlainTextResponse("Content Too Large", status_code=413)
+                    await response(scope, receive, send)
+                    raise _RequestBodyLimitResponseSent
                 state.response_started = True
             await send(message)
 

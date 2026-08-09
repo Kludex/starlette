@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import AsyncGenerator, Iterable, Iterator, Mapping
+from collections.abc import AsyncGenerator, Iterator, Mapping
 from http import cookies as http_cookies
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
 
@@ -347,7 +347,7 @@ class Request(HTTPConnection[StateT]):
                     raw_headers.append((name.encode("latin-1"), value.encode("latin-1")))
             await self._send({"type": "http.response.push", "path": path, "headers": raw_headers})
 
-    async def send_early_hints(self, links: Iterable[str | bytes]) -> None:
+    async def send_early_hints(self, link: str, /, *additional_links: str) -> None:
         if "http.response.early_hint" in self.scope.get("extensions", {}):
-            raw_links = [link.encode("latin-1") if isinstance(link, str) else link for link in links]
+            raw_links = [value.encode("latin-1") for value in (link, *additional_links)]
             await self._send({"type": "http.response.early_hint", "links": raw_links})

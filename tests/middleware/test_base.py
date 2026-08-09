@@ -1220,11 +1220,11 @@ async def test_early_hints_events() -> None:
     events: list[Message] = []
 
     async def endpoint(request: Request) -> PlainTextResponse:
-        await request.send_early_hints(["</endpoint.css>; rel=preload; as=style"])
+        await request.send_early_hints("</endpoint.css>; rel=preload; as=style")
         return PlainTextResponse("hello")
 
     async def send_early_hints(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        await request.send_early_hints(["</middleware.css>; rel=preload; as=style"])
+        await request.send_early_hints("</middleware.css>; rel=preload; as=style")
         return await call_next(request)
 
     app = Starlette(

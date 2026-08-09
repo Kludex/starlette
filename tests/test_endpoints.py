@@ -52,7 +52,7 @@ def test_http_endpoint_route_method(client: TestClient) -> None:
 async def test_http_endpoint_supports_early_hints() -> None:
     class Endpoint(HTTPEndpoint):
         async def get(self, request: Request) -> PlainTextResponse:
-            await request.send_early_hints(["</style.css>; rel=preload; as=style"])
+            await request.send_early_hints("</style.css>; rel=preload; as=style")
             return PlainTextResponse("Hello, world!")
 
     scope: Scope = {

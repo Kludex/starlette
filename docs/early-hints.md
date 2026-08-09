@@ -7,10 +7,10 @@ extension. Early Hints let a client start loading resources while the endpoint p
 Used to send one or more `Link` header values before the final response. If the ASGI server does not support
 Early Hints, this method does nothing.
 
-Signature: `send_early_hints(links)`
+Signature: `send_early_hints(link, *additional_links)`
 
-* `links` - An iterable of strings or bytes containing [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288.html)
-  `Link` header values.
+* `link` - An [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288.html) `Link` header value.
+* `additional_links` - Additional `Link` header values.
 
 ```python
 from starlette.applications import Starlette
@@ -20,11 +20,10 @@ from starlette.routing import Route
 
 
 async def homepage(request: Request) -> HTMLResponse:
-    links = [
+    await request.send_early_hints(
         "</static/style.css>; rel=preload; as=style",
         "</static/app.js>; rel=modulepreload",
-    ]
-    await request.send_early_hints(links)
+    )
 
     # The client can load the hinted resources while this work runs.
     content = await render_homepage()

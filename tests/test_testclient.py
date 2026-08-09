@@ -450,6 +450,25 @@ def test_raw_path_with_querystring(test_client_factory: TestClientFactory) -> No
     assert response.content == b"/hello-world"
 
 
+@pytest.mark.parametrize(
+    ("base_url", "server"),
+    [
+        ("http://[::1]", ["::1", 80]),
+        ("http://[::1]:8000", ["::1", 8000]),
+        ("http://[::1]:0", ["::1", 0]),
+    ],
+)
+def test_ipv6_base_url(test_client_factory: TestClientFactory, base_url: str, server: list[str | int]) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["server"] == server
+        response = Response("OK")
+        await response(scope, receive, send)
+
+    client = test_client_factory(app, base_url=base_url)
+    response = client.get("/")
+    assert response.status_code == 200
+
+
 def test_websocket_raw_path_without_params(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)

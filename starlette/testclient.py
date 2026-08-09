@@ -224,27 +224,21 @@ class _TestClientTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         scheme = request.url.scheme
-        netloc = request.url.netloc.decode(encoding="ascii")
+        host = request.url.raw_host.decode(encoding="ascii")
         path = request.url.path
         raw_path = request.url.raw_path
         query = request.url.query.decode(encoding="ascii")
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
-
-        if ":" in netloc:
-            host, port_string = netloc.split(":", 1)
-            port = int(port_string)
-        else:
-            host = netloc
+        port = request.url.port
+        if port is None:
             port = default_port
 
         # Include the 'host' header.
         if "host" in request.headers:
             headers: list[tuple[bytes, bytes]] = []
-        elif port == default_port:  # pragma: no cover
-            headers = [(b"host", host.encode())]
         else:  # pragma: no cover
-            headers = [(b"host", (f"{host}:{port}").encode())]
+            headers = [(b"host", request.url.netloc)]
 
         # Include other request headers.
         headers += [(key.lower().encode(), value.encode()) for key, value in request.headers.multi_items()]

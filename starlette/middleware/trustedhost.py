@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from starlette.datastructures import URL, Headers
+from starlette.datastructures import _HOST_RE, URL, Headers
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -37,7 +37,11 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        host = headers.get("host", "").split(":")[0]
+        host_match = _HOST_RE.fullmatch(headers.get("host", ""))
+        if host_match is None:
+            await PlainTextResponse("Invalid host header", status_code=400)(scope, receive, send)
+            return
+        host = host_match.group(1)
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:

@@ -217,6 +217,41 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
 
 
 @pytest.mark.anyio
+async def test_gzip_passes_through_early_hints() -> None:
+    early_hint: Message = {
+        "type": "http.response.early_hint",
+        "links": [b"</style.css>; rel=preload; as=style"],
+    }
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(early_hint)
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"content"})
+
+    events: list[Message] = []
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    async def receive() -> Message:
+        raise NotImplementedError  # pragma: no cover
+
+    scope: Scope = {
+        "type": "http",
+        "headers": [(b"accept-encoding", b"gzip")],
+        "extensions": {"http.response.early_hint": {}},
+    }
+    await GZipMiddleware(app)(scope, receive, send)
+
+    assert events[0] == early_hint
+    assert [event["type"] for event in events] == [
+        "http.response.early_hint",
+        "http.response.start",
+        "http.response.body",
+    ]
+
+
+@pytest.mark.anyio
 async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     path = tmpdir / "example.txt"
     with path.open("w") as file:

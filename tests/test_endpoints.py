@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router
 from starlette.testclient import TestClient
+from starlette.types import Message, Scope
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
@@ -45,6 +46,36 @@ def test_http_endpoint_route_method(client: TestClient) -> None:
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
     assert response.headers["allow"] == "GET"
+
+
+@pytest.mark.anyio
+async def test_http_endpoint_supports_early_hints() -> None:
+    class Endpoint(HTTPEndpoint):
+        async def get(self, request: Request) -> PlainTextResponse:
+            await request.send_early_hints(["</style.css>; rel=preload; as=style"])
+            return PlainTextResponse("Hello, world!")
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "extensions": {"http.response.early_hint": {}},
+    }
+    messages: list[Message] = []
+
+    async def receive() -> Message:
+        raise NotImplementedError  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    await Endpoint(scope, receive, send)
+
+    assert messages[0] == {
+        "type": "http.response.early_hint",
+        "links": [b"</style.css>; rel=preload; as=style"],
+    }
+    assert messages[1]["type"] == "http.response.start"
+    assert messages[2]["type"] == "http.response.body"
 
 
 def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: TestClientFactory) -> None:

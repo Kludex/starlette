@@ -518,6 +518,22 @@ class Host(BaseRoute):
         return f"{class_name}(host={self.host!r}, name={name!r}, app={self.app!r})"
 
 
+def _set_route_scope(scope: Scope, route: BaseRoute) -> None:
+    scope["route"] = route
+    prefix = scope.get("starlette.route_path", scope.get("root_path", ""))
+    path_format: Any
+
+    if isinstance(route, Mount):
+        path_format = route.path
+    elif isinstance(route, Host):
+        return
+    else:
+        path_format = getattr(route, "path_format", None)
+
+    if isinstance(path_format, str):
+        scope["starlette.route_path"] = prefix.rstrip("/") + path_format or "/"
+
+
 _T = TypeVar("_T")
 
 
@@ -676,6 +692,7 @@ class Router:
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
+                _set_route_scope(scope, route)
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
@@ -687,6 +704,7 @@ class Router:
             #  Handle partial matches. These are cases where an endpoint is
             # able to handle the request, but is not a preferred option.
             # We use this in particular to deal with "405 Method Not Allowed".
+            _set_route_scope(scope, partial)
             scope.update(partial_scope)
             await partial.handle(scope, receive, send)
             return

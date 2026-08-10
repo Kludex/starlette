@@ -102,6 +102,7 @@ Starlette only requires `anyio`, and the following dependencies are optional:
 
 * [`httpx2`][httpx2] - Required if you want to use the `TestClient`.
 * [`jinja2`][jinja2] - Required if you want to use `Jinja2Templates`.
+* [`opentelemetry-api`][opentelemetry-api] - Required for native OpenTelemetry tracing.
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
@@ -149,6 +150,7 @@ in isolation.
 [asgi]: https://asgi.readthedocs.io/en/latest/
 [httpx2]: https://pypi.org/project/httpx2/
 [jinja2]: https://jinja.palletsprojects.com/
+[opentelemetry-api]: https://opentelemetry.io/docs/languages/python/api/
 [python-multipart]: https://multipart.fastapiexpert.com/
 [itsdangerous]: https://itsdangerous.palletsprojects.com/
 [sqlalchemy]: https://www.sqlalchemy.org

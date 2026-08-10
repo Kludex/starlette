@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Any, ParamSpec, TypeVar
 
@@ -14,6 +15,15 @@ from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope,
 
 AppType = TypeVar("AppType", bound="Starlette")
 P = ParamSpec("P")
+
+
+def _wrap_with_opentelemetry(app: ASGIApp) -> ASGIApp:
+    if importlib.util.find_spec("opentelemetry") is None:
+        return app
+
+    from starlette.middleware.opentelemetry import _OpenTelemetryMiddleware
+
+    return _OpenTelemetryMiddleware(app)
 
 
 class Starlette:
@@ -74,7 +84,7 @@ class Starlette:
         app = self.router
         for cls, args, kwargs in reversed(middleware):
             app = cls(app, *args, **kwargs)
-        return app
+        return _wrap_with_opentelemetry(app)
 
     @property
     def routes(self) -> list[BaseRoute]:

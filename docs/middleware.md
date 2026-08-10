@@ -47,6 +47,48 @@ application would look like this:
 
 The following middleware implementations are available in the Starlette package:
 
+## OpenTelemetry
+
+Creates an OpenTelemetry server span for every incoming HTTP request. The span follows the
+OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
+headers, and uses the matched route template for its name and `http.route` attribute.
+
+Install the optional API dependency with `pip install opentelemetry-api`, or as part of
+`pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application
+chooses and configures the SDK and exporter. If no tracer provider is configured, Starlette
+skips tracing.
+
+Logfire configures a global OpenTelemetry provider, so no Starlette-specific instrumentation
+call or middleware is needed:
+
+```python
+import logfire
+
+from starlette.applications import Starlette
+
+logfire.configure()
+
+app = Starlette()
+```
+
+The same applies to any standard OpenTelemetry SDK configuration:
+
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+
+tracer_provider = TracerProvider()
+tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+trace.set_tracer_provider(tracer_provider)
+
+app = Starlette()
+```
+
+Starlette discovers the global provider at request time. This means it also works when the app is
+created before the provider is configured. No OpenTelemetry instrumentor or monkeypatching is
+required.
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.

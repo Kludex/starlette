@@ -77,13 +77,12 @@ def test_explicit_native_middleware_does_not_create_duplicate_span(
     assert get_span(exporter).name == "GET /"
 
 
-def test_external_opentelemetry_instrumentor_takes_precedence(
+def test_native_opentelemetry_can_be_disabled(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
-    app = Starlette(routes=[Route("/", homepage)])
-    app._is_instrumented_by_opentelemetry = True
+    app = Starlette(routes=[Route("/", homepage)], opentelemetry=False)
 
     assert test_client_factory(app).get("/").status_code == 200
     assert exporter.get_finished_spans() == ()

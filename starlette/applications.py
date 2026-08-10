@@ -20,8 +20,6 @@ P = ParamSpec("P")
 class Starlette:
     """Creates an Starlette application."""
 
-    _is_instrumented_by_opentelemetry = False
-
     def __init__(
         self: AppType,
         debug: bool = False,
@@ -31,6 +29,7 @@ class Starlette:
         lifespan: Lifespan[AppType] | None = None,
         *,
         max_body_size: int | None = None,
+        opentelemetry: bool = True,
     ) -> None:
         """Initializes the application.
 
@@ -53,11 +52,14 @@ class Starlette:
                 `on_startup` and `on_shutdown` handlers. Use one or the other, not both.
             max_body_size: Non-negative maximum total size in bytes of an HTTP request
                 body. The default, `None`, does not limit request body size.
+            opentelemetry: Enable native OpenTelemetry instrumentation when the optional
+                OpenTelemetry API dependency is installed. The default is `True`.
         """
         self.debug = debug
         self.state = State()
         self.router = Router(routes, lifespan=lifespan)
         self.max_body_size = max_body_size
+        self.opentelemetry = opentelemetry
         self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
         self.user_middleware = [] if middleware is None else list(middleware)
         self.middleware_stack: ASGIApp | None = None
@@ -83,7 +85,7 @@ class Starlette:
         for cls, args, kwargs in reversed(middleware):
             app = cls(app, *args, **kwargs)
 
-        if self._is_instrumented_by_opentelemetry:
+        if not self.opentelemetry:
             return app
 
         try:

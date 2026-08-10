@@ -99,6 +99,13 @@ app = OpenTelemetryMiddleware(app)
 
 Multiple native middleware instances on the same request create only one span.
 
+When using another ASGI instrumentor, disable Starlette's native instrumentation to avoid
+creating duplicate spans:
+
+```python
+app = Starlette(opentelemetry=False)
+```
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.

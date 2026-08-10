@@ -58,7 +58,7 @@ Install the optional API dependency with `pip install opentelemetry-api`, or as 
 chooses and configures the SDK and exporter. If no tracer provider is configured, Starlette
 skips tracing.
 
-Logfire configures a global OpenTelemetry provider, so no Starlette-specific instrumentation
+**Pydantic Logfire** configures a global OpenTelemetry provider, so no Starlette-specific instrumentation
 call or middleware is needed:
 
 ```python

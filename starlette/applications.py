@@ -20,6 +20,8 @@ P = ParamSpec("P")
 class Starlette:
     """Creates an Starlette application."""
 
+    _is_instrumented_by_opentelemetry = False
+
     def __init__(
         self: AppType,
         debug: bool = False,
@@ -80,6 +82,9 @@ class Starlette:
         app = self.router
         for cls, args, kwargs in reversed(middleware):
             app = cls(app, *args, **kwargs)
+
+        if self._is_instrumented_by_opentelemetry:
+            return app
 
         try:
             from starlette.middleware.opentelemetry import OpenTelemetryMiddleware

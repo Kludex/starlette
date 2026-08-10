@@ -385,6 +385,20 @@ def test_send_response_multi(test_client_factory: TestClientFactory) -> None:
     assert exc.value.headers["foo"] == "bar"
 
 
+def test_send_after_completed_denial_response_raises_runtime_error(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        message = await websocket.receive()
+        assert message == {"type": "websocket.connect"}
+        await websocket.send_denial_response(Response(status_code=404, content="foo"))
+        await websocket.send({"type": "websocket.http.response.body", "body": b"again"})
+
+    client = test_client_factory(app)
+    with pytest.raises(RuntimeError, match='Cannot call "send" once an HTTP denial response has been completed'):
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+
+
 def test_send_response_unsupported(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         del scope["extensions"]["websocket.http.response"]
@@ -488,7 +502,7 @@ def test_duplicate_close(test_client_factory: TestClientFactory) -> None:
         await websocket.close()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 

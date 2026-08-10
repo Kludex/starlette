@@ -77,29 +77,6 @@ def test_explicit_native_middleware_does_not_create_duplicate_span(
     assert get_span(exporter).name == "GET /"
 
 
-def test_native_instrumentation_can_be_disabled(
-    test_client_factory: TestClientFactory,
-    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
-) -> None:
-    _, exporter = tracer_provider
-
-    class ExternalOpenTelemetryMiddleware:
-        def __init__(self, app: ASGIApp) -> None:
-            self.app = app
-
-        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-            await self.app(scope, receive, send)
-
-    app = Starlette(
-        routes=[Route("/", homepage)],
-        middleware=[Middleware(ExternalOpenTelemetryMiddleware)],
-        enable_opentelemetry=False,
-    )
-
-    assert test_client_factory(app).get("/").status_code == 200
-    assert exporter.get_finished_spans() == ()
-
-
 def test_provider_configured_after_middleware_stack_is_built(
     monkeypatch: pytest.MonkeyPatch,
     test_client_factory: TestClientFactory,

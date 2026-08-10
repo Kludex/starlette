@@ -5,6 +5,7 @@ from typing import Any, ParamSpec, TypeVar
 
 from starlette.datastructures import State, URLPath
 from starlette.middleware import Middleware, _MiddlewareFactory
+from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
@@ -26,7 +27,8 @@ class Starlette:
         middleware: Sequence[Middleware] | None = None,
         exception_handlers: Mapping[Any, ExceptionHandler] | None = None,
         lifespan: Lifespan[AppType] | None = None,
-        enable_opentelemetry: bool = True,
+        *,
+        max_body_size: int | None = None,
     ) -> None:
         """Initializes the application.
 
@@ -47,15 +49,15 @@ class Starlette:
             lifespan: A lifespan context function, which can be used to perform
                 startup and shutdown tasks. This is a newer style that replaces the
                 `on_startup` and `on_shutdown` handlers. Use one or the other, not both.
-            enable_opentelemetry: Enable native OpenTelemetry tracing when the optional
-                dependency is installed. Disable this when using another ASGI instrumentor.
+            max_body_size: Non-negative maximum total size in bytes of an HTTP request
+                body. The default, `None`, does not limit request body size.
         """
         self.debug = debug
         self.state = State()
         self.router = Router(routes, lifespan=lifespan)
+        self.max_body_size = max_body_size
         self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
         self.user_middleware = [] if middleware is None else list(middleware)
-        self.enable_opentelemetry = enable_opentelemetry
         self.middleware_stack: ASGIApp | None = None
 
     def build_middleware_stack(self) -> ASGIApp:
@@ -69,22 +71,21 @@ class Starlette:
             else:
                 exception_handlers[key] = value
 
-        middleware = (
-            [Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug)]
-            + self.user_middleware
-            + [Middleware(ExceptionMiddleware, handlers=exception_handlers, debug=debug)]
-        )
+        middleware = [Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug)]
+        if self.max_body_size is not None:
+            middleware.append(Middleware(RequestBodyLimitMiddleware, max_body_size=self.max_body_size))
+        middleware += self.user_middleware
+        middleware.append(Middleware(ExceptionMiddleware, handlers=exception_handlers, debug=debug))
 
         app: ASGIApp = self.router
         for cls, args, kwargs in reversed(middleware):
             app = cls(app, *args, **kwargs)
 
-        if self.enable_opentelemetry:
-            try:
-                from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
-            except ImportError:
-                return app
-            app = OpenTelemetryMiddleware(app)
+        try:
+            from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+        except ImportError:
+            return app
+        app = OpenTelemetryMiddleware(app)
         return app
 
     @property

@@ -97,12 +97,7 @@ from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
 app = OpenTelemetryMiddleware(app)
 ```
 
-Multiple native middleware instances on the same request create only one span. When using another
-ASGI instrumentor, disable Starlette's native layer explicitly:
-
-```python
-app = Starlette(enable_opentelemetry=False)
-```
+Multiple native middleware instances on the same request create only one span.
 
 ## CORSMiddleware
 
@@ -264,6 +259,36 @@ hostname either use `allowed_hosts=["*"]` or omit the middleware.
 * `www_redirect` - If set to True, requests to non-www versions of the allowed hosts will be redirected to their www counterparts. Defaults to `True`.
 
 If an incoming request does not validate correctly then a 400 response will be sent.
+
+## RequestBodyLimitMiddleware
+
+Limits the total size of incoming HTTP request bodies. The limit applies to the
+raw body bytes, including multipart file data and multipart encoding overhead.
+Requests that exceed the limit receive a `413 Content Too Large` response.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.body_limit import RequestBodyLimitMiddleware
+
+
+routes = ...
+
+middleware = [
+    Middleware(RequestBodyLimitMiddleware, max_body_size=10 * 1024 * 1024)
+]
+
+app = Starlette(routes=routes, middleware=middleware)
+```
+
+The following argument is supported:
+
+* `max_body_size` - The non-negative maximum request body size in bytes.
+
+The middleware uses `Content-Length` to reject an oversized body before reading
+it when possible, and always counts the body bytes received from the ASGI server.
+This also supports requests without `Content-Length` and prevents an understated
+header from bypassing the limit.
 
 ## GZipMiddleware
 

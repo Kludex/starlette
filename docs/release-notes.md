@@ -2,6 +2,35 @@
 toc_depth: 2
 ---
 
+## 1.6.0 (August 8, 2026)
+
+#### Added
+
+* Add `max_body_size` to `Starlette` and route classes [#3431](https://github.com/encode/starlette/pull/3431).
+* Expose `http.response.debug` information via response extensions [#3130](https://github.com/encode/starlette/pull/3130).
+
+## 1.5.1 (August 8, 2026)
+
+#### Fixed
+
+* Reject inverted single-byte ranges in `FileResponse` [#3389](https://github.com/encode/starlette/pull/3389).
+* Limit `FileResponse` to 100 ranges [#3430](https://github.com/encode/starlette/pull/3430).
+
+## 1.5.0 (August 8, 2026)
+
+#### Added
+
+* Add `exclude_content_types` parameter to `GZipMiddleware` [#3418](https://github.com/encode/starlette/pull/3418).
+
+#### Changed
+
+* Expand default excluded content types in `GZipMiddleware` [#3421](https://github.com/encode/starlette/pull/3421).
+
+#### Fixed
+
+* Flush GZip output for each streamed chunk [#3419](https://github.com/encode/starlette/pull/3419).
+* Skip compression of partial responses in `GZipMiddleware` [#3420](https://github.com/encode/starlette/pull/3420).
+
 ## 1.4.1 (August 5, 2026)
 
 #### Fixed

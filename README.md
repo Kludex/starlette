@@ -138,4 +138,4 @@ in isolation.
 [itsdangerous]: https://itsdangerous.palletsprojects.com/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation
-[techempower]: https://www.techempower.com/benchmarks/#hw=ph&test=fortune&l=zijzen-sf
+[techempower]: https://github.com/TechEmpower/FrameworkBenchmarks

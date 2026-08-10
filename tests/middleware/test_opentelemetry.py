@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import importlib.util
+import sys
 from collections.abc import Generator
+from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
@@ -10,14 +12,15 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import SpanKind, StatusCode
 
-from starlette.applications import Starlette, _wrap_with_opentelemetry
-from starlette.middleware import Middleware, opentelemetry as opentelemetry_middleware
-from starlette.middleware.opentelemetry import _get_attributes, _OpenTelemetryMiddleware, _scope_getter
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.errors import ServerErrorMiddleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import BaseRoute, Host, Match, Mount, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
@@ -45,10 +48,10 @@ def homepage(request: Request) -> PlainTextResponse:
 
 
 def test_missing_opentelemetry_dependency_does_not_wrap_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    app = PlainTextResponse("Hello")
-    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setitem(sys.modules, "starlette.middleware.opentelemetry", None)
+    app = Starlette(routes=[Route("/", homepage)])
 
-    assert _wrap_with_opentelemetry(app) is app
+    assert isinstance(app.build_middleware_stack(), ServerErrorMiddleware)
 
 
 def test_noop_provider_skips_instrumentation(
@@ -56,13 +59,45 @@ def test_noop_provider_skips_instrumentation(
     test_client_factory: TestClientFactory,
 ) -> None:
     monkeypatch.setattr(trace, "get_tracer_provider", trace.NoOpTracerProvider)
-    monkeypatch.setattr(
-        opentelemetry_middleware,
-        "_set_route",
-        lambda span, scope, method: pytest.fail("Route instrumentation should be skipped without a tracer provider"),
-    )
 
     assert test_client_factory(Starlette(routes=[Route("/", homepage)])).get("/").status_code == 200
+
+
+def test_explicit_native_middleware_does_not_create_duplicate_span(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
+
+    assert test_client_factory(app).get("/").status_code == 200
+    assert get_span(exporter).name == "GET /"
+
+
+def test_native_instrumentation_can_be_disabled(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+
+    class ExternalOpenTelemetryMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            await self.app(scope, receive, send)
+
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(ExternalOpenTelemetryMiddleware)],
+        enable_opentelemetry=False,
+    )
+
+    assert test_client_factory(app).get("/").status_code == 200
+    assert exporter.get_finished_spans() == ()
 
 
 def test_provider_configured_after_middleware_stack_is_built(
@@ -136,6 +171,29 @@ def test_mounted_starlette_app_does_not_create_duplicate_span(
 
     span = get_span(exporter)
     assert span.name == "GET /api/users/{username}"
+
+
+def test_nested_in_process_request_creates_its_own_span(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    inner_app = Starlette(routes=[Route("/inner", homepage)])
+
+    async def call_inner(request: Request) -> PlainTextResponse:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=inner_app),
+            base_url="http://inner",
+        ) as client:
+            response = await client.get("/inner")
+        return PlainTextResponse(response.text)
+
+    app = Starlette(routes=[Route("/outer", call_inner)])
+
+    assert test_client_factory(app).get("/outer").status_code == 200
+    spans = exporter.get_finished_spans()
+    assert len(spans) == 2
+    assert {span.name for span in spans} == {"GET /inner", "GET /outer"}
 
 
 def test_instrumentation_uses_actual_route_match_once(
@@ -351,7 +409,7 @@ def test_http_span_without_starlette_app(
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
-    app = _OpenTelemetryMiddleware(PlainTextResponse("raw"))
+    app = OpenTelemetryMiddleware(PlainTextResponse("raw"))
 
     assert test_client_factory(app).get("/raw").text == "raw"
 
@@ -361,7 +419,11 @@ def test_http_span_without_starlette_app(
     assert "http.route" not in span.attributes
 
 
-def test_scope_helpers_cover_optional_values() -> None:
+@pytest.mark.anyio
+async def test_http_span_handles_optional_scope_values(
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
     scope: Scope = {
         "type": "http",
         "method": "get",
@@ -371,20 +433,29 @@ def test_scope_helpers_cover_optional_values() -> None:
         "server": ("example.com", 8000),
     }
 
-    assert _scope_getter.get(scope, "X-EXAMPLE") == ["one", "two"]
-    assert _scope_getter.get(scope, "missing") is None
-    assert _scope_getter.keys(scope) == ["x-example", "X-Example"]
-    assert _get_attributes(scope, "GET") == {
-        "http.request.method": "GET",
-        "http.request.method_original": "get",
-        "url.path": "/",
-        "url.scheme": "http",
-        "server.address": "example.com",
-        "server.port": 8000,
-    }
+    messages: list[Message] = []
 
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    app = OpenTelemetryMiddleware(PlainTextResponse("raw"))
+    await app(scope, AsyncMock(), send)
+
+    span = get_span(exporter)
+    assert span.attributes is not None
+    assert span.attributes["http.request.method"] == "GET"
+    assert span.attributes["http.request.method_original"] == "get"
+    assert span.attributes["server.address"] == "example.com"
+    assert span.attributes["server.port"] == 8000
+    assert "network.protocol.version" not in span.attributes
+    assert "client.address" not in span.attributes
+
+    exporter.clear()
     scope["server"] = None
-    assert "server.address" not in _get_attributes(scope, "GET")
+    await app(scope, AsyncMock(), send)
+    span = get_span(exporter)
+    assert span.attributes is not None
+    assert "server.address" not in span.attributes
 
 
 def test_non_http_scopes_are_not_traced(

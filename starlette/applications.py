@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Any, ParamSpec, TypeVar
 
@@ -17,15 +16,6 @@ AppType = TypeVar("AppType", bound="Starlette")
 P = ParamSpec("P")
 
 
-def _wrap_with_opentelemetry(app: ASGIApp) -> ASGIApp:
-    if importlib.util.find_spec("opentelemetry") is None:
-        return app
-
-    from starlette.middleware.opentelemetry import _OpenTelemetryMiddleware
-
-    return _OpenTelemetryMiddleware(app)
-
-
 class Starlette:
     """Creates an Starlette application."""
 
@@ -36,6 +26,7 @@ class Starlette:
         middleware: Sequence[Middleware] | None = None,
         exception_handlers: Mapping[Any, ExceptionHandler] | None = None,
         lifespan: Lifespan[AppType] | None = None,
+        enable_opentelemetry: bool = True,
     ) -> None:
         """Initializes the application.
 
@@ -56,12 +47,15 @@ class Starlette:
             lifespan: A lifespan context function, which can be used to perform
                 startup and shutdown tasks. This is a newer style that replaces the
                 `on_startup` and `on_shutdown` handlers. Use one or the other, not both.
+            enable_opentelemetry: Enable native OpenTelemetry tracing when the optional
+                dependency is installed. Disable this when using another ASGI instrumentor.
         """
         self.debug = debug
         self.state = State()
         self.router = Router(routes, lifespan=lifespan)
         self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
         self.user_middleware = [] if middleware is None else list(middleware)
+        self.enable_opentelemetry = enable_opentelemetry
         self.middleware_stack: ASGIApp | None = None
 
     def build_middleware_stack(self) -> ASGIApp:
@@ -81,10 +75,17 @@ class Starlette:
             + [Middleware(ExceptionMiddleware, handlers=exception_handlers, debug=debug)]
         )
 
-        app = self.router
+        app: ASGIApp = self.router
         for cls, args, kwargs in reversed(middleware):
             app = cls(app, *args, **kwargs)
-        return _wrap_with_opentelemetry(app)
+
+        if self.enable_opentelemetry:
+            try:
+                from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+            except ImportError:
+                return app
+            app = OpenTelemetryMiddleware(app)
+        return app
 
     @property
     def routes(self) -> list[BaseRoute]:

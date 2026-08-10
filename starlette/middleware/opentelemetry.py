@@ -1,14 +1,24 @@
 from __future__ import annotations
 
-from opentelemetry import propagate, trace
-from opentelemetry.trace import SpanKind, Status, StatusCode
+import os
+
+try:
+    from opentelemetry import propagate, trace
+    from opentelemetry.trace import SpanKind, Status, StatusCode
+except ImportError:  # pragma: no cover
+    raise ImportError("The `opentelemetry-api` package is required to use `OpenTelemetryMiddleware`.") from None
 
 from starlette import __version__
 from starlette.datastructures import URL
 from starlette.routing import Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-_KNOWN_HTTP_METHODS = {"CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"}
+_KNOWN_HTTP_METHODS = frozenset(
+    os.environ.get(
+        "OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS",
+        "CONNECT,DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT,QUERY,TRACE",
+    ).split(",")
+)
 
 
 class OpenTelemetryMiddleware:
@@ -32,6 +42,10 @@ class OpenTelemetryMiddleware:
         else:
             span_method, attribute_method = "HTTP", "_OTHER"
 
+        headers: dict[str, list[str]] = {}
+        for name, value in scope.get("headers", []):
+            headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
+
         url = URL(scope=scope)
         attributes: dict[str, str | int] = {
             "http.request.method": attribute_method,
@@ -44,16 +58,16 @@ class OpenTelemetryMiddleware:
             attributes["url.query"] = url.query
         if url.hostname is not None:
             attributes["server.address"] = url.hostname
-        if url.port is not None:
-            attributes["server.port"] = url.port
+            server = scope.get("server")
+            server_port = url.port if url.port is not None else server[1] if server is not None else None
+            if server_port is not None:
+                attributes["server.port"] = server_port
         if scope.get("http_version"):
             attributes["network.protocol.version"] = scope["http_version"]
         if scope.get("client") is not None:
             attributes["client.address"] = scope["client"][0]
-
-        headers: dict[str, list[str]] = {}
-        for name, value in scope.get("headers", []):
-            headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
+        if headers.get("user-agent"):
+            attributes["user_agent.original"] = headers["user-agent"][0]
 
         scope["starlette.opentelemetry"] = True
 

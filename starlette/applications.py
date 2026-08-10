@@ -77,7 +77,7 @@ class Starlette:
         middleware += self.user_middleware
         middleware.append(Middleware(ExceptionMiddleware, handlers=exception_handlers, debug=debug))
 
-        app: ASGIApp = self.router
+        app = self.router
         for cls, args, kwargs in reversed(middleware):
             app = cls(app, *args, **kwargs)
 
@@ -85,8 +85,7 @@ class Starlette:
             from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
         except ImportError:
             return app
-        app = OpenTelemetryMiddleware(app)
-        return app
+        return OpenTelemetryMiddleware(app)
 
     @property
     def routes(self) -> list[BaseRoute]:

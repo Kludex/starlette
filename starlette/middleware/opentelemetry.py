@@ -11,10 +11,6 @@ from starlette.datastructures import URL
 from starlette.routing import Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-_KNOWN_HTTP_METHODS = frozenset(
-    {"CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY", "TRACE"}
-)
-
 
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests."""
@@ -32,10 +28,6 @@ class OpenTelemetryMiddleware:
 
         original_method = scope.get("method", "")
         method = original_method.upper()
-        if method in _KNOWN_HTTP_METHODS:
-            span_method = attribute_method = method
-        else:
-            span_method, attribute_method = "HTTP", "_OTHER"
 
         headers: dict[str, list[str]] = {}
         for name, value in scope.get("headers", []):
@@ -43,11 +35,11 @@ class OpenTelemetryMiddleware:
 
         url = URL(scope=scope)
         attributes: dict[str, str | int] = {
-            "http.request.method": attribute_method,
+            "http.request.method": method,
             "url.path": scope.get("path", ""),
             "url.scheme": scope.get("scheme", "http"),
         }
-        if attribute_method == "_OTHER" or original_method != attribute_method:
+        if original_method != method:
             attributes["http.request.method_original"] = original_method
         if url.query:
             attributes["url.query"] = url.query
@@ -68,7 +60,7 @@ class OpenTelemetryMiddleware:
 
         try:
             with tracer_provider.get_tracer("starlette", __version__).start_as_current_span(
-                span_method,
+                method,
                 context=propagate.extract(headers),
                 kind=SpanKind.SERVER,
                 attributes=attributes,
@@ -100,7 +92,7 @@ class OpenTelemetryMiddleware:
                             else None
                         )
                     if route_path is not None:
-                        span.update_name(f"{span_method} {route_path}")
+                        span.update_name(f"{method} {route_path}")
                         span.set_attribute("http.route", route_path)
         finally:
             del scope["starlette.opentelemetry"]

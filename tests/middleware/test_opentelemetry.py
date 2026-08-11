@@ -378,37 +378,6 @@ def test_http_span_records_error_response(
     assert span.status.status_code == StatusCode.ERROR
 
 
-def test_http_span_sanitizes_unknown_method(
-    test_client_factory: TestClientFactory,
-    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
-) -> None:
-    _, exporter = tracer_provider
-    app = Starlette(routes=[Route("/", PlainTextResponse("OK"))])
-
-    assert test_client_factory(app).request("CUSTOM", "/").status_code == 200
-
-    span = get_span(exporter)
-    assert span.name == "HTTP /"
-    assert span.attributes is not None
-    assert span.attributes["http.request.method"] == "_OTHER"
-    assert span.attributes["http.request.method_original"] == "CUSTOM"
-
-
-def test_query_is_a_known_http_method(
-    test_client_factory: TestClientFactory,
-    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
-) -> None:
-    _, exporter = tracer_provider
-    app = Starlette(routes=[Route("/", PlainTextResponse("OK"), methods=["QUERY"])])
-
-    assert test_client_factory(app).request("QUERY", "/").status_code == 200
-
-    span = get_span(exporter)
-    assert span.name == "QUERY /"
-    assert span.attributes is not None
-    assert span.attributes["http.request.method"] == "QUERY"
-
-
 def test_http_span_without_starlette_app(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],

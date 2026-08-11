@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 try:
     from opentelemetry import propagate, trace
     from opentelemetry.trace import SpanKind, Status, StatusCode
@@ -14,10 +12,7 @@ from starlette.routing import Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _KNOWN_HTTP_METHODS = frozenset(
-    os.environ.get(
-        "OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS",
-        "CONNECT,DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT,QUERY,TRACE",
-    ).split(",")
+    {"CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY", "TRACE"}
 )
 
 

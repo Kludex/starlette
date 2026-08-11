@@ -13,7 +13,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from opentelemetry.trace import SpanKind, StatusCode
 
 from starlette.applications import Starlette
-from starlette.middleware import Middleware, opentelemetry as opentelemetry_middleware
+from starlette.middleware import Middleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
 from starlette.requests import Request
@@ -392,24 +392,6 @@ def test_http_span_sanitizes_unknown_method(
     assert span.attributes is not None
     assert span.attributes["http.request.method"] == "_OTHER"
     assert span.attributes["http.request.method_original"] == "CUSTOM"
-
-
-def test_known_http_methods_can_be_overridden(
-    monkeypatch: pytest.MonkeyPatch,
-    test_client_factory: TestClientFactory,
-    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
-) -> None:
-    _, exporter = tracer_provider
-    monkeypatch.setattr(opentelemetry_middleware, "_KNOWN_HTTP_METHODS", frozenset({"CUSTOM"}))
-    app = Starlette(routes=[Route("/", PlainTextResponse("OK"), methods=["CUSTOM"])])
-
-    assert test_client_factory(app).request("CUSTOM", "/").status_code == 200
-
-    span = get_span(exporter)
-    assert span.name == "CUSTOM /"
-    assert span.attributes is not None
-    assert span.attributes["http.request.method"] == "CUSTOM"
-    assert "http.request.method_original" not in span.attributes
 
 
 def test_query_is_a_known_http_method(

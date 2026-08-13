@@ -76,3 +76,7 @@ def test_ipv6_trusted_host(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/", headers={"host": "[::1]evil.com"})
     assert response.status_code == 400
+
+    # Invalid host with unclosed bracket
+    response = client.get("/", headers={"host": "[unclosed"})
+    assert response.status_code == 400

@@ -146,6 +146,10 @@ routes = [
 app = Starlette(routes=routes)
 ```
 
+Mounted applications receive [lifespan](lifespan.md#mounted-applications)
+startup and shutdown. Apps that do not implement the lifespan protocol are
+skipped.
+
 ## Reverse URL lookups
 
 You'll often want to be able to generate the URL for a particular route,

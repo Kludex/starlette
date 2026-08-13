@@ -156,3 +156,18 @@ def test_homepage():
 
     # And the lifespan's teardown is run when exiting the block.
 ```
+
+## Mounted applications
+
+Lifespan events are propagated to mounted applications (`Mount` and `Host`).
+Each mounted ASGI app receives its own startup and shutdown.
+
+This is what makes composable apps work: an MCP server, a FastAPI sub-app, or
+any other ASGI app with a lifespan can be mounted without the parent having to
+re-implement that child's startup.
+
+Applications that do not support the lifespan protocol — for example
+`StaticFiles` or a plain `Response` — are skipped.
+
+Nested mounts are supported. Each router propagates lifespan to its own mounts.
+Child lifespan state is merged into the same `state` dictionary as the parent.

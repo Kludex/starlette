@@ -2,6 +2,12 @@
 toc_depth: 2
 ---
 
+## Unreleased
+
+#### Added
+
+* Propagate ASGI lifespan events to mounted applications and hosts [#649](https://github.com/Kludex/starlette/issues/649).
+
 ## 1.6.0 (August 8, 2026)
 
 #### Added

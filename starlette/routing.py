@@ -23,7 +23,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
-from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
+from starlette.types import ASGIApp, Lifespan, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
 
 
@@ -570,6 +570,81 @@ class _DefaultLifespan:
         return self
 
 
+def _mounted_lifespan_apps(routes: Sequence[BaseRoute]) -> list[ASGIApp]:
+    return [route.app for route in routes if isinstance(route, Mount | Host)]
+
+
+def _lifespan_child_scope(scope: Scope) -> Scope:
+    child_scope: Scope = {
+        "type": "lifespan",
+        # spec_version 2.4 so HTTP apps (Response, etc.) do not call receive()
+        # looking for http.disconnect when given a lifespan scope.
+        "asgi": {"version": "3.0", "spec_version": "2.4"},
+    }
+    if "state" in scope:
+        child_scope["state"] = scope["state"]
+    return child_scope
+
+
+async def _run_mounted_lifespans(
+    apps: Sequence[ASGIApp],
+    scope: Scope,
+    startup_complete: Callable[[], Awaitable[None]],
+) -> None:
+    """Run mounted ASGI lifespans, then `startup_complete`, then shut them down.
+
+    Child apps are stacked via receive() callbacks (an "onion"), not task groups.
+    Task groups previously caused review concerns around cancellation races
+    (see https://github.com/Kludex/starlette/pull/1988).
+    """
+    remaining = list(apps)
+
+    async def run_next() -> None:
+        if not remaining:
+            await startup_complete()
+            return
+
+        app = remaining.pop(0)
+        received: list[str] = []
+        sent: list[str] = []
+
+        async def child_receive() -> Message:
+            if not received:
+                received.append("lifespan.startup")
+                return {"type": "lifespan.startup"}
+            if received[-1] == "lifespan.startup":
+                await run_next()
+                received.append("lifespan.shutdown")
+                return {"type": "lifespan.shutdown"}
+            raise RuntimeError("Mounted application called receive() too many times during lifespan")
+
+        async def child_send(message: Message) -> None:
+            message_type = message.get("type")
+            if not isinstance(message_type, str) or not message_type.startswith("lifespan."):
+                return
+            sent.append(message_type)
+
+        try:
+            await app(_lifespan_child_scope(scope), child_receive, child_send)
+        except BaseException:
+            if "lifespan.startup" in received:
+                raise
+            await run_next()
+            return
+
+        if "lifespan.startup.failed" in sent:
+            raise RuntimeError("Mounted application failed during lifespan startup")
+        if "lifespan.shutdown.failed" in sent:
+            raise RuntimeError("Mounted application failed during lifespan shutdown")
+        if "lifespan.startup.complete" not in sent:
+            await run_next()
+            return
+        if "lifespan.shutdown" not in received:
+            raise RuntimeError("Mounted application lifespan exited before shutdown")
+
+    await run_next()
+
+
 class Router:
     def __init__(
         self,
@@ -644,15 +719,20 @@ class Router:
         started = False
         app: Any = scope.get("app")
         await receive()
+
+        async def startup_complete() -> None:
+            nonlocal started
+            await send({"type": "lifespan.startup.complete"})
+            started = True
+            await receive()
+
         try:
             async with self.lifespan_context(app) as maybe_state:
                 if maybe_state is not None:
                     if "state" not in scope:
                         raise RuntimeError('The server does not support "state" in the lifespan scope.')
                     scope["state"].update(maybe_state)
-                await send({"type": "lifespan.startup.complete"})
-                started = True
-                await receive()
+                await _run_mounted_lifespans(_mounted_lifespan_apps(self.routes), scope, startup_complete)
         except BaseException:
             exc_text = traceback.format_exc()
             if started:

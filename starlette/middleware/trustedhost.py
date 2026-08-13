@@ -42,7 +42,7 @@ class TrustedHostMiddleware:
             if "]" in raw_host:
                 closing_bracket = raw_host.find("]")
                 suffix = raw_host[closing_bracket + 1 :]
-                if not suffix or (suffix.startswith(":") and suffix[1:].isdigit()):
+                if not suffix or (suffix.startswith(":") and suffix[1:].isascii() and suffix[1:].isdigit()):
                     host = raw_host[: closing_bracket + 1]
                 else:
                     host = raw_host
@@ -53,7 +53,11 @@ class TrustedHostMiddleware:
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:
-            if host == pattern or (pattern.startswith("*") and host.endswith(pattern[1:])):
+            if host == pattern or (
+                pattern.startswith("*")
+                and not host.startswith("[")
+                and host.endswith(pattern[1:])
+            ):
                 is_valid_host = True
                 break
             elif "www." + host == pattern:

@@ -77,11 +77,7 @@ def test_ipv6_trusted_host(test_client_factory: TestClientFactory) -> None:
 
 
 def test_ipv6_invalid_host_header(test_client_factory: TestClientFactory) -> None:
-    def homepage(request: Request) -> PlainTextResponse:
-        return PlainTextResponse("OK", status_code=200)
-
     app = Starlette(
-        routes=[Route("/", endpoint=homepage)],
         middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]", "*.example.com"])],
     )
 
@@ -101,7 +97,7 @@ async def test_ipv6_non_ascii_port_rejected() -> None:
     sent_status = None
 
     async def dummy_app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": []})
+        raise RuntimeError("Should not be called")  # pragma: no cover
 
     middleware = TrustedHostMiddleware(dummy_app, allowed_hosts=["[::1]"])
     scope: Scope = {
@@ -117,7 +113,7 @@ async def test_ipv6_non_ascii_port_rejected() -> None:
             sent_status = message["status"]
 
     async def receive() -> Message:
-        return {"type": "http.request"}
+        raise RuntimeError("Should not be called")  # pragma: no cover
 
     await middleware(scope, receive, send)
     assert sent_status == 400

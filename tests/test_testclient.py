@@ -470,3 +470,23 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
+
+
+def test_testclient_ipv6_base_url(test_client_factory: TestClientFactory) -> None:
+    server_scope = None
+
+    def homepage(request: Request) -> Response:
+        nonlocal server_scope
+        server_scope = request.scope["server"]
+        return Response("OK")
+
+    app = Starlette(routes=[Route("/", endpoint=homepage)])
+
+    client = test_client_factory(app, base_url="http://[::1]")
+    response = client.get("/")
+    assert response.status_code == 200
+    assert server_scope == ["::1", 80]
+
+    client = test_client_factory(app, base_url="http://[unclosed")
+    response = client.get("/")
+    assert response.status_code == 200

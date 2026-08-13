@@ -72,11 +72,19 @@ def test_ipv6_trusted_host(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.status_code == 400
 
-    # Invalid host with suffix after closing bracket
+
+def test_ipv6_invalid_host_header(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("OK", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]"])],
+    )
+
     client = test_client_factory(app)
     response = client.get("/", headers={"host": "[::1]evil.com"})
     assert response.status_code == 400
 
-    # Invalid host with unclosed bracket
     response = client.get("/", headers={"host": "[unclosed"})
     assert response.status_code == 400

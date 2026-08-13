@@ -39,7 +39,15 @@ class TrustedHostMiddleware:
         headers = Headers(scope=scope)
         raw_host = headers.get("host", "")
         if raw_host.startswith("["):
-            host = raw_host.partition("]")[0] + "]" if "]" in raw_host else raw_host
+            if "]" in raw_host:
+                closing_bracket = raw_host.find("]")
+                suffix = raw_host[closing_bracket + 1 :]
+                if not suffix or (suffix.startswith(":") and suffix[1:].isdigit()):
+                    host = raw_host[: closing_bracket + 1]
+                else:
+                    host = raw_host
+            else:
+                host = raw_host
         else:
             host = raw_host.split(":")[0]
         is_valid_host = False

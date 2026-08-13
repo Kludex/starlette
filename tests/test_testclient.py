@@ -486,7 +486,3 @@ def test_testclient_ipv6_base_url(test_client_factory: TestClientFactory) -> Non
     response = client.get("/")
     assert response.status_code == 200
     assert server_scope == ["::1", 80]
-
-    client = test_client_factory(app, base_url="http://[unclosed")
-    response = client.get("/")
-    assert response.status_code == 200

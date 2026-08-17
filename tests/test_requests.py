@@ -58,7 +58,7 @@ def test_request_headers(test_client_factory: TestClientFactory) -> None:
         "headers": {
             "host": "example.org",
             "user-agent": "testclient",
-            "accept-encoding": "gzip, deflate",
+            "accept-encoding": "gzip, deflate, zstd",
             "accept": "*/*",
             "connection": "keep-alive",
         }
@@ -165,7 +165,7 @@ def test_request_stream_then_body(test_client_factory: TestClientFactory) -> Non
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
         chunks = b""
-        async for chunk in request.stream():
+        async for chunk in request.stream():  # pragma: no branch
             chunks += chunk
         try:
             body = await request.body()
@@ -268,8 +268,8 @@ def test_request_disconnect(
 
 def test_request_is_disconnected(test_client_factory: TestClientFactory) -> None:
     """
-    If a client disconnect occurs after reading request body
-    then request will be set disconnected properly.
+    After the response is sent, the receive stream is drained, so a subsequent
+    `is_disconnected()` call reports the request as disconnected.
     """
     disconnected_after_response = None
 
@@ -301,6 +301,28 @@ def test_request_state_object() -> None:
 
     with pytest.raises(AttributeError):
         s.new
+
+    # Test dictionary-style methods
+    # Test __setitem__
+    s["dict_key"] = "dict_value"
+    assert s["dict_key"] == "dict_value"
+    assert s.dict_key == "dict_value"
+
+    # Test __iter__
+    s["another_key"] = "another_value"
+    keys = list(s)
+    assert "old" in keys
+    assert "dict_key" in keys
+    assert "another_key" in keys
+
+    # Test __len__
+    assert len(s) == 3
+
+    # Test __delitem__
+    del s["dict_key"]
+    assert len(s) == 2
+    with pytest.raises(KeyError):
+        s["dict_key"]
 
 
 def test_request_state(test_client_factory: TestClientFactory) -> None:
@@ -415,7 +437,7 @@ def test_cookies_edge_cases(
             "abc=def; unnamed; django_language=en",
             {"": "unnamed", "abc": "def", "django_language": "en"},
         ),
-        # Even a double quote may be an unamed value.
+        # Even a double quote may be an unnamed value.
         ('a=b; "; c=d', {"a": "b", "": '"', "c": "d"}),
         # Spaces in names and values, and an equals sign in values.
         ("a b c=d e = f; gh=i", {"a b c": "d e = f", "gh": "i"}),

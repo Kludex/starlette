@@ -214,6 +214,9 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     second_resp = client.get("/example.txt", headers={"if-none-match": f'W/{last_etag}, "123"'})
     assert second_resp.status_code == 304
     assert second_resp.content == b""
+    second_resp = client.get("/example.txt", headers={"if-none-match": f'"123",\tW/{last_etag}'})
+    assert second_resp.status_code == 304
+    assert second_resp.content == b""
 
 
 def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
@@ -227,6 +230,24 @@ def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: T
     assert first_resp.status_code == 200
     assert first_resp.headers["etag"] != '"123"'
     second_resp = client.get("/example.txt", headers={"if-none-match": '"123"'})
+    assert second_resp.status_code == 200
+    assert second_resp.content == b"<file content>"
+
+
+def test_staticfiles_200_with_etag_mismatch_and_timestamp_match(
+    tmpdir: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = tmpdir / "example.txt"
+    path.write_text("<file content>", encoding="utf-8")
+
+    app = StaticFiles(directory=tmpdir)
+    client = test_client_factory(app)
+    first_resp = client.get("/example.txt")
+    assert first_resp.status_code == 200
+    assert first_resp.headers["etag"] != '"123"'
+    last_modified = first_resp.headers["last-modified"]
+    # If `if-none-match` is present, `if-modified-since` is ignored.
+    second_resp = client.get("/example.txt", headers={"if-none-match": '"123"', "if-modified-since": last_modified})
     assert second_resp.status_code == 200
     assert second_resp.content == b"<file content>"
 
@@ -442,6 +463,16 @@ def test_staticfiles_access_file_as_dir_returns_404(tmpdir: Path, test_client_fa
     assert response.text == "Not Found"
 
 
+def test_staticfiles_null_byte_in_path(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
+    routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
+    app = Starlette(routes=routes)
+    client = test_client_factory(app)
+
+    response = client.get("/example%00.txt")
+    assert response.status_code == 404
+
+
+@pytest.mark.skipif(not hasattr(os, "pathconf"), reason="os.pathconf is Unix-only")
 def test_staticfiles_filename_too_long(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     routes = [Mount("/", app=StaticFiles(directory=tmpdir), name="static")]
     app = Starlette(routes=routes)
@@ -574,6 +605,26 @@ def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"
+
+
+def test_staticfiles_rejects_absolute_paths(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    app = StaticFiles(directory=statics_path)
+
+    full_path, stat_result = app.lookup_path("/etc/passwd")
+    assert full_path == ""
+    assert stat_result is None
+
+
+def test_staticfiles_rejects_absolute_windows_paths(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    app = StaticFiles(directory=statics_path)
+
+    full_path, stat_result = app.lookup_path("\\\\server\\share")
+    assert full_path == ""
+    assert stat_result is None
 
 
 def test_staticfiles_self_symlinks(tmp_path: Path, test_client_factory: TestClientFactory) -> None:

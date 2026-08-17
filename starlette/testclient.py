@@ -7,18 +7,11 @@ import json
 import math
 import sys
 import warnings
-from collections.abc import Awaitable, Generator, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, MutableMapping, Sequence
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from types import GeneratorType
-from typing import (
-    Any,
-    Callable,
-    Literal,
-    TypedDict,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeGuard, cast
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -27,27 +20,36 @@ import anyio.from_thread
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
-
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import TypeGuard
-else:  # pragma: no cover
-    from typing_extensions import TypeGuard
 
 if sys.version_info >= (3, 11):  # pragma: no cover
     from typing import Self
 else:  # pragma: no cover
     from typing_extensions import Self
 
-try:
-    import httpx
-except ModuleNotFoundError:  # pragma: no cover
-    raise RuntimeError(
-        "The starlette.testclient module requires the httpx package to be installed.\n"
-        "You can install this with:\n"
-        "    $ pip install httpx\n"
-    )
+if TYPE_CHECKING:
+    import httpx2 as httpx
+else:
+    try:
+        import httpx2 as httpx
+    except ModuleNotFoundError:  # pragma: no cover
+        try:
+            import httpx
+        except ModuleNotFoundError:
+            raise RuntimeError(
+                "The starlette.testclient module requires the httpx2 package to be installed.\n"
+                "You can install this with:\n"
+                "    $ pip install httpx2\n"
+            ) from None
+        else:
+            warnings.warn(
+                "Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.",
+                StarletteDeprecationWarning,
+                stacklevel=2,
+            )
+
 _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
@@ -55,7 +57,7 @@ ASGI2App = Callable[[Scope], ASGIInstance]
 ASGI3App = Callable[[Scope, Receive, Send], Awaitable[None]]
 
 
-_RequestData = Mapping[str, Union[str, Iterable[str], bytes]]
+_RequestData = Mapping[str, str | Iterable[str] | bytes]
 
 
 def _is_asgi3(app: ASGI2App | ASGI3App) -> TypeGuard[ASGI3App]:
@@ -110,7 +112,7 @@ class WebSocketTestSession:
         self.portal_factory = portal_factory
         self.extra_headers = None
 
-    def __enter__(self) -> WebSocketTestSession:
+    def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
             self.portal = portal = stack.enter_context(self.portal_factory())
             fut, cs = portal.start_task(self._run)
@@ -292,8 +294,7 @@ class _TestClientTransport(httpx.BaseTransport):
         response_started = False
         response_complete: anyio.Event
         raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
-        template = None
-        context = None
+        debug_info: dict[str, Any] | None = None
 
         async def receive() -> Message:
             nonlocal request_complete
@@ -324,7 +325,7 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, template, context
+            nonlocal raw_kwargs, response_started, debug_info
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
@@ -342,8 +343,7 @@ class _TestClientTransport(httpx.BaseTransport):
                     raw_kwargs["stream"].seek(0)
                     response_complete.set()
             elif message["type"] == "http.response.debug":
-                template = message["info"]["template"]
-                context = message["info"]["context"]
+                debug_info = message["info"]
 
         try:
             with self.portal_factory() as portal:
@@ -365,9 +365,12 @@ class _TestClientTransport(httpx.BaseTransport):
         raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
 
         response = httpx.Response(**raw_kwargs, request=request)
-        if template is not None:
-            response.template = template  # type: ignore[attr-defined]
-            response.context = context  # type: ignore[attr-defined]
+        if debug_info is not None:
+            response.extensions["http.response.debug"] = debug_info
+            if "template" in debug_info:
+                response.template = debug_info["template"]  # type: ignore[attr-defined]
+            if "context" in debug_info:
+                response.context = debug_info["context"]  # type: ignore[attr-defined]
         return response
 
 
@@ -445,7 +448,8 @@ class TestClient(httpx.Client):
             warnings.warn(
                 "You should not use the 'timeout' argument with the TestClient. "
                 "See https://github.com/Kludex/starlette/issues/1108 for more information.",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
+                stacklevel=2,
             )
         url = self._merge_url(url)
         return super().request(

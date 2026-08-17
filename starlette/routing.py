@@ -7,19 +7,20 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Collection, Generator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
-from starlette.exceptions import HTTPException
+from starlette.exceptions import HTTPException, StarletteDeprecationWarning
 from starlette.middleware import Middleware
+from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
@@ -43,20 +44,6 @@ class Match(Enum):
     FULL = 2
 
 
-def iscoroutinefunction_or_partial(obj: Any) -> bool:  # pragma: no cover
-    """
-    Correctly determines if an object is a coroutine function,
-    including those wrapped in functools.partial objects.
-    """
-    warnings.warn(
-        "iscoroutinefunction_or_partial is deprecated, and will be removed in a future release.",
-        DeprecationWarning,
-    )
-    while isinstance(obj, functools.partial):
-        obj = obj.func
-    return inspect.iscoroutinefunction(obj)
-
-
 def request_response(
     func: Callable[[Request], Awaitable[Response] | Response],
 ) -> ASGIApp:
@@ -65,7 +52,7 @@ def request_response(
     and returns an ASGI application.
     """
     f: Callable[[Request], Awaitable[Response]] = (
-        func if is_async_callable(func) else functools.partial(run_in_threadpool, func)
+        func if is_async_callable(func) else functools.partial(run_in_threadpool, func)  # type: ignore[assignment, call-arg]
     )
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -137,7 +124,7 @@ def compile_path(
 
     path_regex = "^"
     path_format = ""
-    duplicated_params = set()
+    duplicated_params: set[str] = set()
 
     idx = 0
     param_convertors = {}
@@ -217,6 +204,7 @@ class Route(BaseRoute):
         name: str | None = None,
         include_in_schema: bool = True,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
     ) -> None:
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
@@ -239,6 +227,8 @@ class Route(BaseRoute):
         if middleware is not None:
             for cls, args, kwargs in reversed(middleware):
                 self.app = cls(self.app, *args, **kwargs)
+        if max_body_size is not None:
+            self.app = RequestBodyLimitMiddleware(self.app, max_body_size=max_body_size)
 
         if methods is None:
             self.methods = None
@@ -379,6 +369,7 @@ class Mount(BaseRoute):
         name: str | None = None,
         *,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
     ) -> None:
         assert path == "" or path.startswith("/"), "Routed paths must start with '/'"
         assert app is not None or routes is not None, "Either 'app=...', or 'routes=' must be specified"
@@ -391,6 +382,8 @@ class Mount(BaseRoute):
         if middleware is not None:
             for cls, args, kwargs in reversed(middleware):
                 self.app = cls(self.app, *args, **kwargs)
+        if max_body_size is not None:
+            self.app = RequestBodyLimitMiddleware(self.app, max_body_size=max_body_size)
         self.name = name
         self.path_regex, self.path_format, self.param_convertors = compile_path(self.path + "/{path:path}")
 
@@ -568,10 +561,10 @@ class _DefaultLifespan:
         self._router = router
 
     async def __aenter__(self) -> None:
-        await self._router.startup()
+        pass
 
     async def __aexit__(self, *exc_info: object) -> None:
-        await self._router.shutdown()
+        pass
 
     def __call__(self: _T, app: object) -> _T:
         return self
@@ -583,33 +576,16 @@ class Router:
         routes: Sequence[BaseRoute] | None = None,
         redirect_slashes: bool = True,
         default: ASGIApp | None = None,
-        on_startup: Sequence[Callable[[], Any]] | None = None,
-        on_shutdown: Sequence[Callable[[], Any]] | None = None,
         # the generic to Lifespan[AppType] is the type of the top level application
         # which the router cannot know statically, so we use Any
         lifespan: Lifespan[Any] | None = None,
         *,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
-        self.on_startup = [] if on_startup is None else list(on_startup)
-        self.on_shutdown = [] if on_shutdown is None else list(on_shutdown)
-
-        if on_startup or on_shutdown:
-            warnings.warn(
-                "The on_startup and on_shutdown parameters are deprecated, and they "
-                "will be removed on version 1.0. Use the lifespan parameter instead. "
-                "See more about it on https://starlette.dev/lifespan/.",
-                DeprecationWarning,
-            )
-            if lifespan:
-                warnings.warn(
-                    "The `lifespan` parameter cannot be used with `on_startup` or "
-                    "`on_shutdown`. Both `on_startup` and `on_shutdown` will be "
-                    "ignored."
-                )
 
         if lifespan is None:
             self.lifespan_context: Lifespan[Any] = _DefaultLifespan(self)
@@ -618,19 +594,15 @@ class Router:
             warnings.warn(
                 "async generator function lifespans are deprecated, "
                 "use an @contextlib.asynccontextmanager function instead",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
             )
-            self.lifespan_context = asynccontextmanager(
-                lifespan,
-            )
+            self.lifespan_context = asynccontextmanager(lifespan)
         elif inspect.isgeneratorfunction(lifespan):
             warnings.warn(
                 "generator function lifespans are deprecated, use an @contextlib.asynccontextmanager function instead",
-                DeprecationWarning,
+                StarletteDeprecationWarning,
             )
-            self.lifespan_context = _wrap_gen_lifespan_context(
-                lifespan,
-            )
+            self.lifespan_context = _wrap_gen_lifespan_context(lifespan)
         else:
             self.lifespan_context = lifespan
 
@@ -638,6 +610,8 @@ class Router:
         if middleware:
             for cls, args, kwargs in reversed(middleware):
                 self.middleware_stack = cls(self.middleware_stack, *args, **kwargs)
+        if max_body_size is not None:
+            self.middleware_stack = RequestBodyLimitMiddleware(self.middleware_stack, max_body_size=max_body_size)
 
     async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
@@ -661,26 +635,6 @@ class Router:
             except NoMatchFound:
                 pass
         raise NoMatchFound(name, path_params)
-
-    async def startup(self) -> None:
-        """
-        Run any `.on_startup` event handlers.
-        """
-        for handler in self.on_startup:
-            if is_async_callable(handler):
-                await handler()
-            else:
-                handler()
-
-    async def shutdown(self) -> None:
-        """
-        Run any `.on_shutdown` event handlers.
-        """
-        for handler in self.on_shutdown:
-            if is_async_callable(handler):
-                await handler()
-            else:
-                handler()
 
     async def lifespan(self, scope: Scope, receive: Receive, send: Send) -> None:
         """
@@ -801,76 +755,3 @@ class Router:
     ) -> None:  # pragma: no cover
         route = WebSocketRoute(path, endpoint=endpoint, name=name)
         self.routes.append(route)
-
-    def route(
-        self,
-        path: str,
-        methods: Collection[str] | None = None,
-        name: str | None = None,
-        include_in_schema: bool = True,
-    ) -> Callable:  # type: ignore[type-arg]
-        """
-        We no longer document this decorator style API, and its usage is discouraged.
-        Instead you should use the following approach:
-
-        >>> routes = [Route(path, endpoint=...), ...]
-        >>> app = Starlette(routes=routes)
-        """
-        warnings.warn(
-            "The `route` decorator is deprecated, and will be removed in version 1.0.0."
-            "Refer to https://starlette.dev/routing/#http-routing for the recommended approach.",
-            DeprecationWarning,
-        )
-
-        def decorator(func: Callable) -> Callable:  # type: ignore[type-arg]
-            self.add_route(
-                path,
-                func,
-                methods=methods,
-                name=name,
-                include_in_schema=include_in_schema,
-            )
-            return func
-
-        return decorator
-
-    def websocket_route(self, path: str, name: str | None = None) -> Callable:  # type: ignore[type-arg]
-        """
-        We no longer document this decorator style API, and its usage is discouraged.
-        Instead you should use the following approach:
-
-        >>> routes = [WebSocketRoute(path, endpoint=...), ...]
-        >>> app = Starlette(routes=routes)
-        """
-        warnings.warn(
-            "The `websocket_route` decorator is deprecated, and will be removed in version 1.0.0. Refer to "
-            "https://starlette.dev/routing/#websocket-routing for the recommended approach.",
-            DeprecationWarning,
-        )
-
-        def decorator(func: Callable) -> Callable:  # type: ignore[type-arg]
-            self.add_websocket_route(path, func, name=name)
-            return func
-
-        return decorator
-
-    def add_event_handler(self, event_type: str, func: Callable[[], Any]) -> None:  # pragma: no cover
-        assert event_type in ("startup", "shutdown")
-
-        if event_type == "startup":
-            self.on_startup.append(func)
-        else:
-            self.on_shutdown.append(func)
-
-    def on_event(self, event_type: str) -> Callable:  # type: ignore[type-arg]
-        warnings.warn(
-            "The `on_event` decorator is deprecated, and will be removed in version 1.0.0. "
-            "Refer to https://starlette.dev/lifespan/ for recommended approach.",
-            DeprecationWarning,
-        )
-
-        def decorator(func: Callable) -> Callable:  # type: ignore[type-arg]
-            self.add_event_handler(event_type, func)
-            return func
-
-        return decorator

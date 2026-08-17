@@ -14,6 +14,7 @@ import sniffio
 import trio.lowlevel
 
 from starlette.applications import Starlette
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -44,10 +45,6 @@ def current_task() -> Task[Any] | trio.lowlevel.Task:
             raise RuntimeError("must be called from a running task")  # pragma: no cover
         return task
     raise RuntimeError(f"unsupported asynclib={asynclib_name}")  # pragma: no cover
-
-
-def startup() -> None:
-    raise RuntimeError()
 
 
 def test_use_testclient_in_endpoint(test_client_factory: TestClientFactory) -> None:
@@ -168,10 +165,14 @@ def test_use_testclient_as_contextmanager(test_client_factory: TestClientFactory
 
 
 def test_error_on_startup(test_client_factory: TestClientFactory) -> None:
-    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
-        startup_error_app = Starlette(on_startup=[startup])
+    @asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncGenerator[None, None]:
+        raise RuntimeError("Startup error")
+        yield
 
-    with pytest.raises(RuntimeError):
+    startup_error_app = Starlette(lifespan=lifespan)
+
+    with pytest.raises(RuntimeError, match="Startup error"):
         with test_client_factory(startup_error_app):
             pass  # pragma: no cover
 
@@ -227,6 +228,45 @@ def test_testclient_asgi3(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
+
+
+def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": {"fragment": "header", "blocks": ["nav", "title"]}})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == {"fragment": "header", "blocks": ["nav", "title"]}
+    assert not hasattr(response, "template")
+
+
+def test_debug_info_in_response_extensions_with_template(test_client_factory: TestClientFactory) -> None:
+    info = {"template": "index.html", "context": {"name": "world"}, "blocks": ["nav"]}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": info})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == info
+    assert response.template == "index.html"  # type: ignore[attr-defined]
+    assert response.context == {"name": "world"}  # type: ignore[attr-defined]
 
 
 def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> None:
@@ -425,6 +465,8 @@ def test_websocket_raw_path_without_params(test_client_factory: TestClientFactor
 
 
 def test_timeout_deprecation() -> None:
-    with pytest.deprecated_call(match="You should not use the 'timeout' argument with the TestClient."):
+    with pytest.warns(
+        StarletteDeprecationWarning, match="You should not use the 'timeout' argument with the TestClient."
+    ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)

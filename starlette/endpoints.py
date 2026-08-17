@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Generator
-from typing import Any, Callable, Literal
+from collections.abc import Callable, Generator
+from typing import Any, Literal
 
 from starlette import status
 from starlette._utils import is_async_callable
@@ -33,7 +33,11 @@ class HTTPEndpoint:
         request = Request(self.scope, receive=self.receive)
         handler_name = "get" if request.method == "HEAD" and not hasattr(self, "head") else request.method.lower()
 
-        handler: Callable[[Request], Any] = getattr(self, handler_name, self.method_not_allowed)
+        handler: Callable[[Request], Any]
+        if request.method in self._allowed_methods or (request.method == "HEAD" and "GET" in self._allowed_methods):
+            handler = getattr(self, handler_name)
+        else:
+            handler = self.method_not_allowed
         is_async = is_async_callable(handler)
         if is_async:
             response = await handler(request)

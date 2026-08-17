@@ -68,7 +68,7 @@ and `SimpleUser(username)`.
 
 ## AuthCredentials
 
-It is important that authentication credentials are treated as separate concept
+It is important that authentication credentials are treated as a separate concept
 from users. An authentication scheme should be able to restrict or grant
 particular privileges independently of the user identity.
 

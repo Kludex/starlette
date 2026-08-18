@@ -37,14 +37,28 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        host = headers.get("host", "").split(":")[0]
+        raw_host = headers.get("host", "")
+        # IPv6 addresses are bracketed in the Host header (e.g.
+        # "[::1]:8000").  Strip the port from the outside of the
+        # brackets, not by naively splitting on ":" which would
+        # break on the colon inside the address. (#3357)
+        if raw_host.startswith("["):
+            close = raw_host.find("]")
+            host = raw_host[1:close] if close != -1 else raw_host
+        else:
+            host = raw_host.split(":")[0]
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:
-            if host == pattern or (pattern.startswith("*") and host.endswith(pattern[1:])):
+            # Allow IPv6 hosts to be configured with or without brackets
+            # ("[::1]" vs "::1") — host is extracted without brackets per #3357
+            if host == pattern or (pattern.startswith("[") and pattern.endswith("]") and host == pattern[1:-1]):
                 is_valid_host = True
                 break
-            elif "www." + host == pattern:
+            if pattern.startswith("*") and host.endswith(pattern[1:]):
+                is_valid_host = True
+                break
+            if "www." + host == pattern:
                 found_www_redirect = True
 
         if is_valid_host:

@@ -230,6 +230,9 @@ def test_headers() -> None:
     assert "b" in h
     assert "B" in h
     assert "c" not in h
+    assert 123 not in h
+    assert None not in h
+    assert "\u20ac" not in h
     assert h["a"] == "123"
     assert h.get("a") == "123"
     assert h.get("nope", None) is None

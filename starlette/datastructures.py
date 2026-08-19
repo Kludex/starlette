@@ -549,7 +549,12 @@ class Headers(Mapping[str, str]):
         raise KeyError(key)
 
     def __contains__(self, key: Any) -> bool:
-        get_header_key = key.lower().encode("latin-1")
+        if not isinstance(key, str):
+            return False
+        try:
+            get_header_key = key.lower().encode("latin-1")
+        except UnicodeEncodeError:
+            return False
         for header_key, header_value in self._list:
             if header_key == get_header_key:
                 return True

@@ -48,3 +48,29 @@ def test_www_redirect(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.url == "https://www.example.com/"
+
+
+def test_trusted_host_middleware_ipv6(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("OK", status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["::1", "[2001:db8::1]"])],
+    )
+
+    # Valid IPv6 allowed host with brackets and port
+    client = test_client_factory(app, base_url="http://[::1]:8000")
+    response = client.get("/")
+    assert response.status_code == 200
+
+    # Valid IPv6 allowed host without port
+    client = test_client_factory(app, base_url="http://[2001:db8::1]")
+    response = client.get("/")
+    assert response.status_code == 200
+
+    # Invalid IPv6 host
+    client = test_client_factory(app, base_url="http://[::2]:8000")
+    response = client.get("/")
+    assert response.status_code == 400
+

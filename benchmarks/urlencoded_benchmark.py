@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
-from benchmarks._utils import ASGIRunner, ChunkedReceive
+from benchmarks._utils import ASGIRunner, ChunkedReceive, send_result
 from starlette.formparsers import MultiPartException
 from starlette.requests import Request
 from starlette.types import Message, Receive, Scope, Send
@@ -70,11 +70,6 @@ class FormApp:
             return
 
         await send_result(send, 200, result)
-
-
-async def send_result(send: Send, status: int, body: bytes) -> None:
-    await send({"type": "http.response.start", "status": status, "headers": []})
-    await send({"type": "http.response.body", "body": body})
 
 
 def make_fields(case: BenchmarkCase) -> list[tuple[str, str]]:

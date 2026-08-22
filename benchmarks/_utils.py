@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from starlette.types import ASGIApp, Message, Receive, Scope
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 async def unreadable_receive() -> Message:
@@ -24,6 +24,11 @@ class ChunkedReceive:
             "body": chunk,
             "more_body": self.index < len(self.chunks),
         }
+
+
+async def send_result(send: Send, status: int, body: bytes) -> None:
+    await send({"type": "http.response.start", "status": status, "headers": []})
+    await send({"type": "http.response.body", "body": body})
 
 
 async def run_asgi(app: ASGIApp, scope: Scope, receive: Receive = unreadable_receive) -> list[Message]:

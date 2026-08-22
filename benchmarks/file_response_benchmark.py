@@ -67,10 +67,16 @@ def dispatch(runner: ASGIRunner, app: FileApp, case: BenchmarkCase) -> list[Mess
 @pytest.fixture(scope="module", autouse=True)
 def warm_file_response(asgi_runner: ASGIRunner, tmp_path_factory: pytest.TempPathFactory) -> None:
     path = tmp_path_factory.mktemp("file-response-warm") / "file.bin"
-    path.write_bytes(b"x")
-    case = BenchmarkCase("warm", 1)
-    for _ in range(100):
-        dispatch(asgi_runner, FileApp(path), case)
+    path.write_bytes(b"x" * KiB)
+    app = FileApp(path)
+    cases = (
+        BenchmarkCase("warm-fallback", KiB),
+        BenchmarkCase("warm-pathsend", KiB, pathsend=True),
+        BenchmarkCase("warm-range", KiB, range_header=b"bytes=0-0", expected_size=1),
+    )
+    for case in cases:
+        for _ in range(100):
+            dispatch(asgi_runner, app, case)
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)

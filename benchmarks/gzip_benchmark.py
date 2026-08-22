@@ -14,6 +14,7 @@ import anyio
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
+from benchmarks._utils import ASGIRunner, run_asgi
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -52,30 +53,6 @@ class StaticResponseApp:
             if "headers" in outgoing_message:
                 outgoing_message["headers"] = list(outgoing_message["headers"])
             await send(outgoing_message)
-
-
-class ASGIRunner:
-    def __init__(self) -> None:
-        self.loop = asyncio.new_event_loop()
-
-    def run(self, app: ASGIApp, scope: Scope) -> list[Message]:
-        return self.loop.run_until_complete(run_asgi(app, scope))
-
-    def close(self) -> None:
-        self.loop.close()
-
-
-async def run_asgi(app: ASGIApp, scope: Scope) -> list[Message]:
-    messages: list[Message] = []
-
-    async def receive() -> Message:
-        raise AssertionError("The benchmark app must not receive a request body")
-
-    async def send(message: Message) -> None:
-        messages.append(message)
-
-    await app(scope, receive, send)
-    return messages
 
 
 @dataclass

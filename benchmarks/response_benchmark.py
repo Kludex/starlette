@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Iterator
 from dataclasses import dataclass
 
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
+from benchmarks._utils import ASGIRunner
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import Response
@@ -64,48 +63,25 @@ def http_scope() -> Scope:
     }
 
 
-async def run_asgi(app: ASGIApp) -> list[Message]:
-    messages: list[Message] = []
-
-    async def receive() -> Message:
-        raise AssertionError("The benchmark app must not receive a request body")
-
-    async def send(message: Message) -> None:
-        messages.append(message)
-
-    await app(http_scope(), receive, send)
-    return messages
+def dispatch(runner: ASGIRunner, app: ASGIApp) -> list[Message]:
+    return runner.run(app, http_scope())
 
 
-class ASGIRunner:
-    def __init__(self) -> None:
-        self.loop = asyncio.new_event_loop()
-
-    def run(self, app: ASGIApp) -> list[Message]:
-        return self.loop.run_until_complete(run_asgi(app))
-
-    def close(self) -> None:
-        self.loop.close()
-
-
-@pytest.fixture(scope="module")
-def runner() -> Iterator[ASGIRunner]:
-    runner = ASGIRunner()
+@pytest.fixture(scope="module", autouse=True)
+def warm_apps(asgi_runner: ASGIRunner) -> None:
     for case in CASES:
         for _ in range(100):
-            runner.run(case.app)
-    yield runner
-    runner.close()
+            dispatch(asgi_runner, case.app)
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.name)
 @pytest.mark.benchmark(max_time=0.5, max_rounds=20)
 def test_minimal_response_dispatch(
-    runner: ASGIRunner,
+    asgi_runner: ASGIRunner,
     benchmark: BenchmarkFixture,
     case: BenchmarkCase,
 ) -> None:
-    messages = benchmark(runner.run, case.app)
+    messages = benchmark(dispatch, asgi_runner, case.app)
 
     assert messages == [
         {"type": "http.response.start", "status": 200, "headers": EXPECTED_HEADERS},

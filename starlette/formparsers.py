@@ -39,7 +39,6 @@ class MultipartPart:
     field_name: str = ""
     data: bytearray = field(default_factory=bytearray)
     file: UploadFile | None = None
-    file_data: bytearray | None = None
     item_headers: list[tuple[bytes, bytes]] = field(default_factory=list)
 
 
@@ -189,12 +188,6 @@ class MultiPartParser:
         else:
             self._file_parts_to_write.append((self._current_part, message_bytes))
 
-    async def _flush_file_data(self, part: MultipartPart) -> None:
-        assert part.file is not None
-        assert part.file_data is not None
-        await part.file.write(part.file_data)
-        part.file_data.clear()
-
     def on_part_end(self) -> None:
         if self._current_part.file is None:
             self.items.append(
@@ -243,7 +236,6 @@ class MultiPartParser:
                 filename=filename,
                 headers=Headers(raw=self._current_part.item_headers),
             )
-            self._current_part.file_data = bytearray()
         else:
             self._current_fields += 1
             if self._current_fields > self.max_fields:
@@ -290,19 +282,21 @@ class MultiPartParser:
                 # the main thread.
                 for part, data in self._file_parts_to_write:
                     assert part.file is not None
-                    assert part.file_data is not None
-                    if part.file_data and len(part.file_data) + len(data) > self._file_write_size:
-                        await self._flush_file_data(part)
-                    if part.file_data or (not part.file._in_memory and len(data) < self._file_write_size):
-                        part.file_data.extend(data)
-                        if len(part.file_data) >= self._file_write_size:
-                            await self._flush_file_data(part)
+                    if part.data and len(part.data) + len(data) > self._file_write_size:
+                        await part.file.write(part.data)
+                        part.data.clear()
+                    if part.data or (not part.file._in_memory and len(data) < self._file_write_size):
+                        part.data.extend(data)
+                        if len(part.data) >= self._file_write_size:
+                            await part.file.write(part.data)
+                            part.data.clear()
                     else:
                         await part.file.write(data)
                 for part in self._file_parts_to_finish:
                     assert part.file is not None
-                    if part.file_data:
-                        await self._flush_file_data(part)
+                    if part.data:
+                        await part.file.write(part.data)
+                        part.data.clear()
                     await part.file.seek(0)
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()

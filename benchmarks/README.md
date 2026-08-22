@@ -50,6 +50,55 @@ Run it locally with:
 uv run pytest benchmarks/json_benchmark.py --codspeed
 ```
 
+## URL-encoded forms
+
+The URL-encoded benchmark measures `Request.form()` with 1,000 fields, a large
+field, percent-encoded data, and field-count and part-size limit failures. The
+large field is delivered as a single ASGI message and in 64 KiB chunks.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/urlencoded_benchmark.py --codspeed
+```
+
+## Streaming responses
+
+The streaming benchmark measures `StreamingResponse` with 1 KiB and 1 MiB
+bodies. The large body uses 1 KiB, 64 KiB, and single-chunk delivery to expose
+the per-chunk dispatch cost.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/streaming_response_benchmark.py --codspeed
+```
+
+## File responses
+
+The file benchmark measures `FileResponse` with fallback reads,
+`http.response.pathsend`, and a single byte range. File creation happens outside
+the measured region, while response construction, stat, and delivery happen
+inside it.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/file_response_benchmark.py --codspeed
+```
+
+## WebSockets
+
+The WebSocket benchmark measures complete text, bytes, and JSON echo exchanges
+through the public `WebSocket` API. Each dispatch includes connect, accept,
+receive, send, and close state transitions.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/websocket_benchmark.py --codspeed
+```
+
 ## Multipart forms
 
 The multipart benchmark measures `Request.form()` with field-heavy, in-memory

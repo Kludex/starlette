@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
-from benchmarks._utils import ASGIRunner, ChunkedReceive
+from benchmarks._utils import ASGIRunner, ChunkedReceive, send_result
 from starlette.datastructures import UploadFile
 from starlette.formparsers import MultiPartException
 from starlette.requests import Request
@@ -96,11 +96,6 @@ class MultipartApp:
         await send_result(send, 200, f"{fields}:{files}:{file_bytes}".encode())
 
 
-async def send_result(send: Send, status: int, body: bytes) -> None:
-    await send({"type": "http.response.start", "status": status, "headers": []})
-    await send({"type": "http.response.body", "body": body})
-
-
 def http_scope() -> Scope:
     return {
         "type": "http",
@@ -178,6 +173,12 @@ def warm_multipart(asgi_runner: ASGIRunner) -> None:
     spooled_case = BenchmarkCase("warm-spooled", file_sizes=(MiB + 1,))
     chunks = make_chunks(make_body(spooled_case), spooled_case.chunk_size)
     dispatch(asgi_runner, MultipartApp(spooled_case), chunks)
+
+    boundary_case = BenchmarkCase("warm-boundary-like", file_sizes=(64 * KiB,), boundary_like=True)
+    chunks = make_chunks(make_body(boundary_case), boundary_case.chunk_size)
+    app = MultipartApp(boundary_case)
+    for _ in range(10):
+        dispatch(asgi_runner, app, chunks)
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)

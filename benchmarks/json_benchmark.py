@@ -15,15 +15,14 @@ KiB = 1024
 
 
 @dataclass(frozen=True)
-class JSONPayload:
+class JSONCase:
     name: str
-    content: list[dict[str, object]]
-    body: bytes
+    items: int
 
 
 @dataclass(frozen=True)
 class RequestCase:
-    payload: JSONPayload
+    payload: JSONCase
     chunk_size: int | None
 
     @property
@@ -32,16 +31,16 @@ class RequestCase:
         return f"{self.payload.name}-{chunk_size}"
 
 
-def make_payload(name: str, items: int) -> JSONPayload:
-    content: list[dict[str, object]] = [
-        {"id": index, "name": f"item-{index}", "enabled": index % 2 == 0} for index in range(items)
-    ]
-    body = json.dumps(content, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
-    return JSONPayload(name, content, body)
+def make_content(case: JSONCase) -> list[dict[str, object]]:
+    return [{"id": index, "name": f"item-{index}", "enabled": index % 2 == 0} for index in range(case.items)]
 
 
-SMALL_PAYLOAD = make_payload("1KiB", 25)
-LARGE_PAYLOAD = make_payload("1MiB", 22_000)
+def render_json(content: list[dict[str, object]]) -> bytes:
+    return json.dumps(content, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
+
+
+SMALL_PAYLOAD = JSONCase("1KiB", 25)
+LARGE_PAYLOAD = JSONCase("1MiB", 22_000)
 PAYLOADS = (SMALL_PAYLOAD, LARGE_PAYLOAD)
 REQUEST_CASES = (
     RequestCase(SMALL_PAYLOAD, None),
@@ -70,7 +69,6 @@ async def send_result(send: Send, body: bytes) -> None:
 
 
 REQUEST_APP = RequestJSONApp()
-RESPONSE_APPS: dict[str, ASGIApp] = {payload.name: JSONResponseApp(payload.content) for payload in PAYLOADS}
 
 
 def http_scope(method: str, headers: list[tuple[bytes, bytes]]) -> Scope:
@@ -107,34 +105,39 @@ def dispatch_response(runner: ASGIRunner, app: ASGIApp) -> list[Message]:
 
 @pytest.fixture(scope="module", autouse=True)
 def warm_apps(asgi_runner: ASGIRunner) -> None:
-    chunks = (SMALL_PAYLOAD.body,)
+    content = make_content(SMALL_PAYLOAD)
+    chunks = (render_json(content),)
+    app = JSONResponseApp(content)
     for _ in range(100):
         dispatch_request(asgi_runner, chunks)
-        dispatch_response(asgi_runner, RESPONSE_APPS[SMALL_PAYLOAD.name])
+        dispatch_response(asgi_runner, app)
 
 
 @pytest.mark.parametrize("case", REQUEST_CASES, ids=lambda case: case.id)
 @pytest.mark.benchmark(max_time=0.5, max_rounds=1)
 def test_request_json(asgi_runner: ASGIRunner, benchmark: BenchmarkFixture, case: RequestCase) -> None:
-    chunks = make_chunks(case.payload.body, case.chunk_size)
+    body = render_json(make_content(case.payload))
+    chunks = make_chunks(body, case.chunk_size)
     messages = benchmark.pedantic(dispatch_request, args=(asgi_runner, chunks), rounds=1)
 
     assert messages == [
         {"type": "http.response.start", "status": 200, "headers": []},
-        {"type": "http.response.body", "body": str(len(case.payload.content)).encode()},
+        {"type": "http.response.body", "body": str(case.payload.items).encode()},
     ]
-    benchmark.extra_info["body_bytes"] = len(case.payload.body)
-    benchmark.extra_info["chunk_bytes"] = case.chunk_size or len(case.payload.body)
+    benchmark.extra_info["body_bytes"] = len(body)
+    benchmark.extra_info["chunk_bytes"] = case.chunk_size or len(body)
     benchmark.extra_info["chunks"] = len(chunks)
-    benchmark.extra_info["items"] = len(case.payload.content)
+    benchmark.extra_info["items"] = case.payload.items
 
 
 @pytest.mark.parametrize("payload", PAYLOADS, ids=lambda payload: payload.name)
 @pytest.mark.benchmark(max_time=0.5, max_rounds=1)
-def test_json_response(asgi_runner: ASGIRunner, benchmark: BenchmarkFixture, payload: JSONPayload) -> None:
+def test_json_response(asgi_runner: ASGIRunner, benchmark: BenchmarkFixture, payload: JSONCase) -> None:
+    content = make_content(payload)
+    body = render_json(content)
     messages = benchmark.pedantic(
         dispatch_response,
-        args=(asgi_runner, RESPONSE_APPS[payload.name]),
+        args=(asgi_runner, JSONResponseApp(content)),
         rounds=1,
     )
 
@@ -143,11 +146,11 @@ def test_json_response(asgi_runner: ASGIRunner, benchmark: BenchmarkFixture, pay
             "type": "http.response.start",
             "status": 200,
             "headers": [
-                (b"content-length", str(len(payload.body)).encode()),
+                (b"content-length", str(len(body)).encode()),
                 (b"content-type", b"application/json"),
             ],
         },
-        {"type": "http.response.body", "body": payload.body},
+        {"type": "http.response.body", "body": body},
     ]
-    benchmark.extra_info["body_bytes"] = len(payload.body)
-    benchmark.extra_info["items"] = len(payload.content)
+    benchmark.extra_info["body_bytes"] = len(body)
+    benchmark.extra_info["items"] = payload.items

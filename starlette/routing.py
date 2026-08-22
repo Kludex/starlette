@@ -16,6 +16,7 @@ from typing import Any, TypeVar
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._trie import PARAM_REGEX, RouteTrie
 from starlette._utils import get_route_path, is_async_callable
+from starlette._versioned_list import VersionedList
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
@@ -568,6 +569,14 @@ class _DefaultLifespan:
 
 
 class Router:
+    @property
+    def routes(self) -> VersionedList[BaseRoute]:
+        return self._routes
+
+    @routes.setter
+    def routes(self, routes: Sequence[BaseRoute]) -> None:
+        self._routes = VersionedList(routes)
+
     def __init__(
         self,
         routes: Sequence[BaseRoute] | None = None,
@@ -580,8 +589,10 @@ class Router:
         middleware: Sequence[Middleware] | None = None,
         max_body_size: int | None = None,
     ) -> None:
-        self.routes = [] if routes is None else list(routes)
+        self.routes = [] if routes is None else routes
         self._trie = RouteTrie()
+        self._trie_routes: VersionedList[BaseRoute] | None = None
+        self._trie_routes_version = -1
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -668,29 +679,25 @@ class Router:
         await self.middleware_stack(scope, receive, send)
 
     def _candidate_routes(self, scope: Scope) -> list[BaseRoute]:
-        # Narrow the linear scan to the routes whose path could match, using a
-        # segment trie rebuilt lazily when routes are added. The trie returns a
-        # superset (`Route.matches` below still confirms each one), so
-        # registration order and all match semantics are preserved. Mount/Host
-        # and any route without a flat path stay always-candidate. Replacing a
-        # route in place without changing the count is not auto-detected; build
-        # the routes before serving, as Starlette already expects.
+        # Narrow the linear scan to the routes whose path could match. The trie
+        # returns a superset (`Route.matches` below still confirms each one), so
+        # registration order and all match semantics are preserved. Route
+        # subclasses that customize matching stay always-candidate.
         routes = self.routes
-        if self._trie.is_stale(len(routes)):
+        if self._trie_routes is not routes or self._trie_routes_version != routes.version:
             trie = RouteTrie()
             for index, route in enumerate(routes):
-                # A route is indexed by its `path`, so a subclass must not match
-                # paths its `path` does not describe. A `Mount` is the `{path:path}`
-                # tail its own `path_regex` is built from. `Host` matches on the
-                # header, so it has no path to index (passed as None).
-                if isinstance(route, (Route, WebSocketRoute)):
+                if isinstance(route, Route) and route.matches == Route.matches.__get__(route):
                     trie.add(index, route.path, route.param_convertors)
-                elif isinstance(route, Mount):
+                elif isinstance(route, WebSocketRoute) and route.matches == WebSocketRoute.matches.__get__(route):
+                    trie.add(index, route.path, route.param_convertors)
+                elif isinstance(route, Mount) and route.matches == Mount.matches.__get__(route):
                     trie.add(index, route.path + "/{path:path}", route.param_convertors)
                 else:
                     trie.add(index, None, {})
-            trie.count = len(routes)
             self._trie = trie
+            self._trie_routes = routes
+            self._trie_routes_version = routes.version
         return [routes[i] for i in self._trie.match_all(get_route_path(scope))]
 
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:

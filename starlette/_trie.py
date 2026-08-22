@@ -46,14 +46,6 @@ class RouteTrie:
     def __init__(self) -> None:
         self.root = Node()
         self.indexed = False
-        # The number of routes this trie was built for. The owner compares it
-        # against the live route count to rebuild. Replacing or reordering routes
-        # at the same count is not detected: build the route table before
-        # serving, as Starlette already expects.
-        self.count = 0
-
-    def is_stale(self, count: int) -> bool:
-        return self.count != count
 
     def add(self, index: int, path: str | None, convertors: dict[str, Convertor[object]]) -> None:
         if not path or not path.startswith("/"):
@@ -88,26 +80,27 @@ class RouteTrie:
             # is already every route, in registration order.
             return self.root.tail
         out: list[int] = []
-        self._walk(self.root, path.lstrip("/"), out)
+        stack = [(self.root, path.lstrip("/"))]
+        while stack:
+            node, rest = stack.pop()
+            seg, slash, tail = rest.partition("/")
+
+            if not slash:
+                child = node.static.get(seg)
+                if child is not None:
+                    out.extend(child.indices)
+                if seg and node.param is not None:
+                    out.extend(node.param.indices)
+            else:
+                child = node.static.get(seg)
+                if child is not None:
+                    stack.append((child, tail))
+                if seg and node.param is not None:
+                    stack.append((node.param, tail))
+
+            # A tail registered here matches whatever is left, including the empty
+            # string.
+            out.extend(node.tail)
+
         out.sort()
         return out
-
-    def _walk(self, node: Node, rest: str, out: list[int]) -> None:
-        seg, slash, tail = rest.partition("/")
-
-        if not slash:
-            child = node.static.get(seg)
-            if child is not None:
-                out.extend(child.indices)
-            if seg and node.param is not None:
-                out.extend(node.param.indices)
-        else:
-            child = node.static.get(seg)
-            if child is not None:
-                self._walk(child, tail, out)
-            if seg and node.param is not None:
-                self._walk(node.param, tail, out)
-
-        # A tail registered here matches whatever is left, including the empty
-        # string.
-        out.extend(node.tail)

@@ -23,7 +23,7 @@ async def endpoint(request: Request) -> Response:
 
 class RawResponseApp:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": list(EXPECTED_HEADERS)})
+        await send({"type": "http.response.start", "status": 200, "headers": EXPECTED_HEADERS})
         await send({"type": "http.response.body", "body": PAYLOAD})
 
 

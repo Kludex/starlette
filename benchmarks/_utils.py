@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+import asyncio
+
+from starlette.types import ASGIApp, Message, Receive, Scope
+
+
+async def unreadable_receive() -> Message:
+    raise AssertionError("The benchmark app must not receive a request body")
+
+
+async def run_asgi(app: ASGIApp, scope: Scope, receive: Receive = unreadable_receive) -> list[Message]:
+    messages: list[Message] = []
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    await app(scope, receive, send)
+    return messages
+
+
+class ASGIRunner:
+    def __init__(self) -> None:
+        self.loop = asyncio.new_event_loop()
+
+    def run(self, app: ASGIApp, scope: Scope, receive: Receive = unreadable_receive) -> list[Message]:
+        return self.loop.run_until_complete(run_asgi(app, scope, receive))
+
+    def close(self) -> None:
+        self.loop.close()

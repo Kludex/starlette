@@ -1,5 +1,22 @@
 # Benchmarks
 
+## Minimal response dispatch
+
+The response benchmark measures a two-byte response through progressively larger
+parts of the public stack: raw ASGI, a prebuilt `Response`, a newly constructed
+`Response`, a single `Route`, and a complete `Starlette` application. The raw
+ASGI case is the control for event-loop and message-capture overhead.
+
+Each dispatch receives a fresh ASGI scope. The application cases are warmed
+before measurement so lazy middleware construction and interpreter specialization
+are not attributed to every request.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/response_benchmark.py --codspeed
+```
+
 ## Routing
 
 The routing benchmark exercises `Router` dispatch through its ASGI interface

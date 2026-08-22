@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
-from benchmarks._utils import ASGIRunner, ChunkedReceive, send_result
+from benchmarks._utils import ASGIRunner, ChunkedReceive
 from starlette.datastructures import UploadFile
 from starlette.formparsers import MultiPartException
 from starlette.requests import Request
@@ -30,15 +30,16 @@ class BenchmarkCase:
     max_fields: int = 1000
     max_part_size: int = MiB
     expected_error: str | None = None
+    rounds: int = 1
 
 
 CASES = (
     BenchmarkCase("fields-1000", fields=1000),
-    BenchmarkCase("file-512KiB", file_sizes=(512 * KiB,)),
+    BenchmarkCase("file-512KiB", file_sizes=(512 * KiB,), rounds=5),
     BenchmarkCase("file-10MiB-single", file_sizes=(10 * MiB,), chunk_size=None),
     BenchmarkCase("file-10MiB-64KiB", file_sizes=(10 * MiB,)),
-    BenchmarkCase("mixed", fields=100, file_sizes=(512 * KiB,)),
-    BenchmarkCase("boundary-like-file", file_sizes=(MiB,), boundary_like=True),
+    BenchmarkCase("mixed", fields=100, file_sizes=(512 * KiB,), rounds=5),
+    BenchmarkCase("boundary-like-file", file_sizes=(MiB,), boundary_like=True, rounds=5),
     BenchmarkCase(
         "malformed-after-spooled-file",
         file_sizes=(2 * MiB,),
@@ -94,6 +95,11 @@ class MultipartApp:
             return
 
         await send_result(send, 200, f"{fields}:{files}:{file_bytes}".encode())
+
+
+async def send_result(send: Send, status: int, body: bytes) -> None:
+    await send({"type": "http.response.start", "status": status, "headers": []})
+    await send({"type": "http.response.body", "body": body})
 
 
 def http_scope() -> Scope:
@@ -174,13 +180,19 @@ def warm_multipart(asgi_runner: ASGIRunner) -> None:
     chunks = make_chunks(make_body(spooled_case), spooled_case.chunk_size)
     dispatch(asgi_runner, MultipartApp(spooled_case), chunks)
 
+    boundary_case = BenchmarkCase("warm-boundary-like", file_sizes=(64 * KiB,), boundary_like=True)
+    chunks = make_chunks(make_body(boundary_case), boundary_case.chunk_size)
+    app = MultipartApp(boundary_case)
+    for _ in range(10):
+        dispatch(asgi_runner, app, chunks)
+
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
-@pytest.mark.benchmark(max_time=0.5, max_rounds=1)
+@pytest.mark.benchmark(max_time=0.5, max_rounds=5)
 def test_multipart(asgi_runner: ASGIRunner, benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     body = make_body(case)
     chunks = make_chunks(body, case.chunk_size)
-    messages = benchmark.pedantic(dispatch, args=(asgi_runner, MultipartApp(case), chunks), rounds=1)
+    messages = benchmark.pedantic(dispatch, args=(asgi_runner, MultipartApp(case), chunks), rounds=case.rounds)
 
     if case.expected_error is None:
         expected_status = 200

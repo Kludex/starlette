@@ -34,11 +34,16 @@ class FormMessage(Enum):
 
 
 @dataclass
+class MultipartFilePart:
+    upload: UploadFile
+
+
+@dataclass
 class MultipartPart:
     content_disposition: bytes | None = None
     field_name: str = ""
     data: bytearray = field(default_factory=bytearray)
-    file: UploadFile | None = None
+    file_part: MultipartFilePart | None = None
     item_headers: list[tuple[bytes, bytes]] = field(default_factory=list)
 
 
@@ -170,8 +175,8 @@ class MultiPartParser:
         self._current_partial_header_value: bytes = b""
         self._current_part = MultipartPart()
         self._charset = ""
-        self._file_parts_to_write: list[tuple[MultipartPart, bytes]] = []
-        self._file_parts_to_finish: list[MultipartPart] = []
+        self._file_parts_to_write: list[tuple[MultipartFilePart, bytes]] = []
+        self._file_parts_to_finish: list[MultipartFilePart] = []
         self._files_to_close_on_error: list[SpooledTemporaryFile[bytes]] = []
         self.max_part_size = max_part_size
 
@@ -180,15 +185,17 @@ class MultiPartParser:
 
     def on_part_data(self, data: bytes, start: int, end: int) -> None:
         message_bytes = data[start:end]
-        if self._current_part.file is None:
+        file_part = self._current_part.file_part
+        if file_part is None:
             if len(self._current_part.data) + len(message_bytes) > self.max_part_size:
                 raise MultiPartException(f"Part exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
             self._current_part.data.extend(message_bytes)
         else:
-            self._file_parts_to_write.append((self._current_part, message_bytes))
+            self._file_parts_to_write.append((file_part, message_bytes))
 
     def on_part_end(self) -> None:
-        if self._current_part.file is None:
+        file_part = self._current_part.file_part
+        if file_part is None:
             self.items.append(
                 (
                     self._current_part.field_name,
@@ -196,11 +203,11 @@ class MultiPartParser:
                 )
             )
         else:
-            self._file_parts_to_finish.append(self._current_part)
+            self._file_parts_to_finish.append(file_part)
             # The file can be added to the items right now even though it's not
             # finished yet, because it will be finished in the `parse()` method, before
             # self.items is used in the return value.
-            self.items.append((self._current_part.field_name, self._current_part.file))
+            self.items.append((self._current_part.field_name, file_part.upload))
 
     def on_header_field(self, data: bytes, start: int, end: int) -> None:
         self._current_partial_header_name += data[start:end]
@@ -229,17 +236,19 @@ class MultiPartParser:
             filename = _user_safe_decode(options[b"filename"], self._charset)
             tempfile = SpooledTemporaryFile(max_size=self.spool_max_size)
             self._files_to_close_on_error.append(tempfile)
-            self._current_part.file = UploadFile(
-                file=tempfile,  # type: ignore[arg-type]
-                size=0,
-                filename=filename,
-                headers=Headers(raw=self._current_part.item_headers),
+            self._current_part.file_part = MultipartFilePart(
+                upload=UploadFile(
+                    file=tempfile,  # type: ignore[arg-type]
+                    size=0,
+                    filename=filename,
+                    headers=Headers(raw=self._current_part.item_headers),
+                )
             )
         else:
             self._current_fields += 1
             if self._current_fields > self.max_fields:
                 raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
-            self._current_part.file = None
+            self._current_part.file_part = None
 
     def on_end(self) -> None:
         pass
@@ -279,12 +288,10 @@ class MultiPartParser:
                 # otherwise, if they were called directly in the callback methods above
                 # (regular, non-async functions), that would block the event loop in
                 # the main thread.
-                for part, data in self._file_parts_to_write:
-                    assert part.file  # for type checkers
-                    await part.file.write(data)
-                for part in self._file_parts_to_finish:
-                    assert part.file  # for type checkers
-                    await part.file.seek(0)
+                for file_part, data in self._file_parts_to_write:
+                    await file_part.upload.write(data)
+                for file_part in self._file_parts_to_finish:
+                    await file_part.upload.seek(0)
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()
             parser.finalize()

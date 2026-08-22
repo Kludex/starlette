@@ -9,6 +9,23 @@ async def unreadable_receive() -> Message:
     raise AssertionError("The benchmark app must not receive a request body")
 
 
+class ChunkedReceive:
+    def __init__(self, chunks: tuple[bytes, ...]) -> None:
+        self.chunks = chunks
+        self.index = 0
+
+    async def __call__(self) -> Message:
+        if self.index >= len(self.chunks):
+            raise AssertionError("The benchmark app read beyond the request body")
+        chunk = self.chunks[self.index]
+        self.index += 1
+        return {
+            "type": "http.request",
+            "body": chunk,
+            "more_body": self.index < len(self.chunks),
+        }
+
+
 async def run_asgi(app: ASGIApp, scope: Scope, receive: Receive = unreadable_receive) -> list[Message]:
     messages: list[Message] = []
 
@@ -27,4 +44,5 @@ class ASGIRunner:
         return self.loop.run_until_complete(run_asgi(app, scope, receive))
 
     def close(self) -> None:
+        self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()

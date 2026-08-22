@@ -41,5 +41,6 @@ jobs:
             benchmarks/request_benchmark.py
             benchmarks/response_benchmark.py
             benchmarks/routing_benchmark.py
+            benchmarks/json_benchmark.py
             --codspeed
           mode: simulation,memory

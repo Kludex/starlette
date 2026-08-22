@@ -34,6 +34,22 @@ Run it locally with:
 uv run pytest benchmarks/request_benchmark.py --codspeed
 ```
 
+## JSON
+
+The JSON benchmark measures `Request.json()` and `JSONResponse` with structured
+payloads of approximately 1 KiB and 1 MiB. The large request is delivered both
+as a single ASGI message and in 64 KiB chunks.
+
+Payload encoding and chunk construction happen outside the measured region.
+Request decoding and response encoding happen inside it, and each result is
+validated after measurement.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/json_benchmark.py --codspeed
+```
+
 ## Multipart forms
 
 The multipart benchmark measures `Request.form()` with field-heavy, in-memory

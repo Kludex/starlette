@@ -37,6 +37,7 @@ jobs:
           run: >-
             uv run pytest
             benchmarks/gzip_benchmark.py
+            benchmarks/json_benchmark.py
             benchmarks/multipart_benchmark.py
             benchmarks/request_benchmark.py
             benchmarks/response_benchmark.py

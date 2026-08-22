@@ -42,5 +42,9 @@ jobs:
             benchmarks/response_benchmark.py
             benchmarks/routing_benchmark.py
             benchmarks/json_benchmark.py
+            benchmarks/file_response_benchmark.py
+            benchmarks/streaming_response_benchmark.py
+            benchmarks/urlencoded_benchmark.py
+            benchmarks/websocket_benchmark.py
             --codspeed
           mode: simulation,memory

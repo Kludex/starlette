@@ -34,6 +34,22 @@ Run it locally with:
 uv run pytest benchmarks/request_benchmark.py --codspeed
 ```
 
+## Multipart forms
+
+The multipart benchmark measures `Request.form()` with field-heavy, in-memory
+file, spooled file, mixed form, and boundary-like payloads. It also covers
+malformed forms and field, file, and part-size limit failures.
+
+File workloads use 64 KiB ASGI chunks. The 10 MiB file also has a single-message
+control case. Multipart body and chunk construction happen outside the measured
+region, while parsing and upload cleanup happen inside it.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/multipart_benchmark.py --codspeed
+```
+
 ## Routing
 
 The routing benchmark exercises `Router` dispatch through its ASGI interface

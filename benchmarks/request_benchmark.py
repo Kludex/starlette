@@ -6,7 +6,7 @@ from typing import Literal
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
-from benchmarks._utils import ASGIRunner
+from benchmarks._utils import ASGIRunner, ChunkedReceive
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -14,23 +14,6 @@ KiB = 1024
 MiB = 1024 * KiB
 
 ReadMode = Literal["body", "stream"]
-
-
-class BodyReceive:
-    def __init__(self, chunks: tuple[bytes, ...]) -> None:
-        self.chunks = chunks
-        self.index = 0
-
-    async def __call__(self) -> Message:
-        if self.index >= len(self.chunks):
-            raise AssertionError("The benchmark app read beyond the request body")
-        chunk = self.chunks[self.index]
-        self.index += 1
-        return {
-            "type": "http.request",
-            "body": chunk,
-            "more_body": self.index < len(self.chunks),
-        }
 
 
 class BodyApp:
@@ -106,7 +89,7 @@ def make_chunks(body_size: int, chunk_size: int) -> tuple[bytes, ...]:
 
 
 def dispatch(runner: ASGIRunner, app: ASGIApp, chunks: tuple[bytes, ...]) -> list[Message]:
-    return runner.run(app, http_scope(), BodyReceive(chunks))
+    return runner.run(app, http_scope(), ChunkedReceive(chunks))
 
 
 @pytest.fixture(scope="module", autouse=True)

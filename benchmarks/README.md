@@ -17,6 +17,23 @@ Run it locally with:
 uv run pytest benchmarks/response_benchmark.py --codspeed
 ```
 
+## Request bodies
+
+The request benchmark compares `Request.body()` with `Request.stream()` for
+1 KiB, 1 MiB, and 10 MiB payloads. The larger payloads are delivered both as a
+single ASGI message and in 64 KiB chunks to separate byte volume from
+per-message overhead.
+
+Payload and chunk construction happen outside the measured region. Every
+dispatch creates a fresh `Request`, ASGI scope, and receive callable. The
+response reports the consumed byte count, which is validated after measurement.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/request_benchmark.py --codspeed
+```
+
 ## Routing
 
 The routing benchmark exercises `Router` dispatch through its ASGI interface

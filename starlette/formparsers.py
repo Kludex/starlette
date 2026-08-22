@@ -294,7 +294,7 @@ class MultiPartParser:
                 for part, data in self._file_parts_to_write:
                     assert part.file is not None
                     assert part.file_data is not None
-                    if part.file_data and len(data) >= self._file_write_size:
+                    if part.file_data and part.file_data_size + len(data) > self._file_write_size:
                         await self._flush_file_data(part)
                     if part.file_data or (not part.file._in_memory and len(data) < self._file_write_size):
                         part.file_data.append(data)

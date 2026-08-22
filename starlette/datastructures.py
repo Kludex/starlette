@@ -448,7 +448,7 @@ class UploadFile:
         future_size = self.file.tell() + size_to_add
         return bool(future_size > self._max_mem_size) if self._max_mem_size else False
 
-    async def write(self, data: bytes) -> None:
+    async def write(self, data: bytes | bytearray) -> None:
         new_data_len = len(data)
         if self.size is not None:
             self.size += new_data_len

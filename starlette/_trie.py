@@ -41,7 +41,7 @@ class RouteTrie:
     given path. It returns, in registration order, every route whose declared
     pattern may match. The caller must still run `Route.matches` on the result.
 
-    Insertion takes O(N) expected time; lookup takes O(N log N) worst-case time.
+    Lookup takes O(N log N) worst-case time.
     """
 
     def __init__(self, routes: Sequence[object] | None = None) -> None:

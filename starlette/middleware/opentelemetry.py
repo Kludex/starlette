@@ -19,9 +19,9 @@ class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests."""
 
     def __init__(self, app: ASGIApp, *, excluded_urls: str | Sequence[str] = ()) -> None:
+        self.app = app
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
-        self.app = app
         self._excluded_urls = tuple(re.compile(pattern) for pattern in excluded_urls)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

@@ -30,18 +30,20 @@ class Node:
 
 
 class RouteTrie:
-    """Candidate-narrowing segment trie over Starlette route paths.
+    """Store route indices in a trie of path segments.
 
-    `match_all` returns a superset of the routes whose `path_regex` could match a
-    path, in registration order; the caller still runs `Route.matches` on each
-    candidate, so the trie never decides a match on its own.
+    Each edge is either a static segment or a parameter. A route ends at an
+    `indices` list if all its segments have one of these forms. Otherwise, it
+    ends at a `tail` list on the last node that could be indexed. A root tail is
+    therefore a candidate for every path.
 
-    Segments are read while they are static or a lone parameter using exactly a
-    built-in single-segment convertor. The first segment that cannot be read that
-    way - a `path` parameter, a compound segment, a custom convertor - makes the
-    route a tail on the node reached so far, so it stays a candidate only for
-    paths under the literal prefix it does have. A route with no usable path is a
-    tail on the root, and so a candidate for every path.
+    `match_all` visits every static and parameter branch compatible with the
+    given path. It returns, in registration order, every route whose declared
+    pattern may match. The caller must still run `Route.matches` on the result.
+
+    Let *p* be the length of a path, *v* the number of visited nodes, and *c* the
+    number of candidates. Insertion takes O(*p*) expected time. A lookup takes
+    O(*p* + *v* + *c* log *c*) expected time and O(*p* + *v* + *c*) space.
     """
 
     def __init__(self, routes: Sequence[object] | None = None) -> None:
@@ -85,12 +87,14 @@ class RouteTrie:
             # is already every route, in registration order.
             return self.root.tail
         out: list[int] = []
-        stack = [(self.root, path.lstrip("/"))]
+        segments = path.lstrip("/").split("/")
+        last = len(segments) - 1
+        stack = [(self.root, 0)]
         while stack:
-            node, rest = stack.pop()
-            seg, slash, tail = rest.partition("/")
+            node, position = stack.pop()
+            seg = segments[position]
 
-            if not slash:
+            if position == last:
                 child = node.static.get(seg)
                 if child is not None:
                     out.extend(child.indices)
@@ -99,9 +103,9 @@ class RouteTrie:
             else:
                 child = node.static.get(seg)
                 if child is not None:
-                    stack.append((child, tail))
+                    stack.append((child, position + 1))
                 if seg and node.param is not None:
-                    stack.append((node.param, tail))
+                    stack.append((node.param, position + 1))
 
             # A tail registered here matches whatever is left, including the empty
             # string.

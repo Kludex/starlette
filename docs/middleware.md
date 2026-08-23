@@ -107,6 +107,10 @@ Multiple native middleware instances on the same request create only one span.
 
 ### Exclude URLs
 
+Pass a comma-separated string or a sequence of regular expressions in `excluded_urls`. If any
+expression matches the full request URL, the middleware does not create a span. This is useful for
+health checks, readiness probes, and other high-volume endpoints that you do not need to trace.
+
 ```python
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -130,10 +134,6 @@ app = Starlette(
     ],
 )
 ```
-
-Pass a comma-separated string or a sequence of regular expressions in `excluded_urls`. If any
-expression matches the full request URL, the middleware does not create a span. This is useful for
-health checks, readiness probes, and other high-volume endpoints that you do not need to trace.
 
 ## CORSMiddleware
 

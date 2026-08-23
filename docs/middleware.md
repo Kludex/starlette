@@ -47,6 +47,64 @@ application would look like this:
 
 The following middleware implementations are available in the Starlette package:
 
+## OpenTelemetry
+
+Creates an OpenTelemetry server span for every incoming HTTP request. The span follows the
+OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
+headers, and uses the matched route template for its name and `http.route` attribute.
+
+Install the optional API dependency with `pip install opentelemetry-api`, or as part of
+`pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application
+chooses and configures the SDK and exporter. If no tracer provider is configured, the middleware
+skips tracing.
+
+**Pydantic Logfire** configures a global OpenTelemetry provider. Add the middleware to enable
+Starlette tracing:
+
+```python
+import logfire
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+
+logfire.configure()
+
+app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
+```
+
+The same applies to any standard OpenTelemetry SDK configuration:
+
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+
+tracer_provider = TracerProvider()
+tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+trace.set_tracer_provider(tracer_provider)
+
+app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
+```
+
+The middleware discovers the global provider at request time. This means you can create the app
+before you configure the provider.
+
+You can also wrap any ASGI application directly:
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+
+app = OpenTelemetryMiddleware(Starlette())
+```
+
+Multiple native middleware instances on the same request create only one span.
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.

@@ -39,6 +39,7 @@ dependencies = [
 full = [
     "itsdangerous",
     "jinja2",
+    "opentelemetry-api",
     "python-multipart>=0.0.18",
     "pyyaml",
     "httpx>=0.27.0,<0.29.0",
@@ -54,6 +55,7 @@ dev = [
     "importlib-metadata==9.0.0",
     # Pinned to 2.1.0: mypy 2.2+ no longer honors the tuple return type of `create_memory_object_stream.__new__`.
     "mypy==2.1.0",
+    "opentelemetry-sdk==1.44.0",
     "pytest-codspeed>=4.1.1",
     "ruff==0.16.0",
     "types-PyYAML==6.0.12.20250516",

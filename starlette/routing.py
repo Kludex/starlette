@@ -704,6 +704,7 @@ class Router:
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
+                scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
@@ -715,6 +716,7 @@ class Router:
             #  Handle partial matches. These are cases where an endpoint is
             # able to handle the request, but is not a preferred option.
             # We use this in particular to deal with "405 Method Not Allowed".
+            scope["route"] = partial
             scope.update(partial_scope)
             await partial.handle(scope, receive, send)
             return

@@ -33,45 +33,43 @@ class OpenTelemetryMiddleware:
             return await self.app(scope, receive, send)
 
         url = URL(scope=scope)
-        if any(pattern.search(str(url)) for pattern in self._excluded_urls):
-            scope["starlette.opentelemetry"] = True
-            try:
-                return await self.app(scope, receive, send)
-            finally:
-                del scope["starlette.opentelemetry"]
+        excluded = any(pattern.search(str(url)) for pattern in self._excluded_urls)
+        if not excluded:
+            original_method = scope.get("method", "")
+            method = original_method.upper()
 
-        original_method = scope.get("method", "")
-        method = original_method.upper()
+            headers: dict[str, list[str]] = {}
+            for name, value in scope.get("headers", []):
+                headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
 
-        headers: dict[str, list[str]] = {}
-        for name, value in scope.get("headers", []):
-            headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
-
-        attributes: dict[str, str | int] = {
-            "http.request.method": method,
-            "url.path": scope.get("path", ""),
-            "url.scheme": scope.get("scheme", "http"),
-        }
-        if original_method != method:
-            attributes["http.request.method_original"] = original_method
-        if url.query:
-            attributes["url.query"] = url.query
-        if url.hostname is not None:
-            attributes["server.address"] = url.hostname
-            server = scope.get("server")
-            server_port = url.port if url.port is not None else server[1] if server is not None else None
-            if server_port is not None:
-                attributes["server.port"] = server_port
-        if scope.get("http_version"):
-            attributes["network.protocol.version"] = scope["http_version"]
-        if scope.get("client") is not None:
-            attributes["client.address"] = scope["client"][0]
-        if headers.get("user-agent"):
-            attributes["user_agent.original"] = headers["user-agent"][0]
+            attributes: dict[str, str | int] = {
+                "http.request.method": method,
+                "url.path": scope.get("path", ""),
+                "url.scheme": scope.get("scheme", "http"),
+            }
+            if original_method != method:
+                attributes["http.request.method_original"] = original_method
+            if url.query:
+                attributes["url.query"] = url.query
+            if url.hostname is not None:
+                attributes["server.address"] = url.hostname
+                server = scope.get("server")
+                server_port = url.port if url.port is not None else server[1] if server is not None else None
+                if server_port is not None:
+                    attributes["server.port"] = server_port
+            if scope.get("http_version"):
+                attributes["network.protocol.version"] = scope["http_version"]
+            if scope.get("client") is not None:
+                attributes["client.address"] = scope["client"][0]
+            if headers.get("user-agent"):
+                attributes["user_agent.original"] = headers["user-agent"][0]
 
         scope["starlette.opentelemetry"] = True
 
         try:
+            if excluded:
+                return await self.app(scope, receive, send)
+
             with tracer_provider.get_tracer("starlette", __version__).start_as_current_span(
                 method,
                 context=propagate.extract(headers),

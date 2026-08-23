@@ -55,6 +55,35 @@ def test_noop_provider_skips_instrumentation(
     assert test_client_factory(app).get("/").status_code == 200
 
 
+@pytest.mark.parametrize(
+    ("excluded_urls", "excluded_paths"),
+    [
+        ([r"^http://testserver/health(?:\?.*)?$"], ("/health?full=true",)),
+        (r"/health(?:\?.*)?$", ("/health?full=true",)),
+        (r"/health$, /metrics$", ("/health", "/metrics")),
+        ("", ()),
+    ],
+)
+def test_excluded_urls(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+    excluded_urls: str | list[str],
+    excluded_paths: tuple[str, ...],
+) -> None:
+    _, exporter = tracer_provider
+    app = Starlette(
+        routes=[Route("/", homepage), Route("/health", homepage), Route("/metrics", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware, excluded_urls=excluded_urls)],
+    )
+    client = test_client_factory(app)
+
+    for path in excluded_paths:
+        assert client.get(path).status_code == 200
+    assert exporter.get_finished_spans() == ()
+    assert client.get("/").status_code == 200
+    assert get_span(exporter).name == "GET /"
+
+
 def test_multiple_native_middlewares_do_not_create_duplicate_span(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
@@ -67,6 +96,24 @@ def test_multiple_native_middlewares_do_not_create_duplicate_span(
 
     assert test_client_factory(app).get("/").status_code == 200
     assert get_span(exporter).name == "GET /"
+
+
+def test_exclusion_propagates_to_nested_native_middleware(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    mounted_app = Starlette(
+        routes=[Route("/health", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
+    app = Starlette(
+        routes=[Mount("/api", app=mounted_app)],
+        middleware=[Middleware(OpenTelemetryMiddleware, excluded_urls=[r"/api/health$"])],
+    )
+
+    assert test_client_factory(app).get("/api/health").status_code == 200
+    assert exporter.get_finished_spans() == ()
 
 
 def test_provider_configured_after_middleware_stack_is_built(

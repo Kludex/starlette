@@ -56,63 +56,32 @@ def test_noop_provider_skips_instrumentation(
 
 
 @pytest.mark.parametrize(
-    "excluded_urls",
-    ([r"/health(?:\?.*)?$"], r"/health(?:\?.*)?$"),
+    ("excluded_urls", "excluded_paths"),
+    [
+        ([r"^http://testserver/health(?:\?.*)?$"], ("/health?full=true",)),
+        (r"/health(?:\?.*)?$", ("/health?full=true",)),
+        (r"/health$, /metrics$", ("/health", "/metrics")),
+        ("", ()),
+    ],
 )
-def test_excluded_urls_are_not_traced(
+def test_excluded_urls(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
     excluded_urls: str | list[str],
+    excluded_paths: tuple[str, ...],
 ) -> None:
     _, exporter = tracer_provider
     app = Starlette(
-        routes=[Route("/", homepage), Route("/health", homepage)],
-        middleware=[
-            Middleware(
-                OpenTelemetryMiddleware,
-                excluded_urls=excluded_urls,
-            )
-        ],
+        routes=[Route("/", homepage), Route("/health", homepage), Route("/metrics", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware, excluded_urls=excluded_urls)],
     )
+    client = test_client_factory(app)
 
-    assert test_client_factory(app).get("/health?full=true").status_code == 200
+    for path in excluded_paths:
+        assert client.get(path).status_code == 200
     assert exporter.get_finished_spans() == ()
-    assert test_client_factory(app).get("/").status_code == 200
+    assert client.get("/").status_code == 200
     assert get_span(exporter).name == "GET /"
-
-
-def test_empty_excluded_urls_traces_request(
-    test_client_factory: TestClientFactory,
-    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
-) -> None:
-    _, exporter = tracer_provider
-    app = Starlette(
-        routes=[Route("/", homepage)],
-        middleware=[Middleware(OpenTelemetryMiddleware, excluded_urls="")],
-    )
-
-    assert test_client_factory(app).get("/").status_code == 200
-    assert get_span(exporter).name == "GET /"
-
-
-def test_excluded_urls_accepts_comma_separated_string(
-    test_client_factory: TestClientFactory,
-    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
-) -> None:
-    _, exporter = tracer_provider
-    app = Starlette(
-        routes=[Route("/health", homepage), Route("/metrics", homepage)],
-        middleware=[
-            Middleware(
-                OpenTelemetryMiddleware,
-                excluded_urls=r"/health$, /metrics$",
-            )
-        ],
-    )
-
-    assert test_client_factory(app).get("/health").status_code == 200
-    assert test_client_factory(app).get("/metrics").status_code == 200
-    assert exporter.get_finished_spans() == ()
 
 
 def test_multiple_native_middlewares_do_not_create_duplicate_span(

@@ -591,8 +591,6 @@ class Router:
     ) -> None:
         self.routes = [] if routes is None else routes
         self._trie = RouteTrie()
-        self._trie_routes: VersionedList[BaseRoute] | None = None
-        self._trie_routes_version = -1
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -684,20 +682,18 @@ class Router:
         # registration order and all match semantics are preserved. Route
         # subclasses that customize matching stay always-candidate.
         routes = self.routes
-        if self._trie_routes is not routes or self._trie_routes_version != routes.version:
-            trie = RouteTrie()
+        if self._trie.is_stale(routes):
+            trie = RouteTrie(routes)
             for index, route in enumerate(routes):
-                if isinstance(route, Route) and route.matches == Route.matches.__get__(route):
+                if type(route) is Route:
                     trie.add(index, route.path, route.param_convertors)
-                elif isinstance(route, WebSocketRoute) and route.matches == WebSocketRoute.matches.__get__(route):
+                elif type(route) is WebSocketRoute:
                     trie.add(index, route.path, route.param_convertors)
-                elif isinstance(route, Mount) and route.matches == Mount.matches.__get__(route):
+                elif type(route) is Mount:
                     trie.add(index, route.path + "/{path:path}", route.param_convertors)
                 else:
                     trie.add(index, None, {})
             self._trie = trie
-            self._trie_routes = routes
-            self._trie_routes_version = routes.version
         return [routes[i] for i in self._trie.match_all(get_route_path(scope))]
 
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:

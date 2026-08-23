@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from starlette._utils import parse_host_header
+from starlette._utils import get_host_from_header
 from starlette.datastructures import URL, Headers
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -38,7 +38,7 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        host = parse_host_header(headers.get("host", ""))
+        host = get_host_from_header(headers.get("host", ""))
         if host is None:
             await PlainTextResponse("Invalid host header", status_code=400)(scope, receive, send)
             return

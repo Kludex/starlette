@@ -5,7 +5,7 @@ from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 
-from starlette._utils import parse_host_header
+from starlette._utils import get_host_from_header
 from starlette.concurrency import run_in_threadpool
 from starlette.types import Scope
 
@@ -43,7 +43,7 @@ class URL:
                     host_header = value.decode("latin-1")
                     break
 
-            if host_header is not None and parse_host_header(host_header) is not None:
+            if host_header is not None and get_host_from_header(host_header) is not None:
                 netloc = host_header
             elif server is not None:
                 host, port = server

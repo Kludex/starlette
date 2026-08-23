@@ -30,15 +30,16 @@ class BenchmarkCase:
     max_fields: int = 1000
     max_part_size: int = MiB
     expected_error: str | None = None
+    warmup: bool = False
 
 
 CASES = (
     BenchmarkCase("fields-1000", fields=1000),
-    BenchmarkCase("file-512KiB", file_sizes=(512 * KiB,)),
+    BenchmarkCase("file-512KiB", file_sizes=(512 * KiB,), warmup=True),
     BenchmarkCase("file-10MiB-single", file_sizes=(10 * MiB,), chunk_size=None),
     BenchmarkCase("file-10MiB-64KiB", file_sizes=(10 * MiB,)),
-    BenchmarkCase("mixed", fields=100, file_sizes=(512 * KiB,)),
-    BenchmarkCase("boundary-like-file", file_sizes=(MiB,), boundary_like=True),
+    BenchmarkCase("mixed", fields=100, file_sizes=(512 * KiB,), warmup=True),
+    BenchmarkCase("boundary-like-file", file_sizes=(MiB,), boundary_like=True, warmup=True),
     BenchmarkCase(
         "malformed-after-spooled-file",
         file_sizes=(2 * MiB,),
@@ -186,7 +187,10 @@ def warm_multipart(asgi_runner: ASGIRunner) -> None:
 def test_multipart(asgi_runner: ASGIRunner, benchmark: BenchmarkFixture, case: BenchmarkCase) -> None:
     body = make_body(case)
     chunks = make_chunks(body, case.chunk_size)
-    messages = benchmark.pedantic(dispatch, args=(asgi_runner, MultipartApp(case), chunks), rounds=1)
+    app = MultipartApp(case)
+    if case.warmup:
+        dispatch(asgi_runner, app, chunks)
+    messages = benchmark.pedantic(dispatch, args=(asgi_runner, app, chunks), rounds=1)
 
     if case.expected_error is None:
         expected_status = 200

@@ -30,7 +30,19 @@ class Node:
 
 
 class RouteTrie:
-    """Build in O(N) expected time and match in O(N log N) worst-case time, where N is the input size."""
+    """Store route indices in a trie of path segments.
+
+    Each edge is either a static segment or a parameter. A route ends at an
+    `indices` list if all its segments have one of these forms. Otherwise, it
+    ends at a `tail` list on the last node that could be indexed. A root tail is
+    therefore a candidate for every path.
+
+    `match_all` visits every static and parameter branch compatible with the
+    given path. It returns, in registration order, every route whose declared
+    pattern may match. The caller must still run `Route.matches` on the result.
+
+    Insertion takes O(N) expected time; lookup takes O(N log N) worst-case time.
+    """
 
     def __init__(self, routes: Sequence[object] | None = None) -> None:
         self.root = Node()

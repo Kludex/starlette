@@ -676,11 +676,11 @@ class Router:
         if self._trie.is_stale(routes):
             trie = RouteTrie(routes)
             for index, route in enumerate(routes):
-                if type(route) is Route:
+                if type(route) is Route and "matches" not in vars(route):
                     trie.add(index, route.path, route.param_convertors)
-                elif type(route) is WebSocketRoute:
+                elif type(route) is WebSocketRoute and "matches" not in vars(route):
                     trie.add(index, route.path, route.param_convertors)
-                elif type(route) is Mount:
+                elif type(route) is Mount and "matches" not in vars(route):
                     trie.add(index, route.path + "/{path:path}", route.param_convertors)
                 else:
                     trie.add(index, None, {})

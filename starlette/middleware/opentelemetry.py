@@ -18,9 +18,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests."""
 
-    def __init__(self, app: ASGIApp, *, excluded_urls: Sequence[str] = ()) -> None:
+    def __init__(self, app: ASGIApp, *, excluded_urls: str | Sequence[str] = ()) -> None:
         if isinstance(excluded_urls, str):
-            raise TypeError("`excluded_urls` must be a sequence of URL patterns, not a string")
+            excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         self.app = app
         self._excluded_urls = tuple(re.compile(pattern) for pattern in excluded_urls)
 

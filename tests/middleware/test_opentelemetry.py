@@ -55,9 +55,14 @@ def test_noop_provider_skips_instrumentation(
     assert test_client_factory(app).get("/").status_code == 200
 
 
+@pytest.mark.parametrize(
+    "excluded_urls",
+    ([r"/health(?:\?.*)?$"], r"/health(?:\?.*)?$"),
+)
 def test_excluded_urls_are_not_traced(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+    excluded_urls: str | list[str],
 ) -> None:
     _, exporter = tracer_provider
     app = Starlette(
@@ -65,7 +70,7 @@ def test_excluded_urls_are_not_traced(
         middleware=[
             Middleware(
                 OpenTelemetryMiddleware,
-                excluded_urls=[r"/health(?:\?.*)?$"],
+                excluded_urls=excluded_urls,
             )
         ],
     )
@@ -76,9 +81,38 @@ def test_excluded_urls_are_not_traced(
     assert get_span(exporter).name == "GET /"
 
 
-def test_excluded_urls_rejects_string() -> None:
-    with pytest.raises(TypeError, match="must be a sequence of URL patterns"):
-        OpenTelemetryMiddleware(PlainTextResponse("OK"), excluded_urls="/health")
+def test_empty_excluded_urls_traces_request(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware, excluded_urls="")],
+    )
+
+    assert test_client_factory(app).get("/").status_code == 200
+    assert get_span(exporter).name == "GET /"
+
+
+def test_excluded_urls_accepts_comma_separated_string(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    app = Starlette(
+        routes=[Route("/health", homepage), Route("/metrics", homepage)],
+        middleware=[
+            Middleware(
+                OpenTelemetryMiddleware,
+                excluded_urls=r"/health$, /metrics$",
+            )
+        ],
+    )
+
+    assert test_client_factory(app).get("/health").status_code == 200
+    assert test_client_factory(app).get("/metrics").status_code == 200
+    assert exporter.get_finished_spans() == ()
 
 
 def test_multiple_native_middlewares_do_not_create_duplicate_span(

@@ -125,15 +125,15 @@ app = Starlette(
     middleware=[
         Middleware(
             OpenTelemetryMiddleware,
-            excluded_urls=[r"/health$"],
+            excluded_urls=r"/health$,/readiness$",
         )
     ],
 )
 ```
 
-Pass a sequence of regular expressions in `excluded_urls`. If any expression matches the full
-request URL, the middleware does not create a span. This is useful for health checks, readiness
-probes, and other high-volume endpoints that you do not need to trace.
+Pass a comma-separated string or a sequence of regular expressions in `excluded_urls`. If any
+expression matches the full request URL, the middleware does not create a span. This is useful for
+health checks, readiness probes, and other high-volume endpoints that you do not need to trace.
 
 ## CORSMiddleware
 

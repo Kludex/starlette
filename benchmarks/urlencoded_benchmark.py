@@ -25,12 +25,13 @@ class BenchmarkCase:
     max_fields: int = 1000
     max_part_size: int = MiB
     expected_error: str | None = None
+    warmup: bool = False
 
 
 CASES = (
     BenchmarkCase("fields-1000", fields=1000, field_size=8),
     BenchmarkCase("field-1MiB-single", fields=1, field_size=MiB, chunk_size=None, max_part_size=2 * MiB),
-    BenchmarkCase("field-1MiB-64KiB", fields=1, field_size=MiB, max_part_size=2 * MiB),
+    BenchmarkCase("field-1MiB-64KiB", fields=1, field_size=MiB, max_part_size=2 * MiB, warmup=True),
     BenchmarkCase("percent-encoded", fields=100, field_size=8, percent_encoded=True),
     BenchmarkCase(
         "max-fields",
@@ -119,7 +120,10 @@ def test_urlencoded_form(asgi_runner: ASGIRunner, benchmark: BenchmarkFixture, c
     fields = make_fields(case)
     body = urlencode(fields).encode()
     chunks = make_chunks(body, case.chunk_size)
-    messages = benchmark.pedantic(dispatch, args=(asgi_runner, FormApp(case), chunks), rounds=1)
+    app = FormApp(case)
+    if case.warmup:
+        dispatch(asgi_runner, app, chunks)
+    messages = benchmark.pedantic(dispatch, args=(asgi_runner, app, chunks), rounds=1)
 
     if case.expected_error is None:
         expected_status = 200

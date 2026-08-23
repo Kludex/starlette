@@ -15,6 +15,8 @@ jobs:
   benchmarks:
     name: Run benchmarks
     runs-on: ubuntu-latest
+    env:
+      PYTHONHASHSEED: "0"
 
     steps:
       - uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -34,5 +36,17 @@ jobs:
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@0ca9cbbf4623b599a6c3ed4fc8a922942705d9f1 # v5.0.2
         with:
-          run: uv run pytest benchmarks/gzip_benchmark.py benchmarks/routing_benchmark.py --codspeed
+          run: >-
+            uv run pytest
+            benchmarks/gzip_benchmark.py
+            benchmarks/multipart_benchmark.py
+            benchmarks/request_benchmark.py
+            benchmarks/response_benchmark.py
+            benchmarks/routing_benchmark.py
+            benchmarks/json_benchmark.py
+            benchmarks/file_response_benchmark.py
+            benchmarks/streaming_response_benchmark.py
+            benchmarks/urlencoded_benchmark.py
+            benchmarks/websocket_benchmark.py
+            --codspeed
           mode: simulation,memory

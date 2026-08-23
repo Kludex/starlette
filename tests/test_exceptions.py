@@ -113,9 +113,10 @@ def test_websockets_should_raise(client: TestClient) -> None:
 
 def test_handled_exc_after_response(test_client_factory: TestClientFactory, client: TestClient) -> None:
     # A 406 HttpException is raised *after* the response has already been sent.
-    # The exception middleware should raise a RuntimeError.
-    with pytest.raises(RuntimeError, match="Caught handled exception, but response already started."):
+    # The handler still runs; the original exception is re-raised.
+    with pytest.raises(HTTPException) as exc_info:
         client.get("/handled_exc_after_response")
+    assert exc_info.value.status_code == 406
 
     # If `raise_server_exceptions=False` then the test client will still allow
     # us to see the response as it will have been seen by the client.

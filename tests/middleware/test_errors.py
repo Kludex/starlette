@@ -103,3 +103,35 @@ def test_background_task(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.status_code == 204
     assert accessed_error_handler
+
+
+def test_class_keyed_handler_after_background_task(test_client_factory: TestClientFactory) -> None:
+    seen: list[Exception] = []
+
+    class Boom(Exception):
+        pass
+
+    def boom_handler(request: Request, exc: Exception) -> JSONResponse:
+        seen.append(exc)
+        return JSONResponse({"detail": "handled"}, status_code=500)
+
+    def fail() -> None:
+        raise Boom("task blew up")
+
+    async def endpoint(request: Request) -> Response:
+        return Response(status_code=204, background=BackgroundTask(fail))
+
+    app = Starlette(
+        routes=[Route("/", endpoint=endpoint)],
+        exception_handlers={Boom: boom_handler},
+    )
+
+    client = test_client_factory(app, raise_server_exceptions=False)
+    response = client.get("/")
+    assert response.status_code == 204
+    assert len(seen) == 1
+    assert isinstance(seen[0], Boom)
+
+    with pytest.raises(Boom, match="task blew up"):
+        test_client_factory(app).get("/")
+    assert len(seen) == 2

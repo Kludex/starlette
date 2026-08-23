@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from collections.abc import Sequence
 
-from starlette._versioned_list import VersionedList
 from starlette.convertors import (
     Convertor,
     FloatConvertor,
@@ -45,14 +44,13 @@ class RouteTrie:
     tail on the root, and so a candidate for every path.
     """
 
-    def __init__(self, routes: VersionedList[Any] | None = None) -> None:
+    def __init__(self, routes: Sequence[object] | None = None) -> None:
         self.root = Node()
         self.indexed = False
-        self._routes = routes
-        self._routes_version = -1 if routes is None else routes.version
+        self._routes = None if routes is None else list(routes)
 
-    def is_stale(self, routes: VersionedList[Any]) -> bool:
-        return self._routes is not routes or self._routes_version != routes.version
+    def is_stale(self, routes: Sequence[object]) -> bool:
+        return self._routes != routes
 
     def add(self, index: int, path: str | None, convertors: dict[str, Convertor[object]]) -> None:
         if not path or not path.startswith("/"):

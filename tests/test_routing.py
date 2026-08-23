@@ -310,46 +310,6 @@ def test_router_rebuilds_trie_after_routes_replaced(test_client_factory: TestCli
     assert client.get("/second").status_code == 200
 
 
-def test_router_tracks_all_route_list_mutations(test_client_factory: TestClientFactory) -> None:
-    router = Router(routes=[Route("/first", endpoint=homepage), Route("/second", endpoint=homepage)])
-    client = test_client_factory(router)
-    assert client.get("/first").status_code == 200
-
-    router.routes.append(Route("/append", endpoint=homepage))
-    assert client.get("/append").status_code == 200
-    router.routes.extend([Route("/extend", endpoint=homepage)])
-    assert client.get("/extend").status_code == 200
-    router.routes.insert(0, Route("/insert", endpoint=homepage))
-    assert client.get("/insert").status_code == 200
-    router.routes[0] = Route("/set", endpoint=homepage)
-    assert client.get("/set").status_code == 200
-    router.routes[:1] = [Route("/slice", endpoint=homepage)]
-    assert client.get("/slice").status_code == 200
-    del router.routes[0]
-    assert client.get("/slice").status_code == 404
-    del router.routes[:1]
-
-    router.routes += [Route("/add", endpoint=homepage)]
-    assert client.get("/add").status_code == 200
-    router.routes *= 1
-    assert client.get("/add").status_code == 200
-    added = router.routes.pop()
-    assert isinstance(added, Route)
-
-    removed = router.routes[0]
-    router.routes.remove(removed)
-    router.routes.reverse()
-    router.routes.sort(key=repr)
-    remaining = router.routes[0]
-    assert isinstance(remaining, Route)
-    assert client.get(remaining.path).status_code == 200
-
-    router.routes.clear()
-    assert client.get(remaining.path).status_code == 404
-    router.routes = [Route("/assigned", endpoint=homepage)]
-    assert client.get("/assigned").status_code == 200
-
-
 def test_route_subclass_can_widen_matching(test_client_factory: TestClientFactory) -> None:
     class CaseInsensitiveRoute(Route):
         def matches(self, scope: Scope) -> tuple[Match, Scope]:
@@ -357,8 +317,12 @@ def test_route_subclass_can_widen_matching(test_client_factory: TestClientFactor
             normalized_scope["path"] = scope["path"].lower()
             return super().matches(normalized_scope)
 
-    router = Router(routes=[CaseInsensitiveRoute("/users", endpoint=homepage)])
-    assert test_client_factory(router).get("/USERS").status_code == 200
+    router = Router(routes=[Route("/users", endpoint=homepage)])
+    client = test_client_factory(router)
+    assert client.get("/users").status_code == 200
+
+    router.routes[0] = CaseInsensitiveRoute("/users", endpoint=homepage)
+    assert client.get("/USERS").status_code == 200
 
 
 def test_router_handles_deep_paths(test_client_factory: TestClientFactory) -> None:

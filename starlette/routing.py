@@ -16,7 +16,6 @@ from typing import Any, TypeVar
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._trie import PARAM_REGEX, RouteTrie
 from starlette._utils import get_route_path, is_async_callable
-from starlette._versioned_list import VersionedList
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
@@ -279,7 +278,7 @@ class Route(BaseRoute):
 
     def __eq__(self, other: Any) -> bool:
         return (
-            isinstance(other, Route)
+            type(other) is type(self)
             and self.path == other.path
             and self.endpoint == other.endpoint
             and self.methods == other.methods
@@ -352,7 +351,7 @@ class WebSocketRoute(BaseRoute):
         await self.app(scope, receive, send)
 
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, WebSocketRoute) and self.path == other.path and self.endpoint == other.endpoint
+        return type(other) is type(self) and self.path == other.path and self.endpoint == other.endpoint
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(path={self.path!r}, name={self.name!r})"
@@ -453,7 +452,7 @@ class Mount(BaseRoute):
         await self.app(scope, receive, send)
 
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, Mount) and self.path == other.path and self.app == other.app
+        return type(other) is type(self) and self.path == other.path and self.app == other.app
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
@@ -569,14 +568,6 @@ class _DefaultLifespan:
 
 
 class Router:
-    @property
-    def routes(self) -> VersionedList[BaseRoute]:
-        return self._routes
-
-    @routes.setter
-    def routes(self, routes: Sequence[BaseRoute]) -> None:
-        self._routes = VersionedList(routes)
-
     def __init__(
         self,
         routes: Sequence[BaseRoute] | None = None,
@@ -589,7 +580,7 @@ class Router:
         middleware: Sequence[Middleware] | None = None,
         max_body_size: int | None = None,
     ) -> None:
-        self.routes = [] if routes is None else routes
+        self.routes = [] if routes is None else list(routes)
         self._trie = RouteTrie()
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default

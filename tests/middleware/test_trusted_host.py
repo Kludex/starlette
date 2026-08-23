@@ -73,4 +73,3 @@ def test_trusted_host_middleware_ipv6(test_client_factory: TestClientFactory) ->
     client = test_client_factory(app, base_url="http://[::2]:8000")
     response = client.get("/")
     assert response.status_code == 400
-

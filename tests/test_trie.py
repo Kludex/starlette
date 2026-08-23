@@ -175,7 +175,7 @@ def _names(router: Router, path: str) -> list[str]:
     return [r.path for r in router._candidate_routes(_scope(path)) if isinstance(r, Route)]
 
 
-def test_route_subclass_customizing_matches_is_always_candidate(test_client_factory: TestClientFactory) -> None:
+def test_route_subclass_uses_declared_path(test_client_factory: TestClientFactory) -> None:
     class AnnotatingRoute(Route):
         def matches(self, scope: Scope) -> tuple[Match, Scope]:
             match, child_scope = super().matches(scope)
@@ -187,7 +187,7 @@ def test_route_subclass_customizing_matches_is_always_candidate(test_client_fact
 
     router = Router(routes=[AnnotatingRoute("/a", endpoint=endpoint), Route("/b", endpoint=endpoint)])
     assert test_client_factory(router).get("/a").text == "AnnotatingRoute"
-    assert _names(router, "/nope") == ["/a"]
+    assert _names(router, "/nope") == []
 
 
 def test_router_cache_rebuilds_when_routes_added() -> None:

@@ -278,7 +278,7 @@ class Route(BaseRoute):
 
     def __eq__(self, other: Any) -> bool:
         return (
-            type(other) is type(self)
+            isinstance(other, Route)
             and self.path == other.path
             and self.endpoint == other.endpoint
             and self.methods == other.methods
@@ -351,7 +351,7 @@ class WebSocketRoute(BaseRoute):
         await self.app(scope, receive, send)
 
     def __eq__(self, other: Any) -> bool:
-        return type(other) is type(self) and self.path == other.path and self.endpoint == other.endpoint
+        return isinstance(other, WebSocketRoute) and self.path == other.path and self.endpoint == other.endpoint
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(path={self.path!r}, name={self.name!r})"
@@ -452,7 +452,7 @@ class Mount(BaseRoute):
         await self.app(scope, receive, send)
 
     def __eq__(self, other: Any) -> bool:
-        return type(other) is type(self) and self.path == other.path and self.app == other.app
+        return isinstance(other, Mount) and self.path == other.path and self.app == other.app
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
@@ -676,11 +676,11 @@ class Router:
         if self._trie.is_stale(routes):
             trie = RouteTrie(routes)
             for index, route in enumerate(routes):
-                if type(route) is Route and "matches" not in vars(route):
+                if isinstance(route, Route):
                     trie.add(index, route.path, route.param_convertors)
-                elif type(route) is WebSocketRoute and "matches" not in vars(route):
+                elif isinstance(route, WebSocketRoute):
                     trie.add(index, route.path, route.param_convertors)
-                elif type(route) is Mount and "matches" not in vars(route):
+                elif isinstance(route, Mount):
                     trie.add(index, route.path + "/{path:path}", route.param_convertors)
                 else:
                     trie.add(index, None, {})

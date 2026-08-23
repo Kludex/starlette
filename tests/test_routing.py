@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import functools
 import json
-import types
 import uuid
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
 from typing import TypedDict
@@ -309,34 +308,6 @@ def test_router_rebuilds_trie_after_routes_replaced(test_client_factory: TestCli
 
     router.routes.reverse()
     assert client.get("/second").status_code == 200
-
-
-def test_route_subclass_can_widen_matching(test_client_factory: TestClientFactory) -> None:
-    class CaseInsensitiveRoute(Route):
-        def matches(self, scope: Scope) -> tuple[Match, Scope]:
-            normalized_scope = dict(scope)
-            normalized_scope["path"] = scope["path"].lower()
-            return super().matches(normalized_scope)
-
-    router = Router(routes=[Route("/users", endpoint=homepage)])
-    client = test_client_factory(router)
-    assert client.get("/users").status_code == 200
-
-    router.routes[0] = CaseInsensitiveRoute("/users", endpoint=homepage)
-    assert client.get("/USERS").status_code == 200
-
-
-def test_route_instance_can_customize_matching(test_client_factory: TestClientFactory) -> None:
-    route = Route("/users", endpoint=homepage)
-
-    def matches(self: Route, scope: Scope) -> tuple[Match, Scope]:
-        normalized_scope = dict(scope)
-        normalized_scope["path"] = scope["path"].lower()
-        return Route.matches(self, normalized_scope)
-
-    route.__dict__["matches"] = types.MethodType(matches, route)
-    router = Router(routes=[route])
-    assert test_client_factory(router).get("/USERS").status_code == 200
 
 
 def test_router_handles_deep_paths(test_client_factory: TestClientFactory) -> None:

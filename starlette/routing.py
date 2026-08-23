@@ -7,13 +7,14 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Generator, Iterator, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
 from typing import Any, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
+from starlette._route_index import RouteIndex
 from starlette._utils import get_route_path, is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
@@ -584,6 +585,7 @@ class Router:
         max_body_size: int | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
+        self._route_index = RouteIndex()
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -669,6 +671,26 @@ class Router:
         """
         await self.middleware_stack(scope, receive, send)
 
+    def _candidate_routes(self, scope: Scope) -> Iterator[BaseRoute]:
+        routes = self.routes
+        if self._route_index.is_stale(routes):
+            route_index = RouteIndex(routes)
+            for index, route in enumerate(routes):
+                if isinstance(route, (Route, WebSocketRoute)):
+                    if route.param_convertors:
+                        route_index.add_prefix(index, route.path)
+                    else:
+                        route_index.add_exact(index, route.path)
+                elif isinstance(route, Mount):
+                    route_index.add_prefix(index, route.path)
+                else:
+                    route_index.add_fallback(index)
+            self._route_index = route_index
+        candidates = self._route_index.match(get_route_path(scope))
+        if isinstance(candidates, Sequence) and len(candidates) == len(routes):
+            return iter(routes)
+        return (routes[index] for index in candidates)
+
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
@@ -681,7 +703,7 @@ class Router:
 
         partial = None
 
-        for route in self.routes:
+        for route in self._candidate_routes(scope):
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
@@ -711,7 +733,7 @@ class Router:
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
-            for route in self.routes:
+            for route in self._candidate_routes(redirect_scope):
                 match, child_scope = route.matches(redirect_scope)
                 if match != Match.NONE:
                     redirect_url = URL(scope=redirect_scope)

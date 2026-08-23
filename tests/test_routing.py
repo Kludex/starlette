@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -298,6 +298,43 @@ def test_router_add_route(client: TestClient) -> None:
     assert response.text == "Hello, world!"
 
 
+def test_router_rebuilds_route_index_after_routes_change(test_client_factory: TestClientFactory) -> None:
+    router = Router(routes=[Route("/first", endpoint=homepage), Route("/second", endpoint=homepage)])
+    client = test_client_factory(router)
+    assert client.get("/first").status_code == 200
+
+    router.routes[0] = Route("/replacement", endpoint=homepage)
+    assert client.get("/replacement").status_code == 200
+
+    router.routes.reverse()
+    assert client.get("/second").status_code == 200
+
+
+def test_router_preserves_order_across_index_groups(test_client_factory: TestClientFactory) -> None:
+    router = Router(
+        routes=[
+            Host("testserver", app=PlainTextResponse("fallback")),
+            Route("/resource/{name}", endpoint=PlainTextResponse("prefix")),
+            Route("/resource/item", endpoint=PlainTextResponse("exact")),
+        ]
+    )
+    assert test_client_factory(router).get("/resource/item").text == "fallback"
+
+
+def test_route_subclass_uses_declared_path(test_client_factory: TestClientFactory) -> None:
+    class AnnotatingRoute(Route):
+        def matches(self, scope: Scope) -> tuple[Match, Scope]:
+            match, child_scope = super().matches(scope)
+            child_scope["route"] = self
+            return match, child_scope
+
+    def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(type(request.scope["route"]).__name__)
+
+    router = Router(routes=[AnnotatingRoute("/annotated", endpoint=endpoint)])
+    assert test_client_factory(router).get("/annotated").text == "AnnotatingRoute"
+
+
 def test_router_duplicate_path(client: TestClient) -> None:
     response = client.post("/func")
     assert response.status_code == 200
@@ -305,6 +342,8 @@ def test_router_duplicate_path(client: TestClient) -> None:
 
 
 def test_router_add_websocket_route(client: TestClient) -> None:
+    assert client.get("/ws").status_code == 404
+
     with client.websocket_connect("/ws") as session:
         text = session.receive_text()
         assert text == "Hello, world!"

@@ -55,6 +55,32 @@ def test_noop_provider_skips_instrumentation(
     assert test_client_factory(app).get("/").status_code == 200
 
 
+def test_excluded_urls_are_not_traced(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    app = Starlette(
+        routes=[Route("/", homepage), Route("/health", homepage)],
+        middleware=[
+            Middleware(
+                OpenTelemetryMiddleware,
+                excluded_urls=[r"/health(?:\?.*)?$"],
+            )
+        ],
+    )
+
+    assert test_client_factory(app).get("/health?full=true").status_code == 200
+    assert exporter.get_finished_spans() == ()
+    assert test_client_factory(app).get("/").status_code == 200
+    assert get_span(exporter).name == "GET /"
+
+
+def test_excluded_urls_rejects_string() -> None:
+    with pytest.raises(TypeError, match="must be a sequence of URL patterns"):
+        OpenTelemetryMiddleware(PlainTextResponse("OK"), excluded_urls="/health")
+
+
 def test_multiple_native_middlewares_do_not_create_duplicate_span(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],

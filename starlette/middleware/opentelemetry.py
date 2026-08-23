@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
+
 try:
     from opentelemetry import propagate, trace
     from opentelemetry.trace import SpanKind, Status, StatusCode
@@ -15,8 +18,11 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests."""
 
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, *, excluded_urls: Sequence[str] = ()) -> None:
+        if isinstance(excluded_urls, str):
+            raise TypeError("`excluded_urls` must be a sequence of URL patterns, not a string")
         self.app = app
+        self._excluded_urls = tuple(re.compile(pattern) for pattern in excluded_urls)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -26,6 +32,10 @@ class OpenTelemetryMiddleware:
         if isinstance(tracer_provider, (trace.NoOpTracerProvider, trace.ProxyTracerProvider)):
             return await self.app(scope, receive, send)
 
+        url = URL(scope=scope)
+        if any(pattern.search(str(url)) for pattern in self._excluded_urls):
+            return await self.app(scope, receive, send)
+
         original_method = scope.get("method", "")
         method = original_method.upper()
 
@@ -33,7 +43,6 @@ class OpenTelemetryMiddleware:
         for name, value in scope.get("headers", []):
             headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
 
-        url = URL(scope=scope)
         attributes: dict[str, str | int] = {
             "http.request.method": method,
             "url.path": scope.get("path", ""),

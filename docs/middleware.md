@@ -105,6 +105,36 @@ app = OpenTelemetryMiddleware(Starlette())
 
 Multiple native middleware instances on the same request create only one span.
 
+### Exclude URLs
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world!")
+
+
+app = Starlette(
+    routes=[Route("/", homepage), Route("/health", homepage)],
+    middleware=[
+        Middleware(
+            OpenTelemetryMiddleware,
+            excluded_urls=[r"/health$"],
+        )
+    ],
+)
+```
+
+Pass a sequence of regular expressions in `excluded_urls`. If any expression matches the full
+request URL, the middleware does not create a span. This is useful for health checks, readiness
+probes, and other high-volume endpoints that you do not need to trace.
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.

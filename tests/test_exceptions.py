@@ -164,11 +164,15 @@ def test_http_repr() -> None:
 
 
 def test_websocket_str() -> None:
+    assert str(WebSocketException()) == "1008: "
     assert str(WebSocketException(1008)) == "1008: "
     assert str(WebSocketException(1008, "Policy Violation")) == "1008: Policy Violation"
 
 
 def test_websocket_repr() -> None:
+    assert repr(WebSocketException(reason="Policy Violation")) == (
+        "WebSocketException(code=1008, reason='Policy Violation')"
+    )
     assert repr(WebSocketException(1008, reason="Policy Violation")) == (
         "WebSocketException(code=1008, reason='Policy Violation')"
     )

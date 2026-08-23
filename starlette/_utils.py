@@ -98,10 +98,10 @@ async def create_collapsing_task_group() -> AsyncGenerator[anyio.abc.TaskGroup, 
 
 
 def parse_host_header(host_header: str) -> str | None:
-    """Return the host in `host_header`.
+    """Parse `host_header` into its host component.
 
-    The return value excludes the port and preserves brackets around IPv6
-    addresses. Return `None` if `host_header` is invalid.
+    The result excludes the port and preserves brackets around IPv6 addresses.
+    Invalid headers produce `None`.
     """
     match = _HOST_RE.fullmatch(host_header)
     return match.group(1) if match is not None else None

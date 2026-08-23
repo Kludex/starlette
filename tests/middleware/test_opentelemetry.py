@@ -129,6 +129,24 @@ def test_multiple_native_middlewares_do_not_create_duplicate_span(
     assert get_span(exporter).name == "GET /"
 
 
+def test_exclusion_propagates_to_nested_native_middleware(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    mounted_app = Starlette(
+        routes=[Route("/health", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
+    app = Starlette(
+        routes=[Mount("/api", app=mounted_app)],
+        middleware=[Middleware(OpenTelemetryMiddleware, excluded_urls=[r"/api/health$"])],
+    )
+
+    assert test_client_factory(app).get("/api/health").status_code == 200
+    assert exporter.get_finished_spans() == ()
+
+
 def test_provider_configured_after_middleware_stack_is_built(
     monkeypatch: pytest.MonkeyPatch,
     test_client_factory: TestClientFactory,

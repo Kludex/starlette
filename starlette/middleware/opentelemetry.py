@@ -34,7 +34,11 @@ class OpenTelemetryMiddleware:
 
         url = URL(scope=scope)
         if any(pattern.search(str(url)) for pattern in self._excluded_urls):
-            return await self.app(scope, receive, send)
+            scope["starlette.opentelemetry"] = True
+            try:
+                return await self.app(scope, receive, send)
+            finally:
+                del scope["starlette.opentelemetry"]
 
         original_method = scope.get("method", "")
         method = original_method.upper()

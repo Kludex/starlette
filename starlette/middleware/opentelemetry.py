@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from dataclasses import KW_ONLY, InitVar, dataclass, field
 
 try:
     from opentelemetry import propagate, trace
@@ -20,10 +21,7 @@ class OpenTelemetryMiddleware:
 
     def __init__(self, app: ASGIApp, *, excluded_urls: str | Sequence[str] = ()) -> None:
         self.app = app
-        if isinstance(excluded_urls, str):
-            excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
-        patterns = tuple(re.compile(pattern) for pattern in excluded_urls)
-        self._responder = OpenTelemetryResponder(app, patterns)
+        self._responder = OpenTelemetryResponder(app, excluded_urls=excluded_urls)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -36,10 +34,17 @@ class OpenTelemetryMiddleware:
             del scope["starlette.opentelemetry"]
 
 
+@dataclass(frozen=True)
 class OpenTelemetryResponder:
-    def __init__(self, app: ASGIApp, excluded_urls: tuple[re.Pattern[str], ...]) -> None:
-        self.app = app
-        self._excluded_urls = excluded_urls
+    app: ASGIApp
+    _: KW_ONLY
+    excluded_urls: InitVar[str | Sequence[str]] = ()
+    _excluded_urls: tuple[re.Pattern[str], ...] = field(init=False)
+
+    def __post_init__(self, excluded_urls: str | Sequence[str]) -> None:
+        if isinstance(excluded_urls, str):
+            excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
+        object.__setattr__(self, "_excluded_urls", tuple(re.compile(pattern) for pattern in excluded_urls))
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         tracer_provider = trace.get_tracer_provider()

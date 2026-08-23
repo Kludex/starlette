@@ -132,6 +132,12 @@ class BaseHTTPMiddleware:
             async def send_no_error(message: Message) -> None:
                 try:
                     await send_stream.send(message)
+                    if message["type"] == "http.response.body" and not message.get("more_body", False):
+                        # Hold the inner application until the response has
+                        # actually been sent, so background tasks it attaches
+                        # only run once the last byte has reached the client,
+                        # as documented in starlette.io/background.
+                        await response_sent.wait()
                 except anyio.BrokenResourceError:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return

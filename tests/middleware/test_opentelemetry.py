@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from collections.abc import Generator
 from unittest.mock import AsyncMock
 
@@ -14,7 +13,6 @@ from opentelemetry.trace import SpanKind, StatusCode
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
@@ -47,52 +45,35 @@ def homepage(request: Request) -> PlainTextResponse:
     return PlainTextResponse("Hello, world!")
 
 
-def test_missing_opentelemetry_dependency_does_not_wrap_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "starlette.middleware.opentelemetry", None)
-    app = Starlette(routes=[Route("/", homepage)])
-
-    assert isinstance(app.build_middleware_stack(), ServerErrorMiddleware)
-
-
 def test_noop_provider_skips_instrumentation(
     monkeypatch: pytest.MonkeyPatch,
     test_client_factory: TestClientFactory,
 ) -> None:
     monkeypatch.setattr(trace, "get_tracer_provider", trace.NoOpTracerProvider)
+    app = Starlette(routes=[Route("/", homepage)], middleware=[Middleware(OpenTelemetryMiddleware)])
 
-    assert test_client_factory(Starlette(routes=[Route("/", homepage)])).get("/").status_code == 200
+    assert test_client_factory(app).get("/").status_code == 200
 
 
-def test_explicit_native_middleware_does_not_create_duplicate_span(
+def test_multiple_native_middlewares_do_not_create_duplicate_span(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
     app = Starlette(
         routes=[Route("/", homepage)],
-        middleware=[Middleware(OpenTelemetryMiddleware)],
+        middleware=[Middleware(OpenTelemetryMiddleware), Middleware(OpenTelemetryMiddleware)],
     )
 
     assert test_client_factory(app).get("/").status_code == 200
     assert get_span(exporter).name == "GET /"
 
 
-def test_native_opentelemetry_can_be_disabled(
-    test_client_factory: TestClientFactory,
-    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
-) -> None:
-    _, exporter = tracer_provider
-    app = Starlette(routes=[Route("/", homepage)], opentelemetry=False)
-
-    assert test_client_factory(app).get("/").status_code == 200
-    assert exporter.get_finished_spans() == ()
-
-
 def test_provider_configured_after_middleware_stack_is_built(
     monkeypatch: pytest.MonkeyPatch,
     test_client_factory: TestClientFactory,
 ) -> None:
-    app = Starlette(routes=[Route("/", homepage)])
+    app = Starlette(routes=[Route("/", homepage)], middleware=[Middleware(OpenTelemetryMiddleware)])
     app.middleware_stack = app.build_middleware_stack()
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
@@ -111,7 +92,10 @@ def test_http_span_uses_route_and_semantic_attributes(
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
-    app = Starlette(routes=[Route("/users/{username}", homepage)])
+    app = Starlette(
+        routes=[Route("/users/{username}", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
 
     response = test_client_factory(app).get("/users/marcelo?format=json")
 
@@ -139,7 +123,7 @@ def test_http_span_uses_nested_route(
 ) -> None:
     _, exporter = tracer_provider
     routes = [Mount("/api", app=Router([Route("/users/{username}", homepage)]))]
-    app = Starlette(routes=routes)
+    app = Starlette(routes=routes, middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/api/users/marcelo").status_code == 200
 
@@ -154,8 +138,14 @@ def test_mounted_starlette_app_does_not_create_duplicate_span(
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
-    mounted_app = Starlette(routes=[Route("/users/{username}", homepage)])
-    app = Starlette(routes=[Mount("/api", app=mounted_app)])
+    mounted_app = Starlette(
+        routes=[Route("/users/{username}", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
+    app = Starlette(
+        routes=[Mount("/api", app=mounted_app)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
 
     assert test_client_factory(app).get("/api/users/marcelo").status_code == 200
 
@@ -168,7 +158,10 @@ def test_nested_in_process_request_creates_its_own_span(
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
-    inner_app = Starlette(routes=[Route("/inner", homepage)])
+    inner_app = Starlette(
+        routes=[Route("/inner", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
 
     async def call_inner(request: Request) -> PlainTextResponse:
         async with httpx.AsyncClient(
@@ -178,7 +171,10 @@ def test_nested_in_process_request_creates_its_own_span(
             response = await client.get("/inner")
         return PlainTextResponse(response.text)
 
-    app = Starlette(routes=[Route("/outer", call_inner)])
+    app = Starlette(
+        routes=[Route("/outer", call_inner)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
 
     assert test_client_factory(app).get("/outer").status_code == 200
     spans = exporter.get_finished_spans()
@@ -200,7 +196,7 @@ def test_instrumentation_uses_actual_route_match_once(
             return super().matches(scope)
 
     route = CountingRoute("/users/{username}", homepage)
-    app = Starlette(routes=[route])
+    app = Starlette(routes=[route], middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/users/marcelo").status_code == 200
 
@@ -224,7 +220,7 @@ def test_route_is_resolved_after_path_rewriting_middleware(
 
     app = Starlette(
         routes=[Route("/target", homepage)],
-        middleware=[Middleware(RewritePathMiddleware)],
+        middleware=[Middleware(OpenTelemetryMiddleware), Middleware(RewritePathMiddleware)],
     )
 
     assert test_client_factory(app).get("/source").status_code == 200
@@ -241,7 +237,7 @@ def test_http_span_uses_mount_path_when_child_does_not_resolve(
 ) -> None:
     _, exporter = tracer_provider
     routes = [Mount("/api", app=Router([Route("/users/{username}", homepage)]))]
-    app = Starlette(routes=routes)
+    app = Starlette(routes=routes, middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/api/missing").status_code == 404
 
@@ -257,7 +253,7 @@ def test_http_span_uses_mount_path_for_raw_asgi_app(
 ) -> None:
     _, exporter = tracer_provider
     routes = [Mount("/api", app=PlainTextResponse("mounted"))]
-    app = Starlette(routes=routes)
+    app = Starlette(routes=routes, middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/api/example").text == "mounted"
 
@@ -273,7 +269,7 @@ def test_http_span_resolves_host_route(
 ) -> None:
     _, exporter = tracer_provider
     routes = [Host("testserver", app=Router([Route("/users/{username}", homepage)]))]
-    app = Starlette(routes=routes)
+    app = Starlette(routes=routes, middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/users/marcelo").status_code == 200
 
@@ -289,7 +285,7 @@ def test_http_span_omits_route_for_hosted_raw_asgi_app(
 ) -> None:
     _, exporter = tracer_provider
     routes = [Host("testserver", app=PlainTextResponse("hosted"))]
-    app = Starlette(routes=routes)
+    app = Starlette(routes=routes, middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/").text == "hosted"
 
@@ -312,7 +308,7 @@ def test_http_span_omits_route_for_custom_route(
         async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
             await PlainTextResponse("custom")(scope, receive, send)
 
-    app = Starlette(routes=[CustomRoute()])
+    app = Starlette(routes=[CustomRoute()], middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/anything").text == "custom"
 
@@ -327,7 +323,7 @@ def test_http_span_extracts_remote_parent(
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
-    app = Starlette(routes=[Route("/", homepage)])
+    app = Starlette(routes=[Route("/", homepage)], middleware=[Middleware(OpenTelemetryMiddleware)])
     trace_id = "0af7651916cd43dd8448eb211c80319c"
     parent_span_id = "b7ad6b7169203331"
 
@@ -351,7 +347,7 @@ def test_http_span_records_server_error(
     def error(request: Request) -> PlainTextResponse:
         raise RuntimeError("Oh no")
 
-    app = Starlette(routes=[Route("/error", error)])
+    app = Starlette(routes=[Route("/error", error)], middleware=[Middleware(OpenTelemetryMiddleware)])
 
     response = test_client_factory(app, raise_server_exceptions=False).get("/error")
 
@@ -368,7 +364,10 @@ def test_http_span_records_error_response(
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
 ) -> None:
     _, exporter = tracer_provider
-    app = Starlette(routes=[Route("/", PlainTextResponse("Unavailable", status_code=503))])
+    app = Starlette(
+        routes=[Route("/", PlainTextResponse("Unavailable", status_code=503))],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
 
     assert test_client_factory(app).get("/").status_code == 503
 
@@ -441,7 +440,10 @@ def test_non_http_scopes_are_not_traced(
         await websocket.accept()
         await websocket.close()
 
-    app = Starlette(routes=[WebSocketRoute("/", websocket_endpoint)])
+    app = Starlette(
+        routes=[WebSocketRoute("/", websocket_endpoint)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
+    )
 
     with TestClient(app) as client:
         with client.websocket_connect("/"):

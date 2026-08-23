@@ -55,20 +55,22 @@ headers, and uses the matched route template for its name and `http.route` attri
 
 Install the optional API dependency with `pip install opentelemetry-api`, or as part of
 `pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application
-chooses and configures the SDK and exporter. If no tracer provider is configured, Starlette
+chooses and configures the SDK and exporter. If no tracer provider is configured, the middleware
 skips tracing.
 
-**Pydantic Logfire** configures a global OpenTelemetry provider, so no Starlette-specific instrumentation
-call or middleware is needed:
+**Pydantic Logfire** configures a global OpenTelemetry provider. Add the middleware to enable
+Starlette tracing:
 
 ```python
 import logfire
 
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
 
 logfire.configure()
 
-app = Starlette()
+app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
 ```
 
 The same applies to any standard OpenTelemetry SDK configuration:
@@ -78,33 +80,30 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+
 tracer_provider = TracerProvider()
 tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 trace.set_tracer_provider(tracer_provider)
 
-app = Starlette()
+app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
 ```
 
-Starlette discovers the global provider at request time. This means it also works when the app is
-created before the provider is configured. No OpenTelemetry instrumentor or monkeypatching is
-required.
+The middleware discovers the global provider at request time. This means you can create the app
+before you configure the provider.
 
-`OpenTelemetryMiddleware` is also public for explicit ASGI composition:
+You can also wrap any ASGI application directly:
 
 ```python
+from starlette.applications import Starlette
 from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
 
-app = OpenTelemetryMiddleware(app)
+app = OpenTelemetryMiddleware(Starlette())
 ```
 
 Multiple native middleware instances on the same request create only one span.
-
-When using another ASGI instrumentor, disable Starlette's native instrumentation to avoid
-creating duplicate spans:
-
-```python
-app = Starlette(opentelemetry=False)
-```
 
 ## CORSMiddleware
 

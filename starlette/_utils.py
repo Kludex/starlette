@@ -5,6 +5,7 @@ import re
 import sys
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from ipaddress import AddressValueError, IPv6Address
 from typing import Any, Generic, Protocol, TypeVar, overload
 
 import anyio.abc
@@ -32,7 +33,7 @@ T = TypeVar("T")
 AwaitableCallable = Callable[..., Awaitable[T]]
 
 # Reject characters that could make a Host header change the URL path or authority.
-_HOST_RE = re.compile(r"^([a-z0-9._~%!$&'()*+,;=-]+|\[[a-f0-9]*:[a-f0-9.:]+\])(?::[0-9]+)?$", re.IGNORECASE)
+_HOST_RE = re.compile(r"^([a-z0-9._~%!$&'()*+,;=-]+|\[[a-f0-9]*:[a-f0-9.:]+\])(?::([0-9]+))?$", re.IGNORECASE)
 
 
 @overload
@@ -104,7 +105,20 @@ def parse_host_header(host_header: str) -> str | None:
     Invalid headers produce `None`.
     """
     match = _HOST_RE.fullmatch(host_header)
-    return match.group(1) if match is not None else None
+    if match is None:
+        return None
+
+    host, port = match.groups()
+    if port is not None and (len(port) > 5 or int(port) > 65535):
+        return None
+
+    if host.startswith("["):
+        try:
+            IPv6Address(host[1:-1])
+        except AddressValueError:
+            return None
+
+    return host
 
 
 def get_route_path(scope: Scope) -> str:

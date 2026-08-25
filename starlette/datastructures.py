@@ -47,6 +47,8 @@ class URL:
                 netloc = host_header
             elif server is not None:
                 host, port = server
+                if ":" in host and not host.startswith("["):
+                    host = f"[{host}]"
                 default_port = {"http": 80, "https": 443, "ws": 80, "wss": 443}[scheme]
                 netloc = host if port == default_port else f"{host}:{port}"
             else:

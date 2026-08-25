@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -39,3 +41,17 @@ def test_https_redirect_middleware(test_client_factory: TestClientFactory) -> No
     response = client.get("/", follow_redirects=False)
     assert response.status_code == 307
     assert response.headers["location"] == "https://testserver:123/"
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"host": "testserver:65536"}, follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://testserver/"
+
+    response = client.get("/", headers={"host": "[:::]"}, follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://testserver/"
+
+    client = test_client_factory(app, base_url="http://[::1]")
+    response = client.get("/", headers={"host": "[:::]"}, follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://[::1]/"

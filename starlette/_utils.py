@@ -132,9 +132,6 @@ def parse_host_header(host_header: str | None) -> ParsedHost | None:
     if match is None:
         return None
 
-    host = match["host"]
-    port = match["port"]
-
     ipv6 = match["ipv6"]
     if ipv6 is not None:
         try:
@@ -142,7 +139,7 @@ def parse_host_header(host_header: str | None) -> ParsedHost | None:
         except AddressValueError:
             return None
 
-    return ParsedHost(host, port)
+    return ParsedHost(match["host"], match["port"])
 
 
 def get_route_path(scope: Scope) -> str:

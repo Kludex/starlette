@@ -45,6 +45,13 @@ def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None
         ("[::1].", 400),
         ("[::1]:evil", 400),
         ("[::1]:", 400),
+        ("api_service", 200),
+        ("api_service:8000", 200),
+        ("api_service/evil", 400),
+        ("api_service?evil", 400),
+        ("api_service#evil", 400),
+        ("api_service@attacker", 400),
+        ("api service", 400),
     ],
 )
 def test_trusted_host_middleware_ipv6(test_client_factory: TestClientFactory, host: str, status_code: int) -> None:
@@ -53,7 +60,7 @@ def test_trusted_host_middleware_ipv6(test_client_factory: TestClientFactory, ho
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
-        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]", "*.example.com"])],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=["[::1]", "api_service", "*.example.com"])],
     )
 
     client = test_client_factory(app)

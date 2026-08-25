@@ -32,7 +32,7 @@ T = TypeVar("T")
 AwaitableCallable = Callable[..., Awaitable[T]]
 
 # Reject characters that could make a Host header change the URL path or authority.
-_HOST_RE = re.compile(r"^([a-z0-9.-]+|\[[a-f0-9]*:[a-f0-9.:]+\])(?::[0-9]+)?$", re.IGNORECASE)
+_HOST_RE = re.compile(r"^([a-z0-9._~%!$&'()*+,;=-]+|\[[a-f0-9]*:[a-f0-9.:]+\])(?::[0-9]+)?$", re.IGNORECASE)
 
 
 @overload

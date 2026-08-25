@@ -38,7 +38,7 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        parsed_host = parse_host_header(headers.get("host", ""))
+        parsed_host = parse_host_header(headers.get("host"))
         if parsed_host is None:
             await PlainTextResponse("Invalid host header", status_code=400)(scope, receive, send)
             return

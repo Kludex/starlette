@@ -480,7 +480,7 @@ class Host(BaseRoute):
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
         if scope["type"] in ("http", "websocket"):  # pragma:no branch
             headers = Headers(scope=scope)
-            parsed_host = parse_host_header(headers.get("host", ""))
+            parsed_host = parse_host_header(headers.get("host"))
             if parsed_host is None:
                 return Match.NONE, {}
             host = parsed_host.host

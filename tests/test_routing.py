@@ -491,6 +491,12 @@ def test_host_routing_rejects_invalid_hosts(test_client_factory: TestClientFacto
     assert response.status_code == 404
 
 
+def test_host_routing_accepts_zero_padded_port(test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(mixed_hosts_app, base_url="https://api.example.org/")
+    response = client.get("/users", headers={"host": "api.example.org:000080"})
+    assert response.status_code == 200
+
+
 def test_host_routing_ipv6(test_client_factory: TestClientFactory) -> None:
     app = Router(
         routes=[

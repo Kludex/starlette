@@ -48,6 +48,7 @@ def test_trusted_host_middleware(test_client_factory: TestClientFactory) -> None
         ("[::1]:evil", 400),
         ("[::1]:", 400),
         ("api_service", 200),
+        ("api_service:000080", 200),
         ("api_service:65535", 200),
         ("api_service:65536", 400),
         ("api_service:100000", 400),

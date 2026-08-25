@@ -109,8 +109,10 @@ def parse_host_header(host_header: str) -> str | None:
         return None
 
     host, port = match.groups()
-    if port is not None and (len(port) > 5 or int(port) > 65535):
-        return None
+    if port is not None:
+        port = port.lstrip("0")
+        if len(port) > 5 or int(port or "0") > 65535:
+            return None
 
     if host.startswith("["):
         try:

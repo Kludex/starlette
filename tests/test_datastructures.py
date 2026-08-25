@@ -171,6 +171,17 @@ def test_url_from_scope() -> None:
     assert u == "http://example.com:8000/some/path?query=string"
     assert repr(u) == "URL('http://example.com:8000/some/path?query=string')"
 
+    u = URL(
+        scope={
+            "scheme": "http",
+            "path": "/some/path",
+            "query_string": b"",
+            "headers": [(b"host", b"example.com:000080")],
+        }
+    )
+    assert u == "http://example.com:000080/some/path"
+    assert u.port == 80
+
 
 @pytest.mark.parametrize(
     "host",

@@ -43,6 +43,10 @@ def test_https_redirect_middleware(test_client_factory: TestClientFactory) -> No
     assert response.headers["location"] == "https://testserver:123/"
 
     client = test_client_factory(app)
+    response = client.get("/", headers={"host": "testserver:000080"}, follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://testserver/"
+
     response = client.get("/", headers={"host": "testserver:65536"}, follow_redirects=False)
     assert response.status_code == 307
     assert response.headers["location"] == "https://testserver/"

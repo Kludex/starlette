@@ -5,6 +5,7 @@ import re
 import sys
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from dataclasses import dataclass
 from ipaddress import AddressValueError, IPv6Address
 from typing import Any, Generic, Protocol, TypeVar, overload
 
@@ -33,7 +34,28 @@ T = TypeVar("T")
 AwaitableCallable = Callable[..., Awaitable[T]]
 
 # Reject characters that could make a Host header change the URL path or authority.
-_HOST_RE = re.compile(r"^([a-z0-9._~%!$&'()*+,;=-]+|\[[a-f0-9]*:[a-f0-9.:]+\])(?::([0-9]+))?$", re.IGNORECASE)
+_HOST_RE = re.compile(
+    r"^(?P<host>[a-z0-9._~%!$&'()*+,;=-]+|\[(?:(?P<ipv6>[a-f0-9]*:[a-f0-9.:]+)|"
+    r"(?-i:v)[a-f0-9]+\.[a-z0-9._~!$&'()*+,;=:-]+)\])(?::(?P<port>[0-9]+))?$",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True)
+class ParsedHost:
+    host: str
+    port: str | None
+
+    @property
+    def authority(self) -> str:
+        return self.host if self.port is None else f"{self.host}:{self.port}"
+
+    @property
+    def is_valid_port(self) -> bool:
+        if self.port is None:
+            return True
+        port = self.port.lstrip("0")
+        return len(port) <= 5 and int(port or "0") <= 65535
 
 
 @overload
@@ -98,29 +120,29 @@ async def create_collapsing_task_group() -> AsyncGenerator[anyio.abc.TaskGroup, 
         raise exc from exc.__cause__ or context
 
 
-def parse_host_header(host_header: str) -> str | None:
-    """Parse `host_header` into its host component.
+def parse_host_header(host_header: str | None) -> ParsedHost | None:
+    """Parse `host_header` into its host and port components.
 
-    The result excludes the port and preserves brackets around IPv6 addresses.
-    Invalid headers produce `None`.
+    The host preserves brackets around IP literals. Invalid headers produce `None`.
     """
+    if host_header is None:
+        return None
+
     match = _HOST_RE.fullmatch(host_header)
     if match is None:
         return None
 
-    host, port = match.groups()
-    if port is not None:
-        port = port.lstrip("0")
-        if len(port) > 5 or int(port or "0") > 65535:
-            return None
+    host = match["host"]
+    port = match["port"]
 
-    if host.startswith("["):
+    ipv6 = match["ipv6"]
+    if ipv6 is not None:
         try:
-            IPv6Address(host[1:-1])
+            IPv6Address(ipv6)
         except AddressValueError:
             return None
 
-    return host
+    return ParsedHost(host, port)
 
 
 def get_route_path(scope: Scope) -> str:

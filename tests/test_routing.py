@@ -480,8 +480,6 @@ def test_host_routing(test_client_factory: TestClientFactory) -> None:
     "host",
     [
         "api.example.org:evil",
-        "api.example.org:65536",
-        "api.example.org:100000",
         "[:::]",
     ],
 )
@@ -491,17 +489,19 @@ def test_host_routing_rejects_invalid_hosts(test_client_factory: TestClientFacto
     assert response.status_code == 404
 
 
-def test_host_routing_accepts_zero_padded_port(test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize("host", ["api.example.org:000080", "api.example.org:65536", "api.example.org:100000"])
+def test_host_routing_ignores_port(host: str, test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(mixed_hosts_app, base_url="https://api.example.org/")
-    response = client.get("/users", headers={"host": "api.example.org:000080"})
+    response = client.get("/users", headers={"host": host})
     assert response.status_code == 200
 
 
-def test_host_routing_ipv6(test_client_factory: TestClientFactory) -> None:
+def test_host_routing_ip_literals(test_client_factory: TestClientFactory) -> None:
     app = Router(
         routes=[
             Host("[::1]", app=PlainTextResponse("loopback")),
             Host("[2001:db8::1]", app=PlainTextResponse("documentation")),
+            Host("[v1.foo]", app=PlainTextResponse("future")),
         ]
     )
 
@@ -512,6 +512,10 @@ def test_host_routing_ipv6(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app, base_url="https://[2001:db8::1]/")
     response = client.get("/")
     assert response.text == "documentation"
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"host": "[v1.foo]"})
+    assert response.text == "future"
 
 
 def test_host_reverse_urls() -> None:

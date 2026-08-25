@@ -196,6 +196,7 @@ def test_url_from_scope() -> None:
         pytest.param(b"foo:100000", id="port-too-long"),
         pytest.param(b"[:::]", id="invalid-ipv6"),
         pytest.param(b"[::ffff:999.999.999.999]", id="invalid-ipv4-mapped-ipv6"),
+        pytest.param(b"[V1.foo]", id="uppercase-ipvfuture"),
     ],
 )
 def test_url_from_scope_with_invalid_host(host: bytes) -> None:
@@ -232,6 +233,19 @@ def test_url_from_scope_with_ipv6_server(server: tuple[str, int], expected_netlo
     )
     assert u.hostname == "::1"
     assert u.netloc == expected_netloc
+
+
+def test_url_from_scope_with_ipvfuture() -> None:
+    u = URL(
+        scope={
+            "scheme": "http",
+            "path": "/admin",
+            "query_string": b"",
+            "headers": [(b"host", b"[v1.foo]")],
+        }
+    )
+    assert u.hostname == "v1.foo"
+    assert u.netloc == "[v1.foo]"
 
 
 @pytest.mark.parametrize(

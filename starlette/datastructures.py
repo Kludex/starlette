@@ -43,8 +43,9 @@ class URL:
                     host_header = value.decode("latin-1")
                     break
 
-            if host_header is not None and parse_host_header(host_header) is not None:
-                netloc = host_header
+            parsed_host = parse_host_header(host_header)
+            if parsed_host is not None and parsed_host.is_valid_port:
+                netloc = parsed_host.authority
             elif server is not None:
                 host, port = server
                 if ":" in host and not host.startswith("["):

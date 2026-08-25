@@ -155,10 +155,8 @@ def compile_path(
     if is_host:
         # Align with `Host.matches()` behavior, which ignores port.
         hostname = path[idx:]
-        if path.startswith("[") and "]" in hostname:
-            hostname = hostname[: hostname.index("]") + 1]
-        else:
-            hostname = hostname.split(":", 1)[0]
+        if not hostname.endswith("]"):
+            hostname = hostname.rsplit(":", 1)[0]
         path_regex += re.escape(hostname) + "$"
     else:
         path_regex += re.escape(path[idx:]) + "$"

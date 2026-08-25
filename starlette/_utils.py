@@ -41,7 +41,7 @@ _HOST_RE = re.compile(
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ParsedHost:
     host: str
     port: str | None

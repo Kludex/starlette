@@ -298,7 +298,7 @@ def test_router_add_route(client: TestClient) -> None:
     assert response.text == "Hello, world!"
 
 
-def test_router_rebuilds_route_index_after_routes_replaced(test_client_factory: TestClientFactory) -> None:
+def test_router_rebuilds_route_index_after_routes_change(test_client_factory: TestClientFactory) -> None:
     router = Router(routes=[Route("/first", endpoint=homepage), Route("/second", endpoint=homepage)])
     client = test_client_factory(router)
     assert client.get("/first").status_code == 200

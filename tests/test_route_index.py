@@ -6,7 +6,7 @@ from starlette.routing import Host, Mount, Route, RouteIndex, RoutePattern, WebS
 endpoint = PlainTextResponse("ok")
 
 
-def test_route_index_snapshots_candidates_and_patterns() -> None:
+def test_route_index_refreshes_candidates_and_patterns() -> None:
     candidates = ["first", "second", "fallback"]
     patterns = {
         "first": RoutePattern("/first", {}),
@@ -19,13 +19,12 @@ def test_route_index_snapshots_candidates_and_patterns() -> None:
         return patterns.get(candidate)
 
     index = RouteIndex(candidates, get_pattern)
-    assert not index.is_stale(candidates)
+    assert indexed == ["first", "second", "fallback"]
     candidates.reverse()
 
-    assert indexed == ["first", "second", "fallback"]
-    assert index.is_stale(candidates)
-    assert index.candidates("/first") == ["first", "second", "fallback"]
-    assert index.candidates("/missing") == ["first", "second", "fallback"]
+    assert index.candidates("/first") == ["fallback", "second", "first"]
+    assert indexed == ["first", "second", "fallback", "fallback", "second", "first"]
+    assert index.candidates("/missing") == ["fallback", "second", "first"]
 
 
 def test_route_index_returns_a_new_candidate_list() -> None:

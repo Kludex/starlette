@@ -74,14 +74,20 @@ class RouteIndex(Generic[_RouteT]):
         candidates: Sequence[_RouteT],
         get_pattern: Callable[[_RouteT], RoutePattern | None],
     ) -> None:
-        self._candidates = list(candidates)
-        self._patterns = [get_pattern(candidate) for candidate in candidates]
-
-    def is_stale(self, candidates: Sequence[_RouteT]) -> bool:
-        return self._candidates != candidates
+        self._source = candidates
+        self._get_pattern = get_pattern
+        self._candidates: list[_RouteT] = []
+        self._patterns: list[RoutePattern | None] = []
+        self._rebuild()
 
     def candidates(self, path: str) -> list[_RouteT]:
+        if self._candidates != self._source:
+            self._rebuild()
         return self._candidates.copy()
+
+    def _rebuild(self) -> None:
+        self._candidates = list(self._source)
+        self._patterns = [self._get_pattern(candidate) for candidate in self._source]
 
 
 def request_response(
@@ -725,9 +731,6 @@ class Router:
         if scope["type"] == "lifespan":
             await self.lifespan(scope, receive, send)
             return
-
-        if self._route_index.is_stale(self.routes):
-            self._route_index = RouteIndex(self.routes, RoutePattern.from_route)
 
         partial = None
 

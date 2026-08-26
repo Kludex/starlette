@@ -307,6 +307,7 @@ declared pattern. The index always returns that route as a candidate.
 implementations as candidates for every path. The initial `RouteIndex`
 implementation returns every route in registration order. This keeps dispatch
 behavior unchanged and the API independent from a specific indexing algorithm.
+The index rebuilds automatically when the candidate sequence changes.
 
 ## Working with Router instances
 

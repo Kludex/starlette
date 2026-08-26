@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from starlette.routing import RouteIndex, RoutePattern
+from starlette.responses import PlainTextResponse
+from starlette.routing import Host, Mount, Route, RouteIndex, RoutePattern, WebSocketRoute
+
+endpoint = PlainTextResponse("ok")
 
 
 def test_route_index_snapshots_candidates_and_patterns() -> None:
@@ -16,9 +19,11 @@ def test_route_index_snapshots_candidates_and_patterns() -> None:
         return patterns.get(candidate)
 
     index = RouteIndex(candidates, get_pattern)
+    assert not index.is_stale(candidates)
     candidates.reverse()
 
     assert indexed == ["first", "second", "fallback"]
+    assert index.is_stale(candidates)
     assert index.candidates("/first") == ["first", "second", "fallback"]
     assert index.candidates("/missing") == ["first", "second", "fallback"]
 
@@ -30,3 +35,16 @@ def test_route_index_returns_a_new_candidate_list() -> None:
     candidates.clear()
 
     assert index.candidates("/first") == ["first"]
+
+
+def test_route_pattern_from_builtin_routes() -> None:
+    route = Route("/{value}", endpoint)
+    websocket_route = WebSocketRoute("/ws/{value}", endpoint)
+    mount = Mount("/mounted", app=PlainTextResponse("mounted"))
+
+    assert RoutePattern.from_route(route) == RoutePattern(route.path, route.param_convertors)
+    assert RoutePattern.from_route(websocket_route) == RoutePattern(
+        websocket_route.path, websocket_route.param_convertors
+    )
+    assert RoutePattern.from_route(mount) == RoutePattern(mount.path + "/{path:path}", mount.param_convertors)
+    assert RoutePattern.from_route(Host("example.org", app=PlainTextResponse("hosted"))) is None

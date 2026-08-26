@@ -52,6 +52,16 @@ class RoutePattern:
     path: str
     param_convertors: Mapping[str, Convertor[Any]]
 
+    @classmethod
+    def from_route(cls, route: BaseRoute) -> RoutePattern | None:
+        if isinstance(route, Route) and type(route).matches is Route.matches:
+            return cls(route.path, route.param_convertors)
+        if isinstance(route, WebSocketRoute) and type(route).matches is WebSocketRoute.matches:
+            return cls(route.path, route.param_convertors)
+        if isinstance(route, Mount) and type(route).matches is Mount.matches:
+            return cls(route.path + "/{path:path}", route.param_convertors)
+        return None
+
 
 _RouteT = TypeVar("_RouteT")
 
@@ -64,10 +74,14 @@ class RouteIndex(Generic[_RouteT]):
         candidates: Sequence[_RouteT],
         get_pattern: Callable[[_RouteT], RoutePattern | None],
     ) -> None:
-        self._entries = [(candidate, get_pattern(candidate)) for candidate in candidates]
+        self._candidates = list(candidates)
+        self._patterns = [get_pattern(candidate) for candidate in candidates]
+
+    def is_stale(self, candidates: Sequence[_RouteT]) -> bool:
+        return self._candidates != candidates
 
     def candidates(self, path: str) -> list[_RouteT]:
-        return [candidate for candidate, _ in self._entries]
+        return self._candidates.copy()
 
 
 def request_response(
@@ -616,6 +630,7 @@ class Router:
         max_body_size: int | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
+        self._route_index = RouteIndex(self.routes, RoutePattern.from_route)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -701,6 +716,11 @@ class Router:
         """
         await self.middleware_stack(scope, receive, send)
 
+    def _candidate_routes(self, scope: Scope) -> list[BaseRoute]:
+        if self._route_index.is_stale(self.routes):
+            self._route_index = RouteIndex(self.routes, RoutePattern.from_route)
+        return self._route_index.candidates(get_route_path(scope))
+
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
@@ -713,7 +733,7 @@ class Router:
 
         partial = None
 
-        for route in self.routes:
+        for route in self._candidate_routes(scope):
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
@@ -743,7 +763,7 @@ class Router:
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
-            for route in self.routes:
+            for route in self._candidate_routes(redirect_scope):
                 match, child_scope = route.matches(redirect_scope)
                 if match != Match.NONE:
                     redirect_url = URL(scope=redirect_scope)

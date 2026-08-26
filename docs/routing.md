@@ -291,10 +291,7 @@ async def homepage(request):
 
 
 routes = [Route("/", homepage)]
-index = RouteIndex(
-    routes,
-    lambda route: RoutePattern(route.path, route.param_convertors),
-)
+index = RouteIndex(routes, RoutePattern.from_route)
 
 scope = {"type": "http", "method": "GET", "path": "/", "headers": []}
 for route in index.candidates(scope["path"]):
@@ -306,8 +303,10 @@ for route in index.candidates(scope["path"]):
 Return `None` from the pattern callback when a route may match paths outside its
 declared pattern. The index always returns that route as a candidate.
 
-The initial implementation returns every route in registration order. This
-keeps the API independent from a specific indexing algorithm.
+`Router` uses `RoutePattern.from_route()` to keep routes with custom `matches()`
+implementations as candidates for every path. The initial `RouteIndex`
+implementation returns every route in registration order. This keeps dispatch
+behavior unchanged and the API independent from a specific indexing algorithm.
 
 ## Working with Router instances
 

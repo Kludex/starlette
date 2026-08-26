@@ -105,6 +105,36 @@ app = OpenTelemetryMiddleware(Starlette())
 
 Multiple native middleware instances on the same request create only one span.
 
+### Exclude URLs
+
+Pass a comma-separated string or a sequence of regular expressions in `excluded_urls`. If any
+expression matches the full request URL, the middleware does not create a span. This is useful for
+health checks, readiness probes, and other high-volume endpoints that you do not need to trace.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world!")
+
+
+app = Starlette(
+    routes=[Route("/", homepage), Route("/health", homepage)],
+    middleware=[
+        Middleware(
+            OpenTelemetryMiddleware,
+            excluded_urls=r"/health$,/readiness$",
+        )
+    ],
+)
+```
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.
@@ -260,8 +290,9 @@ app = Starlette(routes=routes, middleware=middleware)
 The following arguments are supported:
 
 * `allowed_hosts` - A list of domain names that should be allowed as hostnames. Wildcard
-domains such as `*.example.com` are supported for matching subdomains. To allow any
-hostname either use `allowed_hosts=["*"]` or omit the middleware.
+domains such as `*.example.com` are supported for matching subdomains. Use bracketed
+notation for IPv6 addresses, such as `allowed_hosts=["[::1]"]`. To allow any hostname,
+use `allowed_hosts=["*"]` or omit the middleware.
 * `www_redirect` - If set to True, requests to non-www versions of the allowed hosts will be redirected to their www counterparts. Defaults to `True`.
 
 If an incoming request does not validate correctly then a 400 response will be sent.

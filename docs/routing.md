@@ -276,6 +276,39 @@ routes = [
 ]
 ```
 
+## Candidate indexes
+
+`RouteIndex` lets a router select a safe superset of routes that may match a
+path. You must still call `matches()` on every returned candidate.
+
+```python
+from starlette.responses import PlainTextResponse
+from starlette.routing import Match, Route, RouteIndex, RoutePattern
+
+
+async def homepage(request):
+    return PlainTextResponse("Homepage")
+
+
+routes = [Route("/", homepage)]
+index = RouteIndex(
+    routes,
+    lambda route: RoutePattern(route.path, route.param_convertors),
+)
+
+scope = {"type": "http", "method": "GET", "path": "/", "headers": []}
+for route in index.candidates(scope["path"]):
+    match, child_scope = route.matches(scope)
+    if match == Match.FULL:
+        break
+```
+
+Return `None` from the pattern callback when a route may match paths outside its
+declared pattern. The index always returns that route as a candidate.
+
+The initial implementation returns every route in registration order. This
+keeps the API independent from a specific indexing algorithm.
+
 ## Working with Router instances
 
 If you're working at a low-level you might want to use a plain `Router`

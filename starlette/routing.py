@@ -7,11 +7,12 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Generator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
+from dataclasses import dataclass
 from enum import Enum
 from re import Pattern
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable, parse_host_header
@@ -42,6 +43,31 @@ class Match(Enum):
     NONE = 0
     PARTIAL = 1
     FULL = 2
+
+
+@dataclass(frozen=True)
+class RoutePattern:
+    """Describe a declared route path that may be used to narrow candidates."""
+
+    path: str
+    param_convertors: Mapping[str, Convertor[Any]]
+
+
+_RouteT = TypeVar("_RouteT")
+
+
+class RouteIndex(Generic[_RouteT]):
+    """Return a safe superset of route candidates for a path."""
+
+    def __init__(
+        self,
+        candidates: Sequence[_RouteT],
+        get_pattern: Callable[[_RouteT], RoutePattern | None],
+    ) -> None:
+        self._entries = [(candidate, get_pattern(candidate)) for candidate in candidates]
+
+    def candidates(self, path: str) -> list[_RouteT]:
+        return [candidate for candidate, _ in self._entries]
 
 
 def request_response(

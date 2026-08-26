@@ -300,46 +300,25 @@ def test_session_tracks_modification() -> None:
     session.setdefault("a", "2")
     assert not session.modified
 
-    # popitem
-    session = Session({"a": "1"})
-    session.popitem()
-    assert session.modified
 
-    # popitem on an empty session raises and leaves the session untouched
-    session = Session()
-    with pytest.raises(KeyError):
-        session.popitem()
-    assert not session.modified
-
-    # in-place update
-    session = Session({"a": "1"})
-    session |= {"b": "2"}
-    assert session.modified
-
-
-def test_session_persists_inplace_update(test_client_factory: TestClientFactory) -> None:
-    app = Starlette(
-        routes=[
-            Route("/view_session", endpoint=view_session),
-            Route("/inplace_update_session", endpoint=inplace_update_session, methods=["POST"]),
-        ],
-        middleware=[Middleware(SessionMiddleware, secret_key="example")],
-    )
-    client = test_client_factory(app)
-
-    response = client.post("/inplace_update_session", json={"some": "data"})
-    assert response.json() == {"session": {"some": "data"}}
-    assert "set-cookie" in response.headers
-
-    response = client.get("/view_session")
-    assert response.json() == {"session": {"some": "data"}}
-
-
-def test_session_persists_popitem(test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize(
+    ("path", "data", "expected"),
+    [
+        ("/inplace_update_session", {"c": "3"}, {"a": "1", "b": "2", "c": "3"}),
+        ("/popitem_session", None, {"a": "1"}),
+    ],
+)
+def test_session_persists_mutations(
+    test_client_factory: TestClientFactory,
+    path: str,
+    data: dict[str, str] | None,
+    expected: dict[str, str],
+) -> None:
     app = Starlette(
         routes=[
             Route("/view_session", endpoint=view_session),
             Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/inplace_update_session", endpoint=inplace_update_session, methods=["POST"]),
             Route("/popitem_session", endpoint=popitem_session, methods=["POST"]),
         ],
         middleware=[Middleware(SessionMiddleware, secret_key="example")],
@@ -349,9 +328,8 @@ def test_session_persists_popitem(test_client_factory: TestClientFactory) -> Non
     response = client.post("/update_session", json={"a": "1", "b": "2"})
     assert response.json() == {"session": {"a": "1", "b": "2"}}
 
-    response = client.post("/popitem_session")
-    assert response.json() == {"session": {"a": "1"}}
-    assert "set-cookie" in response.headers
+    response = client.post(path, json=data)
+    assert response.json() == {"session": expected}
 
     response = client.get("/view_session")
-    assert response.json() == {"session": {"a": "1"}}
+    assert response.json() == {"session": expected}

@@ -129,9 +129,6 @@ class Session(dict[str, typing.Any]):
         self.mark_modified()
         super().update(*args, **kwargs)
 
-    # `dict.__ior__` updates in place without going through `__setitem__`, so it needs to be
-    # tracked explicitly. mypy requires `__ior__` to line up with the widening `dict.__or__`
-    # overloads, which a `dict` subclass returning itself cannot satisfy.
     def __ior__(self, other: typing.Any, /) -> Session:  # type: ignore[override,misc]
         self.mark_modified()
         return super().__ior__(other)

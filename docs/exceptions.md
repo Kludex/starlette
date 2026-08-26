@@ -144,6 +144,6 @@ app = Starlette(routes=[WebSocketRoute("/ws", websocket_endpoint)])
 
 You can use the `WebSocketException` class to raise errors inside of WebSocket endpoints.
 
-* `WebSocketException(code=1008, reason=None)`
+* `WebSocketException(code, reason=None)`
 
 You can set any code valid as defined [in the specification](https://tools.ietf.org/html/rfc6455#section-7.4.1).

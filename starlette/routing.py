@@ -716,11 +716,6 @@ class Router:
         """
         await self.middleware_stack(scope, receive, send)
 
-    def _candidate_routes(self, scope: Scope) -> list[BaseRoute]:
-        if self._route_index.is_stale(self.routes):
-            self._route_index = RouteIndex(self.routes, RoutePattern.from_route)
-        return self._route_index.candidates(get_route_path(scope))
-
     async def app(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] in ("http", "websocket", "lifespan")
 
@@ -731,9 +726,12 @@ class Router:
             await self.lifespan(scope, receive, send)
             return
 
+        if self._route_index.is_stale(self.routes):
+            self._route_index = RouteIndex(self.routes, RoutePattern.from_route)
+
         partial = None
 
-        for route in self._candidate_routes(scope):
+        for route in self._route_index.candidates(get_route_path(scope)):
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
@@ -763,7 +761,7 @@ class Router:
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
-            for route in self._candidate_routes(redirect_scope):
+            for route in self._route_index.candidates(get_route_path(redirect_scope)):
                 match, child_scope = route.matches(redirect_scope)
                 if match != Match.NONE:
                     redirect_url = URL(scope=redirect_scope)

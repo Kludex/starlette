@@ -1316,3 +1316,51 @@ def test_error_context_propagation(test_client_factory: TestClientFactory) -> No
     assert str(ctx.value) == "Outer exception"
     assert ctx.value.__cause__ is not None
     assert str(ctx.value.__cause__) == "Inner exception"
+
+
+@pytest.mark.anyio
+async def test_background_task_runs_after_response_sent_with_middleware() -> None:
+    events: list[tuple[str, float]] = []
+
+    async def bg() -> None:
+        events.append(("background-done", anyio.current_time()))
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(bg))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(routes=[Route("/", homepage)])
+    app.add_middleware(BaseHTTPMiddleware, dispatch=passthrough)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "query_string": b"",
+        "root_path": "",
+        "scheme": "http",
+        "server": ("testserver", 80),
+        "client": ("testclient", 1),
+        "http_version": "1.1",
+        "asgi": {"spec_version": "2.4"},
+    }
+
+    async def receive() -> Message:  # pragma: no cover
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        events.append((message["type"], anyio.current_time()))
+        await anyio.sleep(0.05)
+
+    await app(scope, receive, send)
+
+    event_names = [name for name, _ in sorted(events, key=lambda e: e[1])]
+    assert event_names == [
+        "http.response.start",
+        "http.response.body",
+        "http.response.body",
+        "background-done",
+    ]

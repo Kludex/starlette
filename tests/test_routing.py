@@ -272,6 +272,20 @@ def test_url_path_for() -> None:
         app.url_path_for("user", username="")
 
 
+@pytest.mark.parametrize(
+    ("path", "path_params", "expected"),
+    [
+        ("/{category}/{id}", {"category": "{id}", "id": "42"}, "/{id}/42"),
+        ("/{category}/{id}", {"id": "42", "category": "{id}"}, "/{id}/42"),
+        ("/{a}/{b}/{c}", {"a": "{b}", "b": "{c}", "c": "final"}, "/{b}/{c}/final"),
+    ],
+)
+def test_url_path_for_preserves_parameter_values(path: str, path_params: dict[str, str], expected: str) -> None:
+    route = Route(path, endpoint=homepage, name="route")
+
+    assert route.url_path_for("route", **path_params) == expected
+
+
 def test_url_for() -> None:
     assert app.url_path_for("homepage").make_absolute_url(base_url="https://example.org") == "https://example.org/"
     assert (

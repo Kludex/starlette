@@ -6,6 +6,7 @@ import sys
 import traceback
 
 from starlette._utils import is_async_callable
+from starlette.background import forward_background_deferral
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, Response
@@ -159,6 +160,8 @@ class ServerErrorMiddleware:
             if message["type"] == "http.response.start":
                 response_started = True
             await send(message)
+
+        forward_background_deferral(send, _send)
 
         try:
             await self.app(scope, receive, _send)

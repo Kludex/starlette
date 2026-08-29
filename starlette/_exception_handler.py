@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from starlette._utils import is_async_callable
+from starlette.background import forward_background_deferral
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -37,6 +38,8 @@ def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASG
             if message["type"] == "http.response.start":
                 response_started = True
             await send(message)
+
+        forward_background_deferral(send, sender)
 
         try:
             await app(scope, receive, sender)

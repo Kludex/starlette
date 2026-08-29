@@ -59,6 +59,8 @@ For example: `websocket.path_params['username']`
 * `await websocket.send_bytes(data)`
 * `await websocket.send_json(data)`
 
+May raise `starlette.websockets.WebSocketDisconnect()`.
+
 JSON messages default to being sent over text data frames, from version 0.10.0 onwards.
 Use `websocket.send_json(data, mode="binary")` to send JSON over binary data frames.
 

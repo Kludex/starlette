@@ -412,6 +412,210 @@ async def test_do_not_block_on_background_tasks() -> None:
 
 
 @pytest.mark.anyio
+async def test_background_task_starts_after_response_sent_with_base_http_middleware() -> None:
+    # Test for https://github.com/encode/starlette/issues/3458
+    events: list[str] = []
+    response_complete = anyio.Event()
+
+    async def bg() -> None:
+        events.append("background")
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(bg))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", homepage)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+    }
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            events.append(f"body(more_body={message.get('more_body', False)})")
+            if not message.get("more_body", False):
+                response_complete.set()
+            await anyio.sleep(0.05)  # simulate slow client/send
+
+    await app(scope, receive, send)
+
+    assert events == [
+        "body(more_body=True)",
+        "body(more_body=False)",
+        "background",
+    ]
+
+
+@pytest.mark.anyio
+async def test_streaming_background_task_starts_after_response_sent_with_base_http_middleware() -> None:
+    # Test for https://github.com/encode/starlette/issues/3458
+    events: list[str] = []
+    response_complete = anyio.Event()
+
+    async def bg() -> None:
+        events.append("background")
+
+    async def stream_gen() -> AsyncGenerator[bytes, None]:
+        events.append("stream_chunk_1")
+        yield b"chunk1"
+        events.append("stream_chunk_2")
+        yield b"chunk2"
+
+    async def streaming_endpoint(request: Request) -> StreamingResponse:
+        return StreamingResponse(stream_gen(), background=BackgroundTask(bg))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", streaming_endpoint)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+    }
+
+    async def receive() -> Message:
+        await response_complete.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            events.append(f"body(more_body={message.get('more_body', False)})")
+            if not message.get("more_body", False):
+                response_complete.set()
+            await anyio.sleep(0.05)  # simulate slow client/send
+
+    await app(scope, receive, send)
+
+    assert events == [
+        "stream_chunk_1",
+        "body(more_body=True)",
+        "stream_chunk_2",
+        "body(more_body=True)",
+        "body(more_body=False)",
+        "background",
+    ]
+
+
+@pytest.mark.anyio
+async def test_file_response_background_task_starts_after_response_sent_with_base_http_middleware(
+    tmp_path: Path,
+) -> None:
+    # Test for https://github.com/encode/starlette/issues/3458
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("file content")
+    events: list[str] = []
+    response_complete = anyio.Event()
+
+    async def bg() -> None:
+        events.append("background")
+
+    async def file_endpoint(request: Request) -> FileResponse:
+        return FileResponse(file_path, background=BackgroundTask(bg))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", file_endpoint)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+    }
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            events.append(f"body(more_body={message.get('more_body', False)})")
+            if not message.get("more_body", False):
+                response_complete.set()
+            await anyio.sleep(0.05)  # simulate slow client/send
+
+    await app(scope, receive, send)
+
+    assert events == [
+        "body(more_body=True)",
+        "body(more_body=False)",
+        "background",
+    ]
+
+
+@pytest.mark.anyio
+async def test_inner_and_outer_background_tasks_run_after_response_sent_with_base_http_middleware() -> None:
+    # Test for https://github.com/encode/starlette/issues/3458
+    events: list[str] = []
+    response_complete = anyio.Event()
+
+    async def inner_bg() -> None:
+        events.append("inner_background")
+
+    async def outer_bg() -> None:
+        events.append("outer_background")
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(inner_bg))
+
+    async def attach_bg(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        response = await call_next(request)
+        response.background = BackgroundTask(outer_bg)
+        return response
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=attach_bg)],
+        routes=[Route("/", homepage)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+    }
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            events.append(f"body(more_body={message.get('more_body', False)})")
+            if not message.get("more_body", False):
+                response_complete.set()
+            await anyio.sleep(0.05)
+
+    await app(scope, receive, send)
+
+    assert events[:2] == [
+        "body(more_body=True)",
+        "body(more_body=False)",
+    ]
+    assert set(events[2:]) == {"inner_background", "outer_background"}
+
+
+@pytest.mark.anyio
 async def test_run_context_manager_exit_even_if_client_disconnects() -> None:
     # test for https://github.com/Kludex/starlette/issues/1678#issuecomment-1172916042
     response_complete = anyio.Event()

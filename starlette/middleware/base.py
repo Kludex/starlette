@@ -109,6 +109,8 @@ class BaseHTTPMiddleware:
         app_exc: Exception | None = None
         exception_already_raised = False
 
+        pending_acks: set[anyio.Event] = set()
+
         async def call_next(request: Request) -> Response:
             async def receive_or_disconnect() -> Message:
                 if response_sent.is_set():
@@ -130,11 +132,18 @@ class BaseHTTPMiddleware:
                 return message
 
             async def send_no_error(message: Message) -> None:
-                try:
-                    await send_stream.send(message)
-                except anyio.BrokenResourceError:
-                    # recv_stream has been closed, i.e. response_sent has been set.
+                if response_sent.is_set():
+                    await anyio.lowlevel.checkpoint()
                     return
+                ack = anyio.Event()
+                pending_acks.add(ack)
+                try:
+                    await send_stream.send((message, ack))
+                    await ack.wait()
+                except anyio.BrokenResourceError:  # pragma: no cover
+                    return
+                finally:
+                    pending_acks.discard(ack)
 
             async def coro() -> None:
                 nonlocal app_exc
@@ -148,10 +157,12 @@ class BaseHTTPMiddleware:
             task_group.start_soon(coro)
 
             try:
-                message = await recv_stream.receive()
+                message, ack = await recv_stream.receive()
+                ack.set()
                 info = message.get("info", None)
                 if message["type"] == "http.response.debug" and info is not None:
-                    message = await recv_stream.receive()
+                    message, ack = await recv_stream.receive()
+                    ack.set()
             except anyio.EndOfStream:
                 if app_exc is not None:
                     nonlocal exception_already_raised
@@ -170,29 +181,59 @@ class BaseHTTPMiddleware:
 
             assert message["type"] == "http.response.start"
 
-            async def body_stream() -> BodyStreamGenerator:
-                async for message in recv_stream:
-                    if message["type"] == "http.response.pathsend":
-                        yield message
-                        break
-                    assert message["type"] == "http.response.body", f"Unexpected message: {message}"
-                    body = message.get("body", b"")
-                    if body:
-                        yield body
-                    if not message.get("more_body", False):
-                        break
+            last_ack: anyio.Event | None = None
 
-            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
+            async def body_stream() -> BodyStreamGenerator:
+                nonlocal last_ack
+                curr_ack: anyio.Event | None = None
+                try:
+                    async for message, ack in recv_stream:
+                        curr_ack = ack
+                        if message["type"] == "http.response.pathsend":
+                            last_ack = ack
+                            yield message
+                            break
+                        assert message["type"] == "http.response.body", f"Unexpected message: {message}"
+                        body = message.get("body", b"")
+                        more_body = message.get("more_body", False)
+                        if body:
+                            yield body
+                        if more_body:
+                            ack.set()
+                            curr_ack = None
+                        else:
+                            last_ack = ack
+                            break
+                finally:
+                    if curr_ack is not None:
+                        curr_ack.set()
+                    if last_ack is not None:
+                        last_ack.set()
+
+            def ack_response() -> None:
+                nonlocal last_ack
+                if last_ack is not None:
+                    last_ack.set()
+                    last_ack = None
+
+            response = _StreamingResponse(
+                status_code=message["status"],
+                content=body_stream(),
+                info=info,
+                ack=ack_response,
+            )
             response.raw_headers = message["headers"]
             return response
 
-        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
+        streams: anyio.create_memory_object_stream[tuple[Message, anyio.Event]] = anyio.create_memory_object_stream()
         send_stream, recv_stream = streams
         with recv_stream, send_stream:
             async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)
                 await response(scope, wrapped_receive, send)
                 response_sent.set()
+                for ack in list(pending_acks):
+                    ack.set()
                 recv_stream.close()
         if app_exc is not None and not exception_already_raised:
             raise app_exc
@@ -209,6 +250,7 @@ class _StreamingResponse(Response):
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         info: Mapping[str, Any] | None = None,
+        ack: Callable[[], None] | None = None,
     ) -> None:
         self.info = info
         self.body_iterator = content
@@ -216,6 +258,7 @@ class _StreamingResponse(Response):
         self.media_type = media_type
         self.init_headers(headers)
         self.background = None
+        self._ack = ack
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.info is not None:
@@ -239,6 +282,9 @@ class _StreamingResponse(Response):
 
         if should_close_body:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
+
+        if self._ack is not None:  # pragma: no branch
+            self._ack()
 
         if self.background:
             await self.background()

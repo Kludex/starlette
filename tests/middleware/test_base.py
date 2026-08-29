@@ -412,6 +412,56 @@ async def test_do_not_block_on_background_tasks() -> None:
 
 
 @pytest.mark.anyio
+async def test_background_task_started_after_response_is_sent_to_client() -> None:
+    # Regression test for https://github.com/encode/starlette/issues/3458
+    #
+    # `send_no_error` used to return as soon as the final body message reached
+    # the middleware's internal memory stream, not once it had actually been
+    # forwarded to the real `send`. With a slow client, that let a response's
+    # background task start well before the last byte had gone out.
+    events: list[str] = []
+
+    async def sleep_and_set() -> None:
+        events.append("background started")
+
+    async def endpoint_with_background_task(_: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(sleep_and_set))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", endpoint_with_background_task)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+    }
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            events.append("sent more_body=%s" % message.get("more_body", False))
+        # Simulate a slow client: every write to the real socket takes a
+        # while, which is what lets a background task race ahead of it.
+        await anyio.sleep(0.01)
+
+    await app(scope, receive, send)
+
+    assert events == [
+        "sent more_body=True",
+        "sent more_body=False",
+        "background started",
+    ]
+
+
+@pytest.mark.anyio
 async def test_run_context_manager_exit_even_if_client_disconnects() -> None:
     # test for https://github.com/Kludex/starlette/issues/1678#issuecomment-1172916042
     response_complete = anyio.Event()

@@ -106,6 +106,7 @@ class BaseHTTPMiddleware:
         request = _CachedRequest(scope, receive)
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
+        response_transmitted = anyio.Event()
         app_exc: Exception | None = None
         exception_already_raised = False
 
@@ -135,6 +136,17 @@ class BaseHTTPMiddleware:
                 except anyio.BrokenResourceError:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
+                # The memory stream only guarantees that `_StreamingResponse` has
+                # picked the message up, not that it has reached the real `send`
+                # yet. For the last message of the response, hold the downstream
+                # app here until that actually happens, so that anything it runs
+                # right after sending (e.g. a background task) can't start before
+                # the response has genuinely been sent to the client.
+                is_last_message = message["type"] == "http.response.pathsend" or (
+                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                )
+                if is_last_message:
+                    await response_transmitted.wait()
 
             async def coro() -> None:
                 nonlocal app_exc
@@ -192,6 +204,7 @@ class BaseHTTPMiddleware:
             async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)
                 await response(scope, wrapped_receive, send)
+                response_transmitted.set()
                 response_sent.set()
                 recv_stream.close()
         if app_exc is not None and not exception_already_raised:

@@ -141,9 +141,21 @@ class URL:
         return self.__class__(components.geturl())
 
     def include_query_params(self, **kwargs: Any) -> URL:
-        params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
-        params.update({str(key): str(value) for key, value in kwargs.items()})
-        query = urlencode(params.multi_items())
+        str_kwargs = {str(key): str(value) for key, value in kwargs.items()}
+        # Rebuild the list in-place so that existing keys retain their position.
+        merged: set[str] = set()
+        new_params: list[tuple[str, str]] = []
+        for k, v in parse_qsl(self.query, keep_blank_values=True):
+            if k in str_kwargs and k not in merged:
+                new_params.append((k, str_kwargs[k]))
+                merged.add(k)
+            elif k not in str_kwargs:
+                new_params.append((k, v))
+            # drop duplicate entries for a key that is being replaced
+        for k, v in str_kwargs.items():
+            if k not in merged:
+                new_params.append((k, v))
+        query = urlencode(new_params)
         return self.replace(query=query)
 
     def replace_query_params(self, **kwargs: Any) -> URL:

@@ -166,9 +166,14 @@ def test_http_span_uses_route_and_semantic_attributes(
     assert span.status.status_code == StatusCode.UNSET
 
 
+@pytest.mark.parametrize(
+    "capture_headers",
+    [[r"x-request-id", r"x-response-id", r"x-extra-.*"], r"x-(?:request-id|response-id|extra-.*)"],
+)
 def test_http_span_captures_selected_headers(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+    capture_headers: str | list[str],
 ) -> None:
     _, exporter = tracer_provider
 
@@ -189,7 +194,7 @@ def test_http_span_captures_selected_headers(
         middleware=[
             Middleware(
                 OpenTelemetryMiddleware,
-                capture_headers=[r"x-request-id", r"x-response-id", r"x-extra-.*"],
+                capture_headers=capture_headers,
             )
         ],
     )

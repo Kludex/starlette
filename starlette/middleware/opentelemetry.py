@@ -31,8 +31,8 @@ class OpenTelemetryMiddleware:
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         patterns = tuple(re.compile(pattern) for pattern in excluded_urls)
-        captured_headers = _CapturedHeaders(capture_headers, sanitize_headers)
-        self._responder = OpenTelemetryResponder(app, patterns, captured_headers)
+        header_capture = _HeaderCapture(capture_headers, sanitize_headers)
+        self._responder = OpenTelemetryResponder(app, patterns, header_capture)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -50,11 +50,11 @@ class OpenTelemetryResponder:
         self,
         app: ASGIApp,
         excluded_urls: tuple[re.Pattern[str], ...],
-        captured_headers: _CapturedHeaders,
+        header_capture: _HeaderCapture,
     ) -> None:
         self.app = app
         self._excluded_urls = excluded_urls
-        self._captured_headers = captured_headers
+        self._header_capture = header_capture
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         tracer_provider = trace.get_tracer_provider()
@@ -68,14 +68,14 @@ class OpenTelemetryResponder:
         original_method = scope.get("method", "")
         method = original_method.upper()
 
-        headers = self._captured_headers.decode(scope.get("headers", []))
+        headers = _decode_headers(scope.get("headers", []))
 
         attributes: dict[str, str | int | list[str]] = {
             "http.request.method": method,
             "url.path": scope.get("path", ""),
             "url.scheme": scope.get("scheme", "http"),
         }
-        attributes.update(self._captured_headers.attributes(headers, "request"))
+        attributes.update(self._header_capture.attributes(headers, "request"))
         if original_method != method:
             attributes["http.request.method_original"] = original_method
         if url.query:
@@ -104,9 +104,9 @@ class OpenTelemetryResponder:
                 if message["type"] == "http.response.start":
                     status_code = message["status"]
                     span.set_attribute("http.response.status_code", status_code)
-                    if self._captured_headers:
-                        response_headers = self._captured_headers.decode(message.get("headers", []))
-                        span.set_attributes(self._captured_headers.attributes(response_headers, "response"))
+                    if self._header_capture:
+                        response_headers = _decode_headers(message.get("headers", []))
+                        span.set_attributes(self._header_capture.attributes(response_headers, "response"))
                     if status_code >= 500:
                         span.set_attribute("error.type", str(status_code))
                         span.set_status(Status(StatusCode.ERROR))
@@ -133,7 +133,7 @@ class OpenTelemetryResponder:
                     span.set_attribute("http.route", route_path)
 
 
-class _CapturedHeaders:
+class _HeaderCapture:
     def __init__(
         self,
         capture_headers: bool | Sequence[str],
@@ -144,13 +144,6 @@ class _CapturedHeaders:
 
     def __bool__(self) -> bool:
         return bool(self._capture_patterns)
-
-    def decode(self, raw_headers: Iterable[tuple[bytes, bytes]]) -> dict[str, list[str]]:
-        headers: dict[str, list[str]] = {}
-        for name, value in raw_headers:
-            decoded_name = name.decode("latin-1").lower()
-            headers.setdefault(decoded_name, []).append(value.decode("latin-1"))
-        return headers
 
     def attributes(
         self,
@@ -176,3 +169,11 @@ class _CapturedHeaders:
         elif isinstance(patterns, str):
             patterns = (patterns,)
         return tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)
+
+
+def _decode_headers(raw_headers: Iterable[tuple[bytes, bytes]]) -> dict[str, list[str]]:
+    headers: dict[str, list[str]] = {}
+    for name, value in raw_headers:
+        decoded_name = name.decode("latin-1").lower()
+        headers.setdefault(decoded_name, []).append(value.decode("latin-1"))
+    return headers

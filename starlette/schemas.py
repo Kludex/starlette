@@ -132,9 +132,13 @@ class SchemaGenerator(BaseSchemaGenerator):
     def get_schema(self, routes: list[BaseRoute]) -> dict[str, Any]:
         schema = dict(self.base_schema)
         schema.setdefault("paths", {})
+        openapi_version_match = re.match(r"^(\d+)\.(\d+)", str(schema.get("openapi", "")))
+        supports_query = openapi_version_match is not None and tuple(map(int, openapi_version_match.groups())) >= (3, 2)
         endpoints_info = self.get_endpoints(routes)
 
         for endpoint in endpoints_info:
+            if endpoint.http_method == "query" and not supports_query:
+                continue
             parsed = self.parse_docstring(endpoint.func)
 
             if not parsed:

@@ -226,6 +226,14 @@ def test_schema_generation() -> None:
     }
 
 
+def test_query_schema_requires_openapi_3_2() -> None:
+    schemas = SchemaGenerator({"openapi": "3.1.2", "info": {"title": "Example API", "version": "1.0"}})
+    schema = schemas.get_schema(routes=app.routes)
+
+    assert "query" not in schema["paths"]["/users"]
+    assert "query" not in schema["paths"]["/orgs"]
+
+
 EXPECTED_SCHEMA = """
 info:
   title: Example API

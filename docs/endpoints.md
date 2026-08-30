@@ -31,6 +31,8 @@ class Homepage(HTTPEndpoint):
     async def get(self, request):
         return PlainTextResponse(f"Hello, world!")
 
+    async def query(self, request):
+        return PlainTextResponse(f"Hello, query!")
 
 class User(HTTPEndpoint):
     async def get(self, request):

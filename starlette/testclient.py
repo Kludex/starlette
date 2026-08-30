@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import inspect
-import io
 import json
 import math
 import sys
@@ -17,6 +16,7 @@ from urllib.parse import unquote, urljoin
 import anyio
 import anyio.abc
 import anyio.from_thread
+from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
@@ -204,6 +204,45 @@ class WebSocketTestSession:
         return json.loads(text)
 
 
+class _TestClientResponseStream(httpx.SyncByteStream):
+    def __init__(
+        self,
+        body_rx: MemoryObjectReceiveStream[bytes],
+        portal: anyio.abc.BlockingPortal,
+        app_task: Future[None],
+        cancel_scope: anyio.CancelScope,
+        exit_stack: contextlib.ExitStack,
+        raise_server_exceptions: bool,
+    ) -> None:
+        self._body_rx = body_rx
+        self._portal = portal
+        self._app_task = app_task
+        self._cancel_scope = cancel_scope
+        self._exit_stack = exit_stack
+        self._raise_server_exceptions = raise_server_exceptions
+
+    def __iter__(self) -> Generator[bytes, None, None]:
+        while True:
+            try:
+                yield self._portal.call(self._body_rx.receive)
+            except anyio.EndOfStream:
+                self._wait_for_app()
+                return
+
+    def close(self) -> None:
+        if not self._app_task.done():
+            self._portal.call(self._cancel_scope.cancel)
+        try:
+            self._wait_for_app()
+        finally:
+            self._exit_stack.close()
+
+    def _wait_for_app(self) -> None:
+        exception = self._app_task.exception()
+        if exception is not None and self._raise_server_exceptions:
+            raise exception
+
+
 class _TestClientTransport(httpx.BaseTransport):
     def __init__(
         self,
@@ -287,7 +326,8 @@ class _TestClientTransport(httpx.BaseTransport):
         request_complete = False
         response_started = False
         response_complete: anyio.Event
-        raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
+        response_body_started = False
+        raw_kwargs: dict[str, Any] = {}
         debug_info: dict[str, Any] | None = None
 
         async def receive() -> Message:
@@ -319,7 +359,7 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, debug_info
+            nonlocal raw_kwargs, response_started, response_body_started, debug_info
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
@@ -331,32 +371,60 @@ class _TestClientTransport(httpx.BaseTransport):
                 assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
-                if request.method != "HEAD":
-                    raw_kwargs["stream"].write(body)
+                response_body_started = True
+                response_available.set()
+                if request.method != "HEAD" and body:
+                    await body_tx.send(body)
                 if not more_body:
-                    raw_kwargs["stream"].seek(0)
                     response_complete.set()
             elif message["type"] == "http.response.debug":
                 debug_info = message["info"]
 
-        try:
-            with self.portal_factory() as portal:
-                response_complete = portal.call(anyio.Event)
-                portal.call(self.app, scope, receive, send)
-        except BaseException as exc:
-            if self.raise_server_exceptions:
-                raise exc
+        async def run_app(*, task_status: anyio.abc.TaskStatus[anyio.CancelScope]) -> None:
+            try:
+                with anyio.CancelScope() as cancel_scope:
+                    task_status.started(cancel_scope)
+                    async with body_tx:
+                        await self.app(scope, receive, send)
+            finally:
+                response_available.set()
 
-        if self.raise_server_exceptions:
-            assert response_started, "TestClient did not receive any response."
-        elif not response_started:
+        exit_stack = contextlib.ExitStack()
+        portal = exit_stack.enter_context(self.portal_factory())
+        response_available = portal.call(anyio.Event)
+        response_complete = portal.call(anyio.Event)
+        body_tx, body_rx = cast(
+            "tuple[MemoryObjectSendStream[bytes], MemoryObjectReceiveStream[bytes]]",
+            portal.call(anyio.create_memory_object_stream, 0),
+        )
+        exit_stack.callback(body_rx.close)
+        app_task, cancel_scope = cast("tuple[Future[None], anyio.CancelScope]", portal.start_task(run_app))
+        portal.call(response_available.wait)
+
+        if not response_body_started:
+            exception = app_task.exception()
+            if exception is not None and self.raise_server_exceptions:
+                exit_stack.close()
+                raise exception
+
+        if not response_started:
+            exit_stack.close()
+            if self.raise_server_exceptions:
+                raise AssertionError("TestClient did not receive any response.")
             raw_kwargs = {
                 "status_code": 500,
                 "headers": [],
-                "stream": io.BytesIO(),
+                "stream": httpx.ByteStream(b""),
             }
-
-        raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
+        else:
+            raw_kwargs["stream"] = _TestClientResponseStream(
+                body_rx=body_rx,
+                portal=portal,
+                app_task=app_task,
+                cancel_scope=cancel_scope,
+                exit_stack=exit_stack,
+                raise_server_exceptions=self.raise_server_exceptions,
+            )
 
         response = httpx.Response(**raw_kwargs, request=request)
         if debug_info is not None:

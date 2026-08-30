@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import sys
+import threading
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -17,8 +18,8 @@ from starlette.applications import Starlette
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse, Response
-from starlette.routing import Route
+from starlette.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
+from starlette.routing import Mount, Route
 from starlette.testclient import ASGIInstance, TestClient
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -228,6 +229,101 @@ def test_testclient_asgi3(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
+
+
+def test_testclient_requires_response(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        pass
+
+    client = test_client_factory(app)
+    with pytest.raises(AssertionError, match="TestClient did not receive any response"):
+        client.get("/")
+
+
+def test_streaming_response_is_available_after_first_chunk(test_client_factory: TestClientFactory) -> None:
+    release_response = threading.Event()
+
+    async def stream() -> AsyncGenerator[bytes, None]:
+        yield b"hello"
+        await anyio.to_thread.run_sync(release_response.wait)
+        yield b"world"
+
+    async def homepage(request: Request) -> StreamingResponse:
+        return StreamingResponse(stream())
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    with client.stream("GET", "/") as response:
+        chunks = response.iter_raw()
+        assert next(chunks) == b"hello"
+        release_response.set()
+        assert list(chunks) == [b"world"]
+
+
+def test_streaming_response_applies_backpressure(test_client_factory: TestClientFactory) -> None:
+    second_chunk_started = threading.Event()
+
+    async def stream() -> AsyncGenerator[bytes, None]:
+        yield b"one"
+        second_chunk_started.set()
+        yield b"two"
+
+    async def homepage(request: Request) -> StreamingResponse:
+        return StreamingResponse(stream())
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    with client.stream("GET", "/") as response:
+        chunks = response.iter_raw()
+        assert not second_chunk_started.is_set()
+        assert next(chunks) == b"one"
+        assert second_chunk_started.wait(timeout=1)
+        assert list(chunks) == [b"two"]
+
+
+def test_closing_streaming_response_stops_application(test_client_factory: TestClientFactory) -> None:
+    app_finished = threading.Event()
+
+    async def http_app(scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            while True:
+                await send({"type": "http.response.body", "body": b"chunk", "more_body": True})
+        finally:
+            app_finished.set()
+
+    client = test_client_factory(Starlette(routes=[Mount("/", app=http_app)]))
+    with client:
+        with client.stream("GET", "/") as response:
+            assert next(response.iter_raw()) == b"chunk"
+        assert app_finished.is_set()
+
+
+def test_streaming_response_raises_late_server_exception(test_client_factory: TestClientFactory) -> None:
+    async def http_app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"body"})
+        await anyio.sleep(0)
+        raise RuntimeError("late failure")
+
+    client = test_client_factory(Starlette(routes=[Mount("/", app=http_app)]))
+    with client, pytest.raises(RuntimeError, match="late failure"):
+        with client.stream("GET", "/") as response:
+            response.read()
+
+
+def test_streaming_response_ignores_late_server_exception(test_client_factory: TestClientFactory) -> None:
+    async def http_app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"body"})
+        await anyio.sleep(0)
+        raise RuntimeError("late failure")
+
+    client = test_client_factory(
+        Starlette(routes=[Mount("/", app=http_app)]),
+        raise_server_exceptions=False,
+    )
+    with client:
+        with client.stream("GET", "/") as response:
+            assert response.read() == b"body"
 
 
 def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:

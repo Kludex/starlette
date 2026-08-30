@@ -162,49 +162,6 @@ routes = [
 url = request.url_for("homepage")
 ```
 
-### Generate trusted absolute URLs
-
-`request.url_for()` needs a validated `Host` header. A configured public base URL avoids request data entirely:
-
-```python
-from starlette.applications import Starlette
-from starlette.middleware import Middleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Route
-
-
-PUBLIC_BASE_URL = "https://example.com"
-
-
-async def homepage(request: Request) -> JSONResponse:
-    request_url = request.url_for("homepage")
-    public_url = app.url_path_for("homepage").make_absolute_url(PUBLIC_BASE_URL)
-    return JSONResponse({"request_url": str(request_url), "public_url": str(public_url)})
-
-
-routes = [Route("/", homepage, name="homepage")]
-middleware = [Middleware(TrustedHostMiddleware, allowed_hosts=["example.com"])]
-app = Starlette(routes=routes, middleware=middleware)
-```
-
-An absolute URL includes the scheme and host. `request.url_for()` returns an absolute URL using the request's `Host`
-header. The `Host` header identifies the domain that received the request.
-
-[TrustedHostMiddleware](middleware.md#trustedhostmiddleware) rejects a request when its `Host` is not allowed. This
-prevents a client from making `request.url_for()` generate a URL for an unexpected domain. It validates the hostname but
-does not restrict the port.
-
-For links in emails, OAuth callbacks, and other URLs used outside the current response, use a configured public base URL.
-`app.url_path_for()` returns the route path. `make_absolute_url()` combines that path with the configured URL without
-using request data. This ensures that the scheme, hostname, and port come from your configuration.
-
-!!! warning "Validate the Host header"
-
-    A client can choose any syntactically valid `Host` header, including its port. Configure `TrustedHostMiddleware`
-    before using request-derived absolute URLs. Use a configured public base URL when the complete origin must be trusted.
-
 URL lookups can include path parameters...
 
 ```python
@@ -250,6 +207,50 @@ against the application, although these will only return the URL path.
 ```python
 url = app.url_path_for("user_detail", username=...)
 ```
+
+### Trusted absolute URLs
+
+`request.url_for()` needs a validated `Host` header. A configured public base URL avoids request data entirely:
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
+
+PUBLIC_BASE_URL = "https://example.com"
+
+
+async def homepage(request: Request) -> JSONResponse:
+    request_url = request.url_for("homepage")
+    public_url = app.url_path_for("homepage").make_absolute_url(PUBLIC_BASE_URL)
+    return JSONResponse({"request_url": str(request_url), "public_url": str(public_url)})
+
+
+routes = [Route("/", homepage, name="homepage")]
+middleware = [Middleware(TrustedHostMiddleware, allowed_hosts=["example.com"])]
+app = Starlette(routes=routes, middleware=middleware)
+```
+
+An absolute URL includes the scheme and host. `request.url_for()` uses the request scheme and the authority from the
+`Host` header. The authority contains the hostname and an optional port. The `Host` header reports which domain the
+client requested, but the client can choose its value.
+
+[TrustedHostMiddleware](middleware.md#trustedhostmiddleware) rejects a request when its hostname is not allowed. This
+prevents a client from making `request.url_for()` generate a URL for an unexpected domain.
+
+For links in emails, OAuth callbacks, and other URLs used outside the current response, use a configured public base
+URL. `app.url_path_for()` returns the route path. `make_absolute_url()` combines that path with the configured URL
+without using request data. This ensures that the scheme, hostname, and port come from your configuration. Include the
+deployment prefix in this URL when your application uses a `root_path`, such as `https://example.com/api`.
+
+!!! warning "TrustedHostMiddleware does not validate the port"
+
+    `TrustedHostMiddleware` validates the hostname but does not restrict the port. Use a configured public base URL when
+    the complete origin must be trusted.
 
 ## Host-based routing
 

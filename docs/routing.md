@@ -210,10 +210,10 @@ url = app.url_path_for("user_detail", username=...)
 
 ### Trusted absolute URLs
 
-Use this pattern for absolute URLs that must always point to your public site, such as password reset links and OAuth
-callbacks. An absolute URL includes an origin and path. The origin is the scheme, hostname, and port.
+Use a configured public base URL when an absolute URL must always point to your public site, such as password reset links
+and OAuth callbacks. An absolute URL includes an origin and path. The origin is the scheme, hostname, and port.
 
-Configure the public base URL and combine it with the path returned by `app.url_path_for()`:
+Combine the configured URL with the path returned by `app.url_path_for()`:
 
 ```python
 from __future__ import annotations

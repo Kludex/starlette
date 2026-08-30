@@ -193,16 +193,17 @@ An absolute URL includes the scheme and host. `request.url_for()` returns an abs
 header. The `Host` header identifies the domain that received the request.
 
 [TrustedHostMiddleware](middleware.md#trustedhostmiddleware) rejects a request when its `Host` is not allowed. This
-prevents a client from making `request.url_for()` generate a URL for an unexpected domain.
+prevents a client from making `request.url_for()` generate a URL for an unexpected domain. It validates the hostname but
+does not restrict the port.
 
 For links in emails, OAuth callbacks, and other URLs used outside the current response, use a configured public base URL.
 `app.url_path_for()` returns the route path. `make_absolute_url()` combines that path with the configured URL without
-using request data.
+using request data. This ensures that the scheme, hostname, and port come from your configuration.
 
 !!! warning "Validate the Host header"
 
-    A client can choose any syntactically valid `Host` header. Configure `TrustedHostMiddleware` before using
-    request-derived absolute URLs in security-sensitive contexts.
+    A client can choose any syntactically valid `Host` header, including its port. Configure `TrustedHostMiddleware`
+    before using request-derived absolute URLs. Use a configured public base URL when the complete origin must be trusted.
 
 URL lookups can include path parameters...
 

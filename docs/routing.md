@@ -101,13 +101,6 @@ Route('/users/{user_id:int}', user, methods=["GET", "POST"])
 
 By default function endpoints will only accept `GET` requests, unless specified.
 
-Any HTTP method name can be used here, including `QUERY` as defined in
-[RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html):
-
-```python
-Route('/users/search', search_users, methods=["QUERY"])
-```
-
 ## Submounting routes
 
 In large applications you might find that you want to break out parts of the

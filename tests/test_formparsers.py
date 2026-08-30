@@ -658,6 +658,57 @@ def test_missing_boundary_parameter(
         (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
     ],
 )
+def test_multipart_boundary_exceeds_limit(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    boundary = "X" * 257
+    with expectation:
+        response = client.post(
+            "/",
+            content=f"--{boundary}\r\n\r\n--{boundary}--\r\n".encode(),
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        assert response.status_code == 400
+        assert response.text == "Invalid multipart data."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
+def test_multipart_headers_exceed_limit(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    extra_headers = b"".join(f"X-Extra-{index}: value\r\n".encode() for index in range(8))
+    with expectation:
+        response = client.post(
+            "/",
+            content=(
+                b"--boundary\r\n"
+                b'Content-Disposition: form-data; name="field"\r\n' + extra_headers + b"\r\nvalue\r\n--boundary--\r\n"
+            ),
+            headers={"Content-Type": "multipart/form-data; boundary=boundary"},
+        )
+        assert response.status_code == 400
+        assert response.text == "Invalid multipart data."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
 def test_missing_name_parameter_on_content_disposition(
     app: ASGIApp,
     expectation: AbstractContextManager[Exception],

@@ -276,6 +276,27 @@ routes = [
 ]
 ```
 
+### Implicit `HEAD` methods
+
+When defining a route that allows `GET` requests, Starlette will implicitly support `HEAD` requests to the same endpoint by processing the request but omitting the response body.
+
+However, if you wish to provide a tailored response to `HEAD` requests (such as returning custom headers without running the full `GET` logic), explicitly defining a `HEAD` route for that path will automatically take priority over the implicit `HEAD` fallback.
+
+```python
+async def get_user(request):
+    return JSONResponse({"user": "john"})
+
+async def head_user(request):
+    return Response(headers={"x-custom": "value"})
+
+# In this example, an incoming HEAD request will match `head_user` naturally
+# instead of triggering the implicit fallback of `get_user`
+routes = [
+    Route('/users/{username}', get_user),
+    Route('/users/{username}', head_user, methods=["HEAD"]),
+]
+```
+
 ## Working with Router instances
 
 If you're working at a low-level you might want to use a plain `Router`

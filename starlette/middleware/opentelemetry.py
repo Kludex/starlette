@@ -168,7 +168,7 @@ def _capture_headers(
     attribute_prefix: str,
 ) -> dict[str, list[str]]:
     return {
-        f"{attribute_prefix}.{name.replace('-', '_')}": (
+        f"{attribute_prefix}.{name}": (
             ["[REDACTED]"] * len(values) if any(pattern.fullmatch(name) for pattern in sanitize_patterns) else values
         )
         for name, values in headers.items()

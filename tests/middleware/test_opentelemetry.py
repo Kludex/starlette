@@ -161,8 +161,8 @@ def test_http_span_uses_route_and_semantic_attributes(
     assert span.attributes["server.port"] == 80
     assert span.attributes["network.protocol.version"] == "1.1"
     assert span.attributes["user_agent.original"] == "testclient"
-    assert "http.request.header.user_agent" not in span.attributes
-    assert "http.response.header.content_type" not in span.attributes
+    assert "http.request.header.user-agent" not in span.attributes
+    assert "http.response.header.content-type" not in span.attributes
     assert span.status.status_code == StatusCode.UNSET
 
 
@@ -207,12 +207,12 @@ def test_http_span_captures_selected_headers(
     assert response.status_code == 200
     span = get_span(exporter)
     assert span.attributes is not None
-    assert span.attributes["http.request.header.x_request_id"] == ("one", "two")
-    assert span.attributes["http.request.header.x_extra_request"] == ("three",)
+    assert span.attributes["http.request.header.x-request-id"] == ("one", "two")
+    assert span.attributes["http.request.header.x-extra-request"] == ("three",)
     assert "http.request.header.authorization" not in span.attributes
-    assert span.attributes["http.response.header.x_response_id"] == ("one", "two")
-    assert span.attributes["http.response.header.x_extra_response"] == ("three",)
-    assert "http.response.header.x_ignored_response" not in span.attributes
+    assert span.attributes["http.response.header.x-response-id"] == ("one", "two")
+    assert span.attributes["http.response.header.x-extra-response"] == ("three",)
+    assert "http.response.header.x-ignored-response" not in span.attributes
 
 
 def test_http_span_captures_all_headers(
@@ -245,11 +245,11 @@ def test_http_span_captures_all_headers(
     assert response.status_code == 200
     span = get_span(exporter)
     assert span.attributes is not None
-    assert span.attributes["http.request.header.x_request_id"] == ("one",)
+    assert span.attributes["http.request.header.x-request-id"] == ("one",)
     assert span.attributes["http.request.header.authorization"] == ("[REDACTED]",)
     assert span.attributes["http.request.header.cookie"] == ("[REDACTED]",)
-    assert span.attributes["http.response.header.content_type"] == ("text/plain; charset=utf-8",)
-    assert span.attributes["http.response.header.set_cookie"] == ("[REDACTED]", "[REDACTED]")
+    assert span.attributes["http.response.header.content-type"] == ("text/plain; charset=utf-8",)
+    assert span.attributes["http.response.header.set-cookie"] == ("[REDACTED]", "[REDACTED]")
 
 
 def test_http_span_uses_nested_route(

@@ -165,9 +165,9 @@ app = Starlette(
 )
 ```
 
-OpenTelemetry normalizes header names in attribute keys. It converts names to lowercase and replaces
-hyphens with underscores. For example, `x-request-id` uses `http.request.header.x_request_id`, and
-`x-response-id` uses `http.response.header.x_response_id`.
+OpenTelemetry normalizes header names to lowercase in attribute keys. For example, `X-Request-ID`
+uses `http.request.header.x-request-id`, and `X-Response-ID` uses
+`http.response.header.x-response-id`.
 
 Pass `capture_headers=True` to capture every request and response header.
 

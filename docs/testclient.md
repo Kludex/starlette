@@ -10,7 +10,11 @@
                 - "__init__"
 
 The test client allows you to make requests against your ASGI application,
-using the `httpx` library.
+using the `httpx2` library.
+
+!!! note
+    The `TestClient` is built on `httpx2`. Plain `httpx` is still supported, but
+    deprecated - install `httpx2` (included in `starlette[full]`) instead.
 
 ```python
 from starlette.responses import HTMLResponse
@@ -29,11 +33,11 @@ def test_app():
     assert response.status_code == 200
 ```
 
-The test client exposes the same interface as any other `httpx` session.
+The test client exposes the same interface as any other `httpx2` session.
 In particular, note that the calls to make a request are just standard
 function calls, not awaitables.
 
-You can use any of `httpx` standard API, such as authentication, session
+You can use any of `httpx2` standard API, such as authentication, session
 cookies handling, or file uploads.
 
 For example, to set headers on the TestClient you can do:
@@ -65,7 +69,7 @@ with open("example.txt", "rb") as f1:
         response = client.post("/form", files=files)
 ```
 
-For more information you can check the `httpx` [documentation](https://www.python-httpx.org/advanced/).
+For more information you can check the `httpx2` [documentation](https://www.python-httpx.org/advanced/).
 
 By default the `TestClient` will raise any exceptions that occur in the
 application. Occasionally you might want to test the content of 500 error
@@ -79,9 +83,55 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
     not be triggered when the `TestClient` is instantiated. You can learn more about it
     [here](lifespan.md#running-lifespan-in-tests).
 
+### Debug information
+
+The `TestClient` supports the ASGI [`http.response.debug`](https://asgi.readthedocs.io/en/latest/extensions.html#debug)
+extension. The `info` dictionary sent by the application is available as
+`response.extensions["http.response.debug"]`, which allows custom response classes to
+expose additional debug information to tests.
+
+This is useful when asserting on the response body would mean parsing it back. Consider
+a response class that renders rows into a CSV file. By sending the rows through the
+debug extension, tests can assert on the original data instead of the serialized body:
+
+```python
+import csv
+import io
+
+from starlette.responses import Response
+
+
+class CSVResponse(Response):
+    media_type = "text/csv"
+
+    def __init__(self, rows):
+        self.rows = rows
+        buffer = io.StringIO()
+        csv.writer(buffer).writerows(rows)
+        super().__init__(buffer.getvalue())
+
+    async def __call__(self, scope, receive, send):
+        if "http.response.debug" in scope.get("extensions", {}):
+            await send({"type": "http.response.debug", "info": {"rows": self.rows}})
+        await super().__call__(scope, receive, send)
+
+
+def test_export():
+    client = TestClient(app)
+    response = client.get("/export")
+    rows = response.extensions["http.response.debug"]["rows"]
+    assert rows[0] == ("id", "username", "joined")
+    assert len(rows) == 101
+```
+
+Template responses use the same extension to expose the `.template` and `.context`
+response attributes - see [testing template responses](templates.md#testing-template-responses).
+The `info` dictionary is always available as `response.extensions["http.response.debug"]`,
+even when it carries `template`/`context` keys.
+
 ### Change client address
 
-By default, the TestClient will set the client host to `"testserver"` and the port to `50000`.
+By default, the TestClient will set the client host to `"testclient"` and the port to `50000`.
 
 You can change the client address by setting the `client` attribute of the `TestClient` instance:
 
@@ -100,7 +150,7 @@ By default, `asyncio` is used with default options.
 To run `Trio`, pass `backend="trio"`. For example:
 
 ```python
-def test_app()
+def test_app():
     with TestClient(app, backend="trio") as client:
        ...
 ```
@@ -108,7 +158,7 @@ def test_app()
 To run `asyncio` with `uvloop`, pass `backend_options={"use_uvloop": True}`.  For example:
 
 ```python
-def test_app()
+def test_app():
     with TestClient(app, backend_options={"use_uvloop": True}) as client:
        ...
 ```
@@ -117,7 +167,7 @@ def test_app()
 
 You can also test websocket sessions with the test client.
 
-The `httpx` library will be used to build the initial handshake, meaning you
+The `httpx2` library will be used to build the initial handshake, meaning you
 can use the same authentication options and other headers between both http and
 websocket testing.
 
@@ -150,7 +200,7 @@ always raised by the test client.
 
 #### Establishing a test session
 
-* `.websocket_connect(url, subprotocols=None, **options)` - Takes the same set of arguments as `httpx.get()`.
+* `.websocket_connect(url, subprotocols=None, **options)` - Takes the same set of arguments as `httpx2.get()`.
 
 May raise `starlette.websockets.WebSocketDisconnect` if the application does not accept the websocket connection.
 
@@ -191,12 +241,12 @@ using your existing async database client/infrastructure.
 
 For these situations, using `TestClient` is difficult because it creates its own event loop and async
 resources (like a database connection) often cannot be shared across event loops.
-The simplest way to work around this is to just make your entire test async and use an async client, like [httpx.AsyncClient].
+The simplest way to work around this is to just make your entire test async and use an async client, like [httpx2.AsyncClient].
 
 Here is an example of such a test:
 
 ```python
-from httpx import AsyncClient, ASGITransport
+from httpx2 import AsyncClient, ASGITransport
 from starlette.applications import Starlette
 from starlette.routing import Route
 from starlette.requests import Request
@@ -210,7 +260,7 @@ def hello(request: Request) -> PlainTextResponse:
 app = Starlette(routes=[Route("/", hello)])
 
 
-# if you're using pytest, you'll need to to add an async marker like:
+# if you're using pytest, you'll need to add an async marker like:
 # @pytest.mark.anyio  # using https://github.com/agronholm/anyio
 # or install and configure pytest-asyncio (https://github.com/pytest-dev/pytest-asyncio)
 async def test_app() -> None:
@@ -222,4 +272,4 @@ async def test_app() -> None:
         assert r.text == "Hello World!"
 ```
 
-[httpx.AsyncClient]: https://www.python-httpx.org/advanced/#calling-into-python-web-apps
+[httpx2.AsyncClient]: https://www.python-httpx.org/advanced/#calling-into-python-web-apps

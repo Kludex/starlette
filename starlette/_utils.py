@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import functools
+import re
 import sys
-from collections.abc import Awaitable, Callable, Generator
-from contextlib import AbstractAsyncContextManager, contextmanager
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from dataclasses import dataclass
+from ipaddress import AddressValueError, IPv6Address
 from typing import Any, Generic, Protocol, TypeVar, overload
+
+import anyio.abc
 
 from starlette.types import Scope
 
@@ -16,15 +21,41 @@ else:  # pragma: no cover
 
     from typing_extensions import TypeIs
 
-has_exceptiongroups = True
 if sys.version_info < (3, 11):  # pragma: no cover
     try:
-        from exceptiongroup import BaseExceptionGroup  # type: ignore[unused-ignore,import-not-found]
+        from exceptiongroup import BaseExceptionGroup
     except ImportError:
-        has_exceptiongroups = False
+
+        class BaseExceptionGroup(BaseException):  # type: ignore[no-redef]
+            pass
+
 
 T = TypeVar("T")
 AwaitableCallable = Callable[..., Awaitable[T]]
+
+# Reject characters that could make a Host header change the URL path or authority.
+_HOST_RE = re.compile(
+    r"^(?P<host>[a-z0-9._~%!$&'()*+,;=-]+|\[(?:(?P<ipv6>[a-f0-9]*:[a-f0-9.:]+)|"
+    r"(?-i:v)[a-f0-9]+\.[a-z0-9._~!$&'()*+,;=:-]+)\])(?::(?P<port>[0-9]+))?$",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedHost:
+    host: str
+    port: str | None
+
+    @property
+    def authority(self) -> str:
+        return self.host if self.port is None else f"{self.host}:{self.port}"
+
+    @property
+    def is_valid_port(self) -> bool:
+        if self.port is None:
+            return True
+        port = self.port.lstrip("0")
+        return len(port) <= 5 and int(port or "0") <= 65535
 
 
 @overload
@@ -75,16 +106,40 @@ class AwaitableOrContextManagerWrapper(Generic[SupportsAsyncCloseType]):
         return None
 
 
-@contextmanager
-def collapse_excgroups() -> Generator[None, None, None]:
+@asynccontextmanager
+async def create_collapsing_task_group() -> AsyncGenerator[anyio.abc.TaskGroup, None]:
     try:
-        yield
-    except BaseException as exc:
-        if has_exceptiongroups:  # pragma: no cover
-            while isinstance(exc, BaseExceptionGroup) and len(exc.exceptions) == 1:
-                exc = exc.exceptions[0]
+        async with anyio.create_task_group() as tg:
+            yield tg
+    except BaseExceptionGroup as excs:
+        if len(excs.exceptions) != 1:
+            raise
 
-        raise exc
+        exc = excs.exceptions[0]
+        context = None if exc.__suppress_context__ else exc.__context__
+        raise exc from exc.__cause__ or context
+
+
+def parse_host_header(host_header: str | None) -> ParsedHost | None:
+    """Parse `host_header` into its host and port components.
+
+    The host preserves brackets around IP literals. Invalid headers produce `None`.
+    """
+    if host_header is None:
+        return None
+
+    match = _HOST_RE.fullmatch(host_header)
+    if match is None:
+        return None
+
+    ipv6 = match["ipv6"]
+    if ipv6 is not None:
+        try:
+            IPv6Address(ipv6)
+        except AddressValueError:
+            return None
+
+    return ParsedHost(match["host"], match["port"])
 
 
 def get_route_path(scope: Scope) -> str:

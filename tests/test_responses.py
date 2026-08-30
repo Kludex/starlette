@@ -290,6 +290,18 @@ def test_file_response_set_media_type(tmp_path: Path, test_client_factory: TestC
     assert response.headers["content-type"] == "image/jpeg"
 
 
+def test_file_response_default_media_type(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    path = tmp_path / "file.unknownext"
+    path.write_bytes(b"<file content>")
+
+    # When the media type cannot be guessed from the filename or path, it
+    # falls back to "application/octet-stream" rather than "text/plain".
+    app = FileResponse(path=path)
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert response.headers["content-type"] == "application/octet-stream"
+
+
 def test_file_response_with_directory_raises_error(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     app = FileResponse(path=tmp_path, filename="example.png")
     client = test_client_factory(app)
@@ -770,6 +782,23 @@ def test_file_response_range_multi_head(file_response_client: TestClient) -> Non
     assert response.status_code == 206
 
 
+def test_file_response_range_count_limit(file_response_client: TestClient) -> None:
+    ranges = ",".join(f"{index}-{index}" for index in range(0, 200, 2))
+    response = file_response_client.get("/", headers={"Range": f"bytes={ranges}"})
+
+    assert response.status_code == 206
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+
+
+def test_file_response_range_count_limit_exceeded(file_response_client: TestClient) -> None:
+    ranges = ",".join(f"{index}-{index}" for index in range(0, 202, 2))
+    response = file_response_client.get("/", headers={"Range": f"bytes={ranges}"})
+
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.text == README
+
+
 def test_file_response_range_invalid(file_response_client: TestClient) -> None:
     response = file_response_client.head("/", headers={"Range": "bytes: 0-1000"})
     assert response.status_code == 400
@@ -802,6 +831,19 @@ def test_file_response_start_must_be_less_than_end(file_response_client: TestCli
     response = file_response_client.get("/", headers={"Range": "bytes=100-0"})
     assert response.status_code == 400
     assert response.text == "Range header: start must be less than end"
+
+
+def test_file_response_inverted_single_byte_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=5-4"})
+    assert response.status_code == 400
+    assert response.text == "Range header: start must be less than end"
+
+
+def test_file_response_single_byte_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=5-5"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 5-5/{len(README.encode('utf8'))}"
+    assert response.headers["content-length"] == "1"
 
 
 def test_file_response_merge_ranges(file_response_client: TestClient) -> None:
@@ -924,6 +966,16 @@ def test_file_response_suffix_range(file_response_client: TestClient) -> None:
     assert response.headers["content-range"] == f"bytes {file_size - 100}-{file_size - 1}/{file_size}"
     assert response.headers["content-length"] == "100"
     assert response.content == README.encode("utf8")[-100:]
+
+
+def test_file_response_suffix_range_larger_than_file(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=-1000"})
+
+    file_size = len(README.encode("utf8"))
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-{file_size - 1}/{file_size}"
+    assert response.headers["content-length"] == str(file_size)
+    assert response.content == README.encode("utf8")
 
 
 def test_file_response_multiple_calls(file_response_client: TestClient) -> None:

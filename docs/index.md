@@ -59,9 +59,6 @@ Help us keep Starlette maintained and sustainable by [becoming a sponsor](https:
     <a href="https://fastapi.tiangolo.com">
         <img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="FastAPI" style="height: 80px;">
     </a>
-    <a href="https://huggingface.co">
-        <img src="https://huggingface.co/datasets/huggingface/brand-assets/resolve/main/hf-logo-with-title.svg" alt="Hugging Face" style="height: 80px;">
-    </a>
 </div>
 
 ## Installation
@@ -70,7 +67,7 @@ Help us keep Starlette maintained and sustainable by [becoming a sponsor](https:
 pip install starlette
 ```
 
-You'll also want to install an ASGI server, such as [uvicorn](https://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://hypercorn.readthedocs.io/en/latest/).
+You'll also want to install an ASGI server, such as [uvicorn](https://uvicorn.dev) or any of the [other ASGI server implementations](https://asgi.readthedocs.io/en/latest/implementations.html#servers).
 
 ```shell
 pip install uvicorn
@@ -103,8 +100,9 @@ uvicorn main:app
 
 Starlette only requires `anyio`, and the following dependencies are optional:
 
-* [`httpx`][httpx] - Required if you want to use the `TestClient`.
+* [`httpx2`][httpx2] - Required if you want to use the `TestClient`.
 * [`jinja2`][jinja2] - Required if you want to use `Jinja2Templates`.
+* [`opentelemetry-api`][opentelemetry-api] - Required for `OpenTelemetryMiddleware`.
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
@@ -150,10 +148,11 @@ in isolation.
 <p align="center"><i>Starlette is <a href="https://github.com/Kludex/starlette/blob/main/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
 
 [asgi]: https://asgi.readthedocs.io/en/latest/
-[httpx]: https://www.python-httpx.org/
+[httpx2]: https://pypi.org/project/httpx2/
 [jinja2]: https://jinja.palletsprojects.com/
+[opentelemetry-api]: https://opentelemetry.io/docs/languages/python/api/
 [python-multipart]: https://multipart.fastapiexpert.com/
 [itsdangerous]: https://itsdangerous.palletsprojects.com/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation
-[techempower]: https://www.techempower.com/benchmarks/#hw=ph&test=fortune&l=zijzen-sf
+[techempower]: https://github.com/TechEmpower/FrameworkBenchmarks

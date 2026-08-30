@@ -2,6 +2,106 @@
 toc_depth: 2
 ---
 
+## 1.6.0 (August 8, 2026)
+
+#### Added
+
+* Add `max_body_size` to `Starlette` and route classes [#3431](https://github.com/encode/starlette/pull/3431).
+* Expose `http.response.debug` information via response extensions [#3130](https://github.com/encode/starlette/pull/3130).
+
+## 1.5.1 (August 8, 2026)
+
+#### Fixed
+
+* Reject inverted single-byte ranges in `FileResponse` [#3389](https://github.com/encode/starlette/pull/3389).
+* Limit `FileResponse` to 100 ranges [#3430](https://github.com/encode/starlette/pull/3430).
+
+## 1.5.0 (August 8, 2026)
+
+#### Added
+
+* Add `exclude_content_types` parameter to `GZipMiddleware` [#3418](https://github.com/encode/starlette/pull/3418).
+
+#### Changed
+
+* Expand default excluded content types in `GZipMiddleware` [#3421](https://github.com/encode/starlette/pull/3421).
+
+#### Fixed
+
+* Flush GZip output for each streamed chunk [#3419](https://github.com/encode/starlette/pull/3419).
+* Skip compression of partial responses in `GZipMiddleware` [#3420](https://github.com/encode/starlette/pull/3420).
+
+## 1.4.1 (August 5, 2026)
+
+#### Fixed
+
+* Default `thread_minimum_size` to 128 KiB in `GZipResponder`, keeping it usable without the new keyword argument [#3415](https://github.com/encode/starlette/pull/3415).
+
+## 1.4.0 (August 5, 2026)
+
+#### Added
+
+* Offload large GZip compression to a worker thread, keeping the event loop responsive. `GZipMiddleware` accepts a new `thread_minimum_size` parameter (default 128 KiB) controlling the minimum body chunk size compressed in a thread [#3410](https://github.com/encode/starlette/pull/3410).
+
+#### Changed
+
+* Use `zlib.compressobj` instead of `GzipFile` in `GZipMiddleware`, reducing memory usage during compression [#3411](https://github.com/encode/starlette/pull/3411).
+* Lazily allocate `GZipMiddleware` compression resources, avoiding compressor allocation for responses that are never compressed [#3407](https://github.com/encode/starlette/pull/3407).
+
+## 1.3.1 (June 12, 2026)
+
+#### Fixed
+
+* Enforce `max_fields` and `max_part_size` in `FormParser` [#3329](https://github.com/encode/starlette/pull/3329).
+* Enforce `FormParser` limits in parser callbacks [#3331](https://github.com/encode/starlette/pull/3331).
+
+## 1.3.0 (June 11, 2026)
+
+#### Added
+
+* Add `httpx2` to the `full` extra [#3323](https://github.com/encode/starlette/pull/3323).
+* Annotate the `URLPath` `protocol` parameter with `Literal` [#3285](https://github.com/encode/starlette/pull/3285).
+
+#### Fixed
+
+* Build `request.url` from structured components [#3326](https://github.com/encode/starlette/pull/3326).
+* Clamp oversized suffix ranges in `FileResponse` [#3307](https://github.com/encode/starlette/pull/3307).
+* Catch `OSError` alongside `MultiPartException` when closing temp files [#3191](https://github.com/encode/starlette/pull/3191).
+* Avoid collapsing exception groups raised from user code [#2830](https://github.com/encode/starlette/pull/2830).
+* Use `removeprefix` to strip the weak `ETag` indicator in `is_not_modified` [#3193](https://github.com/encode/starlette/pull/3193).
+* Fix `IndexError` in `URL.replace()` on a URL with no authority [#3317](https://github.com/encode/starlette/pull/3317).
+* Adjust `testclient` typing and warnings [#3322](https://github.com/encode/starlette/pull/3322).
+
+## 1.2.1 (May 31, 2026)
+
+#### Fixed
+
+* Use `httpx2` for type checking in the `testclient` module [#3304](https://github.com/encode/starlette/pull/3304).
+* Add assert error for `requires()` when the request parameter is not a `Request` type [#3298](https://github.com/encode/starlette/pull/3298).
+
+## 1.2.0 (May 28, 2026)
+
+#### Added
+
+* Support httpx2 in the test client [#3291](https://github.com/encode/starlette/pull/3291).
+
+## 1.1.0 (May 23, 2026)
+
+#### Added
+
+* Use `"application/octet-stream"` as the `FileResponse` media type fallback [#3283](https://github.com/encode/starlette/pull/3283).
+
+#### Fixed
+
+* Only dispatch standard HTTP verbs in `HTTPEndpoint` [#3286](https://github.com/encode/starlette/pull/3286).
+* Reject absolute paths in `StaticFiles.lookup_path` [#3287](https://github.com/encode/starlette/pull/3287).
+
+## 1.0.1 (May 21, 2026)
+
+#### Fixed
+
+* Ignore malformed `Host` header when constructing `request.url` [#3279](https://github.com/encode/starlette/pull/3279).
+
 ## 1.0.0 (March 22, 2026)
 
 Starlette 1.0 is here!

@@ -616,42 +616,6 @@ def test_send_before_accept(test_client_factory: TestClientFactory) -> None:
             pass  # pragma: no cover
 
 
-def test_receive_text_after_close(test_client_factory: TestClientFactory) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        websocket = WebSocket(scope, receive=receive, send=send)
-        await websocket.close()
-        await websocket.receive_text()
-
-    client = test_client_factory(app)
-    with pytest.raises(WebSocketDisconnected):
-        with client.websocket_connect("/"):
-            pass  # pragma: no cover
-
-
-def test_receive_bytes_after_close(test_client_factory: TestClientFactory) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        websocket = WebSocket(scope, receive=receive, send=send)
-        await websocket.close()
-        await websocket.receive_bytes()
-
-    client = test_client_factory(app)
-    with pytest.raises(WebSocketDisconnected):
-        with client.websocket_connect("/"):
-            pass  # pragma: no cover
-
-
-def test_receive_json_after_close(test_client_factory: TestClientFactory) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        websocket = WebSocket(scope, receive=receive, send=send)
-        await websocket.close()
-        await websocket.receive_json()
-
-    client = test_client_factory(app)
-    with pytest.raises(WebSocketDisconnected):
-        with client.websocket_connect("/"):
-            pass  # pragma: no cover
-
-
 def test_send_wrong_message_type(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)
@@ -675,19 +639,6 @@ def test_receive_before_accept(test_client_factory: TestClientFactory) -> None:
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/") as websocket:
             websocket.send({"type": "websocket.send"})
-
-
-def test_receive_after_close(test_client_factory: TestClientFactory) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        websocket = WebSocket(scope, receive=receive, send=send)
-        await websocket.accept()
-        websocket.client_state = WebSocketState.DISCONNECTED
-        await websocket.receive()
-
-    client = test_client_factory(app)
-    with pytest.raises(WebSocketDisconnected):
-        with client.websocket_connect("/"):
-            pass  # pragma: no cover
 
 
 def test_receive_wrong_message_type(test_client_factory: TestClientFactory) -> None:

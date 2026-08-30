@@ -240,23 +240,20 @@ def test_testclient_requires_response(test_client_factory: TestClientFactory) ->
         client.get("/")
 
 
-def test_streaming_response_is_available_after_first_chunk(test_client_factory: TestClientFactory) -> None:
+def test_streaming_response_is_available_before_first_chunk(test_client_factory: TestClientFactory) -> None:
     release_response = threading.Event()
 
     async def stream() -> AsyncGenerator[bytes, None]:
-        yield b"hello"
         await anyio.to_thread.run_sync(release_response.wait)
-        yield b"world"
+        yield b"hello"
 
     async def homepage(request: Request) -> StreamingResponse:
         return StreamingResponse(stream())
 
     client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
     with client.stream("GET", "/") as response:
-        chunks = response.iter_raw()
-        assert next(chunks) == b"hello"
         release_response.set()
-        assert list(chunks) == [b"world"]
+        assert response.read() == b"hello"
 
 
 def test_streaming_response_applies_backpressure(test_client_factory: TestClientFactory) -> None:

@@ -326,7 +326,6 @@ class _TestClientTransport(httpx.BaseTransport):
         request_complete = False
         response_started = False
         response_complete: anyio.Event
-        response_body_started = False
         raw_kwargs: dict[str, Any] = {}
         debug_info: dict[str, Any] | None = None
 
@@ -359,20 +358,19 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, response_body_started, debug_info
+            nonlocal raw_kwargs, response_started, debug_info
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
                 raw_kwargs["status_code"] = message["status"]
                 raw_kwargs["headers"] = [(key.decode(), value.decode()) for key, value in message.get("headers", [])]
                 response_started = True
+                response_available.set()
             elif message["type"] == "http.response.body":
                 assert response_started, 'Received "http.response.body" without "http.response.start".'
                 assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
-                response_body_started = True
-                response_available.set()
                 if request.method != "HEAD" and body:
                     await body_tx.send(body)
                 if not more_body:
@@ -381,13 +379,10 @@ class _TestClientTransport(httpx.BaseTransport):
                 debug_info = message["info"]
 
         async def run_app(*, task_status: anyio.abc.TaskStatus[anyio.CancelScope]) -> None:
-            try:
-                with anyio.CancelScope() as cancel_scope:
-                    task_status.started(cancel_scope)
-                    async with body_tx:
-                        await self.app(scope, receive, send)
-            finally:
-                response_available.set()
+            with anyio.CancelScope() as cancel_scope:
+                task_status.started(cancel_scope)
+                async with body_tx:
+                    await self.app(scope, receive, send)
 
         exit_stack = contextlib.ExitStack()
         portal = exit_stack.enter_context(self.portal_factory())
@@ -399,17 +394,15 @@ class _TestClientTransport(httpx.BaseTransport):
         )
         exit_stack.callback(body_rx.close)
         app_task, cancel_scope = cast("tuple[Future[None], anyio.CancelScope]", portal.start_task(run_app))
+        app_task.add_done_callback(lambda _: response_available.set())
         portal.call(response_available.wait)
 
-        if not response_body_started:
-            exception = app_task.exception()
-            if exception is not None and self.raise_server_exceptions:
-                exit_stack.close()
-                raise exception
-
         if not response_started:
+            exception = app_task.exception()
             exit_stack.close()
             if self.raise_server_exceptions:
+                if exception is not None:
+                    raise exception
                 raise AssertionError("TestClient did not receive any response.")
             raw_kwargs = {
                 "status_code": 500,

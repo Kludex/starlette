@@ -137,8 +137,9 @@ app = Starlette(
 
 ### Capture headers
 
-Pass header names or regular expressions in `capture_headers`. The same patterns apply to request and
-response headers. Header names are matched case-insensitively. Repeated header values are preserved.
+Pass a regular expression or a sequence of regular expressions in `capture_headers`. A string is treated
+as one expression. The same patterns apply to request and response headers. Capture patterns must match
+the complete header name and are case-insensitive. Repeated header values are preserved.
 
 ```python
 from starlette.applications import Starlette
@@ -159,7 +160,7 @@ app = Starlette(
         Middleware(
             OpenTelemetryMiddleware,
             capture_headers=[r"x-request-id", r"x-response-id", r"authorization", r".*cookie"],
-            sanitize_headers=[r"authorization", r".*cookie"],
+            sanitize_headers=[r"authorization", r"cookie"],
         )
     ],
 )
@@ -170,6 +171,10 @@ uses `http.request.header.x-request-id`, and `X-Response-ID` uses
 `http.response.header.x-response-id`.
 
 Pass `capture_headers=True` to capture every request and response header.
+
+Pass a regular expression or a sequence of regular expressions in `sanitize_headers`. Sanitization
+patterns match any part of a captured header name. For example, `cookie` sanitizes both `cookie` and
+`set-cookie`.
 
 !!! warning "Captured headers may contain secrets"
 

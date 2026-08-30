@@ -24,8 +24,8 @@ class OpenTelemetryMiddleware:
         app: ASGIApp,
         *,
         excluded_urls: str | Sequence[str] = (),
-        capture_headers: bool | Sequence[str] = False,
-        sanitize_headers: Sequence[str] = (),
+        capture_headers: bool | str | Sequence[str] = False,
+        sanitize_headers: str | Sequence[str] = (),
     ) -> None:
         self.app = app
         if isinstance(excluded_urls, str):
@@ -50,11 +50,11 @@ class OpenTelemetryResponder:
         self,
         app: ASGIApp,
         excluded_urls: tuple[re.Pattern[str], ...],
-        header_capture: _HeaderCapture,
+        header_capture: _HeaderCapture | None = None,
     ) -> None:
         self.app = app
         self._excluded_urls = excluded_urls
-        self._header_capture = header_capture
+        self._header_capture = _HeaderCapture(False, ()) if header_capture is None else header_capture
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         tracer_provider = trace.get_tracer_provider()
@@ -136,8 +136,8 @@ class OpenTelemetryResponder:
 class _HeaderCapture:
     def __init__(
         self,
-        capture_headers: bool | Sequence[str],
-        sanitize_headers: Sequence[str],
+        capture_headers: bool | str | Sequence[str],
+        sanitize_headers: str | Sequence[str],
     ) -> None:
         self._capture_patterns = self._compile_patterns(capture_headers)
         self._sanitize_patterns = self._compile_patterns(sanitize_headers)
@@ -153,7 +153,7 @@ class _HeaderCapture:
         return {
             f"http.{direction}.header.{name}": (
                 ["[REDACTED]"] * len(values)
-                if any(pattern.fullmatch(name) for pattern in self._sanitize_patterns)
+                if any(pattern.search(name) for pattern in self._sanitize_patterns)
                 else values
             )
             for name, values in headers.items()
@@ -161,7 +161,7 @@ class _HeaderCapture:
         }
 
     @staticmethod
-    def _compile_patterns(patterns: bool | Sequence[str]) -> tuple[re.Pattern[str], ...]:
+    def _compile_patterns(patterns: bool | str | Sequence[str]) -> tuple[re.Pattern[str], ...]:
         if patterns is True:
             patterns = (".*",)
         elif patterns is False:

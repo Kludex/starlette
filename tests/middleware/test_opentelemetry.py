@@ -13,7 +13,7 @@ from opentelemetry.trace import SpanKind, StatusCode
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware, OpenTelemetryResponder
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import BaseRoute, Host, Match, Mount, Route, Router, WebSocketRoute
@@ -53,6 +53,16 @@ def test_noop_provider_skips_instrumentation(
     app = Starlette(routes=[Route("/", homepage)], middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/").status_code == 200
+
+
+def test_responder_supports_existing_constructor(
+    monkeypatch: pytest.MonkeyPatch,
+    test_client_factory: TestClientFactory,
+) -> None:
+    monkeypatch.setattr(trace, "get_tracer_provider", trace.NoOpTracerProvider)
+    app = Starlette(routes=[Route("/", homepage)])
+
+    assert test_client_factory(OpenTelemetryResponder(app, ())).get("/").status_code == 200
 
 
 @pytest.mark.parametrize(
@@ -220,9 +230,11 @@ def test_http_span_captures_selected_headers(
     assert "http.response.header.x-ignored-response" not in span.attributes
 
 
+@pytest.mark.parametrize("sanitize_headers", [[r"Authorization", r"cookie"], r"Authorization|cookie"])
 def test_http_span_captures_all_headers(
     test_client_factory: TestClientFactory,
     tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+    sanitize_headers: str | list[str],
 ) -> None:
     _, exporter = tracer_provider
 
@@ -237,7 +249,7 @@ def test_http_span_captures_all_headers(
             Middleware(
                 OpenTelemetryMiddleware,
                 capture_headers=True,
-                sanitize_headers=[r"Authorization", r".*cookie"],
+                sanitize_headers=sanitize_headers,
             )
         ],
     )

@@ -257,12 +257,11 @@ def test_cors_preflight_allow_all_methods(
 
     client = test_client_factory(app)
 
-    headers = {
-        "Origin": "https://example.org",
-        "Access-Control-Request-Method": "POST",
-    }
-
-    for method in ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"):
+    for method in ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY"):
+        headers = {
+            "Origin": "https://example.org",
+            "Access-Control-Request-Method": method,
+        }
         response = client.options("/", headers=headers)
         assert response.status_code == 200
         assert method in response.headers["access-control-allow-methods"]

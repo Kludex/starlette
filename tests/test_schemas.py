@@ -7,7 +7,7 @@ from starlette.schemas import SchemaGenerator
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
-schemas = SchemaGenerator({"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}})
+schemas = SchemaGenerator({"openapi": "3.2.0", "info": {"title": "Example API", "version": "1.0"}})
 
 
 def ws(session: WebSocket) -> None:
@@ -80,6 +80,16 @@ class OrganisationsEndpoint(HTTPEndpoint):
         """
         pass  # pragma: no cover
 
+    def query(self, request: Request) -> None:
+        """
+        responses:
+          200:
+            description: Organisations matching a query.
+            examples:
+              [{"name": "Foo Corp."}]
+        """
+        pass  # pragma: no cover
+
 
 def regular_docstring_and_schema(request: Request) -> None:
     """
@@ -145,7 +155,7 @@ app = Starlette(
 def test_schema_generation() -> None:
     schema = schemas.get_schema(routes=app.routes)
     assert schema == {
-        "openapi": "3.0.0",
+        "openapi": "3.2.0",
         "info": {"title": "Example API", "version": "1.0"},
         "paths": {
             "/orgs": {
@@ -162,6 +172,14 @@ def test_schema_generation() -> None:
                         200: {
                             "description": "An organisation.",
                             "examples": {"name": "Foo Corp."},
+                        }
+                    }
+                },
+                "query": {
+                    "responses": {
+                        200: {
+                            "description": "Organisations matching a query.",
+                            "examples": [{"name": "Foo Corp."}],
                         }
                     }
                 },
@@ -212,7 +230,7 @@ EXPECTED_SCHEMA = """
 info:
   title: Example API
   version: '1.0'
-openapi: 3.0.0
+openapi: 3.2.0
 paths:
   /orgs:
     get:
@@ -228,6 +246,12 @@ paths:
           description: An organisation.
           examples:
             name: Foo Corp.
+    query:
+      responses:
+        200:
+          description: Organisations matching a query.
+          examples:
+          - name: Foo Corp.
   /regular-docstring-and-schema:
     get:
       responses:

@@ -51,8 +51,8 @@ HTTP endpoint classes will respond with "405 Method not allowed" responses for a
 request methods which do not map to a corresponding handler.
 
 You can define a handler for any supported HTTP method by adding a matching
-lowercase method name, for example `async def query(self, request):` to handle
-`QUERY` requests.
+lowercase method name. For example, add `async def query(self, request):` to
+handle the `QUERY` method defined in [RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html).
 
 ### WebSocketEndpoint
 

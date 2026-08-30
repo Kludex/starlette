@@ -213,6 +213,7 @@ class _TestClientResponseStream(httpx.SyncByteStream):
         cancel_scope: anyio.CancelScope,
         exit_stack: contextlib.ExitStack,
         raise_server_exceptions: bool,
+        include_body: bool,
     ) -> None:
         self._body_rx = body_rx
         self._portal = portal
@@ -220,14 +221,17 @@ class _TestClientResponseStream(httpx.SyncByteStream):
         self._cancel_scope = cancel_scope
         self._exit_stack = exit_stack
         self._raise_server_exceptions = raise_server_exceptions
+        self._include_body = include_body
 
     def __iter__(self) -> Generator[bytes, None, None]:
         while True:
             try:
-                yield self._portal.call(self._body_rx.receive)
+                body = self._portal.call(self._body_rx.receive)
             except anyio.EndOfStream:
                 self._wait_for_app()
                 return
+            if self._include_body and body:
+                yield body
 
     def close(self) -> None:
         if not self._app_task.done():
@@ -371,8 +375,7 @@ class _TestClientTransport(httpx.BaseTransport):
                 assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
-                if request.method != "HEAD" and body:
-                    await body_tx.send(body)
+                await body_tx.send(body)
                 if not more_body:
                     response_complete.set()
             elif message["type"] == "http.response.debug":
@@ -417,6 +420,7 @@ class _TestClientTransport(httpx.BaseTransport):
                 cancel_scope=cancel_scope,
                 exit_stack=exit_stack,
                 raise_server_exceptions=self.raise_server_exceptions,
+                include_body=request.method != "HEAD",
             )
 
         response = httpx.Response(**raw_kwargs, request=request)

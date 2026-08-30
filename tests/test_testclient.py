@@ -276,6 +276,40 @@ def test_streaming_response_applies_backpressure(test_client_factory: TestClient
         assert list(chunks) == [b"two"]
 
 
+@pytest.mark.parametrize(("method", "body"), [("GET", b""), ("HEAD", b"chunk")])
+def test_streaming_response_applies_backpressure_to_ignored_body(
+    test_client_factory: TestClientFactory,
+    method: str,
+    body: bytes,
+) -> None:
+    response_opened = threading.Event()
+    stop_streaming = threading.Event()
+
+    async def http_app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        while not stop_streaming.is_set():
+            await send({"type": "http.response.body", "body": body, "more_body": True})
+        await send({"type": "http.response.body", "body": b""})
+
+    client = test_client_factory(Starlette(routes=[Mount("/", app=http_app)]))
+    response_body: list[bytes] = []
+
+    def open_response() -> None:
+        with client.stream(method, "/") as response:
+            response_opened.set()
+            response_body.append(response.read())
+
+    thread = threading.Thread(target=open_response)
+    thread.start()
+    try:
+        assert response_opened.wait(timeout=1)
+    finally:
+        stop_streaming.set()
+        thread.join(timeout=1)
+    assert not thread.is_alive()
+    assert response_body == [b""]
+
+
 def test_closing_streaming_response_stops_application(test_client_factory: TestClientFactory) -> None:
     app_finished = threading.Event()
 
@@ -292,6 +326,27 @@ def test_closing_streaming_response_stops_application(test_client_factory: TestC
         with client.stream("GET", "/") as response:
             assert next(response.iter_raw()) == b"chunk"
         assert app_finished.is_set()
+
+
+def test_closing_streaming_response_closes_body_iterator(test_client_factory: TestClientFactory) -> None:
+    body_iterator_closed = threading.Event()
+
+    async def stream() -> AsyncGenerator[bytes, None]:
+        try:
+            while True:
+                yield b"chunk"
+        finally:
+            await anyio.sleep(0)
+            body_iterator_closed.set()
+
+    async def homepage(request: Request) -> StreamingResponse:
+        return StreamingResponse(stream())
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    with client:
+        with client.stream("GET", "/") as response:
+            assert next(response.iter_raw()) == b"chunk"
+        assert body_iterator_closed.is_set()
 
 
 def test_streaming_response_raises_late_server_exception(test_client_factory: TestClientFactory) -> None:

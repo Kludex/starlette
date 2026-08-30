@@ -28,8 +28,6 @@ class WebSocketDisconnected(RuntimeError):
     Raised when attempting to use a disconnected WebSocket.
     """
 
-    pass
-
 
 class WebSocket(HTTPConnection[StateT]):
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:

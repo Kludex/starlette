@@ -135,6 +135,46 @@ app = Starlette(
 )
 ```
 
+### Capture headers
+
+Pass header names or regular expressions in `capture_headers`. The same patterns apply to request and
+response headers. Header names are matched case-insensitively. Repeated header values are preserved.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world!", headers={"x-response-id": "response-123"})
+
+
+app = Starlette(
+    routes=[Route("/", homepage)],
+    middleware=[
+        Middleware(
+            OpenTelemetryMiddleware,
+            capture_headers=[r"x-request-id", r"x-response-id", r"authorization", r".*cookie"],
+            sanitize_headers=[r"authorization", r".*cookie"],
+        )
+    ],
+)
+```
+
+Request headers use attributes such as `http.request.header.x_request_id`. Response headers use
+attributes such as `http.response.header.x_response_id`.
+
+Pass `capture_headers=True` to capture every request and response header.
+
+!!! warning "Captured headers may contain secrets"
+
+    Add every sensitive header to `sanitize_headers` when you capture it. Sanitized values are
+    exported as `[REDACTED]`.
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.

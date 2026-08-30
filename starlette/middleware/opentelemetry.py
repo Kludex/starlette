@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 try:
     from opentelemetry import propagate, trace
@@ -18,12 +18,21 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests."""
 
-    def __init__(self, app: ASGIApp, *, excluded_urls: str | Sequence[str] = ()) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        excluded_urls: str | Sequence[str] = (),
+        capture_headers: bool | Sequence[str] = False,
+        sanitize_headers: Sequence[str] = (),
+    ) -> None:
         self.app = app
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         patterns = tuple(re.compile(pattern) for pattern in excluded_urls)
-        self._responder = OpenTelemetryResponder(app, patterns)
+        header_patterns = _compile_header_patterns(capture_headers)
+        sanitize_header_patterns = _compile_header_patterns(sanitize_headers)
+        self._responder = OpenTelemetryResponder(app, patterns, header_patterns, sanitize_header_patterns)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -37,9 +46,17 @@ class OpenTelemetryMiddleware:
 
 
 class OpenTelemetryResponder:
-    def __init__(self, app: ASGIApp, excluded_urls: tuple[re.Pattern[str], ...]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        excluded_urls: tuple[re.Pattern[str], ...],
+        header_patterns: tuple[re.Pattern[str], ...],
+        sanitize_header_patterns: tuple[re.Pattern[str], ...],
+    ) -> None:
         self.app = app
         self._excluded_urls = excluded_urls
+        self._header_patterns = header_patterns
+        self._sanitize_header_patterns = sanitize_header_patterns
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         tracer_provider = trace.get_tracer_provider()
@@ -53,15 +70,16 @@ class OpenTelemetryResponder:
         original_method = scope.get("method", "")
         method = original_method.upper()
 
-        headers: dict[str, list[str]] = {}
-        for name, value in scope.get("headers", []):
-            headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
+        headers = _decode_headers(scope.get("headers", []))
 
-        attributes: dict[str, str | int] = {
+        attributes: dict[str, str | int | list[str]] = {
             "http.request.method": method,
             "url.path": scope.get("path", ""),
             "url.scheme": scope.get("scheme", "http"),
         }
+        attributes.update(
+            _capture_headers(headers, self._header_patterns, self._sanitize_header_patterns, "http.request.header")
+        )
         if original_method != method:
             attributes["http.request.method_original"] = original_method
         if url.query:
@@ -90,6 +108,16 @@ class OpenTelemetryResponder:
                 if message["type"] == "http.response.start":
                     status_code = message["status"]
                     span.set_attribute("http.response.status_code", status_code)
+                    if self._header_patterns:
+                        response_headers = _decode_headers(message.get("headers", []))
+                        span.set_attributes(
+                            _capture_headers(
+                                response_headers,
+                                self._header_patterns,
+                                self._sanitize_header_patterns,
+                                "http.response.header",
+                            )
+                        )
                     if status_code >= 500:
                         span.set_attribute("error.type", str(status_code))
                         span.set_status(Status(StatusCode.ERROR))
@@ -114,3 +142,35 @@ class OpenTelemetryResponder:
                 if route_path is not None:
                     span.update_name(f"{method} {route_path}")
                     span.set_attribute("http.route", route_path)
+
+
+def _compile_header_patterns(patterns: bool | Sequence[str]) -> tuple[re.Pattern[str], ...]:
+    if patterns is True:
+        patterns = (".*",)
+    elif patterns is False:
+        patterns = ()
+    elif isinstance(patterns, str):
+        patterns = (patterns,)
+    return tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)
+
+
+def _decode_headers(raw_headers: Iterable[tuple[bytes, bytes]]) -> dict[str, list[str]]:
+    headers: dict[str, list[str]] = {}
+    for name, value in raw_headers:
+        headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
+    return headers
+
+
+def _capture_headers(
+    headers: dict[str, list[str]],
+    capture_patterns: tuple[re.Pattern[str], ...],
+    sanitize_patterns: tuple[re.Pattern[str], ...],
+    attribute_prefix: str,
+) -> dict[str, list[str]]:
+    return {
+        f"{attribute_prefix}.{name.replace('-', '_')}": (
+            ["[REDACTED]"] * len(values) if any(pattern.fullmatch(name) for pattern in sanitize_patterns) else values
+        )
+        for name, values in headers.items()
+        if any(pattern.fullmatch(name) for pattern in capture_patterns)
+    }

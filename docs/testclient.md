@@ -83,6 +83,52 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
     not be triggered when the `TestClient` is instantiated. You can learn more about it
     [here](lifespan.md#running-lifespan-in-tests).
 
+### Debug information
+
+The `TestClient` supports the ASGI [`http.response.debug`](https://asgi.readthedocs.io/en/latest/extensions.html#debug)
+extension. The `info` dictionary sent by the application is available as
+`response.extensions["http.response.debug"]`, which allows custom response classes to
+expose additional debug information to tests.
+
+This is useful when asserting on the response body would mean parsing it back. Consider
+a response class that renders rows into a CSV file. By sending the rows through the
+debug extension, tests can assert on the original data instead of the serialized body:
+
+```python
+import csv
+import io
+
+from starlette.responses import Response
+
+
+class CSVResponse(Response):
+    media_type = "text/csv"
+
+    def __init__(self, rows):
+        self.rows = rows
+        buffer = io.StringIO()
+        csv.writer(buffer).writerows(rows)
+        super().__init__(buffer.getvalue())
+
+    async def __call__(self, scope, receive, send):
+        if "http.response.debug" in scope.get("extensions", {}):
+            await send({"type": "http.response.debug", "info": {"rows": self.rows}})
+        await super().__call__(scope, receive, send)
+
+
+def test_export():
+    client = TestClient(app)
+    response = client.get("/export")
+    rows = response.extensions["http.response.debug"]["rows"]
+    assert rows[0] == ("id", "username", "joined")
+    assert len(rows) == 101
+```
+
+Template responses use the same extension to expose the `.template` and `.context`
+response attributes - see [testing template responses](templates.md#testing-template-responses).
+The `info` dictionary is always available as `response.extensions["http.response.debug"]`,
+even when it carries `template`/`context` keys.
+
 ### Change client address
 
 By default, the TestClient will set the client host to `"testclient"` and the port to `50000`.

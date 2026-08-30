@@ -224,27 +224,21 @@ class _TestClientTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         scheme = request.url.scheme
-        netloc = request.url.netloc.decode(encoding="ascii")
+        host = request.url.raw_host.decode(encoding="ascii")
         path = request.url.path
         raw_path = request.url.raw_path
         query = request.url.query.decode(encoding="ascii")
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
-
-        if ":" in netloc:
-            host, port_string = netloc.split(":", 1)
-            port = int(port_string)
-        else:
-            host = netloc
+        port = request.url.port
+        if port is None:
             port = default_port
 
         # Include the 'host' header.
         if "host" in request.headers:
             headers: list[tuple[bytes, bytes]] = []
-        elif port == default_port:  # pragma: no cover
-            headers = [(b"host", host.encode())]
         else:  # pragma: no cover
-            headers = [(b"host", (f"{host}:{port}").encode())]
+            headers = [(b"host", request.url.netloc)]
 
         # Include other request headers.
         headers += [(key.lower().encode(), value.encode()) for key, value in request.headers.multi_items()]
@@ -294,8 +288,7 @@ class _TestClientTransport(httpx.BaseTransport):
         response_started = False
         response_complete: anyio.Event
         raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
-        template = None
-        context = None
+        debug_info: dict[str, Any] | None = None
 
         async def receive() -> Message:
             nonlocal request_complete
@@ -326,7 +319,7 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, template, context
+            nonlocal raw_kwargs, response_started, debug_info
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
@@ -344,8 +337,7 @@ class _TestClientTransport(httpx.BaseTransport):
                     raw_kwargs["stream"].seek(0)
                     response_complete.set()
             elif message["type"] == "http.response.debug":
-                template = message["info"]["template"]
-                context = message["info"]["context"]
+                debug_info = message["info"]
 
         try:
             with self.portal_factory() as portal:
@@ -367,9 +359,12 @@ class _TestClientTransport(httpx.BaseTransport):
         raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
 
         response = httpx.Response(**raw_kwargs, request=request)
-        if template is not None:
-            response.template = template  # type: ignore[attr-defined]
-            response.context = context  # type: ignore[attr-defined]
+        if debug_info is not None:
+            response.extensions["http.response.debug"] = debug_info
+            if "template" in debug_info:
+                response.template = debug_info["template"]  # type: ignore[attr-defined]
+            if "context" in debug_info:
+                response.context = debug_info["context"]  # type: ignore[attr-defined]
         return response
 
 
@@ -458,191 +453,6 @@ class TestClient(httpx.Client):
             data=data,
             files=files,
             json=json,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def get(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        return super().get(
-            url,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def options(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        return super().options(
-            url,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def head(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        return super().head(
-            url,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def post(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        content: httpx._types.RequestContent | None = None,
-        data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
-        json: Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        return super().post(
-            url,
-            content=content,
-            data=data,
-            files=files,
-            json=json,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def put(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        content: httpx._types.RequestContent | None = None,
-        data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
-        json: Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        return super().put(
-            url,
-            content=content,
-            data=data,
-            files=files,
-            json=json,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def patch(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        content: httpx._types.RequestContent | None = None,
-        data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
-        json: Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        return super().patch(
-            url,
-            content=content,
-            data=data,
-            files=files,
-            json=json,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def delete(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        return super().delete(
-            url,
             params=params,
             headers=headers,
             cookies=cookies,

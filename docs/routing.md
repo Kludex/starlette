@@ -300,6 +300,37 @@ app = Router(routes=[
 ])
 ```
 
+## Request body size limits
+
+Use a non-negative `max_body_size` to limit the total number of request body
+bytes accepted by an application. The limit includes multipart file data and
+multipart encoding overhead. It defaults to `None`, which preserves the existing
+unlimited behavior.
+
+```python
+app = Starlette(
+    routes=[
+        Route("/", homepage),
+        Route("/upload", upload, methods=["POST"], max_body_size=100 * 1024 * 1024),
+    ],
+    max_body_size=10 * 1024 * 1024,
+)
+```
+
+`Router` and `Mount` also accept `max_body_size`. A limit on an inner route,
+mount, or router overrides the outer limit after routing. This allows an upload
+route to accept a larger body than the rest of the application.
+
+Application middleware runs before routing. If such middleware reads the body,
+the application-level limit applies to those bytes before a route can raise the
+limit. Keep the application limit large enough for the largest legitimate route
+when using body-consuming application middleware.
+
+Starlette counts the actual body bytes received from the ASGI server.
+`Content-Length` is used only to reject an oversized request early and is not
+trusted to enforce the limit. A reverse proxy request-body limit and a quota on
+temporary storage provide additional deployment-level safeguards.
+
 ## WebSocket Routing
 
 When working with WebSocket endpoints, you should use `WebSocketRoute`

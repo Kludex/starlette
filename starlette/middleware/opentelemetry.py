@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Sequence
+from typing import Literal
 
 try:
     from opentelemetry import propagate, trace
@@ -30,8 +31,8 @@ class OpenTelemetryMiddleware:
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         patterns = tuple(re.compile(pattern) for pattern in excluded_urls)
-        header_patterns = _compile_header_patterns(capture_headers)
-        sanitize_header_patterns = _compile_header_patterns(sanitize_headers)
+        header_patterns = _CapturedHeaders.compile_patterns(capture_headers)
+        sanitize_header_patterns = _CapturedHeaders.compile_patterns(sanitize_headers)
         self._responder = OpenTelemetryResponder(app, patterns, header_patterns, sanitize_header_patterns)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -70,16 +71,18 @@ class OpenTelemetryResponder:
         original_method = scope.get("method", "")
         method = original_method.upper()
 
-        headers = _decode_headers(scope.get("headers", []))
+        headers = _CapturedHeaders(
+            scope.get("headers", []),
+            self._header_patterns,
+            self._sanitize_header_patterns,
+        )
 
         attributes: dict[str, str | int | list[str]] = {
             "http.request.method": method,
             "url.path": scope.get("path", ""),
             "url.scheme": scope.get("scheme", "http"),
         }
-        attributes.update(
-            _capture_headers(headers, self._header_patterns, self._sanitize_header_patterns, "http.request.header")
-        )
+        attributes.update(headers.attributes("request"))
         if original_method != method:
             attributes["http.request.method_original"] = original_method
         if url.query:
@@ -94,12 +97,12 @@ class OpenTelemetryResponder:
             attributes["network.protocol.version"] = scope["http_version"]
         if scope.get("client") is not None:
             attributes["client.address"] = scope["client"][0]
-        if headers.get("user-agent"):
-            attributes["user_agent.original"] = headers["user-agent"][0]
+        if headers.values.get("user-agent"):
+            attributes["user_agent.original"] = headers.values["user-agent"][0]
 
         with tracer_provider.get_tracer("starlette", __version__).start_as_current_span(
             method,
-            context=propagate.extract(headers),
+            context=propagate.extract(headers.values),
             kind=SpanKind.SERVER,
             attributes=attributes,
         ) as span:
@@ -109,15 +112,12 @@ class OpenTelemetryResponder:
                     status_code = message["status"]
                     span.set_attribute("http.response.status_code", status_code)
                     if self._header_patterns:
-                        response_headers = _decode_headers(message.get("headers", []))
-                        span.set_attributes(
-                            _capture_headers(
-                                response_headers,
-                                self._header_patterns,
-                                self._sanitize_header_patterns,
-                                "http.response.header",
-                            )
+                        response_headers = _CapturedHeaders(
+                            message.get("headers", []),
+                            self._header_patterns,
+                            self._sanitize_header_patterns,
                         )
+                        span.set_attributes(response_headers.attributes("response"))
                     if status_code >= 500:
                         span.set_attribute("error.type", str(status_code))
                         span.set_status(Status(StatusCode.ERROR))
@@ -144,33 +144,38 @@ class OpenTelemetryResponder:
                     span.set_attribute("http.route", route_path)
 
 
-def _compile_header_patterns(patterns: bool | Sequence[str]) -> tuple[re.Pattern[str], ...]:
-    if patterns is True:
-        patterns = (".*",)
-    elif patterns is False:
-        patterns = ()
-    elif isinstance(patterns, str):
-        patterns = (patterns,)
-    return tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)
+class _CapturedHeaders:
+    def __init__(
+        self,
+        raw_headers: Iterable[tuple[bytes, bytes]],
+        capture_patterns: tuple[re.Pattern[str], ...],
+        sanitize_patterns: tuple[re.Pattern[str], ...],
+    ) -> None:
+        self.values: dict[str, list[str]] = {}
+        self._capture_patterns = capture_patterns
+        self._sanitize_patterns = sanitize_patterns
 
+        for name, value in raw_headers:
+            decoded_name = name.decode("latin-1").lower()
+            self.values.setdefault(decoded_name, []).append(value.decode("latin-1"))
 
-def _decode_headers(raw_headers: Iterable[tuple[bytes, bytes]]) -> dict[str, list[str]]:
-    headers: dict[str, list[str]] = {}
-    for name, value in raw_headers:
-        headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
-    return headers
+    def attributes(self, direction: Literal["request", "response"]) -> dict[str, list[str]]:
+        return {
+            f"http.{direction}.header.{name}": (
+                ["[REDACTED]"] * len(values)
+                if any(pattern.fullmatch(name) for pattern in self._sanitize_patterns)
+                else values
+            )
+            for name, values in self.values.items()
+            if any(pattern.fullmatch(name) for pattern in self._capture_patterns)
+        }
 
-
-def _capture_headers(
-    headers: dict[str, list[str]],
-    capture_patterns: tuple[re.Pattern[str], ...],
-    sanitize_patterns: tuple[re.Pattern[str], ...],
-    attribute_prefix: str,
-) -> dict[str, list[str]]:
-    return {
-        f"{attribute_prefix}.{name}": (
-            ["[REDACTED]"] * len(values) if any(pattern.fullmatch(name) for pattern in sanitize_patterns) else values
-        )
-        for name, values in headers.items()
-        if any(pattern.fullmatch(name) for pattern in capture_patterns)
-    }
+    @staticmethod
+    def compile_patterns(patterns: bool | Sequence[str]) -> tuple[re.Pattern[str], ...]:
+        if patterns is True:
+            patterns = (".*",)
+        elif patterns is False:
+            patterns = ()
+        elif isinstance(patterns, str):
+            patterns = (patterns,)
+        return tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)

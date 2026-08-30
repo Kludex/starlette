@@ -162,6 +162,46 @@ routes = [
 url = request.url_for("homepage")
 ```
 
+### Generate trusted absolute URLs
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
+
+PUBLIC_BASE_URL = "https://example.com"
+
+
+async def homepage(request: Request) -> JSONResponse:
+    request_url = request.url_for("homepage")
+    public_url = app.url_path_for("homepage").make_absolute_url(PUBLIC_BASE_URL)
+    return JSONResponse({"request_url": str(request_url), "public_url": str(public_url)})
+
+
+routes = [Route("/", homepage, name="homepage")]
+middleware = [Middleware(TrustedHostMiddleware, allowed_hosts=["example.com"])]
+app = Starlette(routes=routes, middleware=middleware)
+```
+
+An absolute URL includes the scheme and host. `request.url_for()` returns an absolute URL using the request's `Host`
+header. The `Host` header identifies the domain that received the request.
+
+[TrustedHostMiddleware](middleware.md#trustedhostmiddleware) rejects a request when its `Host` is not allowed. This
+prevents a client from making `request.url_for()` generate a URL for an unexpected domain.
+
+For links in emails, OAuth callbacks, and other URLs used outside the current response, use a configured public base URL.
+`app.url_path_for()` returns the route path. `make_absolute_url()` combines that path with the configured URL without
+using request data.
+
+!!! warning "Validate the Host header"
+
+    A client can choose any syntactically valid `Host` header. Configure `TrustedHostMiddleware` before using
+    request-derived absolute URLs in security-sensitive contexts.
+
 URL lookups can include path parameters...
 
 ```python

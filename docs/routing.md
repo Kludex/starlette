@@ -164,6 +164,8 @@ url = request.url_for("homepage")
 
 ### Generate trusted absolute URLs
 
+`request.url_for()` needs a validated `Host` header. A configured public base URL avoids request data entirely:
+
 ```python
 from starlette.applications import Starlette
 from starlette.middleware import Middleware

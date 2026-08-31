@@ -1,5 +1,7 @@
 import re
 
+import pytest
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import Session, SessionMiddleware
@@ -17,6 +19,18 @@ def view_session(request: Request) -> JSONResponse:
 async def update_session(request: Request) -> JSONResponse:
     data = await request.json()
     request.session.update(data)
+    return JSONResponse({"session": request.session})
+
+
+async def inplace_update_session(request: Request) -> JSONResponse:
+    data = await request.json()
+    session = request.session
+    session |= data
+    return JSONResponse({"session": request.session})
+
+
+async def popitem_session(request: Request) -> JSONResponse:
+    request.session.popitem()
     return JSONResponse({"session": request.session})
 
 
@@ -285,3 +299,37 @@ def test_session_tracks_modification() -> None:
     session = Session({"a": "1"})
     session.setdefault("a", "2")
     assert not session.modified
+
+
+@pytest.mark.parametrize(
+    ("path", "data", "expected"),
+    [
+        ("/inplace_update_session", {"c": "3"}, {"a": "1", "b": "2", "c": "3"}),
+        ("/popitem_session", None, {"a": "1"}),
+    ],
+)
+def test_session_persists_mutations(
+    test_client_factory: TestClientFactory,
+    path: str,
+    data: dict[str, str] | None,
+    expected: dict[str, str],
+) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/inplace_update_session", endpoint=inplace_update_session, methods=["POST"]),
+            Route("/popitem_session", endpoint=popitem_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"a": "1", "b": "2"})
+    assert response.json() == {"session": {"a": "1", "b": "2"}}
+
+    response = client.post(path, json=data)
+    assert response.json() == {"session": expected}
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": expected}

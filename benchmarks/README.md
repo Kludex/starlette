@@ -1,5 +1,120 @@
 # Benchmarks
 
+## Minimal response dispatch
+
+The response benchmark measures a two-byte response through progressively larger
+parts of the public stack: raw ASGI, a prebuilt `Response`, a newly constructed
+`Response`, a single `Route`, and a complete `Starlette` application. The raw
+ASGI case is the control for event-loop and message-capture overhead.
+
+Each dispatch receives a fresh ASGI scope. The application cases are warmed
+before measurement so lazy middleware construction and interpreter specialization
+are not attributed to every request.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/response_benchmark.py --codspeed
+```
+
+## Request bodies
+
+The request benchmark compares `Request.body()` with `Request.stream()` for
+1 KiB, 1 MiB, and 10 MiB payloads. The larger payloads are delivered both as a
+single ASGI message and in 64 KiB chunks to separate byte volume from
+per-message overhead.
+
+Payload and chunk construction happen outside the measured region. Every
+dispatch creates a fresh `Request`, ASGI scope, and receive callable. The
+response reports the consumed byte count, which is validated after measurement.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/request_benchmark.py --codspeed
+```
+
+## JSON
+
+The JSON benchmark measures `Request.json()` and `JSONResponse` with structured
+payloads of approximately 1 KiB and 1 MiB. The large request is delivered both
+as a single ASGI message and in 64 KiB chunks.
+
+Payload encoding and chunk construction happen outside the measured region.
+Request decoding and response encoding happen inside it, and each result is
+validated after measurement.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/json_benchmark.py --codspeed
+```
+
+## URL-encoded forms
+
+The URL-encoded benchmark measures `Request.form()` with 1,000 fields, a large
+field, percent-encoded data, and field-count and part-size limit failures. The
+large field is delivered as a single ASGI message and in 64 KiB chunks.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/urlencoded_benchmark.py --codspeed
+```
+
+## Streaming responses
+
+The streaming benchmark measures `StreamingResponse` with 1 KiB and 1 MiB
+bodies. The large body uses 1 KiB, 64 KiB, and single-chunk delivery to expose
+the per-chunk dispatch cost.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/streaming_response_benchmark.py --codspeed
+```
+
+## File responses
+
+The file benchmark measures `FileResponse` with fallback reads,
+`http.response.pathsend`, and a single byte range. File creation happens outside
+the measured region, while response construction, stat, and delivery happen
+inside it.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/file_response_benchmark.py --codspeed
+```
+
+## WebSockets
+
+The WebSocket benchmark measures complete text, bytes, and JSON echo exchanges
+through the public `WebSocket` API. Each dispatch includes connect, accept,
+receive, send, and close state transitions.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/websocket_benchmark.py --codspeed
+```
+
+## Multipart forms
+
+The multipart benchmark measures `Request.form()` with field-heavy, in-memory
+file, spooled file, mixed form, and boundary-like payloads. It also covers
+malformed forms and field, file, and part-size limit failures.
+
+File workloads use 64 KiB ASGI chunks. The 10 MiB file also has a single-message
+control case. Multipart body and chunk construction happen outside the measured
+region, while parsing and upload cleanup happen inside it.
+
+Run it locally with:
+
+```console
+uv run pytest benchmarks/multipart_benchmark.py --codspeed
+```
+
 ## Routing
 
 The routing benchmark exercises `Router` dispatch through its ASGI interface

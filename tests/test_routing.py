@@ -80,6 +80,10 @@ def contact(request: Request) -> Response:
     return Response("Hello, POST!", media_type="text/plain")
 
 
+def search(request: Request) -> Response:
+    return Response("Hello, QUERY!", media_type="text/plain")
+
+
 def int_convertor(request: Request) -> JSONResponse:
     number = request.path_params["param"]
     return JSONResponse({"int": number})
@@ -148,6 +152,7 @@ app = Router(
         Mount("/static", app=Response("xxxxx", media_type="image/png")),
         Route("/func", endpoint=func_homepage, methods=["GET"]),
         Route("/func", endpoint=contact, methods=["POST"]),
+        Route("/search", endpoint=search, methods=["QUERY"]),
         Route("/int/{param:int}", endpoint=int_convertor, name="int-convertor"),
         Route("/float/{param:float}", endpoint=float_convertor, name="float-convertor"),
         Route("/path/{param:path}", endpoint=path_convertor, name="path-convertor"),
@@ -302,6 +307,17 @@ def test_router_duplicate_path(client: TestClient) -> None:
     response = client.post("/func")
     assert response.status_code == 200
     assert response.text == "Hello, POST!"
+
+
+def test_router_query_method(client: TestClient) -> None:
+    response = client.request("QUERY", "/search")
+    assert response.status_code == 200
+    assert response.text == "Hello, QUERY!"
+
+    response = client.get("/search")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "QUERY"
 
 
 def test_router_add_websocket_route(client: TestClient) -> None:
@@ -474,6 +490,48 @@ def test_host_routing(test_client_factory: TestClientFactory) -> None:
 
     response = client.get("/")
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "api.example.org:evil",
+        "[:::]",
+    ],
+)
+def test_host_routing_rejects_invalid_hosts(test_client_factory: TestClientFactory, host: str) -> None:
+    client = test_client_factory(mixed_hosts_app, base_url="https://api.example.org/")
+    response = client.get("/users", headers={"host": host})
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("host", ["api.example.org:000080", "api.example.org:65536", "api.example.org:100000"])
+def test_host_routing_ignores_port(host: str, test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(mixed_hosts_app, base_url="https://api.example.org/")
+    response = client.get("/users", headers={"host": host})
+    assert response.status_code == 200
+
+
+def test_host_routing_ip_literals(test_client_factory: TestClientFactory) -> None:
+    app = Router(
+        routes=[
+            Host("[::1]", app=PlainTextResponse("loopback")),
+            Host("[2001:db8::1]", app=PlainTextResponse("documentation")),
+            Host("[v1.foo]", app=PlainTextResponse("future")),
+        ]
+    )
+
+    client = test_client_factory(app, base_url="https://[::1]/")
+    response = client.get("/")
+    assert response.text == "loopback"
+
+    client = test_client_factory(app, base_url="https://[2001:db8::1]/")
+    response = client.get("/")
+    assert response.text == "documentation"
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"host": "[v1.foo]"})
+    assert response.text == "future"
 
 
 def test_host_reverse_urls() -> None:

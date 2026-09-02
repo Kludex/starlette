@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import zlib
 from typing import NoReturn
 
@@ -25,6 +26,9 @@ DEFAULT_EXCLUDED_CONTENT_TYPES = (
     "text/event-stream",
     "video/*",
 )
+
+# qvalue = ( "0" [ "." 0*3DIGIT ] ) / ( "1" [ "." 0*3("0") ] ) -- RFC 9110, section 12.4.2.
+_QVALUE_RE = re.compile(r"0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?")
 
 _gzip_capacity_limiter: anyio.lowlevel.RunVar[anyio.CapacityLimiter] = anyio.lowlevel.RunVar("_gzip_capacity_limiter")
 
@@ -64,7 +68,7 @@ class GZipMiddleware:
 
         headers = Headers(scope=scope)
         responder: ASGIApp
-        if _accepts_gzip(headers.get("Accept-Encoding", "")):
+        if _accepts_gzip(",".join(headers.getlist("Accept-Encoding"))):
             responder = GZipResponder(
                 self.app,
                 self.minimum_size,
@@ -241,10 +245,8 @@ def _accepts_gzip(accept_encoding: str) -> bool:
         for parameter in parameters.split(";"):
             name, _, value = parameter.partition("=")
             if name.strip().lower() == "q":
-                try:
+                if _QVALUE_RE.fullmatch(value.strip()):  # A malformed weight is ignored.
                     qvalue = float(value.strip())
-                except ValueError:  # A malformed weight is ignored.
-                    pass
                 break
 
         if coding == "*":

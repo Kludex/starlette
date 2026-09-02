@@ -448,8 +448,11 @@ def test_gzip_responder_normalizes_content_types(test_client_factory: TestClient
         # Codings that merely contain "gzip" are not gzip.
         ("notgzip", False),
         ("br", False),
-        # A malformed weight is ignored rather than treated as a rejection.
+        # A malformed weight is ignored rather than treated as a rejection,
+        # including values that float() would accept but the grammar does not.
         ("gzip;q=high", True),
+        ("gzip;q=-1", True),
+        ("gzip;q=0.0001", True),
     ],
 )
 def test_gzip_accept_encoding_negotiation(
@@ -469,3 +472,38 @@ def test_gzip_accept_encoding_negotiation(
     assert response.text == "x" * 4000
     assert response.headers["Vary"] == "Accept-Encoding"
     assert ("Content-Encoding" in response.headers) is expect_gzip
+
+
+@pytest.mark.anyio
+async def test_gzip_accept_encoding_across_multiple_field_lines() -> None:
+    # RFC 9110, section 5.3: field lines with the same name are combined by
+    # appending each value in order, separated by a comma.
+    events: list[Message] = []
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        _ = await request.body()
+        return PlainTextResponse("x" * 4000, status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"accept-encoding", b"br"), (b"accept-encoding", b"gzip")],
+    }
+
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    await app(scope, receive, send)
+
+    assert events[0]["type"] == "http.response.start"
+    assert (b"content-encoding", b"gzip") in events[0]["headers"]

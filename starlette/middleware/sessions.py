@@ -115,6 +115,11 @@ class Session(dict[str, typing.Any]):
         self.modified = self.modified or key in self
         return super().pop(key, *args)
 
+    def popitem(self) -> tuple[str, typing.Any]:
+        item = super().popitem()
+        self.mark_modified()
+        return item
+
     def setdefault(self, key: str, default: typing.Any = None) -> typing.Any:
         if key not in self:
             self.mark_modified()
@@ -123,3 +128,7 @@ class Session(dict[str, typing.Any]):
     def update(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         self.mark_modified()
         super().update(*args, **kwargs)
+
+    def __ior__(self, other: typing.Any, /) -> Session:  # type: ignore[override,misc]
+        self.mark_modified()
+        return super().__ior__(other)

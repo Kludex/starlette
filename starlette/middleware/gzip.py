@@ -64,7 +64,7 @@ class GZipMiddleware:
 
         headers = Headers(scope=scope)
         responder: ASGIApp
-        if "gzip" in headers.get("Accept-Encoding", ""):
+        if _accepts_gzip(headers.get("Accept-Encoding", "")):
             responder = GZipResponder(
                 self.app,
                 self.minimum_size,
@@ -220,3 +220,36 @@ async def unattached_send(message: Message) -> NoReturn:
 
 def _normalize_content_types(content_types: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(content_type.partition(";")[0].strip().lower() for content_type in content_types)
+
+
+def _accepts_gzip(accept_encoding: str) -> bool:
+    """Whether `gzip` is acceptable per the rules in RFC 9110, section 12.5.3.
+
+    An explicit `gzip` entry wins over `*`, and either is unacceptable when it
+    carries a qvalue of 0. `x-gzip` is treated as equivalent to `gzip`, per
+    RFC 9110, section 8.4.1.3.
+    """
+    wildcard_qvalue: float | None = None
+
+    for element in accept_encoding.split(","):
+        coding, _, parameters = element.partition(";")
+        coding = coding.strip().lower()
+        if coding not in ("gzip", "x-gzip", "*"):
+            continue
+
+        qvalue = 1.0
+        for parameter in parameters.split(";"):
+            name, _, value = parameter.partition("=")
+            if name.strip().lower() == "q":
+                try:
+                    qvalue = float(value.strip())
+                except ValueError:  # A malformed weight is ignored.
+                    pass
+                break
+
+        if coding == "*":
+            wildcard_qvalue = qvalue
+        else:
+            return qvalue > 0
+
+    return wildcard_qvalue is not None and wildcard_qvalue > 0

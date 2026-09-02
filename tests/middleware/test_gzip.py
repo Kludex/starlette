@@ -424,3 +424,48 @@ def test_gzip_responder_normalizes_content_types(test_client_factory: TestClient
     assert response.status_code == 200
     assert response.content == b"x" * 4000
     assert "Content-Encoding" not in response.headers
+
+
+@pytest.mark.parametrize(
+    "accept_encoding,expect_gzip",
+    [
+        # Examples from RFC 9110, section 12.5.3.
+        ("compress, gzip", True),
+        ("*", True),
+        ("compress;q=0.5, gzip;q=1.0", True),
+        ("gzip;q=1.0, identity; q=0.5, *;q=0", True),
+        # "a qvalue of 0 means 'not acceptable'".
+        ("gzip;q=0", False),
+        ("gzip;q=0.000", False),
+        ("identity, gzip;q=0", False),
+        ("*;q=0", False),
+        # An explicit entry takes precedence over the wildcard.
+        ("*, gzip;q=0", False),
+        ("*;q=0, gzip", True),
+        # "A recipient SHOULD consider 'x-gzip' to be equivalent to 'gzip'."
+        ("x-gzip", True),
+        ("x-gzip;q=0", False),
+        # Codings that merely contain "gzip" are not gzip.
+        ("notgzip", False),
+        ("br", False),
+        # A malformed weight is ignored rather than treated as a rejection.
+        ("gzip;q=high", True),
+    ],
+)
+def test_gzip_accept_encoding_negotiation(
+    accept_encoding: str, expect_gzip: bool, test_client_factory: TestClientFactory
+) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("x" * 4000, status_code=200)
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": accept_encoding})
+    assert response.status_code == 200
+    assert response.text == "x" * 4000
+    assert response.headers["Vary"] == "Accept-Encoding"
+    assert ("Content-Encoding" in response.headers) is expect_gzip

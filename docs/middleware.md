@@ -329,7 +329,9 @@ header from bypassing the limit.
 
 ## GZipMiddleware
 
-Handles GZip responses for any request that includes `"gzip"` in the `Accept-Encoding` header.
+Handles GZip responses for any request whose `Accept-Encoding` header accepts the `gzip` content coding,
+following the rules in [RFC 9110, section 12.5.3](https://www.rfc-editor.org/rfc/rfc9110#section-12.5.3).
+A coding listed with a qvalue of `0` is not acceptable, so `Accept-Encoding: gzip;q=0` is not compressed.
 
 The middleware will handle both standard and streaming responses.
 

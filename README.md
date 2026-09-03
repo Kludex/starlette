@@ -1,17 +1,27 @@
 <p align="center">
-  <a href="https://www.starlette.io/"><img width="420px" src="https://raw.githubusercontent.com/encode/starlette/master/docs/img/starlette.png" alt='starlette'></a>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette_dark.svg" width="420px">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette.svg" width="420px">
+    <img alt="starlette-logo" src="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette.svg">
+  </picture>
 </p>
+
 <p align="center">
     <em>✨ The little ASGI framework that shines. ✨</em>
 </p>
 
 ---
 
-[![Build Status](https://github.com/encode/starlette/workflows/Test%20Suite/badge.svg)](https://github.com/encode/starlette/actions)
+[![Build Status](https://github.com/Kludex/starlette/workflows/Test%20Suite/badge.svg)](https://github.com/Kludex/starlette/actions)
 [![Package version](https://badge.fury.io/py/starlette.svg)](https://pypi.python.org/pypi/starlette)
 [![Supported Python Version](https://img.shields.io/pypi/pyversions/starlette.svg?color=%2334D058)](https://pypi.org/project/starlette)
+[![Discord](https://img.shields.io/discord/1051468649518616576?logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/RxKUF5JuHs)
 
-**Documentation**: [https://www.starlette.io/](https://www.starlette.io/)
+---
+
+**Documentation**: <a href="https://starlette.dev/" target="_blank">https://starlette.dev</a>
+
+**Source Code**: <a href="https://github.com/Kludex/starlette" target="_blank">https://github.com/Kludex/starlette</a>
 
 ---
 
@@ -35,27 +45,21 @@ It is production-ready, and gives you the following:
 * Compatible with `asyncio` and `trio` backends.
 * Great overall performance [against independent benchmarks][techempower].
 
-## Requirements
-
-Python 3.8+
-
 ## Installation
 
 ```shell
-$ pip3 install starlette
+$ pip install starlette
 ```
 
-You'll also want to install an ASGI server, such as [uvicorn](http://www.uvicorn.org/), [daphne](https://github.com/django/daphne/), or [hypercorn](https://pgjones.gitlab.io/hypercorn/).
+You'll also want to install an ASGI server, such as [uvicorn](https://uvicorn.dev) or any of the [other ASGI server implementations](https://asgi.readthedocs.io/en/latest/implementations.html#servers).
 
 ```shell
-$ pip3 install uvicorn
+$ pip install uvicorn
 ```
 
 ## Example
 
-**example.py**:
-
-```python
+```python title="main.py"
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -74,22 +78,21 @@ app = Starlette(debug=True, routes=routes)
 Then run the application using Uvicorn:
 
 ```shell
-$ uvicorn example:app
+$ uvicorn main:app
 ```
-
-For a more complete example, see [encode/starlette-example](https://github.com/encode/starlette-example).
 
 ## Dependencies
 
 Starlette only requires `anyio`, and the following are optional:
 
-* [`httpx`][httpx] - Required if you want to use the `TestClient`.
+* [`httpx2`][httpx2] - Required if you want to use the `TestClient`.
 * [`jinja2`][jinja2] - Required if you want to use `Jinja2Templates`.
+* [`opentelemetry-api`][opentelemetry-api] - Required for `OpenTelemetryMiddleware`.
 * [`python-multipart`][python-multipart] - Required if you want to support form parsing, with `request.form()`.
 * [`itsdangerous`][itsdangerous] - Required for `SessionMiddleware` support.
 * [`pyyaml`][pyyaml] - Required for `SchemaGenerator` support.
 
-You can install all of these with `pip3 install starlette[full]`.
+You can install all of these with `pip install starlette[full]`.
 
 ## Framework or Toolkit
 
@@ -118,7 +121,7 @@ Run uvicorn with `--reload` to enable auto-reloading on code changes.
 
 ## Modularity
 
-The modularity that Starlette is designed on promotes building re-usable
+The modularity that Starlette is designed on promotes building reusable
 components that can be shared between any ASGI framework. This should enable
 an ecosystem of shared middleware and mountable applications.
 
@@ -127,13 +130,14 @@ in isolation.
 
 ---
 
-<p align="center"><i>Starlette is <a href="https://github.com/encode/starlette/blob/master/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
+<p align="center"><i>Starlette is <a href="https://github.com/Kludex/starlette/blob/main/LICENSE.md">BSD licensed</a> code.<br/>Designed & crafted with care.</i></br>&mdash; ⭐️ &mdash;</p>
 
 [asgi]: https://asgi.readthedocs.io/en/latest/
-[httpx]: https://www.python-httpx.org/
+[httpx2]: https://pypi.org/project/httpx2/
 [jinja2]: https://jinja.palletsprojects.com/
-[python-multipart]: https://andrew-d.github.io/python-multipart/
+[opentelemetry-api]: https://opentelemetry.io/docs/languages/python/api/
+[python-multipart]: https://multipart.fastapiexpert.com/
 [itsdangerous]: https://itsdangerous.palletsprojects.com/
 [sqlalchemy]: https://www.sqlalchemy.org
 [pyyaml]: https://pyyaml.org/wiki/PyYAMLDocumentation
-[techempower]: https://www.techempower.com/benchmarks/#hw=ph&test=fortune&l=zijzen-sf
+[techempower]: https://github.com/TechEmpower/FrameworkBenchmarks

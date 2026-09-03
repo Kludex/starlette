@@ -1,7 +1,8 @@
-import warnings
-from typing import Callable, Generator
+from collections.abc import Generator
+from typing import Any
 
 import pytest
+from pytest import MonkeyPatch
 
 from starlette.exceptions import HTTPException, WebSocketException
 from starlette.middleware.exceptions import ExceptionMiddleware
@@ -10,8 +11,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import Receive, Scope, Send
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def raise_runtime_error(request: Request) -> None:
@@ -43,9 +43,7 @@ async def read_body_and_raise_exc(request: Request) -> None:
     raise BadBodyException(422)
 
 
-async def handler_that_reads_body(
-    request: Request, exc: BadBodyException
-) -> JSONResponse:
+async def handler_that_reads_body(request: Request, exc: BadBodyException) -> JSONResponse:
     body = await request.body()
     return JSONResponse(status_code=422, content={"body": body.decode()})
 
@@ -66,11 +64,7 @@ router = Router(
         Route("/with_headers", endpoint=with_headers),
         Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse()),
         WebSocketRoute("/runtime_error", endpoint=raise_runtime_error),
-        Route(
-            "/consume_body_in_endpoint_and_handler",
-            endpoint=read_body_and_raise_exc,
-            methods=["POST"],
-        ),
+        Route("/consume_body_in_endpoint_and_handler", endpoint=read_body_and_raise_exc, methods=["POST"]),
     ]
 )
 
@@ -114,16 +108,13 @@ def test_with_headers(client: TestClient) -> None:
 def test_websockets_should_raise(client: TestClient) -> None:
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/runtime_error"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
-def test_handled_exc_after_response(
-    test_client_factory: TestClientFactory,
-    client: TestClient,
-) -> None:
+def test_handled_exc_after_response(test_client_factory: TestClientFactory, client: TestClient) -> None:
     # A 406 HttpException is raised *after* the response has already been sent.
     # The exception middleware should raise a RuntimeError.
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Caught handled exception, but response already started."):
         client.get("/handled_exc_after_response")
 
     # If `raise_server_exceptions=False` then the test client will still allow
@@ -135,7 +126,7 @@ def test_handled_exc_after_response(
 
 
 def test_force_500_response(test_client_factory: TestClientFactory) -> None:
-    # use a sentinal variable to make sure we actually
+    # use a sentinel variable to make sure we actually
     # make it into the endpoint and don't get a 500
     # from an incorrect ASGI app signature or something
     called = False
@@ -159,9 +150,7 @@ def test_http_str() -> None:
 
 
 def test_http_repr() -> None:
-    assert repr(HTTPException(404)) == (
-        "HTTPException(status_code=404, detail='Not Found')"
-    )
+    assert repr(HTTPException(404)) == ("HTTPException(status_code=404, detail='Not Found')")
     assert repr(HTTPException(404, detail="Not Found: foo")) == (
         "HTTPException(status_code=404, detail='Not Found: foo')"
     )
@@ -193,20 +182,43 @@ def test_websocket_repr() -> None:
     )
 
 
-def test_exception_middleware_deprecation() -> None:
-    # this test should be removed once the deprecation shim is removed
-    with pytest.warns(DeprecationWarning):
-        from starlette.exceptions import ExceptionMiddleware  # noqa: F401
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        import starlette.exceptions
-
-    with pytest.warns(DeprecationWarning):
-        starlette.exceptions.ExceptionMiddleware
-
-
 def test_request_in_app_and_handler_is_the_same_object(client: TestClient) -> None:
     response = client.post("/consume_body_in_endpoint_and_handler", content=b"Hello!")
     assert response.status_code == 422
     assert response.json() == {"body": "Hello!"}
+
+
+def test_http_exception_does_not_use_threadpool(client: TestClient, monkeypatch: MonkeyPatch) -> None:
+    """
+    Verify that handling HTTPException does not invoke run_in_threadpool,
+    confirming the handler correctly runs in the main async context.
+    """
+    from starlette import _exception_handler
+
+    # Replace run_in_threadpool with a function that raises an error
+    def mock_run_in_threadpool(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("run_in_threadpool should not be called for HTTP exceptions")  # pragma: no cover
+
+    # Apply the monkeypatch only during this test
+    monkeypatch.setattr(_exception_handler, "run_in_threadpool", mock_run_in_threadpool)
+
+    # This should succeed because http_exception is async and won't use run_in_threadpool
+    response = client.get("/not_acceptable")
+    assert response.status_code == 406
+
+
+def test_handlers_annotations() -> None:
+    """Check that async exception handlers are accepted by type checkers.
+
+    We annotate the handlers' exceptions with plain `Exception` to avoid variance issues
+    when using other exception types.
+    """
+
+    async def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:
+        raise NotImplementedError
+
+    def sync_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:
+        raise NotImplementedError
+
+    ExceptionMiddleware(router, handlers={Exception: sync_catch_all_handler})
+    ExceptionMiddleware(router, handlers={Exception: async_catch_all_handler})

@@ -1,4 +1,4 @@
-from typing import Callable, Iterator
+from collections.abc import Iterator
 
 import pytest
 
@@ -8,8 +8,7 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 class Homepage(HTTPEndpoint):
@@ -19,10 +18,11 @@ class Homepage(HTTPEndpoint):
             return PlainTextResponse("Hello, world!")
         return PlainTextResponse(f"Hello, {username}!")
 
+    async def query(self, request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Hello, QUERY!")
 
-app = Router(
-    routes=[Route("/", endpoint=Homepage), Route("/{username}", endpoint=Homepage)]
-)
+
+app = Router(routes=[Route("/", endpoint=Homepage), Route("/{username}", endpoint=Homepage)])
 
 
 @pytest.fixture
@@ -45,6 +45,29 @@ def test_http_endpoint_route_path_params(client: TestClient) -> None:
 
 def test_http_endpoint_route_method(client: TestClient) -> None:
     response = client.post("/")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "GET, QUERY"
+
+
+def test_http_endpoint_route_query_method(client: TestClient) -> None:
+    response = client.request("QUERY", "/")
+    assert response.status_code == 200
+    assert response.text == "Hello, QUERY!"
+
+
+def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: TestClientFactory) -> None:
+    class Endpoint(HTTPEndpoint):
+        async def get(self, request: Request) -> PlainTextResponse:
+            return PlainTextResponse("Hello, world!")  # pragma: no cover
+
+        async def _do_delete(self, request: Request) -> PlainTextResponse:
+            return PlainTextResponse("Privileged helper")  # pragma: no cover
+
+    app = Router(routes=[Route("/", endpoint=Endpoint)])
+    client = test_client_factory(app)
+
+    response = client.request("_DO_DELETE", "/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
     assert response.headers["allow"] == "GET"

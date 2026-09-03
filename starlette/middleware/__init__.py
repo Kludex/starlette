@@ -1,33 +1,25 @@
 from __future__ import annotations
 
-import sys
-from typing import Any, Iterator, Protocol
-
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import ParamSpec
-else:  # pragma: no cover
-    from typing_extensions import ParamSpec
-
-from starlette.types import ASGIApp, Receive, Scope, Send
+from collections.abc import Awaitable, Callable, Iterator
+from typing import Any, ParamSpec, Protocol
 
 P = ParamSpec("P")
 
 
-class _MiddlewareClass(Protocol[P]):
-    def __init__(self, app: ASGIApp, *args: P.args, **kwargs: P.kwargs) -> None:
-        ...  # pragma: no cover
+_Scope = Any
+_Receive = Callable[[], Awaitable[Any]]
+_Send = Callable[[Any], Awaitable[None]]
+# Since `starlette.types.ASGIApp` type differs from `ASGIApplication` from `asgiref`
+# we need to define a more permissive version of ASGIApp that doesn't cause type errors.
+_ASGIApp = Callable[[_Scope, _Receive, _Send], Awaitable[None]]
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        ...  # pragma: no cover
+
+class _MiddlewareFactory(Protocol[P]):
+    def __call__(self, app: _ASGIApp, /, *args: P.args, **kwargs: P.kwargs) -> _ASGIApp: ...  # pragma: no cover
 
 
 class Middleware:
-    def __init__(
-        self,
-        cls: type[_MiddlewareClass[P]],
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> None:
+    def __init__(self, cls: _MiddlewareFactory[P], *args: P.args, **kwargs: P.kwargs) -> None:
         self.cls = cls
         self.args = args
         self.kwargs = kwargs
@@ -40,5 +32,6 @@ class Middleware:
         class_name = self.__class__.__name__
         args_strings = [f"{value!r}" for value in self.args]
         option_strings = [f"{key}={value!r}" for key, value in self.kwargs.items()]
-        args_repr = ", ".join([self.cls.__name__] + args_strings + option_strings)
+        name = getattr(self.cls, "__name__", "")
+        args_repr = ", ".join([name] + args_strings + option_strings)
         return f"{class_name}({args_repr})"

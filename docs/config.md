@@ -120,6 +120,18 @@ DEBUG = config('DEBUG') # lookups APP_DEBUG, returns "yes"
 ENVIRONMENT = config('ENVIRONMENT') # lookups APP_ENVIRONMENT, raises KeyError as variable is not defined
 ```
 
+## Custom encoding for environment files 
+
+By default, Starlette reads environment files using UTF-8 encoding. 
+You can specify a different encoding by setting `encoding` argument.
+
+```python title="myproject/settings.py"
+from starlette.config import Config
+
+# Using custom encoding for .env file
+config = Config(".env", encoding="latin-1")
+```
+
 ## A full example
 
 Structuring large applications can be complex. You need proper separation of

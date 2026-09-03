@@ -8,85 +8,127 @@ dynamic = ["version"]
 description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
-requires-python = ">=3.8"
-authors = [{ name = "Tom Christie", email = "tom@tomchristie.com" }]
+license-files = ["LICENSE.md"]
+requires-python = ">=3.10"
+authors = [
+    { name = "Tom Christie", email = "tom@tomchristie.com" }
+]
+maintainers = [
+    { name = "Marcelo Trylesinski", email = "marcelotryle@gmail.com" },
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",
     "Framework :: AnyIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "anyio>=3.4.0,<5",
-    "typing_extensions>=3.10.0; python_version < '3.10'",
+    "anyio>=3.6.2,<5",
+    "typing_extensions>=4.10.0; python_version < '3.13'",
 ]
 
 [project.optional-dependencies]
 full = [
     "itsdangerous",
     "jinja2",
-    "python-multipart>=0.0.7",
+    "opentelemetry-api",
+    "python-multipart>=0.0.18",
     "pyyaml",
-    "httpx>=0.22.0",
+    "httpx>=0.27.0,<0.29.0",
+    "httpx2>=2.0.0",
 ]
 
+[dependency-groups]
+dev = [
+    # We add starlette[full] so `uv sync` considers the extras.
+    "starlette[full]",
+    "httpx2[zstd]>=2.0.0",
+    "coverage>=7.8.2",
+    "importlib-metadata==9.0.0",
+    # Pinned to 2.1.0: mypy 2.2+ no longer honors the tuple return type of `create_memory_object_stream.__new__`.
+    "mypy==2.1.0",
+    "opentelemetry-sdk==1.44.0",
+    "pytest-codspeed>=4.1.1",
+    "ruff==0.16.0",
+    "types-PyYAML==6.0.12.20250516",
+    "pytest==9.1.1",
+    "trio==0.33.0",
+    # Check dist
+    "twine==7.0.0",
+]
+docs = [
+    "black==26.5.1",
+    "mkdocstrings>=1.0.2",
+    "mkdocstrings-python>=2.0.1",
+    "zensical>=0.0.19",
+]
+
+[tool.uv]
+default-groups = ["dev", "docs"]
+required-version = ">=0.8.6"
+exclude-newer = "7 days"
+
 [project.urls]
-Homepage = "https://github.com/encode/starlette"
-Documentation = "https://www.starlette.io/"
-Changelog = "https://www.starlette.io/release-notes/"
-Funding = "https://github.com/sponsors/encode"
-Source = "https://github.com/encode/starlette"
+Homepage = "https://github.com/Kludex/starlette"
+Documentation = "https://starlette.dev/"
+Changelog = "https://starlette.dev/release-notes/"
+Funding = "https://github.com/sponsors/Kludex"
+Source = "https://github.com/Kludex/starlette"
 
 [tool.hatch.version]
 path = "starlette/__init__.py"
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
-select = ["E", "F", "I", "FA", "UP"]
+select = [
+    "E",      # https://docs.astral.sh/ruff/rules/#error-e
+    "F",      # https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "I",      # https://docs.astral.sh/ruff/rules/#isort-i
+    "FA",     # https://docs.astral.sh/ruff/rules/#flake8-future-annotations-fa
+    "UP",     # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "RUF100", # https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf
+]
+ignore = ["UP031"] # https://docs.astral.sh/ruff/rules/printf-string-formatting/
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 
 [tool.mypy]
 strict = true
-ignore_missing_imports = true
-python_version = "3.8"
 
 [[tool.mypy.overrides]]
 module = "starlette.testclient.*"
 implicit_optional = true
 
 [tool.pytest.ini_options]
-addopts = "-rxXs --strict-config --strict-markers"
+addopts = "-rXs --strict-config --strict-markers"
 xfail_strict = true
 filterwarnings = [
     # Turn warnings that aren't filtered into exceptions
     "error",
-    "ignore: run_until_first_complete is deprecated and will be removed in a future version.:DeprecationWarning",
-    "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:DeprecationWarning",
+    "ignore: run_until_first_complete is deprecated and will be removed in a future version.:starlette.exceptions.StarletteDeprecationWarning",
+    "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:starlette.exceptions.StarletteDeprecationWarning",
     "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
-    "ignore: path is deprecated.*:DeprecationWarning:certifi",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
-    "ignore: The `allow_redirects` argument is deprecated. Use `follow_redirects` instead.:DeprecationWarning",
-    "ignore: 'cgi' is deprecated and slated for removal in Python 3.13:DeprecationWarning",
-    "ignore: You seem to already have a custom sys.excepthook handler installed. I'll skip installing Trio's custom handler, but this means MultiErrors will not show full tracebacks.:RuntimeWarning",
+    "ignore: Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
 ]
 
 [tool.coverage.run]
+branch = true
 source_pkgs = ["starlette", "tests"]
 
 [tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "pragma: nocover",
-    "if typing.TYPE_CHECKING:",
-    "@typing.overload",
+exclude_also = [
+    "@overload",
+    "raise NotImplementedError",
 ]

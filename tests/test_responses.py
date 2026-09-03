@@ -1,30 +1,26 @@
 from __future__ import annotations
 
 import datetime as dt
-import os
+import sys
 import time
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator
+from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import AsyncIterator, Callable, Iterator
+from typing import Any
 
 import anyio
 import pytest
+from python_multipart import MultipartParser
 
 from starlette import status
 from starlette.background import BackgroundTask
 from starlette.datastructures import Headers
-from starlette.requests import Request
-from starlette.responses import (
-    FileResponse,
-    JSONResponse,
-    RedirectResponse,
-    Response,
-    StreamingResponse,
-)
+from starlette.requests import ClientDisconnect, Request
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.testclient import TestClient
 from starlette.types import Message, Receive, Scope, Send
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def test_text_response(test_client_factory: TestClientFactory) -> None:
@@ -91,13 +87,13 @@ def test_redirect_response_content_length_header(
 ) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         if scope["path"] == "/":
-            response = Response("hello", media_type="text/plain")  # pragma: nocover
+            response = Response("hello", media_type="text/plain")  # pragma: no cover
         else:
             response = RedirectResponse("/")
         await response(scope, receive, send)
 
     client: TestClient = test_client_factory(app)
-    response = client.request("GET", "/redirect", allow_redirects=False)
+    response = client.request("GET", "/redirect", follow_redirects=False)
     assert response.url == "http://testserver/redirect"
     assert response.headers["content-length"] == "0"
 
@@ -120,9 +116,7 @@ def test_streaming_response(test_client_factory: TestClientFactory) -> None:
 
         cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
         generator = numbers(1, 5)
-        response = StreamingResponse(
-            generator, media_type="text/plain", background=cleanup_task
-        )
+        response = StreamingResponse(generator, media_type="text/plain", background=cleanup_task)
         await response(scope, receive, send)
 
     assert filled_by_bg_task == ""
@@ -216,11 +210,10 @@ def test_response_phrase(test_client_factory: TestClientFactory) -> None:
     assert response.reason_phrase == ""
 
 
-def test_file_response(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
-    path = os.path.join(tmpdir, "xyz")
+def test_file_response(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    path = tmp_path / "xyz"
     content = b"<file content>" * 1000
-    with open(path, "wb") as file:
-        file.write(content)
+    path.write_bytes(content)
 
     filled_by_bg_task = ""
 
@@ -239,9 +232,7 @@ def test_file_response(tmpdir: Path, test_client_factory: TestClientFactory) -> 
     cleanup_task = BackgroundTask(numbers_for_cleanup, start=6, stop=9)
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        response = FileResponse(
-            path=path, filename="example.png", background=cleanup_task
-        )
+        response = FileResponse(path=path, filename="example.png", background=cleanup_task)
         await response(scope, receive, send)
 
     assert filled_by_bg_task == ""
@@ -259,11 +250,10 @@ def test_file_response(tmpdir: Path, test_client_factory: TestClientFactory) -> 
 
 
 @pytest.mark.anyio
-async def test_file_response_on_head_method(tmpdir: Path) -> None:
-    path = os.path.join(tmpdir, "xyz")
+async def test_file_response_on_head_method(tmp_path: Path) -> None:
+    path = tmp_path / "xyz"
     content = b"<file content>" * 1000
-    with open(path, "wb") as file:
-        file.write(content)
+    path.write_bytes(content)
 
     app = FileResponse(path=path, filename="example.png")
 
@@ -279,29 +269,49 @@ async def test_file_response_on_head_method(tmpdir: Path) -> None:
             assert "content-disposition" in headers
             assert "last-modified" in headers
             assert "etag" in headers
-        elif message["type"] == "http.response.body":
+        elif message["type"] == "http.response.body":  # pragma: no branch
             assert message["body"] == b""
             assert message["more_body"] is False
 
     # Since the TestClient drops the response body on HEAD requests, we need to test
     # this directly.
-    await app({"type": "http", "method": "head"}, receive, send)
+    await app({"type": "http", "method": "head", "headers": [(b"key", b"value")]}, receive, send)
 
 
-def test_file_response_with_directory_raises_error(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
-    app = FileResponse(path=tmpdir, filename="example.png")
+def test_file_response_set_media_type(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    path = tmp_path / "xyz"
+    path.write_bytes(b"<file content>")
+
+    # By default, FileResponse will determine the `content-type` based on
+    # the filename or path, unless a specific `media_type` is provided.
+    app = FileResponse(path=path, filename="example.png", media_type="image/jpeg")
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert response.headers["content-type"] == "image/jpeg"
+
+
+def test_file_response_default_media_type(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    path = tmp_path / "file.unknownext"
+    path.write_bytes(b"<file content>")
+
+    # When the media type cannot be guessed from the filename or path, it
+    # falls back to "application/octet-stream" rather than "text/plain".
+    app = FileResponse(path=path)
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert response.headers["content-type"] == "application/octet-stream"
+
+
+def test_file_response_with_directory_raises_error(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    app = FileResponse(path=tmp_path, filename="example.png")
     client = test_client_factory(app)
     with pytest.raises(RuntimeError) as exc_info:
         client.get("/")
     assert "is not a file" in str(exc_info.value)
 
 
-def test_file_response_with_missing_file_raises_error(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
-    path = os.path.join(tmpdir, "404.txt")
+def test_file_response_with_missing_file_raises_error(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    path = tmp_path / "404.txt"
     app = FileResponse(path=path, filename="404.txt")
     client = test_client_factory(app)
     with pytest.raises(RuntimeError) as exc_info:
@@ -309,14 +319,11 @@ def test_file_response_with_missing_file_raises_error(
     assert "does not exist" in str(exc_info.value)
 
 
-def test_file_response_with_chinese_filename(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_with_chinese_filename(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     content = b"file content"
     filename = "你好.txt"  # probably "Hello.txt" in Chinese
-    path = os.path.join(tmpdir, filename)
-    with open(path, "wb") as f:
-        f.write(content)
+    path = tmp_path / filename
+    path.write_bytes(content)
     app = FileResponse(path=path, filename=filename)
     client = test_client_factory(app)
     response = client.get("/")
@@ -326,14 +333,11 @@ def test_file_response_with_chinese_filename(
     assert response.headers["content-disposition"] == expected_disposition
 
 
-def test_file_response_with_inline_disposition(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
+def test_file_response_with_inline_disposition(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
     content = b"file content"
     filename = "hello.txt"
-    path = os.path.join(tmpdir, filename)
-    with open(path, "wb") as f:
-        f.write(content)
+    path = tmp_path / filename
+    path.write_bytes(content)
     app = FileResponse(path=path, filename=filename, content_disposition_type="inline")
     client = test_client_factory(app)
     response = client.get("/")
@@ -343,16 +347,25 @@ def test_file_response_with_inline_disposition(
     assert response.headers["content-disposition"] == expected_disposition
 
 
-def test_file_response_with_method_warns(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
-    with pytest.warns(DeprecationWarning):
-        FileResponse(path=tmpdir, filename="example.png", method="GET")
+def test_file_response_with_range_header(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    content = b"file content"
+    filename = "hello.txt"
+    path = tmp_path / filename
+    path.write_bytes(content)
+    etag = '"a_non_autogenerated_etag"'
+    app = FileResponse(path=path, filename=filename, headers={"etag": etag})
+    client = test_client_factory(app)
+    response = client.get("/", headers={"range": "bytes=0-4", "if-range": etag})
+    assert response.status_code == status.HTTP_206_PARTIAL_CONTENT
+    assert response.content == content[:5]
+    assert response.headers["etag"] == etag
+    assert response.headers["content-length"] == "5"
+    assert response.headers["content-range"] == f"bytes 0-4/{len(content)}"
 
 
 @pytest.mark.anyio
 async def test_file_response_with_pathsend(tmpdir: Path) -> None:
-    path = os.path.join(tmpdir, "xyz")
+    path = tmpdir / "xyz"
     content = b"<file content>" * 1000
     with open(path, "wb") as file:
         file.write(content)
@@ -371,20 +384,18 @@ async def test_file_response_with_pathsend(tmpdir: Path) -> None:
             assert "content-disposition" in headers
             assert "last-modified" in headers
             assert "etag" in headers
-        elif message["type"] == "http.response.pathsend":
+        elif message["type"] == "http.response.pathsend":  # pragma: no branch
             assert message["path"] == str(path)
 
     # Since the TestClient doesn't support `pathsend`, we need to test this directly.
     await app(
-        {"type": "http", "method": "get", "extensions": {"http.response.pathsend": {}}},
+        {"type": "http", "method": "get", "headers": [], "extensions": {"http.response.pathsend": {}}},
         receive,
         send,
     )
 
 
-def test_set_cookie(
-    test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_set_cookie(test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
     mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
@@ -401,25 +412,65 @@ def test_set_cookie(
             secure=True,
             httponly=True,
             samesite="none",
+            partitioned=True if sys.version_info >= (3, 14) else False,
         )
         await response(scope, receive, send)
+
+    partitioned_text = "Partitioned; " if sys.version_info >= (3, 14) else ""
 
     client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
     assert (
-        response.headers["set-cookie"]
-        == "mycookie=myvalue; Domain=localhost; expires=Thu, 22 Jan 2037 12:00:10 GMT; "
-        "HttpOnly; Max-Age=10; Path=/; SameSite=none; Secure"
+        response.headers["set-cookie"] == "mycookie=myvalue; Domain=localhost; expires=Thu, 22 Jan 2037 12:00:10 GMT; "
+        f"HttpOnly; Max-Age=10; {partitioned_text}Path=/; SameSite=none; Secure"
     )
+
+
+@pytest.mark.skipif(sys.version_info >= (3, 14), reason="Only relevant for <3.14")
+def test_set_cookie_raises_for_invalid_python_version(
+    test_client_factory: TestClientFactory,
+) -> None:  # pragma: no cover
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response("Hello, world!", media_type="text/plain")
+        with pytest.raises(ValueError):
+            response.set_cookie("mycookie", "myvalue", partitioned=True)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+    assert response.headers.get("set-cookie") is None
+
+
+def test_set_cookie_path_none(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response("Hello, world!", media_type="text/plain")
+        response.set_cookie("mycookie", "myvalue", path=None)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+    assert response.headers["set-cookie"] == "mycookie=myvalue; SameSite=lax"
+
+
+def test_set_cookie_samesite_none(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response("Hello, world!", media_type="text/plain")
+        response.set_cookie("mycookie", "myvalue", samesite=None)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.text == "Hello, world!"
+    assert response.headers["set-cookie"] == "mycookie=myvalue; Path=/"
 
 
 @pytest.mark.parametrize(
     "expires",
     [
-        pytest.param(
-            dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"
-        ),
+        pytest.param(dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"),
         pytest.param("Thu, 22 Jan 2037 12:00:10 GMT", id="str"),
         pytest.param(10, id="int"),
     ],
@@ -509,13 +560,10 @@ def test_response_do_not_add_redundant_charset(
     assert response.headers["content-type"] == "text/plain; charset=utf-8"
 
 
-def test_file_response_known_size(
-    tmpdir: Path, test_client_factory: TestClientFactory
-) -> None:
-    path = os.path.join(tmpdir, "xyz")
+def test_file_response_known_size(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    path = tmp_path / "xyz"
     content = b"<file content>" * 1000
-    with open(path, "wb") as file:
-        file.write(content)
+    path.write_bytes(content)
 
     app = FileResponse(path=path, filename="example.png")
     client: TestClient = test_client_factory(app)
@@ -533,26 +581,24 @@ def test_streaming_response_unknown_size(
 
 
 def test_streaming_response_known_size(test_client_factory: TestClientFactory) -> None:
-    app = StreamingResponse(
-        content=iter(["hello", "world"]), headers={"content-length": "10"}
-    )
+    app = StreamingResponse(content=iter(["hello", "world"]), headers={"content-length": "10"})
     client: TestClient = test_client_factory(app)
     response = client.get("/")
     assert response.headers["content-length"] == "10"
 
 
 def test_response_memoryview(test_client_factory: TestClientFactory) -> None:
-    app = Response(content=memoryview(b"\xC0"))
+    app = Response(content=memoryview(b"\xc0"))
     client: TestClient = test_client_factory(app)
     response = client.get("/")
-    assert response.content == b"\xC0"
+    assert response.content == b"\xc0"
 
 
 def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -> None:
-    app = StreamingResponse(content=iter([memoryview(b"\xC0"), memoryview(b"\xF5")]))
+    app = StreamingResponse(content=iter([memoryview(b"\xc0"), memoryview(b"\xf5")]))
     client: TestClient = test_client_factory(app)
     response = client.get("/")
-    assert response.content == b"\xC0\xF5"
+    assert response.content == b"\xc0\xf5"
 
 
 @pytest.mark.anyio
@@ -582,5 +628,417 @@ async def test_streaming_response_stops_if_receiving_http_disconnect() -> None:
     response = StreamingResponse(content=stream_indefinitely())
 
     with anyio.move_on_after(1) as cancel_scope:
-        await response({}, receive_disconnect, send)
+        await response({"type": "http"}, receive_disconnect, send)
     assert not cancel_scope.cancel_called, "Content streaming should stop itself."
+
+
+@pytest.mark.anyio
+async def test_streaming_response_on_client_disconnects() -> None:
+    chunks = bytearray()
+    streamed = False
+
+    async def receive_disconnect() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        nonlocal streamed
+        if message["type"] == "http.response.body":
+            if not streamed:
+                chunks.extend(message.get("body", b""))
+                streamed = True
+            else:
+                raise OSError
+
+    async def stream_indefinitely() -> AsyncGenerator[bytes, None]:
+        while True:
+            await anyio.sleep(0)
+            yield b"chunk"
+
+    stream = stream_indefinitely()
+    response = StreamingResponse(content=stream)
+
+    with anyio.move_on_after(1) as cancel_scope:
+        with pytest.raises(ClientDisconnect):
+            await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive_disconnect, send)
+    assert not cancel_scope.cancel_called, "Content streaming should stop itself."
+    assert chunks == b"chunk"
+    await stream.aclose()
+
+
+@pytest.mark.anyio
+async def test_streaming_response_runs_background_on_websocket_scope() -> None:
+    background_called = False
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        return {}  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    def run_background() -> None:
+        nonlocal background_called
+        background_called = True
+
+    async def stream() -> AsyncIterator[bytes]:
+        yield b"chunk"
+
+    response = StreamingResponse(stream(), background=BackgroundTask(run_background))
+
+    await response({"type": "websocket"}, receive, send)
+
+    assert background_called
+    assert [message["type"] for message in sent] == [
+        "websocket.http.response.start",
+        "websocket.http.response.body",
+        "websocket.http.response.body",
+    ]
+
+
+README = """\
+# BáiZé
+
+Powerful and exquisite WSGI/ASGI framework/toolkit.
+
+The minimize implementation of methods required in the Web framework. No redundant implementation means that you can freely customize functions without considering the conflict with baize's own implementation.
+
+Under the ASGI/WSGI protocol, the interface of the request object and the response object is almost the same, only need to add or delete `await` in the appropriate place. In addition, it should be noted that ASGI supports WebSocket but WSGI does not.
+"""  # noqa: E501
+
+
+@pytest.fixture
+def readme_file(tmp_path: Path) -> Path:
+    filepath = tmp_path / "README.txt"
+    filepath.write_bytes(README.encode("utf8"))
+    return filepath
+
+
+@pytest.fixture
+def file_response_client(readme_file: Path, test_client_factory: TestClientFactory) -> TestClient:
+    return test_client_factory(app=FileResponse(str(readme_file)))
+
+
+def test_file_response_without_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/")
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    assert response.text == README
+
+
+def test_file_response_head(file_response_client: TestClient) -> None:
+    response = file_response_client.head("/")
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    assert response.content == b""
+
+
+def test_file_response_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=0-100"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-100/{len(README.encode('utf8'))}"
+    assert response.headers["content-length"] == "101"
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    assert response.content == README.encode("utf8")[:101]
+
+
+def test_file_response_range_head(file_response_client: TestClient) -> None:
+    response = file_response_client.head("/", headers={"Range": "bytes=0-100"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-100/{len(README.encode('utf8'))}"
+    assert response.headers["content-length"] == str(101)
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    assert response.content == b""
+
+
+def test_file_response_range_multi(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=0-100, 200-300"})
+    assert response.status_code == 206
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == "448"
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+
+
+def test_file_response_range_multi_head(file_response_client: TestClient) -> None:
+    response = file_response_client.head("/", headers={"Range": "bytes=0-100, 200-300"})
+    assert response.status_code == 206
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == "448"
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+    assert response.content == b""
+
+    response = file_response_client.head(
+        "/",
+        headers={"Range": "bytes=200-300", "if-range": response.headers["etag"][:-1]},
+    )
+    assert response.status_code == 200
+    response = file_response_client.head(
+        "/",
+        headers={"Range": "bytes=200-300", "if-range": response.headers["etag"]},
+    )
+    assert response.status_code == 206
+
+
+def test_file_response_range_count_limit(file_response_client: TestClient) -> None:
+    ranges = ",".join(f"{index}-{index}" for index in range(0, 200, 2))
+    response = file_response_client.get("/", headers={"Range": f"bytes={ranges}"})
+
+    assert response.status_code == 206
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+
+
+def test_file_response_range_count_limit_exceeded(file_response_client: TestClient) -> None:
+    ranges = ",".join(f"{index}-{index}" for index in range(0, 202, 2))
+    response = file_response_client.get("/", headers={"Range": f"bytes={ranges}"})
+
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.text == README
+
+
+def test_file_response_range_invalid(file_response_client: TestClient) -> None:
+    response = file_response_client.head("/", headers={"Range": "bytes: 0-1000"})
+    assert response.status_code == 400
+
+
+def test_file_response_range_head_max(file_response_client: TestClient) -> None:
+    response = file_response_client.head("/", headers={"Range": f"bytes=0-{len(README.encode('utf8')) + 1}"})
+    assert response.status_code == 206
+
+
+def test_file_response_range_416(file_response_client: TestClient) -> None:
+    response = file_response_client.head("/", headers={"Range": f"bytes={len(README.encode('utf8')) + 1}-"})
+    assert response.status_code == 416
+    assert response.headers["Content-Range"] == f"bytes */{len(README.encode('utf8'))}"
+
+
+def test_file_response_only_support_bytes_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "items=0-100"})
+    assert response.status_code == 400
+    assert response.text == "Only support bytes range"
+
+
+def test_file_response_range_must_be_requested(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes="})
+    assert response.status_code == 400
+    assert response.text == "Range header: range must be requested"
+
+
+def test_file_response_start_must_be_less_than_end(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=100-0"})
+    assert response.status_code == 400
+    assert response.text == "Range header: start must be less than end"
+
+
+def test_file_response_inverted_single_byte_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=5-4"})
+    assert response.status_code == 400
+    assert response.text == "Range header: start must be less than end"
+
+
+def test_file_response_single_byte_range(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=5-5"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 5-5/{len(README.encode('utf8'))}"
+    assert response.headers["content-length"] == "1"
+
+
+def test_file_response_merge_ranges(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=0-100, 50-200"})
+    assert response.status_code == 206
+    assert response.headers["content-length"] == "201"
+    assert response.headers["content-range"] == f"bytes 0-200/{len(README.encode('utf8'))}"
+
+
+@dataclass
+class MultipartPart:
+    headers: dict[bytes, bytes]
+    data: bytes
+
+
+def parse_multipart_data(data: bytes, boundary: bytes | str) -> list[MultipartPart]:
+    parts: list[MultipartPart] = []
+    done = False
+
+    current_headers: dict[bytes, bytes] = {}
+    current_header_field: bytes = b""
+
+    def on_part_begin() -> None:
+        nonlocal current_headers
+        current_headers = {}
+
+    def on_part_data(data: bytes, start: int, end: int) -> None:
+        parts.append(MultipartPart(current_headers, data[start:end]))
+
+    def on_header_field(data: bytes, start: int, end: int) -> None:
+        nonlocal current_header_field
+        current_header_field = data[start:end]
+
+    def on_header_value(data: bytes, start: int, end: int) -> None:
+        current_headers[current_header_field] = data[start:end]
+
+    def on_end() -> None:
+        nonlocal done
+        done = True
+
+    parser = MultipartParser(
+        boundary,
+        dict(
+            on_part_begin=on_part_begin,
+            on_part_data=on_part_data,
+            on_header_field=on_header_field,
+            on_header_value=on_header_value,
+            on_end=on_end,
+        ),
+    )
+    parser.write(data)
+    parser.finalize()
+    assert done
+    return parts
+
+
+def test_file_response_insert_ranges(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=100-200, 0-50"})
+
+    assert response.status_code == 206
+    assert "content-range" not in response.headers
+    assert response.headers["content-type"].startswith("multipart/byteranges; boundary=")
+    boundary = response.headers["content-type"].split("boundary=")[1]
+    assert response.text.splitlines() == [
+        f"--{boundary}",
+        "Content-Type: text/plain; charset=utf-8",
+        "Content-Range: bytes 0-50/526",
+        "",
+        "# BáiZé",
+        "",
+        "Powerful and exquisite WSGI/ASGI framewo",
+        f"--{boundary}",
+        "Content-Type: text/plain; charset=utf-8",
+        "Content-Range: bytes 100-200/526",
+        "",
+        "ds required in the Web framework. No redundant implementation means that you can freely customize fun",
+        f"--{boundary}--",
+    ]
+
+    parts = parse_multipart_data(response._content, boundary)
+    assert all(
+        value == b"text/plain; charset=utf-8"
+        for part in parts
+        for key, value in part.headers.items()
+        if key == b"Content-Type"
+    )
+    assert len(parts) == 2
+    assert parts[0].headers[b"Content-Range"] == b"bytes 0-50/526"
+    assert parts[0].data == "# BáiZé\n\nPowerful and exquisite WSGI/ASGI framewo".encode()
+    assert parts[1].headers[b"Content-Range"] == b"bytes 100-200/526"
+    assert (
+        parts[1].data
+        == b"ds required in the Web framework. No redundant implementation means that you can freely customize fun"
+    )
+
+
+def test_file_response_range_without_dash(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=100, 0-50"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-50/{len(README.encode('utf8'))}"
+
+
+def test_file_response_range_empty_start_and_end(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes= - , 0-50"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-50/{len(README.encode('utf8'))}"
+
+
+def test_file_response_range_ignore_non_numeric(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=abc-def, 0-50"})
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-50/{len(README.encode('utf8'))}"
+
+
+def test_file_response_suffix_range(file_response_client: TestClient) -> None:
+    # Test suffix range (last N bytes) - line 523 with empty start_str
+    response = file_response_client.get("/", headers={"Range": "bytes=-100"})
+    assert response.status_code == 206
+    file_size = len(README.encode("utf8"))
+    assert response.headers["content-range"] == f"bytes {file_size - 100}-{file_size - 1}/{file_size}"
+    assert response.headers["content-length"] == "100"
+    assert response.content == README.encode("utf8")[-100:]
+
+
+def test_file_response_suffix_range_larger_than_file(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=-1000"})
+
+    file_size = len(README.encode("utf8"))
+    assert response.status_code == 206
+    assert response.headers["content-range"] == f"bytes 0-{file_size - 1}/{file_size}"
+    assert response.headers["content-length"] == str(file_size)
+    assert response.content == README.encode("utf8")
+
+
+def test_file_response_multiple_calls(file_response_client: TestClient) -> None:
+    response = file_response_client.get("/", headers={"Range": "bytes=0-100"})
+    assert response.status_code == 206
+
+    response = file_response_client.get("/")
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+
+
+@pytest.mark.anyio
+async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
+    class SmallChunkSizeFileResponse(FileResponse):
+        chunk_size = 10
+
+    app = SmallChunkSizeFileResponse(path=str(readme_file))
+
+    received_chunks: list[bytes] = []
+    start_message: dict[str, Any] = {}
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.start":
+            start_message.update(message)
+        elif message["type"] == "http.response.body":  # pragma: no branch
+            received_chunks.append(message["body"])
+
+    await app({"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-15,20-35,35-50")]}, receive, send)
+    assert start_message["status"] == 206
+
+    headers = Headers(raw=start_message["headers"])
+    assert "content-range" not in headers
+    assert headers.get("accept-ranges") == "bytes"
+    assert "content-length" in headers
+    assert "last-modified" in headers
+    assert "etag" in headers
+    assert headers["content-type"].startswith("multipart/byteranges; boundary=")
+    boundary = headers["content-type"].split("boundary=")[1]
+
+    assert received_chunks == [
+        # Send the part headers.
+        f"--{boundary}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Range: bytes 0-15/526\r\n\r\n".encode(),
+        # Send the first chunk (10 bytes).
+        b"# B\xc3\xa1iZ\xc3\xa9\n",
+        # Send the second chunk (6 bytes).
+        b"\nPower",
+        # Send the new line to separate the parts.
+        b"\r\n",
+        # Send the part headers. We merge the ranges 20-35 and 35-50 into a single part.
+        f"--{boundary}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Range: bytes 20-50/526\r\n\r\n".encode(),
+        # Send the first chunk (10 bytes).
+        b"and exquis",
+        # Send the second chunk (10 bytes).
+        b"ite WSGI/A",
+        # Send the third chunk (10 bytes).
+        b"SGI framew",
+        # Send the last chunk (1 byte).
+        b"o",
+        b"\r\n",
+        f"--{boundary}--".encode(),
+    ]

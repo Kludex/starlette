@@ -1,60 +1,115 @@
 site_name: Starlette
 site_description: The little ASGI library that shines.
-site_url: https://www.starlette.io
+site_url: https://starlette.dev
+
+repo_name: Kludex/starlette
+repo_url: https://github.com/Kludex/starlette
+edit_uri: edit/main/docs/
+
+strict: true
 
 theme:
-  name: 'material'
+  name: "material"
   custom_dir: docs/overrides
   palette:
-    - scheme: 'default'
-      media: '(prefers-color-scheme: light)'
+    - scheme: "default"
+      media: "(prefers-color-scheme: light)"
       toggle:
-        icon: 'material/lightbulb'
+        icon: "material/lightbulb"
         name: "Switch to dark mode"
-    - scheme: 'slate'
-      media: '(prefers-color-scheme: dark)'
-      primary: 'blue'
+    - scheme: "slate"
+      media: "(prefers-color-scheme: dark)"
+      primary: "blue"
       toggle:
-        icon: 'material/lightbulb-outline'
-        name: 'Switch to light mode'
+        icon: "material/lightbulb-outline"
+        name: "Switch to light mode"
   icon:
     repo: fontawesome/brands/github
   features:
     - content.code.copy
-
-repo_name: encode/starlette
-repo_url: https://github.com/encode/starlette
-edit_uri: edit/master/docs/
+    - toc.follow
 
 nav:
-  - Introduction: 'index.md'
-  - Applications: 'applications.md'
-  - Requests: 'requests.md'
-  - Responses: 'responses.md'
-  - WebSockets: 'websockets.md'
-  - Routing: 'routing.md'
-  - Endpoints: 'endpoints.md'
-  - Middleware: 'middleware.md'
-  - Static Files: 'staticfiles.md'
-  - Templates: 'templates.md'
-  - Database: 'database.md'
-  - GraphQL: 'graphql.md'
-  - Authentication: 'authentication.md'
-  - API Schemas: 'schemas.md'
-  - Lifespan: 'lifespan.md'
-  - Background Tasks: 'background.md'
-  - Server Push: 'server-push.md'
-  - Exceptions: 'exceptions.md'
-  - Configuration: 'config.md'
-  - Test Client: 'testclient.md'
-  - Third Party Packages: 'third-party-packages.md'
-  - Contributing: 'contributing.md'
-  - Release Notes: 'release-notes.md'
+  - Introduction: "index.md"
+  - Features:
+      - Applications: "applications.md"
+      - Requests: "requests.md"
+      - Responses: "responses.md"
+      - WebSockets: "websockets.md"
+      - Routing: "routing.md"
+      - Endpoints: "endpoints.md"
+      - Middleware: "middleware.md"
+      - Static Files: "staticfiles.md"
+      - Templates: "templates.md"
+      - Database: "database.md"
+      - GraphQL: "graphql.md"
+      - Authentication: "authentication.md"
+      - API Schemas: "schemas.md"
+      - Lifespan: "lifespan.md"
+      - Background Tasks: "background.md"
+      - Server Push: "server-push.md"
+      - Exceptions: "exceptions.md"
+      - Configuration: "config.md"
+      - Thread Pool: "threadpool.md"
+      - Test Client: "testclient.md"
+  - Release Notes: "release-notes.md"
+  - Community:
+      - Third Party Packages: "third-party-packages.md"
+      - Contributing: "contributing.md"
+
+extra_css:
+  - css/custom.css
+
+extra:
+  analytics:
+    provider: google
+    property: G-Z37GTYBR6M
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/Kludex/starlette
+    - icon: fontawesome/brands/discord
+      link: https://discord.com/invite/RxKUF5JuHs
+    - icon: fontawesome/brands/twitter
+      link: https://x.com/marcelotryle
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/marcelotryle
+    - icon: fontawesome/solid/globe
+      link: https://fastapiexpert.com
 
 markdown_extensions:
-  - mkautodoc
+  - attr_list
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+watch:
+  - starlette
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_section_style: list
+            show_root_toc_entry: false
+            members_order: source
+            separate_signature: true
+            filters: ["!^_"]
+            docstring_options:
+              ignore_init_summary: true
+            merge_init_into_class: true
+            parameter_headings: true
+            show_signature_annotations: true
+            show_source: false
+            signature_crossrefs: true
+          inventories:
+            - url: https://docs.python.org/3/objects.inv

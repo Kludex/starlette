@@ -99,7 +99,7 @@ exception_handlers = {
 }
 ```
 
-It's important to notice that in case a [`BackgroundTask`](https://www.starlette.io/background/) raises an exception,
+It's important to notice that in case a [`BackgroundTask`](background.md) raises an exception,
 it will be handled by the `handle_error` function, but at that point, the response was already sent. In other words,
 the response created by `handle_error` will be discarded. In case the error happens before the response was sent, then
 it will use the response object - in the above example, the returned `JSONResponse`.
@@ -115,19 +115,35 @@ In order to deal with this behaviour correctly, the middleware stack of a
 
 ## HTTPException
 
-The `HTTPException` class provides a base class that you can use for any
-handled exceptions. The `ExceptionMiddleware` implementation defaults to
-returning plain-text HTTP responses for any `HTTPException`.
+The `HTTPException` class provides a base class that you can use for any handled exceptions.
+The `ExceptionMiddleware` implementation defaults to returning plain-text HTTP responses for any `HTTPException`.
 
 * `HTTPException(status_code, detail=None, headers=None)`
 
-You should only raise `HTTPException` inside routing or endpoints. Middleware
-classes should instead just return appropriate responses directly.
+You should only raise `HTTPException` inside routing or endpoints.
+Middleware classes should instead just return appropriate responses directly.
+
+You can use an `HTTPException` on a WebSocket endpoint. In case it's raised before `websocket.accept()`
+the connection is not upgraded to a WebSocket connection, and the proper HTTP response is returned.
+
+```python
+from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
+from starlette.routing import WebSocketRoute
+from starlette.websockets import WebSocket
+
+
+async def websocket_endpoint(websocket: WebSocket):
+    raise HTTPException(status_code=400, detail="Bad request")
+
+
+app = Starlette(routes=[WebSocketRoute("/ws", websocket_endpoint)])
+```
 
 ## WebSocketException
 
 You can use the `WebSocketException` class to raise errors inside of WebSocket endpoints.
 
-* `WebSocketException(code=1008, reason=None)`
+* `WebSocketException(code, reason=None)`
 
 You can set any code valid as defined [in the specification](https://tools.ietf.org/html/rfc6455#section-7.4.1).

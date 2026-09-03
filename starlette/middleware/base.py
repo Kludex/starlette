@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-import typing
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
+from typing import Any, TypeVar
 
 import anyio
-from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
-from starlette._utils import collapse_excgroups
-from starlette.background import BackgroundTask
+from starlette._utils import create_collapsing_task_group
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import ContentStream, Response, StreamingResponse
+from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-RequestResponseEndpoint = typing.Callable[[Request], typing.Awaitable[Response]]
-DispatchFunction = typing.Callable[
-    [Request, RequestResponseEndpoint], typing.Awaitable[Response]
-]
-T = typing.TypeVar("T")
+RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
+DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
+BodyStreamGenerator = AsyncGenerator[bytes | MutableMapping[str, Any], None]
+AsyncContentStream = AsyncIterable[str | bytes | memoryview | MutableMapping[str, Any]]
+T = TypeVar("T")
 
 
 class _CachedRequest(Request):
@@ -56,6 +55,7 @@ class _CachedRequest(Request):
                 # at this point a disconnect is all that we should be receiving
                 # if we get something else, things went wrong somewhere
                 raise RuntimeError(f"Unexpected message received: {msg['type']}")
+            self._wrapped_rcv_disconnected = True
             return msg
 
         # wrapped_rcv state 3: not yet consumed
@@ -106,20 +106,17 @@ class BaseHTTPMiddleware:
         request = _CachedRequest(scope, receive)
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
+        app_exc: Exception | None = None
+        exception_already_raised = False
 
         async def call_next(request: Request) -> Response:
-            app_exc: Exception | None = None
-            send_stream: ObjectSendStream[typing.MutableMapping[str, typing.Any]]
-            recv_stream: ObjectReceiveStream[typing.MutableMapping[str, typing.Any]]
-            send_stream, recv_stream = anyio.create_memory_object_stream()
-
             async def receive_or_disconnect() -> Message:
                 if response_sent.is_set():
                     return {"type": "http.disconnect"}
 
                 async with anyio.create_task_group() as task_group:
 
-                    async def wrap(func: typing.Callable[[], typing.Awaitable[T]]) -> T:
+                    async def wrap(func: Callable[[], Awaitable[T]]) -> T:
                         result = await func()
                         task_group.cancel_scope.cancel()
                         return result
@@ -132,10 +129,6 @@ class BaseHTTPMiddleware:
 
                 return message
 
-            async def close_recv_stream_on_response_sent() -> None:
-                await response_sent.wait()
-                recv_stream.close()
-
             async def send_no_error(message: Message) -> None:
                 try:
                     await send_stream.send(message)
@@ -146,13 +139,12 @@ class BaseHTTPMiddleware:
             async def coro() -> None:
                 nonlocal app_exc
 
-                async with send_stream:
+                with send_stream:
                     try:
                         await self.app(scope, receive_or_disconnect, send_no_error)
                     except Exception as exc:
                         app_exc = exc
 
-            task_group.start_soon(close_recv_stream_on_response_sent)
             task_group.start_soon(coro)
 
             try:
@@ -162,56 +154,91 @@ class BaseHTTPMiddleware:
                     message = await recv_stream.receive()
             except anyio.EndOfStream:
                 if app_exc is not None:
-                    raise app_exc
+                    nonlocal exception_already_raised
+                    exception_already_raised = True
+                    # Prevent `anyio.EndOfStream` from polluting app exception context.
+                    # If both cause and context are None then the context is suppressed
+                    # and `anyio.EndOfStream` is not present in the exception traceback.
+                    # If exception cause is not None then it is propagated with
+                    # reraising here.
+                    # If exception has no cause but has context set then the context is
+                    # propagated as a cause with the reraise. This is necessary in order
+                    # to prevent `anyio.EndOfStream` from polluting the exception
+                    # context.
+                    raise app_exc from app_exc.__cause__ or app_exc.__context__
                 raise RuntimeError("No response returned.")
 
             assert message["type"] == "http.response.start"
 
-            async def body_stream() -> typing.AsyncGenerator[bytes, None]:
-                async with recv_stream:
-                    async for message in recv_stream:
-                        assert message["type"] == "http.response.body"
-                        body = message.get("body", b"")
-                        if body:
-                            yield body
-                        if not message.get("more_body", False):
-                            break
+            async def body_stream() -> BodyStreamGenerator:
+                async for message in recv_stream:
+                    if message["type"] == "http.response.pathsend":
+                        yield message
+                        break
+                    assert message["type"] == "http.response.body", f"Unexpected message: {message}"
+                    body = message.get("body", b"")
+                    if body:
+                        yield body
+                    if not message.get("more_body", False):
+                        break
 
-                if app_exc is not None:
-                    raise app_exc
-
-            response = _StreamingResponse(
-                status_code=message["status"], content=body_stream(), info=info
-            )
+            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
             response.raw_headers = message["headers"]
             return response
 
-        with collapse_excgroups():
-            async with anyio.create_task_group() as task_group:
+        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
+        send_stream, recv_stream = streams
+        with recv_stream, send_stream:
+            async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)
                 await response(scope, wrapped_receive, send)
                 response_sent.set()
+                recv_stream.close()
+        if app_exc is not None and not exception_already_raised:
+            raise app_exc
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         raise NotImplementedError()  # pragma: no cover
 
 
-class _StreamingResponse(StreamingResponse):
+class _StreamingResponse(Response):
     def __init__(
         self,
-        content: ContentStream,
+        content: AsyncContentStream,
         status_code: int = 200,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
-        background: BackgroundTask | None = None,
-        info: typing.Mapping[str, typing.Any] | None = None,
+        info: Mapping[str, Any] | None = None,
     ) -> None:
-        self._info = info
-        super().__init__(content, status_code, headers, media_type, background)
+        self.info = info
+        self.body_iterator = content
+        self.status_code = status_code
+        self.media_type = media_type
+        self.init_headers(headers)
+        self.background = None
 
-    async def stream_response(self, send: Send) -> None:
-        if self._info:
-            await send({"type": "http.response.debug", "info": self._info})
-        return await super().stream_response(send)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.info is not None:
+            await send({"type": "http.response.debug", "info": self.info})
+        await send(
+            {
+                "type": "http.response.start",
+                "status": self.status_code,
+                "headers": self.raw_headers,
+            }
+        )
+
+        should_close_body = True
+        async for chunk in self.body_iterator:
+            if isinstance(chunk, dict):
+                # We got an ASGI message which is not response body (eg: pathsend)
+                should_close_body = False
+                await send(chunk)
+                continue
+            await send({"type": "http.response.body", "body": chunk, "more_body": True})
+
+        if should_close_body:
+            await send({"type": "http.response.body", "body": b"", "more_body": False})
+
+        if self.background:
+            await self.background()

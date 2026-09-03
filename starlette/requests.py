@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
-import typing
+import sys
+from collections.abc import AsyncGenerator, Iterator, Mapping
 from http import cookies as http_cookies
+from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
 
 import anyio
 
@@ -12,15 +14,25 @@ from starlette.exceptions import HTTPException
 from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
 from starlette.types import Message, Receive, Scope, Send
 
-try:
-    from multipart.multipart import parse_options_header
-except ModuleNotFoundError:  # pragma: nocover
-    parse_options_header = None
+if TYPE_CHECKING:
+    from python_multipart.multipart import parse_options_header
 
-
-if typing.TYPE_CHECKING:
+    from starlette.applications import Starlette
+    from starlette.middleware.sessions import Session
     from starlette.routing import Router
+else:
+    try:
+        try:
+            from python_multipart.multipart import parse_options_header
+        except ModuleNotFoundError:  # pragma: no cover
+            from multipart.multipart import parse_options_header
+    except ModuleNotFoundError:  # pragma: no cover
+        parse_options_header = None
 
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from typing import TypeVar
+else:  # pragma: no cover
+    from typing_extensions import TypeVar
 
 SERVER_PUSH_HEADERS_TO_COPY = {
     "accept",
@@ -62,7 +74,10 @@ class ClientDisconnect(Exception):
     pass
 
 
-class HTTPConnection(typing.Mapping[str, typing.Any]):
+StateT = TypeVar("StateT", bound=Mapping[str, Any] | State, default=State)
+
+
+class HTTPConnection(Mapping[str, Any], Generic[StateT]):
     """
     A base class for incoming HTTP connections, that is used to provide
     any functionality that is common to both `Request` and `WebSocket`.
@@ -72,10 +87,10 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
         assert scope["type"] in ("http", "websocket")
         self.scope = scope
 
-    def __getitem__(self, key: str) -> typing.Any:
+    def __getitem__(self, key: str) -> Any:
         return self.scope[key]
 
-    def __iter__(self) -> typing.Iterator[str]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self.scope)
 
     def __len__(self) -> int:
@@ -88,12 +103,12 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
     __hash__ = object.__hash__
 
     @property
-    def app(self) -> typing.Any:
+    def app(self) -> Any:
         return self.scope["app"]
 
     @property
     def url(self) -> URL:
-        if not hasattr(self, "_url"):
+        if not hasattr(self, "_url"):  # pragma: no branch
             self._url = URL(scope=self.scope)
         return self._url
 
@@ -104,9 +119,7 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
             # This is used by request.url_for, it might be used inside a Mount which
             # would have its own child scope with its own root_path, but the base URL
             # for url_for should still be the top level app root path.
-            app_root_path = base_url_scope.get(
-                "app_root_path", base_url_scope.get("root_path", "")
-            )
+            app_root_path = base_url_scope.get("app_root_path", base_url_scope.get("root_path", ""))
             path = app_root_path
             if not path.endswith("/"):
                 path += "/"
@@ -124,22 +137,24 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
 
     @property
     def query_params(self) -> QueryParams:
-        if not hasattr(self, "_query_params"):
+        if not hasattr(self, "_query_params"):  # pragma: no branch
             self._query_params = QueryParams(self.scope["query_string"])
         return self._query_params
 
     @property
-    def path_params(self) -> dict[str, typing.Any]:
-        return self.scope.get("path_params", {})
+    def path_params(self) -> dict[str, Any]:
+        path_params: dict[str, Any] = self.scope.get("path_params", {})
+        return path_params
 
     @property
     def cookies(self) -> dict[str, str]:
         if not hasattr(self, "_cookies"):
             cookies: dict[str, str] = {}
-            cookie_header = self.headers.get("cookie")
+            cookie_headers = self.headers.getlist("cookie")
 
-            if cookie_header:
-                cookies = cookie_parser(cookie_header)
+            for header in cookie_headers:
+                cookies.update(cookie_parser(header))
+
             self._cookies = cookies
         return self._cookies
 
@@ -152,56 +167,54 @@ class HTTPConnection(typing.Mapping[str, typing.Any]):
         return None
 
     @property
-    def session(self) -> dict[str, typing.Any]:
-        assert (
-            "session" in self.scope
-        ), "SessionMiddleware must be installed to access request.session"
-        return self.scope["session"]  # type: ignore[no-any-return]
+    def session(self) -> dict[str, Any]:
+        assert "session" in self.scope, "SessionMiddleware must be installed to access request.session"
+        session: Session = self.scope["session"]
+        # We keep the hasattr in case people actually use their own `SessionMiddleware` implementation.
+        if hasattr(session, "mark_accessed"):  # pragma: no branch
+            session.mark_accessed()
+        return session
 
     @property
-    def auth(self) -> typing.Any:
-        assert (
-            "auth" in self.scope
-        ), "AuthenticationMiddleware must be installed to access request.auth"
+    def auth(self) -> Any:
+        assert "auth" in self.scope, "AuthenticationMiddleware must be installed to access request.auth"
         return self.scope["auth"]
 
     @property
-    def user(self) -> typing.Any:
-        assert (
-            "user" in self.scope
-        ), "AuthenticationMiddleware must be installed to access request.user"
+    def user(self) -> Any:
+        assert "user" in self.scope, "AuthenticationMiddleware must be installed to access request.user"
         return self.scope["user"]
 
     @property
-    def state(self) -> State:
+    def state(self) -> StateT:
         if not hasattr(self, "_state"):
             # Ensure 'state' has an empty dict if it's not already populated.
             self.scope.setdefault("state", {})
             # Create a state instance with a reference to the dict in which it should
             # store info
             self._state = State(self.scope["state"])
-        return self._state
+        return cast(StateT, self._state)
 
-    def url_for(self, name: str, /, **path_params: typing.Any) -> URL:
-        router: Router = self.scope["router"]
-        url_path = router.url_path_for(name, **path_params)
+    def url_for(self, name: str, /, **path_params: Any) -> URL:
+        url_path_provider: Router | Starlette | None = self.scope.get("router") or self.scope.get("app")
+        if url_path_provider is None:
+            raise RuntimeError("The `url_for` method can only be used inside a Starlette application or with a router.")
+        url_path = url_path_provider.url_path_for(name, **path_params)
         return url_path.make_absolute_url(base_url=self.base_url)
 
 
-async def empty_receive() -> typing.NoReturn:
+async def empty_receive() -> NoReturn:
     raise RuntimeError("Receive channel has not been made available")
 
 
-async def empty_send(message: Message) -> typing.NoReturn:
+async def empty_send(message: Message) -> NoReturn:
     raise RuntimeError("Send channel has not been made available")
 
 
-class Request(HTTPConnection):
+class Request(HTTPConnection[StateT]):
     _form: FormData | None
 
-    def __init__(
-        self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send
-    ):
+    def __init__(self, scope: Scope, receive: Receive = empty_receive, send: Send = empty_send):
         super().__init__(scope)
         assert scope["type"] == "http"
         self._receive = receive
@@ -212,13 +225,13 @@ class Request(HTTPConnection):
 
     @property
     def method(self) -> str:
-        return typing.cast(str, self.scope["method"])
+        return cast(str, self.scope["method"])
 
     @property
     def receive(self) -> Receive:
         return self._receive
 
-    async def stream(self) -> typing.AsyncGenerator[bytes, None]:
+    async def stream(self) -> AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):
             yield self._body
             yield b""
@@ -233,7 +246,7 @@ class Request(HTTPConnection):
                     self._stream_consumed = True
                 if body:
                     yield body
-            elif message["type"] == "http.disconnect":
+            elif message["type"] == "http.disconnect":  # pragma: no branch
                 self._is_disconnected = True
                 raise ClientDisconnect()
         yield b""
@@ -246,19 +259,23 @@ class Request(HTTPConnection):
             self._body = b"".join(chunks)
         return self._body
 
-    async def json(self) -> typing.Any:
-        if not hasattr(self, "_json"):
+    async def json(self) -> Any:
+        if not hasattr(self, "_json"):  # pragma: no branch
             body = await self.body()
             self._json = json.loads(body)
         return self._json
 
     async def _get_form(
-        self, *, max_files: int | float = 1000, max_fields: int | float = 1000
+        self,
+        *,
+        max_files: int | float = 1000,
+        max_fields: int | float = 1000,
+        max_part_size: int = 1024 * 1024,
     ) -> FormData:
-        if self._form is None:
-            assert (
-                parse_options_header is not None
-            ), "The `python-multipart` library must be installed to use form parsing."
+        if self._form is None:  # pragma: no branch
+            assert parse_options_header is not None, (
+                "The `python-multipart` library must be installed to use form parsing."
+            )
             content_type_header = self.headers.get("Content-Type")
             content_type: bytes
             content_type, _ = parse_options_header(content_type_header)
@@ -269,6 +286,7 @@ class Request(HTTPConnection):
                         self.stream(),
                         max_files=max_files,
                         max_fields=max_fields,
+                        max_part_size=max_part_size,
                     )
                     self._form = await multipart_parser.parse()
                 except MultiPartException as exc:
@@ -276,21 +294,35 @@ class Request(HTTPConnection):
                         raise HTTPException(status_code=400, detail=exc.message)
                     raise exc
             elif content_type == b"application/x-www-form-urlencoded":
-                form_parser = FormParser(self.headers, self.stream())
-                self._form = await form_parser.parse()
+                try:
+                    form_parser = FormParser(
+                        self.headers,
+                        self.stream(),
+                        max_fields=max_fields,
+                        max_part_size=max_part_size,
+                    )
+                    self._form = await form_parser.parse()
+                except MultiPartException as exc:
+                    if "app" in self.scope:
+                        raise HTTPException(status_code=400, detail=exc.message)
+                    raise exc
             else:
                 self._form = FormData()
         return self._form
 
     def form(
-        self, *, max_files: int | float = 1000, max_fields: int | float = 1000
+        self,
+        *,
+        max_files: int | float = 1000,
+        max_fields: int | float = 1000,
+        max_part_size: int = 1024 * 1024,
     ) -> AwaitableOrContextManager[FormData]:
         return AwaitableOrContextManagerWrapper(
-            self._get_form(max_files=max_files, max_fields=max_fields)
+            self._get_form(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size)
         )
 
     async def close(self) -> None:
-        if self._form is not None:
+        if self._form is not None:  # pragma: no branch
             await self._form.close()
 
     async def is_disconnected(self) -> bool:
@@ -312,9 +344,5 @@ class Request(HTTPConnection):
             raw_headers: list[tuple[bytes, bytes]] = []
             for name in SERVER_PUSH_HEADERS_TO_COPY:
                 for value in self.headers.getlist(name):
-                    raw_headers.append(
-                        (name.encode("latin-1"), value.encode("latin-1"))
-                    )
-            await self._send(
-                {"type": "http.response.push", "path": path, "headers": raw_headers}
-            )
+                    raw_headers.append((name.encode("latin-1"), value.encode("latin-1")))
+            await self._send({"type": "http.response.push", "path": path, "headers": raw_headers})

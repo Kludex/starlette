@@ -1,5 +1,5 @@
+from collections.abc import Iterator
 from contextvars import ContextVar
-from typing import Callable, Iterator
 
 import anyio
 import pytest
@@ -9,9 +9,7 @@ from starlette.concurrency import iterate_in_threadpool, run_until_first_complet
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Route
-from starlette.testclient import TestClient
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 @pytest.mark.anyio
@@ -24,8 +22,8 @@ async def test_run_until_first_complete() -> None:
 
     async def task2() -> None:
         await task1_finished.wait()
-        await anyio.sleep(0)  # pragma: nocover
-        task2_finished.set()  # pragma: nocover
+        await anyio.sleep(0)  # pragma: no cover
+        task2_finished.set()  # pragma: no cover
 
     await run_until_first_complete((task1, {}), (task2, {}))
     assert task1_finished.is_set()

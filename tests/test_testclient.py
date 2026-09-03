@@ -499,8 +499,8 @@ def test_testclient_does_not_emit_anyio_deprecation_warnings() -> None:
 
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
-        client = TestClient(mock_service)
-        assert client.portal is None
+        with TestClient(mock_service) as client:
+            assert client.portal is not None
 
     # Verify that fresh module import with DeprecationWarning treated as error passes
     subprocess.check_call(

@@ -500,6 +500,5 @@ def test_importing_testclient_does_not_use_deprecated_blockingportal_alias() -> 
         importlib.reload(sys.modules["starlette.testclient"])
 
     assert not any(
-        issubclass(item.category, DeprecationWarning) and "BlockingPortal" in str(item.message)
-        for item in recorded
+        issubclass(item.category, DeprecationWarning) and "BlockingPortal" in str(item.message) for item in recorded
     )

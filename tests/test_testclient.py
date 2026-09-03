@@ -490,3 +490,25 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
+
+
+def test_testclient_does_not_emit_anyio_deprecation_warnings() -> None:
+    import subprocess
+    import sys
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        client = TestClient(mock_service)
+        assert client.portal is None
+
+    # Verify that fresh module import with DeprecationWarning treated as error passes
+    subprocess.check_call(
+        [
+            sys.executable,
+            "-W",
+            "error::DeprecationWarning",
+            "-c",
+            "import starlette.testclient; from starlette.testclient import TestClient",
+        ]
+    )

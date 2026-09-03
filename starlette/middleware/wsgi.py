@@ -6,7 +6,8 @@ import sys
 import typing
 import warnings
 
-import anyio
+import anyio.from_thread
+import anyio.to_thread
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
 from starlette.types import Receive, Scope, Send

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import subprocess
 import sys
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
@@ -490,3 +491,10 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
+
+
+def test_testclient_import_no_anyio_deprecation_warning() -> None:
+    subprocess.run(
+        [sys.executable, "-W", "error::DeprecationWarning", "-c", "import starlette.testclient"],
+        check=True,
+    )

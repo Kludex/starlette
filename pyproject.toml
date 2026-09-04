@@ -54,13 +54,13 @@ dev = [
     "coverage>=7.8.2",
     "importlib-metadata==9.0.0",
     # Pinned to 2.1.0: mypy 2.2+ no longer honors the tuple return type of `create_memory_object_stream.__new__`.
-    "mypy==2.1.0",
+    "mypy==2.3.1",
     "opentelemetry-sdk==1.44.0",
     "pytest-codspeed>=4.1.1",
-    "ruff==0.16.0",
+    "ruff==0.16.5",
     "types-PyYAML==6.0.12.20250516",
     "pytest==9.1.1",
-    "trio==0.33.0",
+    "trio==0.34.0",
     # Check dist
     "twine==7.0.0",
 ]

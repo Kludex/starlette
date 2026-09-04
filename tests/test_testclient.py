@@ -490,3 +490,26 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
+
+
+def test_import_does_not_emit_anyio_deprecation_warning() -> None:
+    """Importing starlette.testclient must not emit anyio's deprecation warning.
+
+    anyio 4.15.0 turned ``anyio.abc.BlockingPortal`` into a deprecated alias for
+    ``anyio.from_thread.BlockingPortal``. testclient.py referenced the alias at
+    import time, so merely importing the module raised a DeprecationWarning. We
+    import in a fresh subprocess and promote only anyio's DeprecationWarnings to
+    errors, so an unrelated deprecation from another dependency cannot make this
+    check spuriously fail.
+    """
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-W", "error::DeprecationWarning:anyio", "-c", "import starlette.testclient"],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "BlockingPortal alias is deprecated" not in result.stderr

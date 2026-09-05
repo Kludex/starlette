@@ -44,7 +44,9 @@ class CORSMiddleware:
         if expose_headers:
             simple_headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
 
-        preflight_headers: dict[str, str] = {"Vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"}  # noqa: E501  # fmt: skip
+        preflight_headers: dict[str, str] = {
+            "Vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"  # noqa: E501  # fmt: skip
+        }
         if not preflight_explicit_allow_origin:
             preflight_headers["Access-Control-Allow-Origin"] = "*"
         preflight_headers.update(

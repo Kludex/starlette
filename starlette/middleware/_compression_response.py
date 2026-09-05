@@ -85,8 +85,10 @@ class CompressionResponder:
                             "body": b"" if scope.get("method") == "HEAD" else b"Not Acceptable",
                         }
                     )
-                    cancel_scope.cancel()
-                    await anyio.lowlevel.checkpoint()
+                    if message.get("more_body", False):
+                        cancel_scope.cancel()
+                        await anyio.lowlevel.checkpoint()
+                    return
                 else:
                     if plan.encoding == "identity" or not body_allowed:
                         compress = None

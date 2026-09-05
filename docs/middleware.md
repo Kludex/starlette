@@ -432,13 +432,15 @@ The final decision happens after your application produces its response.
 An acceptable, already-encoded response passes through even when the middleware cannot produce that encoding itself.
 If the client excludes `identity`, eligible bodies are compressed even below `minimum_size`.
 If the response cannot be served with an accepted encoding, the middleware returns `406 Not Acceptable`.
-It cancels the rejected response so streaming producers can clean up without continuing to generate unused content.
+It cancels unfinished rejected streams so producers can clean up without continuing to generate unused content.
+Completed responses can run their background tasks after the `406` is sent.
 Disabling all compressors makes the middleware pass through requests.
 
 ### Response handling
 
-The middleware adds `Vary: Accept-Encoding` to responses eligible for compression, including those sent
-without compression because of the client's preferences. It preserves existing `Vary` values.
+The middleware adds `Vary: Accept-Encoding` whenever encoding negotiation can change the response.
+This includes small bodies, already-encoded content, and excluded responses that other encoding preferences would reject.
+It preserves existing `Vary` values.
 For compressed standard responses, it updates `Content-Length`. For compressed streaming responses, it removes that header.
 It weakens strong `ETag` values when compressing a response, so the same strong validator cannot identify
 both compressed and uncompressed bytes. Existing weak validators are preserved.

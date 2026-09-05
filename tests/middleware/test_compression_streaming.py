@@ -115,6 +115,6 @@ async def test_pathsend(encoding: str) -> None:
         {"type": "http", "headers": [(b"accept-encoding", encoding.encode())]}, receive, send
     )
     assert events == [
-        {"type": "http.response.start", "status": 200, "headers": []},
+        {"type": "http.response.start", "status": 200, "headers": [(b"vary", b"Accept-Encoding")]},
         {"type": "http.response.pathsend", "path": "/example.txt"},
     ]

@@ -31,21 +31,26 @@ def prepare_response(
         return CompressionPlan("identity", False)
 
     existing_encoding = headers.get("content-encoding")
+    media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
+    media_types = {media_type, media_type.partition("/")[0] + "/*"}
+    eligible = (
+        existing_encoding is None
+        and status != 206
+        and media_types.isdisjoint(exclude_content_types)
+        and message["type"] == "http.response.body"
+    )
+    large_enough = len(message.get("body", b"")) >= minimum_size or message.get("more_body", False)
+    if accepts is not None or (eligible and (large_enough or metadata_only)):
+        vary = {value.strip().lower() for value in headers.get("vary", "").split(",")}
+        if not vary.intersection({"*", "accept-encoding"}):
+            headers.add_vary_header("Accept-Encoding")
+
     if existing_encoding is not None:
         accepted = accepts is None or all(accepts(coding.strip().lower()) for coding in existing_encoding.split(","))
         return CompressionPlan("identity" if accepted else None, body_allowed)
 
-    media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
-    media_types = {media_type, media_type.partition("/")[0] + "/*"}
-    eligible = (
-        status != 206 and media_types.isdisjoint(exclude_content_types) and message["type"] == "http.response.body"
-    )
     identity_allowed = accepts is None or accepts("identity")
-    large_enough = len(message.get("body", b"")) >= minimum_size or message.get("more_body", False)
     if eligible and (large_enough or metadata_only or not identity_allowed):
-        vary = {value.strip().lower() for value in headers.get("vary", "").split(",")}
-        if not vary.intersection({"*", "accept-encoding"}):
-            headers.add_vary_header("Accept-Encoding")
         selected = encoding
     else:
         selected = "identity"

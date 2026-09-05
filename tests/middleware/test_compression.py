@@ -94,7 +94,7 @@ async def test_bypass(encoding: str, size: int, status: int, headers: dict[str, 
     assert response.text == "x" * size
     assert response.headers.get("content-encoding") == headers.get("content-encoding")
     assert int(response.headers["content-length"]) == size
-    assert "vary" not in response.headers
+    assert response.headers["vary"] == "Accept-Encoding"
 
 
 @pytest.mark.parametrize("encoding", ["gzip", "zstd", "br"])

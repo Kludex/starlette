@@ -13,7 +13,7 @@ from opentelemetry.trace import SpanKind, StatusCode
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware, OpenTelemetryResponder
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import BaseRoute, Host, Match, Mount, Route, Router, WebSocketRoute
@@ -53,6 +53,16 @@ def test_noop_provider_skips_instrumentation(
     app = Starlette(routes=[Route("/", homepage)], middleware=[Middleware(OpenTelemetryMiddleware)])
 
     assert test_client_factory(app).get("/").status_code == 200
+
+
+def test_responder_supports_existing_constructor(
+    monkeypatch: pytest.MonkeyPatch,
+    test_client_factory: TestClientFactory,
+) -> None:
+    monkeypatch.setattr(trace, "get_tracer_provider", trace.NoOpTracerProvider)
+    app = Starlette(routes=[Route("/", homepage)])
+
+    assert test_client_factory(OpenTelemetryResponder(app, ())).get("/").status_code == 200
 
 
 @pytest.mark.parametrize(
@@ -161,7 +171,102 @@ def test_http_span_uses_route_and_semantic_attributes(
     assert span.attributes["server.port"] == 80
     assert span.attributes["network.protocol.version"] == "1.1"
     assert span.attributes["user_agent.original"] == "testclient"
+    assert "http.request.header.user-agent" not in span.attributes
+    assert "http.response.header.content-type" not in span.attributes
     assert span.status.status_code == StatusCode.UNSET
+
+
+@pytest.mark.parametrize(
+    "capture_headers",
+    [[r"x-request-id", r"x-response-id", r"x-extra-.*"], r"x-(?:request-id|response-id|extra-.*)"],
+)
+def test_http_span_captures_selected_headers(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+    capture_headers: str | list[str],
+) -> None:
+    _, exporter = tracer_provider
+
+    def endpoint(request: Request) -> PlainTextResponse:
+        response = PlainTextResponse("Hello, world!")
+        response.raw_headers.extend(
+            [
+                (b"x-response-id", b"one"),
+                (b"x-response-id", b"two"),
+                (b"x-extra-response", b"three"),
+                (b"x-ignored-response", b"four"),
+            ]
+        )
+        return response
+
+    app = Starlette(
+        routes=[Route("/", endpoint)],
+        middleware=[
+            Middleware(
+                OpenTelemetryMiddleware,
+                capture_headers=capture_headers,
+            )
+        ],
+    )
+
+    response = test_client_factory(app).get(
+        "/",
+        headers=[
+            ("x-request-id", "one"),
+            ("x-request-id", "two"),
+            ("x-extra-request", "three"),
+            ("authorization", "secret"),
+        ],
+    )
+
+    assert response.status_code == 200
+    span = get_span(exporter)
+    assert span.attributes is not None
+    assert span.attributes["http.request.header.x-request-id"] == ("one", "two")
+    assert span.attributes["http.request.header.x-extra-request"] == ("three",)
+    assert "http.request.header.authorization" not in span.attributes
+    assert span.attributes["http.response.header.x-response-id"] == ("one", "two")
+    assert span.attributes["http.response.header.x-extra-response"] == ("three",)
+    assert "http.response.header.x-ignored-response" not in span.attributes
+
+
+@pytest.mark.parametrize("sanitize_headers", [[r"Authorization", r"cookie"], r"Authorization|cookie"])
+def test_http_span_captures_all_headers(
+    test_client_factory: TestClientFactory,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+    sanitize_headers: str | list[str],
+) -> None:
+    _, exporter = tracer_provider
+
+    def endpoint(request: Request) -> PlainTextResponse:
+        response = PlainTextResponse("Hello, world!")
+        response.raw_headers.extend([(b"set-cookie", b"session=one"), (b"set-cookie", b"session=two")])
+        return response
+
+    app = Starlette(
+        routes=[Route("/", endpoint)],
+        middleware=[
+            Middleware(
+                OpenTelemetryMiddleware,
+                capture_headers=True,
+                sanitize_headers=sanitize_headers,
+            )
+        ],
+    )
+
+    response = test_client_factory(app).get(
+        "/",
+        headers={"authorization": "Bearer secret", "cookie": "session=secret", "x-request-id": "one"},
+    )
+
+    assert response.status_code == 200
+    span = get_span(exporter)
+    assert span.attributes is not None
+    assert span.attributes["http.request.header.x-request-id"] == ("one",)
+    assert span.attributes["http.request.header.authorization"] == ("[REDACTED]",)
+    assert span.attributes["http.request.header.cookie"] == ("[REDACTED]",)
+    assert span.attributes["http.response.header.content-type"] == ("text/plain; charset=utf-8",)
+    assert span.attributes["http.response.header.set-cookie"] == ("[REDACTED]", "[REDACTED]")
 
 
 def test_http_span_uses_nested_route(

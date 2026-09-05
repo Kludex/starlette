@@ -135,6 +135,52 @@ app = Starlette(
 )
 ```
 
+### Capture headers
+
+Pass a regular expression or a sequence of regular expressions in `capture_headers`. A string is treated
+as one expression. The same patterns apply to request and response headers. Capture patterns must match
+the complete header name and are case-insensitive. Repeated header values are preserved.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world!", headers={"x-response-id": "response-123"})
+
+
+app = Starlette(
+    routes=[Route("/", homepage)],
+    middleware=[
+        Middleware(
+            OpenTelemetryMiddleware,
+            capture_headers=[r"x-request-id", r"x-response-id", r"authorization", r".*cookie"],
+            sanitize_headers=[r"authorization", r"cookie"],
+        )
+    ],
+)
+```
+
+OpenTelemetry normalizes header names to lowercase in attribute keys. For example, `X-Request-ID`
+uses `http.request.header.x-request-id`, and `X-Response-ID` uses
+`http.response.header.x-response-id`.
+
+Pass `capture_headers=True` to capture every request and response header.
+
+Pass a regular expression or a sequence of regular expressions in `sanitize_headers`. Sanitization
+patterns match any part of a captured header name. For example, `cookie` sanitizes both `cookie` and
+`set-cookie`.
+
+!!! warning "Captured headers may contain secrets"
+
+    Add every sensitive header to `sanitize_headers` when you capture it. Sanitized values are
+    exported as `[REDACTED]`.
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.

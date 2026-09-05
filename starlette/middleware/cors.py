@@ -44,10 +44,14 @@ class CORSMiddleware:
         if expose_headers:
             simple_headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
 
-        preflight_headers: dict[str, str] = {}
+        preflight_headers: dict[str, str] = {
+            "Vary": (
+                "Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+            )
+        }
         if preflight_explicit_allow_origin:
             # The origin value will be set in preflight_response() if it is allowed.
-            preflight_headers["Vary"] = "Origin"
+            preflight_headers["Vary"] = "Origin, " + preflight_headers["Vary"]
         else:
             preflight_headers["Access-Control-Allow-Origin"] = "*"
         preflight_headers.update(

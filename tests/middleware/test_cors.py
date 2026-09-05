@@ -42,7 +42,9 @@ def test_cors_allow_all(
     assert response.headers["access-control-allow-origin"] == "https://example.org"
     assert response.headers["access-control-allow-headers"] == "X-Example"
     assert response.headers["access-control-allow-credentials"] == "true"
-    assert response.headers["vary"] == "Origin"
+    assert response.headers["vary"] == (
+        "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+    )
 
     # Test standard response
     headers = {"Origin": "https://example.org"}
@@ -104,7 +106,9 @@ def test_cors_allow_all_except_credentials(
     assert response.headers["access-control-allow-origin"] == "*"
     assert response.headers["access-control-allow-headers"] == "X-Example"
     assert "access-control-allow-credentials" not in response.headers
-    assert "vary" not in response.headers
+    assert response.headers["vary"] == (
+        "Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+    )
 
     # Test standard response
     headers = {"Origin": "https://example.org"}
@@ -201,6 +205,9 @@ def test_cors_disallowed_preflight(
     response = client.options("/", headers=headers)
     assert response.status_code == 400
     assert response.text == "Disallowed CORS origin, method, headers"
+    assert response.headers["vary"] == (
+        "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+    )
     assert "access-control-allow-origin" not in response.headers
 
     # Bug specific test, https://github.com/Kludex/starlette/pull/1199
@@ -246,7 +253,9 @@ def test_preflight_allows_request_origin_if_origins_wildcard_and_credentials_all
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "https://example.org"
     assert response.headers["access-control-allow-credentials"] == "true"
-    assert response.headers["vary"] == "Origin"
+    assert response.headers["vary"] == (
+        "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+    )
 
 
 def test_cors_preflight_allow_all_methods(
@@ -270,6 +279,11 @@ def test_cors_preflight_allow_all_methods(
         response = client.options("/", headers=headers)
         assert response.status_code == 200
         assert method in response.headers["access-control-allow-methods"]
+
+    response = client.options("/", headers={"Origin": "https://example.org", "Access-Control-Request-Method": "CUSTOM"})
+    assert response.status_code == 400
+    assert response.text == "Disallowed CORS method"
+    assert "Access-Control-Request-Method" in response.headers["vary"].split(", ")
 
 
 def test_cors_allow_all_methods(

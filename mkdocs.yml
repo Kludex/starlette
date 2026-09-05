@@ -48,6 +48,7 @@ nav:
       - Lifespan: "lifespan.md"
       - Background Tasks: "background.md"
       - Server Push: "server-push.md"
+      - Early Hints: "early-hints.md"
       - Exceptions: "exceptions.md"
       - Configuration: "config.md"
       - Thread Pool: "threadpool.md"

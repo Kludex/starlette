@@ -30,7 +30,7 @@ class HTTPEndpoint:
         return self.dispatch().__await__()
 
     async def dispatch(self) -> None:
-        request = Request(self.scope, receive=self.receive)
+        request = Request(self.scope, receive=self.receive, send=self.send)
         handler_name = "get" if request.method == "HEAD" and not hasattr(self, "head") else request.method.lower()
 
         handler: Callable[[Request], Any]

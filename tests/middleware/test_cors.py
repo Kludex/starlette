@@ -1,6 +1,7 @@
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
@@ -66,6 +67,8 @@ def test_cors_allow_all(
     assert response.status_code == 200
     assert response.text == "Homepage"
     assert "access-control-allow-origin" not in response.headers
+    assert response.headers["vary"] == "Origin"
+    assert "access-control-allow-credentials" not in response.headers
 
 
 def test_cors_allow_all_except_credentials(
@@ -117,6 +120,7 @@ def test_cors_allow_all_except_credentials(
     assert response.status_code == 200
     assert response.text == "Homepage"
     assert "access-control-allow-origin" not in response.headers
+    assert response.headers["vary"] == "Origin"
 
 
 def test_cors_allow_specific_origin(
@@ -166,6 +170,7 @@ def test_cors_allow_specific_origin(
     assert response.status_code == 200
     assert response.text == "Homepage"
     assert "access-control-allow-origin" not in response.headers
+    assert response.headers["vary"] == "Origin"
 
 
 def test_cors_disallowed_preflight(
@@ -295,6 +300,11 @@ def test_cors_allow_all_methods(
         response = getattr(client, method)("/", headers=headers)
         assert response.status_code == 200
 
+    response = client.options("/", headers={"Access-Control-Request-Method": "GET"})
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["vary"] == "Origin"
+
 
 def test_cors_allow_origin_regex(
     test_client_factory: TestClientFactory,
@@ -421,9 +431,11 @@ def test_cors_vary_header_defaults_to_origin(test_client_factory: TestClientFact
     assert response.headers["vary"] == "Origin"
 
 
-def test_cors_vary_header_is_not_set_for_non_credentialed_request(test_client_factory: TestClientFactory) -> None:
+def test_cors_vary_header_is_set_for_non_credentialed_request(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> PlainTextResponse:
-        return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Accept-Encoding"})
+        response = PlainTextResponse("Homepage", headers={"Vary": "Accept-Encoding"})
+        response.headers.append("Vary", "Accept-Language")
+        return response
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
@@ -433,12 +445,14 @@ def test_cors_vary_header_is_not_set_for_non_credentialed_request(test_client_fa
 
     response = client.get("/", headers={"Origin": "https://someplace.org"})
     assert response.status_code == 200
-    assert response.headers["vary"] == "Accept-Encoding"
+    assert response.headers["vary"] == "Accept-Encoding, Accept-Language, Origin"
 
 
 def test_cors_vary_header_is_properly_set_for_credentialed_request(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> PlainTextResponse:
-        return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Accept-Encoding"})
+        response = PlainTextResponse("Homepage", headers={"Vary": "Accept-Encoding"})
+        response.headers.append("Vary", "Accept-Language")
+        return response
 
     app = Starlette(
         routes=[Route("/", endpoint=homepage)],
@@ -448,7 +462,7 @@ def test_cors_vary_header_is_properly_set_for_credentialed_request(test_client_f
 
     response = client.get("/", headers={"Origin": "https://someplace.org"})
     assert response.status_code == 200
-    assert response.headers["vary"] == "Accept-Encoding, Origin"
+    assert response.headers["vary"] == "Accept-Encoding, Accept-Language, Origin"
 
 
 def test_cors_vary_header_is_properly_set_when_allow_origins_is_not_wildcard(
@@ -486,6 +500,7 @@ def test_cors_allowed_origin_does_not_leak_between_requests(test_client_factory:
 
     response = client.get("/", headers={"Origin": "https://other.org"})
     assert "access-control-allow-origin" not in response.headers
+    assert response.headers["vary"] == "Origin"
 
     response = client.get("/", headers={"Origin": "https://example.org"})
     assert response.headers["access-control-allow-origin"] == "https://example.org"
@@ -564,3 +579,26 @@ def test_cors_private_network_access_disallowed(test_client_factory: TestClientF
     assert response.status_code == 400
     assert response.text == "Disallowed CORS private-network"
     assert "access-control-allow-private-network" not in response.headers
+
+
+def test_cors_vary_origin_with_gzip(test_client_factory: TestClientFactory) -> None:
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", headers={"Vary": "Accept-Language"})
+
+    app = GZipMiddleware(
+        CORSMiddleware(Starlette(routes=[Route("/", homepage)]), allow_origins=["https://allowed.example"]),
+        minimum_size=0,
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"Origin": "https://allowed.example", "Accept-Encoding": "gzip"})
+
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.headers["access-control-allow-origin"] == "https://allowed.example"
+    assert {value.strip() for value in response.headers["vary"].split(",")} == {
+        "Accept-Language",
+        "Accept-Encoding",
+        "Origin",
+    }

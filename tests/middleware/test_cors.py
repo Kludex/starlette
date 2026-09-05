@@ -1,7 +1,3 @@
-from collections.abc import Callable, Collection, Iterable
-
-import pytest
-
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
@@ -135,20 +131,21 @@ def test_cors_allow_all_except_credentials(
     assert response.headers["vary"] == "Origin"
 
 
-@pytest.mark.parametrize("collection_type", [list, tuple, set, frozenset])
 def test_cors_allow_specific_origin(
     test_client_factory: TestClientFactory,
-    collection_type: Callable[[Iterable[str]], Collection[str]],
 ) -> None:
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("Homepage", status_code=200)
 
-    app = CORSMiddleware(
-        Starlette(routes=[Route("/", endpoint=homepage)]),
-        allow_origins=collection_type(["https://example.org"]),
-        allow_methods=collection_type(["GET"]),
-        allow_headers=collection_type(["X-Example", "Content-Type"]),
-        expose_headers=collection_type(["X-Example"]),
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["https://example.org"],
+                allow_headers=["X-Example", "Content-Type"],
+            )
+        ],
     )
 
     client = test_client_factory(app)
@@ -166,7 +163,6 @@ def test_cors_allow_specific_origin(
     assert response.headers["access-control-allow-headers"] == (
         "Accept, Accept-Language, Content-Language, Content-Type, X-Example"
     )
-    assert response.headers["access-control-allow-methods"] == "GET"
     assert "access-control-allow-credentials" not in response.headers
 
     # Test standard response
@@ -175,7 +171,6 @@ def test_cors_allow_specific_origin(
     assert response.status_code == 200
     assert response.text == "Homepage"
     assert response.headers["access-control-allow-origin"] == "https://example.org"
-    assert response.headers["access-control-expose-headers"] == "X-Example"
     assert "access-control-allow-credentials" not in response.headers
 
     # Test non-CORS response

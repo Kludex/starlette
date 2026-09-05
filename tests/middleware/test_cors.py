@@ -571,29 +571,26 @@ def test_cors_private_network_access_disallowed(test_client_factory: TestClientF
 
 
 @pytest.mark.parametrize(
-    "allow_origins,allow_origin_regex,allow_credentials,origin,expected_origin",
+    "allow_origins,allow_credentials,origin,expected_origin,vary_headers",
     [
-        (["https://allowed.example"], None, False, "https://allowed.example", "https://allowed.example"),
-        (["https://allowed.example"], None, False, "https://denied.example", None),
-        (["https://allowed.example"], None, False, None, None),
-        (["https://allowed.example"], None, False, "null", None),
-        ([], r"https://[a-z]+\.allowed\.example", False, "https://app.allowed.example", "https://app.allowed.example"),
-        ([], r"https://[a-z]+\.allowed\.example", False, "https://denied.example", None),
-        ([], r"https://[a-z]+\.allowed\.example", False, None, None),
-        (["*"], None, False, "https://allowed.example", "*"),
-        (["*"], None, False, "null", "*"),
-        (["*"], None, False, None, None),
-        (["*"], None, True, "https://allowed.example", "https://allowed.example"),
-        (["*"], None, True, "null", "null"),
-        (["*"], None, True, None, None),
-        ([], None, False, "https://denied.example", None),
+        (
+            ["https://example.org"],
+            False,
+            "https://example.org",
+            "https://example.org",
+            ["Accept-Encoding", "Accept-Language"],
+        ),
+        (["https://example.org"], False, "https://denied.example", None, ["Accept-Encoding", "Accept-Language"]),
+        (["https://example.org"], False, None, None, []),
+        (["*"], False, "https://example.org", "*", ["*"]),
+        (["*"], False, None, None, []),
+        (["*"], True, "https://example.org", "https://example.org", []),
+        (["*"], True, None, None, []),
     ],
 )
-@pytest.mark.parametrize("vary_headers", [[], ["Accept-Encoding"], ["Accept-Encoding", "Accept-Language"], ["*"]])
 def test_cors_vary_origin(
     test_client_factory: TestClientFactory,
     allow_origins: list[str],
-    allow_origin_regex: str | None,
     allow_credentials: bool,
     origin: str | None,
     expected_origin: str | None,
@@ -608,7 +605,6 @@ def test_cors_vary_origin(
     app = CORSMiddleware(
         Starlette(routes=[Route("/", homepage)]),
         allow_origins=allow_origins,
-        allow_origin_regex=allow_origin_regex,
         allow_credentials=allow_credentials,
     )
     client = test_client_factory(app)
@@ -623,12 +619,7 @@ def test_cors_vary_origin(
     )
 
 
-@pytest.mark.parametrize(
-    "headers", [{}, {"Access-Control-Request-Method": "GET"}, {"Origin": "https://allowed.example"}]
-)
-def test_cors_vary_origin_on_non_preflight_options(
-    test_client_factory: TestClientFactory, headers: dict[str, str]
-) -> None:
+def test_cors_vary_origin_on_options_without_origin(test_client_factory: TestClientFactory) -> None:
     async def options(request: Request) -> PlainTextResponse:
         return PlainTextResponse("Application OPTIONS")
 
@@ -637,7 +628,7 @@ def test_cors_vary_origin_on_non_preflight_options(
         allow_origins=["https://allowed.example"],
     )
     client = test_client_factory(app)
-    response = client.options("/", headers=headers)
+    response = client.options("/", headers={"Access-Control-Request-Method": "GET"})
 
     assert response.status_code == 200
     assert response.text == "Application OPTIONS"

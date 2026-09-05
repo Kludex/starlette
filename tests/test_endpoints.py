@@ -1,12 +1,15 @@
 from collections.abc import Iterator
+from typing import Literal
 
 import pytest
 
+from starlette import status
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router
 from starlette.testclient import TestClient
+from starlette.types import Message
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
@@ -172,6 +175,73 @@ def test_websocket_endpoint_on_default(test_client_factory: TestClientFactory) -
         websocket.send_text("Hello, world!")
         _text = websocket.receive_text()
         assert _text == "Message text was: Hello, world!"
+
+
+def test_websocket_endpoint_on_default_empty_text(
+    test_client_factory: TestClientFactory,
+) -> None:
+    class WebSocketApp(WebSocketEndpoint):
+        encoding = None
+
+        async def on_receive(self, websocket: WebSocket, data: str) -> None:
+            await websocket.send_text(f"Message text was: {data!r}")
+
+    client = test_client_factory(WebSocketApp)
+    with client.websocket_connect("/ws") as websocket:
+        websocket.send_text("")
+        _text = websocket.receive_text()
+        assert _text == "Message text was: ''"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "encoding,message,expected_error",
+    [
+        (
+            "text",
+            {"type": "websocket.receive", "text": None, "bytes": b"Hello, world!"},
+            "Expected text websocket messages, but got bytes",
+        ),
+        (
+            "bytes",
+            {"type": "websocket.receive", "bytes": None, "text": "Hello, world!"},
+            "Expected bytes websocket messages, but got text",
+        ),
+    ],
+)
+async def test_websocket_endpoint_encoding_mismatch_with_explicit_none(
+    encoding: Literal["text", "bytes"],
+    message: Message,
+    expected_error: str,
+) -> None:
+    # The ASGI spec allows servers to send both `text` and `bytes` with the unused one set
+    # to `None` ("Optional; if missing, it is equivalent to None"). Hypercorn always does
+    # this, so the encoding check must treat an explicit `None` like a missing key.
+    class WebSocketApp(WebSocketEndpoint):
+        pass
+
+    WebSocketApp.encoding = encoding
+
+    received = [
+        {"type": "websocket.connect"},
+        message,
+        {"type": "websocket.disconnect", "code": status.WS_1000_NORMAL_CLOSURE},
+    ]
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        return received.pop(0)
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    with pytest.raises(RuntimeError, match=expected_error):
+        await WebSocketApp({"type": "websocket", "path": "/ws"}, receive, send)
+
+    assert sent == [
+        {"type": "websocket.accept", "subprotocol": None, "headers": []},
+        {"type": "websocket.close", "code": status.WS_1003_UNSUPPORTED_DATA, "reason": ""},
+    ]
 
 
 def test_websocket_endpoint_on_disconnect(

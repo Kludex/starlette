@@ -272,4 +272,10 @@ async def test_app() -> None:
         assert r.text == "Hello World!"
 ```
 
+!!! warning "A pytest event loop fixture does not configure TestClient"
+
+    Defining an `event_loop` fixture does not make `TestClient` use that loop.
+    For synchronous tests, create and close resources in [lifespan](lifespan.md#lifespan-state)
+    and use [`TestClient` as a context manager](lifespan.md#running-lifespan-in-tests).
+
 [httpx2.AsyncClient]: https://www.python-httpx.org/advanced/#calling-into-python-web-apps

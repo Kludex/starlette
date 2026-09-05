@@ -512,6 +512,24 @@ def test_delete_cookie(test_client_factory: TestClientFactory) -> None:
     assert not response.cookies.get("mycookie")
 
 
+@pytest.mark.parametrize("partitioned", [False, True])
+def test_delete_cookie_partitioned(partitioned: bool) -> None:
+    response = Response()
+    if partitioned and sys.version_info < (3, 14):  # pragma: no cover - Requires Python below 3.14.
+        with pytest.raises(ValueError, match="Partitioned cookies are only supported in Python 3.14 and above"):
+            response.delete_cookie("mycookie", secure=True, samesite="none", partitioned=partitioned)
+        assert "set-cookie" not in response.headers
+        return
+
+    response.delete_cookie("mycookie", secure=True, samesite="none", partitioned=partitioned)
+
+    header = response.headers["set-cookie"]
+    assert ("Partitioned" in header) is partitioned
+    cookie = SimpleCookie(header)["mycookie"]
+    assert cookie["max-age"] == "0"
+    assert cookie["secure"] is True
+
+
 def test_populate_headers(test_client_factory: TestClientFactory) -> None:
     app = Response(content="hi", headers={}, media_type="text/html")
     client = test_client_factory(app)

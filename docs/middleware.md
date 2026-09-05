@@ -231,6 +231,7 @@ The following arguments are supported:
 * `path` - The path set for the session cookie. Defaults to `'/'`.
 * `https_only` - Indicate that the `"Secure"` flag should be set (can be used with HTTPS only). Defaults to `False`. Set this to `True` in production to ensure the session cookie is only sent over HTTPS.
 * `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains ([reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute)).
+* `partitioned` - Set the `Partitioned` flag when you write or clear the session cookie. Defaults to `False`. Set `https_only=True` when you enable it. For cross-site embeds, also set `same_site="none"`. This gives your embedded app a separate session for each top-level site ([reference](https://developer.mozilla.org/en-US/docs/Web/Privacy/Guides/Third-party_cookies/Partitioned_cookies)).
 
 
 ```python
@@ -329,6 +330,9 @@ header from bypassing the limit.
 
 ## CompressionMiddleware
 
+Use `CompressionMiddleware` to compress HTTP responses with gzip, Zstandard, or Brotli.
+You can use it with both standard and streaming responses.
+
 ```python
 from __future__ import annotations
 
@@ -350,8 +354,6 @@ app = Starlette(
 )
 ```
 
-Use `CompressionMiddleware` to compress HTTP responses with gzip, Zstandard, or Brotli.
-You can use it with both standard and streaming responses.
 Gzip is enabled by default. Zstandard and Brotli are enabled when their implementations are available.
 Python 3.14 includes Zstandard in the standard library. On older Python versions, install the optional backport:
 
@@ -366,6 +368,9 @@ pip install 'starlette[brotli]'
 ```
 
 ### Configuration
+
+You can disable an algorithm with `False`, or override its compression level with a dictionary.
+`CompressionConfig` is the exported `TypedDict` type for these dictionaries.
 
 ```python
 from __future__ import annotations
@@ -396,9 +401,6 @@ app = Starlette(
     ],
 )
 ```
-
-You can disable an algorithm with `False`, or override its compression level with a dictionary.
-`CompressionConfig` is the exported `TypedDict` type for these dictionaries.
 
 | Argument | Default | Behavior |
 | --- | --- | --- |
@@ -466,6 +468,9 @@ Applications must then send ordinary body messages, because zero-copy file bytes
 
 ### Custom compressors
 
+Supply a factory with no arguments. It must return a callable satisfying the `Compressor` protocol:
+`compress(body: bytes, more_body: bool, /) -> bytes`.
+
 ```python
 from __future__ import annotations
 
@@ -491,8 +496,6 @@ app = CompressionMiddleware(
 )
 ```
 
-Supply a factory with no arguments. It must return a callable satisfying the `Compressor` protocol:
-`compress(body: bytes, more_body: bool, /) -> bytes`.
 The middleware creates one compressor per compressed response, only when it needs the first compressed chunk.
 This keeps state separate between concurrent requests and avoids allocations for excluded responses.
 

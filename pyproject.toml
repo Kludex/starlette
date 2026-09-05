@@ -32,7 +32,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "anyio>=3.6.2,<5",
+    "anyio>=4.0.0,<5",
     "typing_extensions>=4.10.0; python_version < '3.13'",
 ]
 
@@ -55,23 +55,22 @@ dev = [
     "starlette[full,zstd,brotli]",
     "httpx2[zstd]>=2.0.0",
     "coverage>=7.8.2",
-    "importlib-metadata==9.0.0",
-    # Pinned to 2.1.0: mypy 2.2+ no longer honors the tuple return type of `create_memory_object_stream.__new__`.
-    "mypy==2.1.0",
-    "opentelemetry-sdk==1.44.0",
+    "importlib-metadata>=9.0.1",
+    "mypy>=2.3.1",
+    "opentelemetry-sdk>=1.44.0",
     "pytest-codspeed>=4.1.1",
-    "ruff==0.16.0",
-    "types-PyYAML==6.0.12.20250516",
-    "brotli-stubs==1.2.0",
-    "pytest==9.1.1",
-    "trio==0.33.0",
+    "ruff>=0.16.5",
+    "types-PyYAML>=6.0.12.20250516",
+    "brotli-stubs>=1.2.0",
+    "pytest>=9.1.1",
+    "trio>=0.34.0",
     # Check dist
-    "twine==7.0.0",
+    "twine>=7.0.0",
 ]
 docs = [
-    "black==26.5.1",
     "mkdocstrings>=1.0.2",
     "mkdocstrings-python>=2.0.1",
+    "ruff>=0.16.5",
     "zensical>=0.0.19",
 ]
 

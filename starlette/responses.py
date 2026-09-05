@@ -19,7 +19,7 @@ import anyio
 import anyio.to_thread
 
 from starlette._utils import create_collapsing_task_group
-from starlette.background import BackgroundTask
+from starlette.background import BackgroundTask, run_or_defer_background
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
 from starlette.requests import ClientDisconnect
@@ -168,8 +168,7 @@ class Response:
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         await send({"type": "http.response.body", "body": self.body})
 
-        if self.background is not None:
-            await self.background()
+        await run_or_defer_background(send, self.background)
 
 
 class HTMLResponse(Response):
@@ -260,8 +259,7 @@ class StreamingResponse(Response):
         if scope["type"] == "websocket":
             send = self._wrap_websocket_denial_send(send)
             await self.stream_response(send)
-            if self.background is not None:
-                await self.background()
+            await run_or_defer_background(send, self.background)
             return
 
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
@@ -281,8 +279,7 @@ class StreamingResponse(Response):
                 task_group.start_soon(wrap, partial(self.stream_response, send))
                 await wrap(partial(self.listen_for_disconnect, receive))
 
-        if self.background is not None:
-            await self.background()
+        await run_or_defer_background(send, self.background)
 
 
 class MalformedRangeHeader(Exception):
@@ -383,8 +380,7 @@ class FileResponse(Response):
             else:
                 await self._handle_multiple_ranges(send, ranges, stat_result.st_size, send_header_only)
 
-        if self.background is not None:
-            await self.background()
+        await run_or_defer_background(send, self.background)
 
     async def _handle_simple(self, send: Send, send_header_only: bool, send_pathsend: bool) -> None:
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})

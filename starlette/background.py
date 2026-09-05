@@ -5,6 +5,7 @@ from typing import Any, ParamSpec
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
+from starlette.types import Send
 
 P = ParamSpec("P")
 
@@ -34,3 +35,20 @@ class BackgroundTasks(BackgroundTask):
     async def __call__(self) -> None:
         for task in self.tasks:
             await task()
+
+
+async def run_or_defer_background(send: Send, background: BackgroundTask | None) -> None:
+    if background is None:
+        return
+    defer = getattr(send, "defer_background", None)
+    if defer is not None:
+        defer(background)
+    else:
+        await background()
+
+
+def forward_background_deferral(send: Send, wrapped_send: Send) -> Send:
+    defer_background = getattr(send, "defer_background", None)
+    if defer_background is not None:
+        wrapped_send.defer_background = defer_background  # type: ignore[attr-defined]
+    return wrapped_send

@@ -6,6 +6,7 @@ from typing import Any, TypeVar
 import anyio
 
 from starlette._utils import create_collapsing_task_group
+from starlette.background import BackgroundTask, run_or_defer_background
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -15,6 +16,26 @@ DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Respon
 BodyStreamGenerator = AsyncGenerator[bytes | MutableMapping[str, Any], None]
 AsyncContentStream = AsyncIterable[str | bytes | memoryview | MutableMapping[str, Any]]
 T = TypeVar("T")
+
+
+class _BackgroundDeferringSend:
+    def __init__(self, send: Send) -> None:
+        self._send = send
+        self.background: BackgroundTask | None = None
+        self.app_complete = anyio.Event()
+
+    async def __call__(self, message: Message) -> None:
+        try:
+            await self._send(message)
+        except anyio.BrokenResourceError:
+            # recv_stream has been closed, i.e. response_sent has been set.
+            return
+
+    def defer_background(self, background: BackgroundTask) -> None:
+        self.background = background
+
+    def mark_app_complete(self) -> None:
+        self.app_complete.set()
 
 
 class _CachedRequest(Request):
@@ -129,21 +150,19 @@ class BaseHTTPMiddleware:
 
                 return message
 
-            async def send_no_error(message: Message) -> None:
-                try:
-                    await send_stream.send(message)
-                except anyio.BrokenResourceError:
-                    # recv_stream has been closed, i.e. response_sent has been set.
-                    return
+            deferring_send = _BackgroundDeferringSend(send_stream.send)
 
             async def coro() -> None:
                 nonlocal app_exc
 
-                with send_stream:
-                    try:
-                        await self.app(scope, receive_or_disconnect, send_no_error)
-                    except Exception as exc:
-                        app_exc = exc
+                try:
+                    with send_stream:
+                        try:
+                            await self.app(scope, receive_or_disconnect, deferring_send)
+                        except Exception as exc:
+                            app_exc = exc
+                finally:
+                    deferring_send.mark_app_complete()
 
             task_group.start_soon(coro)
 
@@ -182,7 +201,12 @@ class BaseHTTPMiddleware:
                     if not message.get("more_body", False):
                         break
 
-            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
+            response = _StreamingResponse(
+                status_code=message["status"],
+                content=body_stream(),
+                info=info,
+                background_holder=deferring_send,
+            )
             response.raw_headers = message["headers"]
             return response
 
@@ -208,6 +232,7 @@ class _StreamingResponse(Response):
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         info: Mapping[str, Any] | None = None,
+        background_holder: _BackgroundDeferringSend | None = None,
     ) -> None:
         self.info = info
         self.body_iterator = content
@@ -215,6 +240,7 @@ class _StreamingResponse(Response):
         self.media_type = media_type
         self.init_headers(headers)
         self.background = None
+        self._background_holder = background_holder
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.info is not None:
@@ -239,5 +265,10 @@ class _StreamingResponse(Response):
         if should_close_body:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
 
-        if self.background:
+        if self.background is not None:
             await self.background()
+
+        if self._background_holder is not None:
+            await self._background_holder.app_complete.wait()
+            if self._background_holder.background is not None:
+                await run_or_defer_background(send, self._background_holder.background)

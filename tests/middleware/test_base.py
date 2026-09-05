@@ -412,6 +412,46 @@ async def test_do_not_block_on_background_tasks() -> None:
 
 
 @pytest.mark.anyio
+async def test_background_task_runs_after_response_sent_with_slow_client() -> None:
+    events: list[tuple[str, float]] = []
+
+    async def bg() -> None:
+        events.append(("background-done", anyio.current_time()))
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(bg))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        routes=[Route("/", homepage)],
+    )
+
+    scope = {
+        "type": "http",
+        "version": "3",
+        "method": "GET",
+        "path": "/",
+    }
+
+    async def receive() -> Message:
+        await anyio.sleep(3600)
+
+    async def send(message: Message) -> None:
+        events.append((message["type"], anyio.current_time()))
+        await anyio.sleep(0.05)
+
+    await app(scope, receive, send)
+
+    event_names = [name for name, _ in events]
+    bg_index = event_names.index("background-done")
+    final_body_index = max(i for i, name in enumerate(event_names) if name == "http.response.body")
+    assert bg_index > final_body_index
+
+
+@pytest.mark.anyio
 async def test_run_context_manager_exit_even_if_client_disconnects() -> None:
     # test for https://github.com/Kludex/starlette/issues/1678#issuecomment-1172916042
     response_complete = anyio.Event()

@@ -37,6 +37,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+brotli = ["brotli>=1.1.0"]
+zstd = ["backports.zstd>=1.0.0; python_version < '3.14'"]
 full = [
     "itsdangerous",
     "jinja2",
@@ -49,8 +51,8 @@ full = [
 
 [dependency-groups]
 dev = [
-    # We add starlette[full] so `uv sync` considers the extras.
-    "starlette[full]",
+    # We add starlette[full,zstd,brotli] so `uv sync` considers the extras.
+    "starlette[full,zstd,brotli]",
     "httpx2[zstd]>=2.0.0",
     "coverage>=7.8.2",
     "importlib-metadata>=9.0.1",
@@ -59,6 +61,7 @@ dev = [
     "pytest-codspeed>=4.1.1",
     "ruff>=0.16.5",
     "types-PyYAML>=6.0.12.20250516",
+    "brotli-stubs>=1.2.0",
     "pytest>=9.1.1",
     "trio>=0.34.0",
     # Check dist

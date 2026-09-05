@@ -1,4 +1,5 @@
-import sys
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator, MutableMapping
 from pathlib import Path
 from typing import Any
@@ -75,10 +76,6 @@ def test_websocket_query_params(test_client_factory: TestClientFactory) -> None:
         assert data == {"params": {"a": "abc", "b": "456"}}
 
 
-@pytest.mark.skipif(
-    any(module in sys.modules for module in ("brotli", "brotlicffi")),
-    reason='urllib3 includes "br" to the "accept-encoding" headers.',
-)
 def test_websocket_headers(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)
@@ -88,10 +85,10 @@ def test_websocket_headers(test_client_factory: TestClientFactory) -> None:
         await websocket.close()
 
     client = test_client_factory(app)
-    with client.websocket_connect("/") as websocket:
+    with client.websocket_connect("/", headers={"accept-encoding": "gzip"}) as websocket:
         expected_headers = {
             "accept": "*/*",
-            "accept-encoding": "gzip, deflate, zstd",
+            "accept-encoding": "gzip",
             "connection": "upgrade",
             "host": "testserver",
             "user-agent": "testclient",

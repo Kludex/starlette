@@ -65,9 +65,9 @@ dev = [
     "twine>=7.0.0",
 ]
 docs = [
-    "black>=26.5.1",
     "mkdocstrings>=1.0.2",
     "mkdocstrings-python>=2.0.1",
+    "ruff>=0.16.5",
     "zensical>=0.0.19",
 ]
 

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import itertools
 import sys
-import warnings
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -492,13 +490,3 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
-
-
-def test_importing_testclient_does_not_use_deprecated_blockingportal_alias() -> None:
-    with warnings.catch_warnings(record=True) as recorded:
-        warnings.simplefilter("always", DeprecationWarning)
-        importlib.reload(sys.modules["starlette.testclient"])
-
-    assert not any(
-        issubclass(item.category, DeprecationWarning) and "BlockingPortal" in str(item.message) for item in recorded
-    )

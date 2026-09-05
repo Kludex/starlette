@@ -235,15 +235,19 @@ May raise `starlette.websockets.WebSocketDisconnect`.
 
 ### Asynchronous tests
 
-Sometimes you will want to do async things outside of your application.
-For example, you might want to check the state of your database after calling your app
-using your existing async database client/infrastructure.
+`TestClient` runs your application on its own event loop in a background thread.
+Sharing async resources, such as database connections, with another loop can raise
+`RuntimeError: ... attached to a different loop`.
 
-For these situations, using `TestClient` is difficult because it creates its own event loop and async
-resources (like a database connection) often cannot be shared across event loops.
-The simplest way to work around this is to just make your entire test async and use an async client, like [httpx2.AsyncClient].
+!!! warning "A pytest event loop fixture does not configure TestClient"
 
-Here is an example of such a test:
+    Defining an `event_loop` fixture does not make `TestClient` use that loop.
+
+For synchronous tests, create and close resources in [lifespan](lifespan.md#lifespan-state)
+and use [`TestClient` as a context manager](lifespan.md#running-lifespan-in-tests).
+
+To share resources between your test and application, use an async test with
+[httpx2.AsyncClient] and `ASGITransport`, so both run on the same loop:
 
 ```python
 from httpx2 import AsyncClient, ASGITransport

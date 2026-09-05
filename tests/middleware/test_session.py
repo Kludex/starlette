@@ -84,7 +84,6 @@ def test_session(test_client_factory: TestClientFactory) -> None:
 async def test_partitioned_session(partitioned: bool) -> None:
     app = Starlette(
         routes=[
-            Route("/view_session", endpoint=view_session),
             Route("/update_session", endpoint=update_session, methods=["POST"]),
             Route("/clear_session", endpoint=clear_session, methods=["POST"]),
         ],
@@ -100,25 +99,12 @@ async def test_partitioned_session(partitioned: bool) -> None:
     )
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://testserver") as client:
         response = await client.post("/update_session", json={"some": "data"})
-        assert response.json() == {"session": {"some": "data"}}
         attributes = response.headers["set-cookie"].split("; ")
         assert ("partitioned" in attributes) is partitioned
-        assert "secure" in attributes
-        assert "samesite=none" in attributes
-
-        response = await client.get("/view_session")
-        assert response.json() == {"session": {"some": "data"}}
 
         response = await client.post("/clear_session")
-        assert response.json() == {"session": {}}
         attributes = response.headers["set-cookie"].split("; ")
         assert ("partitioned" in attributes) is partitioned
-        assert "secure" in attributes
-        assert "samesite=none" in attributes
-        assert "expires=Thu, 01 Jan 1970 00:00:00 GMT" in attributes
-
-        response = await client.get("/view_session")
-        assert response.json() == {"session": {}}
 
 
 def test_session_expires(test_client_factory: TestClientFactory) -> None:

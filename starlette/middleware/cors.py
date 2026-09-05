@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 import re
-from collections.abc import Sequence
+from collections.abc import Collection
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import PlainTextResponse, Response
@@ -16,13 +16,13 @@ class CORSMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        allow_origins: Sequence[str] = (),
-        allow_methods: Sequence[str] = ("GET",),
-        allow_headers: Sequence[str] = (),
+        allow_origins: Collection[str] = (),
+        allow_methods: Collection[str] = ("GET",),
+        allow_headers: Collection[str] = (),
         allow_credentials: bool = False,
         allow_origin_regex: str | None = None,
         allow_private_network: bool = False,
-        expose_headers: Sequence[str] = (),
+        expose_headers: Collection[str] = (),
         max_age: int = 600,
     ) -> None:
         if "*" in allow_methods:

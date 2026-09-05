@@ -107,8 +107,12 @@ def test_cors_allow_all_except_credentials(
     assert response.headers["access-control-allow-headers"] == "X-Example"
     assert "access-control-allow-credentials" not in response.headers
     assert response.headers["vary"] == (
-        "Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+        "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
     )
+
+    del headers["Origin"]
+    response = client.options("/", headers=headers)
+    assert response.status_code == 405
 
     # Test standard response
     headers = {"Origin": "https://example.org"}

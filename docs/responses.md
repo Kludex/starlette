@@ -60,7 +60,6 @@ response.delete_cookie("session", secure=True, samesite="none", partitioned=True
 ```
 
 Pass `partitioned=True` to expire the cookie in the current partition. It defaults to `False`.
-On Python below 3.14, passing `partitioned=True` raises `ValueError`.
 Use the same `path` and `domain` as the original cookie, within the same top-level site context.
 For cross-site requests, use `samesite="none"`.
 

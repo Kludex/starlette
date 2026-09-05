@@ -512,20 +512,25 @@ def test_delete_cookie(test_client_factory: TestClientFactory) -> None:
     assert not response.cookies.get("mycookie")
 
 
-def test_delete_cookie_partitioned(test_client_factory: TestClientFactory) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        response = Response("Hello, world!", media_type="text/plain")
-        response.delete_cookie(
-            "mycookie",
-            partitioned=True if sys.version_info >= (3, 14) else False,
-        )
-        await response(scope, receive, send)
+@pytest.mark.parametrize("partitioned", [False, True])
+def test_delete_cookie_partitioned(partitioned: bool) -> None:
+    response = Response()
+    if partitioned and sys.version_info < (3, 14):  # pragma: no cover - Requires Python below 3.14.
+        with pytest.raises(ValueError, match="Partitioned cookies are only supported in Python 3.14 and above"):
+            response.delete_cookie("mycookie", secure=True, samesite="none", partitioned=partitioned)
+        assert "set-cookie" not in response.headers
+        return
 
-    partitioned_text = "Partitioned" if sys.version_info >= (3, 14) else ""
+    response.delete_cookie("mycookie", secure=True, samesite="none", partitioned=partitioned)
 
-    client = test_client_factory(app)
-    response = client.get("/")
-    assert partitioned_text in response.headers["set-cookie"]
+    header = response.headers["set-cookie"]
+    assert ("Partitioned" in header) is partitioned
+    cookie = SimpleCookie(header)["mycookie"]
+    assert cookie.value == ""
+    assert cookie["max-age"] == "0"
+    assert cookie["expires"]
+    assert cookie["secure"] is True
+    assert cookie["samesite"] == "none"
 
 
 def test_populate_headers(test_client_factory: TestClientFactory) -> None:

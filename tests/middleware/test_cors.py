@@ -1,5 +1,4 @@
 import pytest
-from httpx2 import ASGITransport, AsyncClient
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -571,7 +570,6 @@ def test_cors_private_network_access_disallowed(test_client_factory: TestClientF
     assert "access-control-allow-private-network" not in response.headers
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize(
     "allow_origins,allow_origin_regex,allow_credentials,origin,expected_origin",
     [
@@ -592,7 +590,8 @@ def test_cors_private_network_access_disallowed(test_client_factory: TestClientF
     ],
 )
 @pytest.mark.parametrize("vary_headers", [[], ["Accept-Encoding"], ["Accept-Encoding", "Accept-Language"], ["*"]])
-async def test_cors_vary_origin(
+def test_cors_vary_origin(
+    test_client_factory: TestClientFactory,
     allow_origins: list[str],
     allow_origin_regex: str | None,
     allow_credentials: bool,
@@ -612,8 +611,8 @@ async def test_cors_vary_origin(
         allow_origin_regex=allow_origin_regex,
         allow_credentials=allow_credentials,
     )
-    async with AsyncClient(transport=ASGITransport(app), base_url="https://server.example") as client:
-        response = await client.get("/", headers={"Origin": origin} if origin is not None else {})
+    client = test_client_factory(app)
+    response = client.get("/", headers={"Origin": origin} if origin is not None else {})
 
     assert response.status_code == 200
     assert response.text == "Homepage"
@@ -624,11 +623,12 @@ async def test_cors_vary_origin(
     )
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize(
     "headers", [{}, {"Access-Control-Request-Method": "GET"}, {"Origin": "https://allowed.example"}]
 )
-async def test_cors_vary_origin_on_non_preflight_options(headers: dict[str, str]) -> None:
+def test_cors_vary_origin_on_non_preflight_options(
+    test_client_factory: TestClientFactory, headers: dict[str, str]
+) -> None:
     async def options(request: Request) -> PlainTextResponse:
         return PlainTextResponse("Application OPTIONS")
 
@@ -636,17 +636,16 @@ async def test_cors_vary_origin_on_non_preflight_options(headers: dict[str, str]
         Starlette(routes=[Route("/", options, methods=["OPTIONS"])]),
         allow_origins=["https://allowed.example"],
     )
-    async with AsyncClient(transport=ASGITransport(app), base_url="https://server.example") as client:
-        response = await client.options("/", headers=headers)
+    client = test_client_factory(app)
+    response = client.options("/", headers=headers)
 
     assert response.status_code == 200
     assert response.text == "Application OPTIONS"
     assert response.headers["vary"] == "Origin"
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize("cors_outermost", [True, False])
-async def test_cors_vary_origin_with_gzip(cors_outermost: bool) -> None:
+def test_cors_vary_origin_with_gzip(test_client_factory: TestClientFactory, cors_outermost: bool) -> None:
     async def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("Homepage", headers={"Vary": "Accept-Language"})
 
@@ -656,8 +655,8 @@ async def test_cors_vary_origin_with_gzip(cors_outermost: bool) -> None:
     else:
         app = GZipMiddleware(CORSMiddleware(app, allow_origins=["https://allowed.example"]), minimum_size=0)
 
-    async with AsyncClient(transport=ASGITransport(app), base_url="https://server.example") as client:
-        response = await client.get("/", headers={"Origin": "https://allowed.example", "Accept-Encoding": "gzip"})
+    client = test_client_factory(app)
+    response = client.get("/", headers={"Origin": "https://allowed.example", "Accept-Encoding": "gzip"})
 
     assert response.status_code == 200
     assert response.text == "Homepage"

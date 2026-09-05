@@ -1,9 +1,14 @@
+import pytest
+from httpx2 import ASGITransport, AsyncClient
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
+from starlette.types import ASGIApp
 from tests.types import TestClientFactory
 
 
@@ -421,7 +426,7 @@ def test_cors_vary_header_defaults_to_origin(test_client_factory: TestClientFact
     assert response.headers["vary"] == "Origin"
 
 
-def test_cors_vary_header_is_not_set_for_non_credentialed_request(test_client_factory: TestClientFactory) -> None:
+def test_cors_vary_header_is_set_for_non_credentialed_request(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Accept-Encoding"})
 
@@ -433,7 +438,7 @@ def test_cors_vary_header_is_not_set_for_non_credentialed_request(test_client_fa
 
     response = client.get("/", headers={"Origin": "https://someplace.org"})
     assert response.status_code == 200
-    assert response.headers["vary"] == "Accept-Encoding"
+    assert response.headers["vary"] == "Accept-Encoding, Origin"
 
 
 def test_cors_vary_header_is_properly_set_for_credentialed_request(test_client_factory: TestClientFactory) -> None:
@@ -564,3 +569,102 @@ def test_cors_private_network_access_disallowed(test_client_factory: TestClientF
     assert response.status_code == 400
     assert response.text == "Disallowed CORS private-network"
     assert "access-control-allow-private-network" not in response.headers
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "allow_origins,allow_origin_regex,allow_credentials,origin,expected_origin",
+    [
+        (["https://allowed.example"], None, False, "https://allowed.example", "https://allowed.example"),
+        (["https://allowed.example"], None, False, "https://denied.example", None),
+        (["https://allowed.example"], None, False, None, None),
+        (["https://allowed.example"], None, False, "null", None),
+        ([], r"https://[a-z]+\.allowed\.example", False, "https://app.allowed.example", "https://app.allowed.example"),
+        ([], r"https://[a-z]+\.allowed\.example", False, "https://denied.example", None),
+        ([], r"https://[a-z]+\.allowed\.example", False, None, None),
+        (["*"], None, False, "https://allowed.example", "*"),
+        (["*"], None, False, "null", "*"),
+        (["*"], None, False, None, None),
+        (["*"], None, True, "https://allowed.example", "https://allowed.example"),
+        (["*"], None, True, "null", "null"),
+        (["*"], None, True, None, None),
+        ([], None, False, "https://denied.example", None),
+    ],
+)
+@pytest.mark.parametrize("vary_headers", [[], ["Accept-Encoding"], ["Accept-Encoding", "Accept-Language"], ["*"]])
+async def test_cors_vary_origin(
+    allow_origins: list[str],
+    allow_origin_regex: str | None,
+    allow_credentials: bool,
+    origin: str | None,
+    expected_origin: str | None,
+    vary_headers: list[str],
+) -> None:
+    async def homepage(request: Request) -> PlainTextResponse:
+        response = PlainTextResponse("Homepage")
+        for vary in vary_headers:
+            response.headers.append("Vary", vary)
+        return response
+
+    app = CORSMiddleware(
+        Starlette(routes=[Route("/", homepage)]),
+        allow_origins=allow_origins,
+        allow_origin_regex=allow_origin_regex,
+        allow_credentials=allow_credentials,
+    )
+    async with AsyncClient(transport=ASGITransport(app), base_url="https://server.example") as client:
+        response = await client.get("/", headers={"Origin": origin} if origin is not None else {})
+
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert {value.strip() for value in response.headers["vary"].split(",")} == {*vary_headers, "Origin"}
+    assert response.headers.get("access-control-allow-origin") == expected_origin
+    assert response.headers.get("access-control-allow-credentials") == (
+        "true" if allow_credentials and origin is not None else None
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "headers", [{}, {"Access-Control-Request-Method": "GET"}, {"Origin": "https://allowed.example"}]
+)
+async def test_cors_vary_origin_on_non_preflight_options(headers: dict[str, str]) -> None:
+    async def options(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Application OPTIONS")
+
+    app = CORSMiddleware(
+        Starlette(routes=[Route("/", options, methods=["OPTIONS"])]),
+        allow_origins=["https://allowed.example"],
+    )
+    async with AsyncClient(transport=ASGITransport(app), base_url="https://server.example") as client:
+        response = await client.options("/", headers=headers)
+
+    assert response.status_code == 200
+    assert response.text == "Application OPTIONS"
+    assert response.headers["vary"] == "Origin"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("cors_outermost", [True, False])
+async def test_cors_vary_origin_with_gzip(cors_outermost: bool) -> None:
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", headers={"Vary": "Accept-Language"})
+
+    app: ASGIApp = Starlette(routes=[Route("/", homepage)])
+    if cors_outermost:
+        app = CORSMiddleware(GZipMiddleware(app, minimum_size=0), allow_origins=["https://allowed.example"])
+    else:
+        app = GZipMiddleware(CORSMiddleware(app, allow_origins=["https://allowed.example"]), minimum_size=0)
+
+    async with AsyncClient(transport=ASGITransport(app), base_url="https://server.example") as client:
+        response = await client.get("/", headers={"Origin": "https://allowed.example", "Accept-Encoding": "gzip"})
+
+    assert response.status_code == 200
+    assert response.text == "Homepage"
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.headers["access-control-allow-origin"] == "https://allowed.example"
+    assert {value.strip() for value in response.headers["vary"].split(",")} == {
+        "Accept-Language",
+        "Accept-Encoding",
+        "Origin",
+    }

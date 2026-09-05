@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -301,6 +301,30 @@ def test_router_add_route(client: TestClient) -> None:
     response = client.get("/func")
     assert response.status_code == 200
     assert response.text == "Hello, world!"
+
+
+def test_router_rebuilds_trie_after_routes_replaced(test_client_factory: TestClientFactory) -> None:
+    router = Router(routes=[Route("/first", endpoint=homepage), Route("/second", endpoint=homepage)])
+    client = test_client_factory(router)
+    assert client.get("/first").status_code == 200
+
+    router.routes[0] = Route("/replacement", endpoint=homepage)
+    assert client.get("/replacement").status_code == 200
+
+    router.routes.reverse()
+    assert client.get("/second").status_code == 200
+
+
+def test_router_handles_deep_paths(test_client_factory: TestClientFactory) -> None:
+    path = "/" + "/".join(["segment"] * 1100)
+    router = Router(routes=[Route(path, endpoint=homepage)])
+    assert test_client_factory(router).get(path).status_code == 200
+
+
+def test_mount_does_not_match_outside_its_prefix() -> None:
+    route = Mount("/mounted", app=PlainTextResponse("hello"))
+    match, _ = route.matches({"type": "http", "method": "GET", "path": "/elsewhere", "headers": []})
+    assert match == Match.NONE
 
 
 def test_router_duplicate_path(client: TestClient) -> None:
@@ -679,6 +703,12 @@ def test_standalone_ws_route_does_not_match(
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/invalid"):
             pass  # pragma: no cover
+
+
+def test_ws_route_does_not_match_http_scope() -> None:
+    route = WebSocketRoute("/", ws_helloworld)
+    match, _ = route.matches({"type": "http", "method": "GET", "path": "/", "headers": []})
+    assert match == Match.NONE
 
 
 def test_lifespan_state_unsupported(test_client_factory: TestClientFactory) -> None:

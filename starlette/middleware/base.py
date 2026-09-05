@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, 
 from typing import Any, TypeVar
 
 import anyio
+from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 
 from starlette._utils import create_collapsing_task_group
 from starlette.requests import ClientDisconnect, Request
@@ -186,7 +187,9 @@ class BaseHTTPMiddleware:
             response.raw_headers = message["headers"]
             return response
 
-        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
+        streams: tuple[MemoryObjectSendStream[Message], MemoryObjectReceiveStream[Message]] = (
+            anyio.create_memory_object_stream()
+        )
         send_stream, recv_stream = streams
         with recv_stream, send_stream:
             async with create_collapsing_task_group() as task_group:

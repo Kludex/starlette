@@ -54,7 +54,6 @@ dev = [
     "httpx2[zstd]>=2.0.0",
     "coverage>=7.8.2",
     "importlib-metadata==9.0.1",
-    # Pinned to 2.1.0: mypy 2.2+ no longer honors the tuple return type of `create_memory_object_stream.__new__`.
     "mypy==2.3.1",
     "opentelemetry-sdk==1.44.0",
     "pytest-codspeed>=4.1.1",

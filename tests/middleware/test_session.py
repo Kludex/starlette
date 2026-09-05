@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-import httpx
 import pytest
 
 from starlette.applications import Starlette
@@ -79,9 +78,8 @@ def test_session(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"session": {}}
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize("partitioned", [False, True])
-async def test_partitioned_session(partitioned: bool) -> None:
+def test_partitioned_session(test_client_factory: TestClientFactory, partitioned: bool) -> None:
     app = Starlette(
         routes=[
             Route("/update_session", endpoint=update_session, methods=["POST"]),
@@ -97,14 +95,14 @@ async def test_partitioned_session(partitioned: bool) -> None:
             )
         ],
     )
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://testserver") as client:
-        response = await client.post("/update_session", json={"some": "data"})
-        attributes = response.headers["set-cookie"].split("; ")
-        assert ("partitioned" in attributes) is partitioned
+    client = test_client_factory(app, base_url="https://testserver")
+    response = client.post("/update_session", json={"some": "data"})
+    attributes = response.headers["set-cookie"].split("; ")
+    assert ("partitioned" in attributes) is partitioned
 
-        response = await client.post("/clear_session")
-        attributes = response.headers["set-cookie"].split("; ")
-        assert ("partitioned" in attributes) is partitioned
+    response = client.post("/clear_session")
+    attributes = response.headers["set-cookie"].split("; ")
+    assert ("partitioned" in attributes) is partitioned
 
 
 def test_session_expires(test_client_factory: TestClientFactory) -> None:

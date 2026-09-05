@@ -7,6 +7,7 @@ import os
 import stat
 import sys
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Iterable, Mapping, Sequence
+from contextlib import aclosing, nullcontext
 from datetime import datetime
 from email.utils import format_datetime, formatdate
 from functools import partial
@@ -247,18 +248,18 @@ class StreamingResponse(Response):
 
     async def stream_response(self, send: Send) -> None:
         iterator = self.body_iterator.__aiter__()
-        try:
-            await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
-            async for chunk in iterator:
-                if not isinstance(chunk, bytes | memoryview):
-                    chunk = chunk.encode(self.charset)
-                await send({"type": "http.response.body", "body": chunk, "more_body": True})
+        with anyio.CancelScope() as cancel_scope:
+            async with aclosing(iterator) if isinstance(iterator, AsyncGenerator) else nullcontext():
+                try:
+                    await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
+                    async for chunk in iterator:
+                        if not isinstance(chunk, bytes | memoryview):
+                            chunk = chunk.encode(self.charset)
+                        await send({"type": "http.response.body", "body": chunk, "more_body": True})
 
-            await send({"type": "http.response.body", "body": b"", "more_body": False})
-        finally:
-            if isinstance(iterator, AsyncGenerator):
-                with anyio.CancelScope(shield=True):
-                    await iterator.aclose()
+                    await send({"type": "http.response.body", "body": b"", "more_body": False})
+                finally:
+                    cancel_scope.shield = True
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":

@@ -17,7 +17,6 @@ from urllib.parse import unquote, urljoin
 import anyio
 import anyio.abc
 import anyio.from_thread
-from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
@@ -135,14 +134,8 @@ class WebSocketTestSession:
         """
         The sub-thread in which the websocket session runs.
         """
-        send: tuple[MemoryObjectSendStream[Message], MemoryObjectReceiveStream[Message]] = (
-            anyio.create_memory_object_stream(math.inf)
-        )
-        send_tx, send_rx = send
-        receive: tuple[MemoryObjectSendStream[Message], MemoryObjectReceiveStream[Message]] = (
-            anyio.create_memory_object_stream(math.inf)
-        )
-        receive_tx, receive_rx = receive
+        send_tx, send_rx = anyio.create_memory_object_stream[Message](math.inf)
+        receive_tx, receive_rx = anyio.create_memory_object_stream[Message](math.inf)
         with send_tx, send_rx, receive_tx, receive_rx, anyio.CancelScope() as cs:
             self._receive_tx = receive_tx
             self._send_rx = send_rx
@@ -498,12 +491,8 @@ class TestClient(httpx.Client):
             def reset_portal() -> None:
                 self.portal = None
 
-            send: tuple[MemoryObjectSendStream[Message | None], MemoryObjectReceiveStream[Message | None]] = (
-                anyio.create_memory_object_stream(math.inf)
-            )
-            receive: tuple[MemoryObjectSendStream[Message], MemoryObjectReceiveStream[Message]] = (
-                anyio.create_memory_object_stream(math.inf)
-            )
+            send = anyio.create_memory_object_stream[Message | None](math.inf)
+            receive = anyio.create_memory_object_stream[Message](math.inf)
             for channel in (*send, *receive):
                 stack.callback(channel.close)
             self.stream_send = StapledObjectStream(*send)

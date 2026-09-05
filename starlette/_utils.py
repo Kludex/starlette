@@ -22,12 +22,7 @@ else:  # pragma: no cover
     from typing_extensions import TypeIs
 
 if sys.version_info < (3, 11):  # pragma: no cover
-    try:
-        from exceptiongroup import BaseExceptionGroup
-    except ImportError:
-
-        class BaseExceptionGroup(BaseException):  # type: ignore[no-redef]
-            pass
+    from exceptiongroup import BaseExceptionGroup
 
 
 T = TypeVar("T")

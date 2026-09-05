@@ -1216,6 +1216,55 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
 
 
 @pytest.mark.anyio
+async def test_early_hints_events() -> None:
+    events: list[Message] = []
+
+    async def endpoint(request: Request) -> PlainTextResponse:
+        await request.send_early_hints("</endpoint.css>; rel=preload; as=style")
+        return PlainTextResponse("hello")
+
+    async def send_early_hints(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        await request.send_early_hints("</middleware.css>; rel=preload; as=style")
+        return await call_next(request)
+
+    app = Starlette(
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=send_early_hints)],
+        routes=[Route("/", endpoint)],
+    )
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "extensions": {"http.response.early_hint": {}},
+    }
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    await app(scope, receive, send)
+
+    assert events[:2] == [
+        {
+            "type": "http.response.early_hint",
+            "links": [b"</middleware.css>; rel=preload; as=style"],
+        },
+        {
+            "type": "http.response.early_hint",
+            "links": [b"</endpoint.css>; rel=preload; as=style"],
+        },
+    ]
+    assert [event["type"] for event in events[2:]] == [
+        "http.response.start",
+        "http.response.body",
+        "http.response.body",
+    ]
+
+
+@pytest.mark.anyio
 async def test_asgi_pathsend_events(tmpdir: Path) -> None:
     path = tmpdir / "example.txt"
     with path.open("w") as file:

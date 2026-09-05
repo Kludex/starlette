@@ -564,6 +564,60 @@ def test_request_send_push_promise_without_setting_send(
     assert response.json() == {"json": "Send channel not available"}
 
 
+@pytest.mark.anyio
+async def test_request_send_early_hints() -> None:
+    messages: list[Message] = []
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    scope: Scope = {"type": "http", "extensions": {"http.response.early_hint": {}}}
+    request = Request(scope, send=send)
+    await request.send_early_hints(
+        "</style.css>; rel=preload; as=style",
+        "</app.js>; rel=modulepreload",
+    )
+
+    assert messages == [
+        {
+            "type": "http.response.early_hint",
+            "links": [
+                b"</style.css>; rel=preload; as=style",
+                b"</app.js>; rel=modulepreload",
+            ],
+        }
+    ]
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints_requires_positional_link() -> None:
+    request = Request({"type": "http"})
+
+    with pytest.raises(TypeError, match="positional-only"):
+        await request.send_early_hints(link="</style.css>; rel=preload; as=style")  # type: ignore[call-arg]
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints_without_extension() -> None:
+    messages: list[Message] = []
+
+    async def send(message: Message) -> None:  # pragma: no cover
+        messages.append(message)
+
+    request = Request({"type": "http", "extensions": {}}, send=send)
+    await request.send_early_hints("</style.css>; rel=preload; as=style")
+
+    assert messages == []
+
+
+@pytest.mark.anyio
+async def test_request_send_early_hints_without_send_channel() -> None:
+    request = Request({"type": "http", "extensions": {"http.response.early_hint": {}}})
+
+    with pytest.raises(RuntimeError, match="Send channel has not been made available"):
+        await request.send_early_hints("</style.css>; rel=preload; as=style")
+
+
 @pytest.mark.parametrize(
     "messages",
     [

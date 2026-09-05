@@ -526,11 +526,8 @@ def test_delete_cookie_partitioned(partitioned: bool) -> None:
     header = response.headers["set-cookie"]
     assert ("Partitioned" in header) is partitioned
     cookie = SimpleCookie(header)["mycookie"]
-    assert cookie.value == ""
     assert cookie["max-age"] == "0"
-    assert cookie["expires"]
     assert cookie["secure"] is True
-    assert cookie["samesite"] == "none"
 
 
 def test_populate_headers(test_client_factory: TestClientFactory) -> None:

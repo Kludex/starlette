@@ -7,7 +7,8 @@ import warnings
 from collections.abc import Callable, MutableMapping
 from typing import Any
 
-import anyio
+import anyio.from_thread
+import anyio.to_thread
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
 from starlette._utils import create_collapsing_task_group

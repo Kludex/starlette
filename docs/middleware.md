@@ -231,6 +231,7 @@ The following arguments are supported:
 * `path` - The path set for the session cookie. Defaults to `'/'`.
 * `https_only` - Indicate that the `"Secure"` flag should be set (can be used with HTTPS only). Defaults to `False`. Set this to `True` in production to ensure the session cookie is only sent over HTTPS.
 * `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains ([reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute)).
+* `partitioned` - Set the `Partitioned` flag when you write or clear the session cookie. Defaults to `False`. Set `https_only=True` when you enable it. For cross-site embeds, also set `same_site="none"`. This gives your embedded app a separate session for each top-level site ([reference](https://developer.mozilla.org/en-US/docs/Web/Privacy/Guides/Third-party_cookies/Partitioned_cookies)).
 
 
 ```python

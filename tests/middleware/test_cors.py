@@ -284,6 +284,11 @@ def test_cors_preflight_allow_all_methods(
         assert response.status_code == 200
         assert method in response.headers["access-control-allow-methods"]
 
+
+def test_cors_preflight_rejects_custom_method_with_wildcard(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(middleware=[Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])])
+    client = test_client_factory(app)
+
     response = client.options("/", headers={"Origin": "https://example.org", "Access-Control-Request-Method": "CUSTOM"})
     assert response.status_code == 400
     assert response.text == "Disallowed CORS method"

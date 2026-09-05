@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -301,6 +301,32 @@ def test_router_add_route(client: TestClient) -> None:
     response = client.get("/func")
     assert response.status_code == 200
     assert response.text == "Hello, world!"
+
+
+def test_router_rebuilds_route_index_after_routes_change(test_client_factory: TestClientFactory) -> None:
+    router = Router(routes=[Route("/first", endpoint=homepage), Route("/second", endpoint=homepage)])
+    client = test_client_factory(router)
+    assert client.get("/first").status_code == 200
+
+    router.routes[0] = Route("/replacement", endpoint=homepage)
+    assert client.get("/replacement").status_code == 200
+
+    router.routes.reverse()
+    assert client.get("/second").status_code == 200
+
+
+def test_router_preserves_custom_route_matching(test_client_factory: TestClientFactory) -> None:
+    class CustomRoute(Route):
+        def matches(self, scope: Scope) -> tuple[Match, Scope]:
+            if scope["path"] == "/alias":
+                return Match.FULL, {}
+            return super().matches(scope)
+
+    router = Router(routes=[CustomRoute("/declared", endpoint=PlainTextResponse("custom"))])
+    client = test_client_factory(router)
+
+    assert client.get("/alias").text == "custom"
+    assert client.get("/declared").text == "custom"
 
 
 def test_router_duplicate_path(client: TestClient) -> None:

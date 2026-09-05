@@ -327,6 +327,184 @@ it when possible, and always counts the body bytes received from the ASGI server
 This also supports requests without `Content-Length` and prevents an understated
 header from bypassing the limit.
 
+## CompressionMiddleware
+
+```python
+from __future__ import annotations
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.compression import CompressionMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world! " * 1000)
+
+
+app = Starlette(
+    routes=[Route("/", homepage)],
+    middleware=[Middleware(CompressionMiddleware)],
+)
+```
+
+Use `CompressionMiddleware` to compress HTTP responses with gzip, Zstandard, or Brotli.
+You can use it with both standard and streaming responses.
+Gzip is enabled by default. Zstandard and Brotli are enabled when their implementations are available.
+Python 3.14 includes Zstandard in the standard library. On older Python versions, install the optional backport:
+
+```shell
+pip install 'starlette[zstd]'
+```
+
+Install the optional Brotli implementation to serve responses with `Content-Encoding: br`:
+
+```shell
+pip install 'starlette[brotli]'
+```
+
+### Configuration
+
+```python
+from __future__ import annotations
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.compression import CompressionMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world! " * 1000)
+
+
+app = Starlette(
+    routes=[Route("/", homepage)],
+    middleware=[
+        Middleware(
+            CompressionMiddleware,
+            minimum_size=1000,
+            compresslevel=3,
+            gzip=False,
+            zstd={"compresslevel": 9},
+            brotli={"compresslevel": 5},
+        )
+    ],
+)
+```
+
+You can disable an algorithm with `False`, or override its compression level with a dictionary.
+`CompressionConfig` is the exported `TypedDict` type for these dictionaries.
+
+| Argument | Default | Behavior |
+| --- | --- | --- |
+| `minimum_size` | `500` | Skip non-streaming bodies smaller than this number of bytes when the client accepts `identity`. Must be non-negative. |
+| `compresslevel` | `3` | Set the default level for enabled built-in algorithms. Lower levels favor speed over response size. |
+| `gzip` | `True` | Accept `True`, `False`, or `{"compresslevel": level}`. Gzip levels range from `0` to `9`. |
+| `zstd` | `None` | Enable Zstandard when available. Pass `False` to disable it, or `True` or a configuration dictionary to require it. |
+| `brotli` | `None` | Enable Brotli when available. Pass `False` to disable it, or `True` or a configuration dictionary to require it. Brotli levels range from `0` to `11`. |
+| `thread_minimum_size` | `131072` | Move compression to worker threads once a response's total input reaches this number of bytes. Must be non-negative. |
+| `exclude_content_types` | `DEFAULT_EXCLUDED_CONTENT_TYPES` | Use the same media type exclusions and wildcard matching as [`GZipMiddleware`](#gzipmiddleware). |
+| `extra_compressors` | `None` | Map additional content encoding names to compressor factories. |
+
+Zstandard accepts negative levels for faster compression and positive levels up to the implementation's maximum.
+Invalid levels raise `ValueError` when you construct the middleware.
+Explicitly enabling Zstandard or Brotli without an available implementation raises `RuntimeError` with installation instructions.
+Brotli's `compresslevel` sets the underlying library's `quality` parameter. The default is `3`, matching
+the middleware's global level, to keep the cost of compressing dynamic responses low.
+
+### Encoding selection
+
+The middleware reads the client's `Accept-Encoding` header. A quality weight such as `gzip;q=0.5`
+expresses a preference; a weight of `0` excludes that encoding. The middleware chooses the highest
+accepted weight. At equal weights, custom encodings take priority in dictionary order, followed by
+Zstandard, Brotli, and gzip. It also supports wildcard entries and an explicit preference for `identity`, which means no encoding.
+
+When the header is missing or empty, the middleware does not apply compression.
+It checks an existing `Content-Encoding` against the client's accepted encodings, including encoding chains.
+A missing `Accept-Encoding` accepts any existing encoding; an empty header accepts only `identity`.
+
+The final decision happens after your application produces its response.
+An acceptable, already-encoded response passes through even when the middleware cannot produce that encoding itself.
+If the client excludes `identity`, eligible bodies are compressed even below `minimum_size`.
+If the response cannot be served with an accepted encoding, the middleware returns `406 Not Acceptable`.
+It cancels the rejected response so streaming producers can clean up without continuing to generate unused content.
+Disabling all compressors makes the middleware pass through requests.
+
+### Response handling
+
+The middleware adds `Vary: Accept-Encoding` to responses eligible for compression, including those sent
+without compression because of the client's preferences. It preserves existing `Vary` values.
+For compressed standard responses, it updates `Content-Length`. For compressed streaming responses, it removes that header.
+It weakens strong `ETag` values when compressing a response, so the same strong validator cannot identify
+both compressed and uncompressed bytes. Existing weak validators are preserved.
+
+`HEAD`, `204`, `205`, and `304` responses have no compressed body, even with `minimum_size=0`.
+Eligible `HEAD` and `304` responses retain `Vary: Accept-Encoding` and use the same weak validators as compressed responses.
+The middleware omits `Content-Length` when it cannot determine the compressed length without a body.
+
+Streaming responses start compression with the first body chunk, even when it is smaller than `minimum_size`.
+The built-in compressors flush each chunk so clients can decode data as it arrives.
+Batch small application chunks when you want a better compression ratio.
+Once the total input reaches `thread_minimum_size`, all remaining compression calls run in worker threads.
+This includes an empty final chunk, which may flush a large buffered response.
+
+Responses with an existing `Content-Encoding`, status `206`, an excluded content type, or the
+`http.response.pathsend` extension are not compressed. They pass through when their encoding is acceptable.
+These exclusions prevent double encoding, preserve byte ranges, and avoid delaying server-sent events
+or recompressing binary formats.
+
+The middleware forwards ASGI trailers, early hints, debug information, and server push events.
+When compression is selected, it removes `http.response.zerocopysend` from the application's scope.
+Applications must then send ordinary body messages, because zero-copy file bytes cannot be mixed into a compressed stream.
+
+### Custom compressors
+
+```python
+from __future__ import annotations
+
+import zlib
+
+from starlette.middleware.compression import CompressionMiddleware, Compressor
+from starlette.responses import PlainTextResponse
+
+
+def deflate_factory() -> Compressor:
+    compressor = zlib.compressobj(level=3)
+
+    def compress(body: bytes, more_body: bool) -> bytes:
+        mode = zlib.Z_SYNC_FLUSH if more_body else zlib.Z_FINISH
+        return compressor.compress(body) + compressor.flush(mode)
+
+    return compress
+
+
+app = CompressionMiddleware(
+    PlainTextResponse("Hello, world! " * 1000),
+    extra_compressors={"deflate": deflate_factory},
+)
+```
+
+Supply a factory with no arguments. It must return a callable satisfying the `Compressor` protocol:
+`compress(body: bytes, more_body: bool, /) -> bytes`.
+The middleware creates one compressor per compressed response, only when it needs the first compressed chunk.
+This keeps state separate between concurrent requests and avoids allocations for excluded responses.
+
+Return encoded bytes on each call. When `more_body` is `False`, finalize the stream and return all remaining bytes.
+An empty result is allowed when your compressor buffers input. Flush intermediate chunks if clients need immediate delivery.
+The factory and callable may run in worker threads. Calls for one response are sequential, but can use different threads.
+Exceptions propagate to the application server.
+
+Encoding names must be HTTP tokens. Names are case-insensitive and must be unique.
+You cannot replace `gzip`, `zstd`, `br`, `identity`, or `*` through `extra_compressors`.
+Custom compressors use the global size thresholds and content type exclusions; configure their compression levels in the factory.
+
+`GZipMiddleware` remains available with its existing defaults. Use one compression middleware per application stack.
+
 ## GZipMiddleware
 
 Handles GZip responses for any request that includes `"gzip"` in the `Accept-Encoding` header.
@@ -367,6 +545,9 @@ encoded twice, partial content responses (status `206`), to keep range semantics
 intact, or responses with a `Content-Type` in `exclude_content_types` - by default `text/event-stream`, to
 avoid compressing server-sent events, and already-compressed formats, where compression wastes CPU for no
 gain.
+
+Like `CompressionMiddleware`, it preserves ASGI trailers and excludes bodyless responses from compression.
+It weakens strong `ETag` values for compressed responses and preserves negotiation metadata on `HEAD` and `304` responses.
 
 ## BaseHTTPMiddleware
 

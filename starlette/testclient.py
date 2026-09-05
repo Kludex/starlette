@@ -5,6 +5,7 @@ import inspect
 import json
 import math
 import sys
+import threading
 import warnings
 from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, MutableMapping, Sequence
 from concurrent.futures import Future
@@ -16,6 +17,7 @@ from urllib.parse import unquote, urljoin
 import anyio
 import anyio.abc
 import anyio.from_thread
+import anyio.lowlevel
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from anyio.streams.stapled import StapledObjectStream
 
@@ -375,45 +377,40 @@ class _TestClientTransport(httpx.BaseTransport):
                 assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
-                await body_tx.send(body)
+                await body_tx.send(bytes(body))
                 if not more_body:
                     response_complete.set()
             elif message["type"] == "http.response.debug":
                 debug_info = message["info"]
 
-        async def run_app(*, task_status: anyio.abc.TaskStatus[anyio.CancelScope]) -> None:
-            with anyio.CancelScope() as cancel_scope:
-                task_status.started(cancel_scope)
-                async with body_tx:
-                    await self.app(scope, receive, send)
+        async def run_app() -> None:
+            app_complete.clear()
+            try:
+                with cancel_scope:
+                    async with body_tx:
+                        await anyio.lowlevel.checkpoint()
+                        await self.app(scope, receive, send)
+            finally:
+                app_complete.set()
 
-        exit_stack = contextlib.ExitStack()
-        portal = exit_stack.enter_context(self.portal_factory())
-        response_available = portal.call(anyio.Event)
-        response_complete = portal.call(anyio.Event)
-        body_tx, body_rx = cast(
-            "tuple[MemoryObjectSendStream[bytes], MemoryObjectReceiveStream[bytes]]",
-            portal.call(anyio.create_memory_object_stream, 0),
-        )
-        exit_stack.callback(body_rx.close)
-        app_task, cancel_scope = cast("tuple[Future[None], anyio.CancelScope]", portal.start_task(run_app))
-        app_task.add_done_callback(lambda _: response_available.set())
-        portal.call(response_available.wait)
-
-        if not response_started:
-            exception = app_task.exception()
-            exit_stack.close()
-            if self.raise_server_exceptions:
-                if exception is not None:
-                    raise exception
-                raise AssertionError("TestClient did not receive any response.")
-            raw_kwargs = {
-                "status_code": 500,
-                "headers": [],
-                "stream": httpx.ByteStream(b""),
-            }
-        else:
-            raw_kwargs["stream"] = _TestClientResponseStream(
+        with contextlib.ExitStack() as stack:
+            exit_stack = stack.enter_context(contextlib.ExitStack())
+            portal = exit_stack.enter_context(self.portal_factory())
+            response_available = portal.call(anyio.Event)
+            response_complete = portal.call(anyio.Event)
+            body_tx, body_rx = cast(
+                "tuple[MemoryObjectSendStream[bytes], MemoryObjectReceiveStream[bytes]]",
+                portal.call(anyio.create_memory_object_stream, 0),
+            )
+            exit_stack.callback(body_tx.close)
+            exit_stack.callback(body_rx.close)
+            app_complete = threading.Event()
+            app_complete.set()
+            cancel_scope = portal.call(anyio.CancelScope)
+            stack.callback(app_complete.wait)
+            stack.callback(lambda: portal.call(cancel_scope.cancel))
+            app_task = portal.start_task_soon(run_app)
+            stream = _TestClientResponseStream(
                 body_rx=body_rx,
                 portal=portal,
                 app_task=app_task,
@@ -422,15 +419,33 @@ class _TestClientTransport(httpx.BaseTransport):
                 raise_server_exceptions=self.raise_server_exceptions,
                 include_body=request.method != "HEAD",
             )
+            app_task.add_done_callback(lambda _: response_available.set())
+            portal.call(response_available.wait)
 
-        response = httpx.Response(**raw_kwargs, request=request)
-        if debug_info is not None:
-            response.extensions["http.response.debug"] = debug_info
-            if "template" in debug_info:
-                response.template = debug_info["template"]  # type: ignore[attr-defined]
-            if "context" in debug_info:
-                response.context = debug_info["context"]  # type: ignore[attr-defined]
-        return response
+            if not response_started:
+                exception = app_task.exception()
+                if self.raise_server_exceptions:
+                    if exception is not None:
+                        raise exception
+                    raise AssertionError("TestClient did not receive any response.")
+                raw_kwargs = {
+                    "status_code": 500,
+                    "headers": [],
+                    "stream": httpx.ByteStream(b""),
+                }
+            else:
+                raw_kwargs["stream"] = stream
+
+            response = httpx.Response(**raw_kwargs, request=request)
+            if debug_info is not None:
+                response.extensions["http.response.debug"] = debug_info
+                if "template" in debug_info:
+                    response.template = debug_info["template"]  # type: ignore[attr-defined]
+                if "context" in debug_info:
+                    response.context = debug_info["context"]  # type: ignore[attr-defined]
+            if response_started:
+                stack.pop_all()
+            return response
 
 
 class TestClient(httpx.Client):

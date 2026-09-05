@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from typing import Literal
 
 try:
     from opentelemetry import propagate, trace
@@ -18,12 +19,20 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests."""
 
-    def __init__(self, app: ASGIApp, *, excluded_urls: str | Sequence[str] = ()) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        excluded_urls: str | Sequence[str] = (),
+        capture_headers: bool | str | Sequence[str] = False,
+        sanitize_headers: str | Sequence[str] = (),
+    ) -> None:
         self.app = app
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         patterns = tuple(re.compile(pattern) for pattern in excluded_urls)
-        self._responder = OpenTelemetryResponder(app, patterns)
+        header_capture = _HeaderCapture(capture_headers, sanitize_headers)
+        self._responder = OpenTelemetryResponder(app, patterns, header_capture)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -37,9 +46,15 @@ class OpenTelemetryMiddleware:
 
 
 class OpenTelemetryResponder:
-    def __init__(self, app: ASGIApp, excluded_urls: tuple[re.Pattern[str], ...]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        excluded_urls: tuple[re.Pattern[str], ...],
+        header_capture: _HeaderCapture | None = None,
+    ) -> None:
         self.app = app
         self._excluded_urls = excluded_urls
+        self._header_capture = _HeaderCapture(False, ()) if header_capture is None else header_capture
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         tracer_provider = trace.get_tracer_provider()
@@ -53,15 +68,14 @@ class OpenTelemetryResponder:
         original_method = scope.get("method", "")
         method = original_method.upper()
 
-        headers: dict[str, list[str]] = {}
-        for name, value in scope.get("headers", []):
-            headers.setdefault(name.decode("latin-1").lower(), []).append(value.decode("latin-1"))
+        headers = _decode_headers(scope.get("headers", []))
 
-        attributes: dict[str, str | int] = {
+        attributes: dict[str, str | int | list[str]] = {
             "http.request.method": method,
             "url.path": scope.get("path", ""),
             "url.scheme": scope.get("scheme", "http"),
         }
+        attributes.update(self._header_capture.attributes(headers, "request"))
         if original_method != method:
             attributes["http.request.method_original"] = original_method
         if url.query:
@@ -90,6 +104,9 @@ class OpenTelemetryResponder:
                 if message["type"] == "http.response.start":
                     status_code = message["status"]
                     span.set_attribute("http.response.status_code", status_code)
+                    if self._header_capture:
+                        response_headers = _decode_headers(message.get("headers", []))
+                        span.set_attributes(self._header_capture.attributes(response_headers, "response"))
                     if status_code >= 500:
                         span.set_attribute("error.type", str(status_code))
                         span.set_status(Status(StatusCode.ERROR))
@@ -114,3 +131,49 @@ class OpenTelemetryResponder:
                 if route_path is not None:
                     span.update_name(f"{method} {route_path}")
                     span.set_attribute("http.route", route_path)
+
+
+class _HeaderCapture:
+    def __init__(
+        self,
+        capture_headers: bool | str | Sequence[str],
+        sanitize_headers: str | Sequence[str],
+    ) -> None:
+        self._capture_patterns = self._compile_patterns(capture_headers)
+        self._sanitize_patterns = self._compile_patterns(sanitize_headers)
+
+    def __bool__(self) -> bool:
+        return bool(self._capture_patterns)
+
+    def attributes(
+        self,
+        headers: dict[str, list[str]],
+        direction: Literal["request", "response"],
+    ) -> dict[str, list[str]]:
+        return {
+            f"http.{direction}.header.{name}": (
+                ["[REDACTED]"] * len(values)
+                if any(pattern.search(name) for pattern in self._sanitize_patterns)
+                else values
+            )
+            for name, values in headers.items()
+            if any(pattern.fullmatch(name) for pattern in self._capture_patterns)
+        }
+
+    @staticmethod
+    def _compile_patterns(patterns: bool | str | Sequence[str]) -> tuple[re.Pattern[str], ...]:
+        if patterns is True:
+            patterns = (".*",)
+        elif patterns is False:
+            patterns = ()
+        elif isinstance(patterns, str):
+            patterns = (patterns,)
+        return tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)
+
+
+def _decode_headers(raw_headers: Iterable[tuple[bytes, bytes]]) -> dict[str, list[str]]:
+    headers: dict[str, list[str]] = {}
+    for name, value in raw_headers:
+        decoded_name = name.decode("latin-1").lower()
+        headers.setdefault(decoded_name, []).append(value.decode("latin-1"))
+    return headers

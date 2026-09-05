@@ -160,10 +160,12 @@ class CORSMiddleware:
         if origin is not None:
             headers.update(self.simple_headers)
 
-        if origin is not None and (
-            (self.allow_all_origins and self.allow_credentials)
-            or (not self.allow_all_origins and self.is_allowed_origin(origin=origin))
-        ):
+        # If credentials are allowed, then we must respond with the specific origin instead of '*'.
+        if origin is not None and self.allow_all_origins and self.allow_credentials:
+            self.allow_explicit_origin(headers, origin)
+
+        # If we only allow specific origins, then we have to mirror back the Origin header in the response.
+        elif origin is not None and not self.allow_all_origins and self.is_allowed_origin(origin=origin):
             self.allow_explicit_origin(headers, origin)
         else:
             headers["Vary"] = ", ".join([*headers.getlist("Vary"), "Origin"])

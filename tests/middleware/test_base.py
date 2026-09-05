@@ -1316,3 +1316,52 @@ def test_error_context_propagation(test_client_factory: TestClientFactory) -> No
     assert str(ctx.value) == "Outer exception"
     assert ctx.value.__cause__ is not None
     assert str(ctx.value.__cause__) == "Inner exception"
+
+
+# https://github.com/encode/starlette/issues/3458
+@pytest.mark.anyio
+async def test_background_task_runs_after_response_fully_sent() -> None:
+    """A background task attached by the inner app must run only after the last
+    byte of the response has been sent, even with BaseHTTPMiddleware stacked."""
+
+    async def bg() -> None:
+        events.append("background-done")
+
+    events: list[str] = []
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(bg))
+
+    async def passthrough(
+        request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        return await call_next(request)
+
+    app: ASGIApp = Starlette(routes=[Route("/", homepage)])
+    app = BaseHTTPMiddleware(app, dispatch=passthrough)
+
+    async def receive() -> Message:
+        return {"type": "http.request"}
+
+    async def send(message: Message) -> None:
+        # A deliberately slow client: without the fix, the inner app's
+        # background task runs while the response is still being streamed.
+        await anyio.sleep(0.05)
+        events.append(str(message["type"]))
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "query_string": b"",
+        "root_path": "",
+    }
+    await app(scope, receive, send)  # type: ignore[arg-type]
+
+    assert events == [
+        "http.response.start",
+        "http.response.body",
+        "http.response.body",
+        "background-done",
+    ]

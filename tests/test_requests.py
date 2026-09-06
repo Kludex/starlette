@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from collections.abc import Iterator
 from typing import Any
 
@@ -41,10 +40,6 @@ def test_request_query_params(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"params": {"a": "123", "b": "456"}}
 
 
-@pytest.mark.skipif(
-    any(module in sys.modules for module in ("brotli", "brotlicffi")),
-    reason='urllib3 includes "br" to the "accept-encoding" headers.',
-)
 def test_request_headers(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
@@ -53,12 +48,12 @@ def test_request_headers(test_client_factory: TestClientFactory) -> None:
         await response(scope, receive, send)
 
     client = test_client_factory(app)
-    response = client.get("/", headers={"host": "example.org"})
+    response = client.get("/", headers={"host": "example.org", "accept-encoding": "gzip"})
     assert response.json() == {
         "headers": {
             "host": "example.org",
             "user-agent": "testclient",
-            "accept-encoding": "gzip, deflate, zstd",
+            "accept-encoding": "gzip",
             "accept": "*/*",
             "connection": "keep-alive",
         }

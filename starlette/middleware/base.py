@@ -130,11 +130,13 @@ class BaseHTTPMiddleware:
                 return message
 
             async def send_no_error(message: Message) -> None:
+                ack = anyio.Event()
                 try:
-                    await send_stream.send(message)
+                    await send_stream.send((message, ack))
                 except anyio.BrokenResourceError:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
+                await ack.wait()
 
             async def coro() -> None:
                 nonlocal app_exc
@@ -148,10 +150,12 @@ class BaseHTTPMiddleware:
             task_group.start_soon(coro)
 
             try:
-                message = await recv_stream.receive()
+                message, ack = await recv_stream.receive()
                 info = message.get("info", None)
                 if message["type"] == "http.response.debug" and info is not None:
-                    message = await recv_stream.receive()
+                    ack.set()
+                    message, ack = await recv_stream.receive()
+                ack.set()
             except anyio.EndOfStream:
                 if app_exc is not None:
                     nonlocal exception_already_raised
@@ -170,23 +174,26 @@ class BaseHTTPMiddleware:
 
             assert message["type"] == "http.response.start"
 
-            async def body_stream() -> BodyStreamGenerator:
-                async for message in recv_stream:
+            async def body_stream() -> AsyncGenerator[tuple[bytes | MutableMapping[str, Any], anyio.Event, bool], None]:
+                async for message, ack in recv_stream:
                     if message["type"] == "http.response.pathsend":
-                        yield message
+                        yield message, ack, True
                         break
                     assert message["type"] == "http.response.body", f"Unexpected message: {message}"
                     body = message.get("body", b"")
+                    more_body = message.get("more_body", False)
                     if body:
-                        yield body
-                    if not message.get("more_body", False):
+                        yield body, ack, not more_body
+                    else:
+                        ack.set()
+                    if not more_body:
                         break
 
             response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
             response.raw_headers = message["headers"]
             return response
 
-        send_stream, recv_stream = anyio.create_memory_object_stream[Message]()
+        send_stream, recv_stream = anyio.create_memory_object_stream[tuple[Message, anyio.Event]]()
         with recv_stream, send_stream:
             async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)
@@ -203,7 +210,7 @@ class BaseHTTPMiddleware:
 class _StreamingResponse(Response):
     def __init__(
         self,
-        content: AsyncContentStream,
+        content: Any,
         status_code: int = 200,
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
@@ -228,13 +235,18 @@ class _StreamingResponse(Response):
         )
 
         should_close_body = True
-        async for chunk in self.body_iterator:
+        async for chunk, ack, is_last in self.body_iterator:
             if isinstance(chunk, dict):
                 # We got an ASGI message which is not response body (eg: pathsend)
                 should_close_body = False
                 await send(chunk)
+                ack.set()
                 continue
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
+            if is_last and should_close_body:
+                await send({"type": "http.response.body", "body": b"", "more_body": False})
+                should_close_body = False
+            ack.set()
 
         if should_close_body:
             await send({"type": "http.response.body", "body": b"", "more_body": False})

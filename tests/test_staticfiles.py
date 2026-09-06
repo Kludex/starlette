@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import anyio
+import httpx
 import pytest
 
 from starlette.applications import Starlette
@@ -216,36 +217,30 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     assert second_resp.content == b""
 
 
-def test_staticfiles_304_with_if_none_match_wildcard(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
-    path = os.path.join(tmpdir, "example.txt")
-    with open(path, "w") as file:
-        file.write("<file content>")
+@pytest.mark.anyio
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+@pytest.mark.parametrize("if_none_match", ["*", " \t* \t"])
+async def test_staticfiles_304_with_if_none_match_wildcard(tmp_path: Path, method: str, if_none_match: str) -> None:
+    (tmp_path / "example.txt").write_text("<file content>", encoding="utf-8")
 
-    app = StaticFiles(directory=tmpdir)
-    client = test_client_factory(app)
-    # Per RFC 7232 §3.2, "If-None-Match: *" should match any current representation.
-    response = client.get("/example.txt", headers={"if-none-match": "*"})
-    assert response.status_code == 304
-    assert response.content == b""
-    # The wildcard is also honored when sent alongside other entity-tags.
-    response = client.get("/example.txt", headers={"if-none-match": '"bogus-etag", *'})
+    app = StaticFiles(directory=tmp_path)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
     assert response.status_code == 304
     assert response.content == b""
 
 
-def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
-    path = os.path.join(tmpdir, "example.txt")
-    with open(path, "w") as file:
-        file.write("<file content>")
+@pytest.mark.anyio
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+@pytest.mark.parametrize("if_none_match", ['"123"', '"*"', '"foo,*,bar"', 'W/"foo,*,bar"', '"foo,*,bar", "other"'])
+async def test_staticfiles_200_with_etag_mismatch(tmp_path: Path, method: str, if_none_match: str) -> None:
+    (tmp_path / "example.txt").write_text("<file content>", encoding="utf-8")
 
-    app = StaticFiles(directory=tmpdir)
-    client = test_client_factory(app)
-    first_resp = client.get("/example.txt")
-    assert first_resp.status_code == 200
-    assert first_resp.headers["etag"] != '"123"'
-    second_resp = client.get("/example.txt", headers={"if-none-match": '"123"'})
-    assert second_resp.status_code == 200
-    assert second_resp.content == b"<file content>"
+    app = StaticFiles(directory=tmp_path)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
+    assert response.status_code == 200
+    assert response.content == (b"<file content>" if method == "GET" else b"")
 
 
 def test_staticfiles_200_with_etag_mismatch_and_timestamp_match(

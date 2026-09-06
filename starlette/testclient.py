@@ -18,7 +18,7 @@ import anyio
 import anyio.abc
 import anyio.from_thread
 import anyio.lowlevel
-from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
+from anyio.streams.memory import MemoryObjectReceiveStream
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
@@ -396,10 +396,7 @@ class _TestClientTransport(httpx.BaseTransport):
             portal = exit_stack.enter_context(self.portal_factory())
             response_available = portal.call(anyio.Event)
             response_complete = portal.call(anyio.Event)
-            body_tx, body_rx = cast(
-                "tuple[MemoryObjectSendStream[bytes], MemoryObjectReceiveStream[bytes]]",
-                portal.call(anyio.create_memory_object_stream, 0),
-            )
+            body_tx, body_rx = portal.call(anyio.create_memory_object_stream[bytes], 0)
             exit_stack.callback(body_tx.close)
             exit_stack.callback(body_rx.close)
             app_complete = threading.Event()

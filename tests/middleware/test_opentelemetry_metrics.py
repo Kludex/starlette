@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Generator, Sequence
+from collections.abc import AsyncIterator, Generator
 
 import anyio
 import httpx
@@ -345,25 +345,14 @@ async def test_disconnect_and_response_trailers(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    ("known_methods", "method", "expected"),
-    [
-        (None, "GET", "GET"),
-        (None, "QUERY", "QUERY"),
-        (None, "PROPFIND", "_OTHER"),
-        ([], "GET", "_OTHER"),
-        (["PROPFIND"], "PROPFIND", "PROPFIND"),
-        (["PROPFIND"], "GET", "_OTHER"),
-    ],
-)
+@pytest.mark.parametrize(("method", "expected"), [("GET", "GET"), ("QUERY", "QUERY"), ("PROPFIND", "_OTHER")])
 async def test_known_http_methods(
     meter_provider: tuple[MeterProvider, InMemoryMetricReader],
-    known_methods: Sequence[str] | None,
     method: str,
     expected: str,
 ) -> None:
     _, reader = meter_provider
-    app = OpenTelemetryMiddleware(PlainTextResponse("ok"), known_methods=known_methods)
+    app = OpenTelemetryMiddleware(PlainTextResponse("ok"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
         assert (await client.request(method, "/")).status_code == 200
     duration = get_metrics(reader)["http.server.request.duration"]

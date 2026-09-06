@@ -38,8 +38,6 @@ class OpenTelemetryMiddleware:
         record_active_requests: Enable `http.server.active_requests`. Defaults to False.
         record_body_sizes: Enable `http.server.request.body.size` and
             `http.server.response.body.size` in bytes. Defaults to False.
-        known_methods: Sequence of known HTTP methods for metric labels, replacing the default list.
-            Defaults to CONNECT, DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT, QUERY, TRACE.
     """
 
     def __init__(
@@ -51,15 +49,11 @@ class OpenTelemetryMiddleware:
         meter_provider: metrics.MeterProvider | None = None,
         record_active_requests: bool = False,
         record_body_sizes: bool = False,
-        known_methods: Sequence[str] | None = None,
     ) -> None:
         self.app = app
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         self._excluded_urls = tuple(re.compile(pattern) for pattern in excluded_urls)
-        if known_methods is None:
-            known_methods = ("CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY", "TRACE")
-        self._known_methods = set(known_methods)
         self._tracer_provider = tracer_provider if tracer_provider is not None else trace.get_tracer_provider()
         provider = meter_provider if meter_provider is not None else metrics.get_meter_provider()
         meter = provider.get_meter("starlette", __version__)
@@ -125,8 +119,11 @@ class OpenTelemetryMiddleware:
             if headers.get("user-agent"):
                 attributes["user_agent.original"] = headers["user-agent"][0]
 
+            metric_method = method
+            if method not in {"CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY", "TRACE"}:
+                metric_method = "_OTHER"
             active_attributes: dict[str, str | int] = {
-                "http.request.method": method if method in self._known_methods else "_OTHER",
+                "http.request.method": metric_method,
                 "url.scheme": attributes["url.scheme"],
             }
             metric_attributes = active_attributes.copy()

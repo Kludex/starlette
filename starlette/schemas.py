@@ -44,7 +44,7 @@ class BaseSchemaGenerator:
         - path
             eg: /users/
         - http_method
-            one of 'get', 'post', 'put', 'patch', 'delete', 'options'
+            one of 'get', 'post', 'put', 'patch', 'delete', 'options', 'query'
         - func
             method ready to extract the docstring
         """
@@ -78,7 +78,7 @@ class BaseSchemaGenerator:
                     endpoints_info.append(EndpointInfo(path, method.lower(), route.endpoint))
             else:
                 path = self._remove_converter(route.path)
-                for method in ["get", "post", "put", "patch", "delete", "options"]:
+                for method in ["get", "post", "put", "patch", "delete", "options", "query"]:
                     if not hasattr(route.endpoint, method):
                         continue
                     func = getattr(route.endpoint, method)
@@ -132,9 +132,13 @@ class SchemaGenerator(BaseSchemaGenerator):
     def get_schema(self, routes: list[BaseRoute]) -> dict[str, Any]:
         schema = dict(self.base_schema)
         schema.setdefault("paths", {})
+        openapi_version_match = re.match(r"^(\d+)\.(\d+)", str(schema.get("openapi", "")))
+        supports_query = openapi_version_match is not None and tuple(map(int, openapi_version_match.groups())) >= (3, 2)
         endpoints_info = self.get_endpoints(routes)
 
         for endpoint in endpoints_info:
+            if endpoint.http_method == "query" and not supports_query:
+                continue
             parsed = self.parse_docstring(endpoint.func)
 
             if not parsed:

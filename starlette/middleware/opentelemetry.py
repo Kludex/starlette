@@ -18,6 +18,8 @@ from starlette.datastructures import URL
 from starlette.routing import Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+HTTP_DURATION_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10)
+
 
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans and metrics for incoming HTTP requests.
@@ -93,22 +95,7 @@ class OpenTelemetryMiddleware:
             "http.server.request.duration",
             unit="s",
             description="Duration of HTTP server requests.",
-            explicit_bucket_boundaries_advisory=(
-                0.005,
-                0.01,
-                0.025,
-                0.05,
-                0.075,
-                0.1,
-                0.25,
-                0.5,
-                0.75,
-                1,
-                2.5,
-                5,
-                7.5,
-                10,
-            ),
+            explicit_bucket_boundaries_advisory=HTTP_DURATION_BUCKETS,
         )
         self._active_requests = (
             meter.create_up_down_counter(

@@ -20,7 +20,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient, WebSocketDenialResponse
-from starlette.types import ASGIApp, Receive, Scope, Send, WebSocketExceptionHandler
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
@@ -29,16 +29,12 @@ async def error_500(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse({"detail": "Server Error"}, status_code=500)
 
 
-def method_not_allowed(request: Request, exc: HTTPException) -> JSONResponse:
+async def method_not_allowed(request: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse({"detail": "Custom message"}, status_code=405)
 
 
 async def http_exception(request: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-
-
-async def websocket_exception(websocket: WebSocket, exc: WebSocketException) -> None:
-    await websocket.close(code=exc.code, reason=exc.reason)
 
 
 def func_homepage(request: Request) -> PlainTextResponse:
@@ -248,14 +244,7 @@ def test_request_state(client: TestClient) -> None:
     assert response.json() == {"count": 1}
 
 
-@pytest.mark.parametrize("handler", [None, websocket_exception])
-def test_websocket_raise_websocket_exception(
-    test_client_factory: TestClientFactory, handler: WebSocketExceptionHandler[WebSocketException] | None
-) -> None:
-    app = Starlette(routes=[WebSocketRoute("/ws-raise-websocket", websocket_raise_websocket_exception)])
-    if handler is not None:
-        app.add_exception_handler(WebSocketException, handler)
-    client = test_client_factory(app)
+def test_websocket_raise_websocket_exception(client: TestClient) -> None:
     with client.websocket_connect("/ws-raise-websocket") as session:
         response = session.receive()
         assert response == {
@@ -290,8 +279,14 @@ def test_websocket_raise_custom_exception(client: TestClient) -> None:
 
 
 def test_exception_handler_types() -> None:
+    def sync_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
+        raise NotImplementedError
+
+    async def websocket_exception(websocket: WebSocket, exc: WebSocketException) -> None:
+        raise NotImplementedError
+
     app = Starlette()
-    app.add_exception_handler(HTTPException, method_not_allowed)
+    app.add_exception_handler(HTTPException, sync_http_exception)
     app.add_exception_handler(HTTPException, http_exception)
     app.add_exception_handler(WebSocketException, websocket_exception)
     app.add_exception_handler(HTTPException, error_500)

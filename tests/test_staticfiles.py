@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import anyio
-import httpx
 import pytest
 
 from starlette.applications import Starlette
@@ -217,28 +216,30 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     assert second_resp.content == b""
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize("method", ["GET", "HEAD"])
 @pytest.mark.parametrize("if_none_match", ["*", " \t* \t"])
-async def test_staticfiles_304_with_if_none_match_wildcard(tmp_path: Path, method: str, if_none_match: str) -> None:
+def test_staticfiles_304_with_if_none_match_wildcard(
+    tmp_path: Path, test_client_factory: TestClientFactory, method: str, if_none_match: str
+) -> None:
     (tmp_path / "example.txt").write_text("<file content>", encoding="utf-8")
 
     app = StaticFiles(directory=tmp_path)
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
-        response = await client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
+    client = test_client_factory(app)
+    response = client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
     assert response.status_code == 304
     assert response.content == b""
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize("method", ["GET", "HEAD"])
 @pytest.mark.parametrize("if_none_match", ['"123"', '"*"', '"foo,*,bar"', 'W/"foo,*,bar"', '"foo,*,bar", "other"'])
-async def test_staticfiles_200_with_etag_mismatch(tmp_path: Path, method: str, if_none_match: str) -> None:
+def test_staticfiles_200_with_etag_mismatch(
+    tmp_path: Path, test_client_factory: TestClientFactory, method: str, if_none_match: str
+) -> None:
     (tmp_path / "example.txt").write_text("<file content>", encoding="utf-8")
 
     app = StaticFiles(directory=tmp_path)
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
-        response = await client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
+    client = test_client_factory(app)
+    response = client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
     assert response.status_code == 200
     assert response.content == (b"<file content>" if method == "GET" else b"")
 

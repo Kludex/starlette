@@ -105,43 +105,6 @@ app = OpenTelemetryMiddleware(Starlette())
 
 Multiple native middleware instances on the same request create only one span.
 
-### Configure providers
-
-Pass `tracer_provider` to use a provider for this middleware without changing the global provider.
-This lets you configure tracing separately for each application.
-
-```python
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-
-from starlette.applications import Starlette
-from starlette.middleware import Middleware
-from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
-
-tracer_provider = TracerProvider()
-tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
-meter_provider = MeterProvider()
-
-app = Starlette(
-    middleware=[
-        Middleware(
-            OpenTelemetryMiddleware,
-            tracer_provider=tracer_provider,
-            meter_provider=meter_provider,
-        )
-    ],
-)
-```
-
-If you omit `tracer_provider` or pass `None`, the middleware discovers the global provider at request
-time. An explicit provider takes precedence, including a `NoOpTracerProvider` that disables tracing
-for this middleware. Your application owns the provider and is responsible for shutting it down.
-
-!!! note "Metrics are not emitted yet"
-    You can also pass an OpenTelemetry `MeterProvider` through `meter_provider`. The middleware
-    accepts and stores this provider for future metrics support. It currently has no effect.
-
 ### Exclude URLs
 
 Pass a comma-separated string or a sequence of regular expressions in `excluded_urls`. If any

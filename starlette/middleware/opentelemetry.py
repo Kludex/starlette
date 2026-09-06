@@ -16,7 +16,13 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 class OpenTelemetryMiddleware:
-    """Create OpenTelemetry server spans for incoming HTTP requests."""
+    """Create OpenTelemetry server spans for incoming HTTP requests.
+
+    Args:
+        tracer_provider: Optional tracer provider. If omitted, use the global tracer provider.
+        meter_provider: Optional meter provider. If omitted, use the global meter provider.
+            Reserved for future metrics support.
+    """
 
     def __init__(
         self,

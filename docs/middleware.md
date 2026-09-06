@@ -222,9 +222,7 @@ The session cookie is always set with the `"HttpOnly"` flag, preventing client-s
 
 Access or modify the session data using the `request.session` dictionary interface.
 
-The session tracks modification through its own dictionary operations, such as assigning to or deleting a top-level key.
-
-Mutating a nested value in place, for example `request.session["cart"].append(item)`, does not mark the session as modified, so the cookie is not rewritten unless something else modifies the session during the same request. After such a mutation, assign the value back to its key.
+Changes to nested values are not tracked automatically. For example, `request.session["cart"].append(item)` does not mark the session as modified. Assign the updated value back to the session, such as `request.session["cart"] = cart`, to ensure the changes are saved.
 
 The following arguments are supported:
 

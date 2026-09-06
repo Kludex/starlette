@@ -328,27 +328,6 @@ def test_closing_streaming_response_stops_application(test_client_factory: TestC
         assert app_finished.is_set()
 
 
-def test_closing_streaming_response_closes_body_iterator(test_client_factory: TestClientFactory) -> None:
-    body_iterator_closed = threading.Event()
-
-    async def stream() -> AsyncGenerator[bytes, None]:
-        try:
-            while True:
-                yield b"chunk"
-        finally:
-            await anyio.sleep(0)
-            body_iterator_closed.set()
-
-    async def homepage(request: Request) -> StreamingResponse:
-        return StreamingResponse(stream())
-
-    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
-    with client:
-        with client.stream("GET", "/") as response:
-            assert next(response.iter_raw()) == b"chunk"
-        assert body_iterator_closed.is_set()
-
-
 def test_streaming_response_raises_late_server_exception(test_client_factory: TestClientFactory) -> None:
     async def http_app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": []})

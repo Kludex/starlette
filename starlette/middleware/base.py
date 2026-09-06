@@ -136,9 +136,9 @@ class BaseHTTPMiddleware:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
-                if (message["type"] == "http.response.body" and not message.get("more_body", False)) or message[
-                    "type"
-                ] == "http.response.pathsend":
+                if message["type"] == "http.response.pathsend" or (
+                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                ):
                     await response_sent.wait()
 
             async def coro() -> None:

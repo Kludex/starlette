@@ -22,7 +22,7 @@ from starlette._utils import create_collapsing_task_group
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
-from starlette.middleware import background
+from starlette.middleware.background import _run_background
 from starlette.requests import ClientDisconnect
 from starlette.types import Message, Receive, Scope, Send
 
@@ -164,16 +164,12 @@ class Response:
         return wrapped
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if self.background is not None and background.is_background_task_middleware_installed(scope):
-            background.add_tasks(scope, self.background)
-            self.background = None
         if scope["type"] == "websocket":
             send = self._wrap_websocket_denial_send(send)
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         await send({"type": "http.response.body", "body": self.body})
 
-        if self.background is not None:
-            await self.background()
+        await _run_background(scope, self.background)
 
 
 class HTMLResponse(Response):
@@ -261,14 +257,10 @@ class StreamingResponse(Response):
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if self.background is not None and background.is_background_task_middleware_installed(scope):
-            background.add_tasks(scope, self.background)
-            self.background = None
         if scope["type"] == "websocket":
             send = self._wrap_websocket_denial_send(send)
             await self.stream_response(send)
-            if self.background is not None:
-                await self.background()
+            await _run_background(scope, self.background)
             return
 
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
@@ -288,8 +280,7 @@ class StreamingResponse(Response):
                 task_group.start_soon(wrap, partial(self.stream_response, send))
                 await wrap(partial(self.listen_for_disconnect, receive))
 
-        if self.background is not None:
-            await self.background()
+        await _run_background(scope, self.background)
 
 
 class MalformedRangeHeader(Exception):
@@ -348,9 +339,6 @@ class FileResponse(Response):
         self.headers.setdefault("etag", etag)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if self.background is not None and background.is_background_task_middleware_installed(scope):
-            background.add_tasks(scope, self.background)
-            self.background = None
         scope_type = scope["type"]
         send_header_only = scope_type == "http" and scope["method"].upper() == "HEAD"
         send_pathsend = scope_type == "http" and "http.response.pathsend" in scope.get("extensions", {})
@@ -393,8 +381,7 @@ class FileResponse(Response):
             else:
                 await self._handle_multiple_ranges(send, ranges, stat_result.st_size, send_header_only)
 
-        if self.background is not None:
-            await self.background()
+        await _run_background(scope, self.background)
 
     async def _handle_simple(self, send: Send, send_header_only: bool, send_pathsend: bool) -> None:
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})

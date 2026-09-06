@@ -37,9 +37,10 @@ class Starlette:
             debug: Boolean indicating if debug tracebacks should be returned on errors.
             routes: A list of routes to serve incoming HTTP and WebSocket requests.
             middleware: A list of middleware to run for every request. A starlette
-                application will always automatically include two middleware classes.
+                application will always automatically include three middleware classes.
                 `ServerErrorMiddleware` is added as the very outermost middleware, to handle
                 any uncaught errors occurring anywhere in the entire stack.
+                `BackgroundTaskMiddleware` runs background tasks after user middleware returns.
                 `ExceptionMiddleware` is added as the very innermost middleware, to deal
                 with handled exception cases occurring in the routing or endpoints.
             exception_handlers: A mapping of either integer status codes,
@@ -72,8 +73,10 @@ class Starlette:
             else:
                 exception_handlers[key] = value
 
-        middleware = [Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug)]
-        middleware.append(Middleware(BackgroundTaskMiddleware))
+        middleware = [
+            Middleware(ServerErrorMiddleware, handler=error_handler, debug=debug),
+            Middleware(BackgroundTaskMiddleware),
+        ]
         if self.max_body_size is not None:
             middleware.append(Middleware(RequestBodyLimitMiddleware, max_body_size=self.max_body_size))
         middleware += self.user_middleware

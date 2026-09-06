@@ -15,7 +15,7 @@ from starlette.websockets import WebSocket
 
 AppType = TypeVar("AppType", bound="Starlette")
 P = ParamSpec("P")
-E = TypeVar("E", bound=Exception)
+_E = TypeVar("_E", bound=Exception)
 
 
 class Starlette:
@@ -105,8 +105,8 @@ class Starlette:
     @overload
     def add_exception_handler(
         self,
-        exc_class_or_status_code: type[E],
-        handler: Callable[[Request, E], Response | Awaitable[Response]] | Callable[[WebSocket, E], Awaitable[None]],
+        exc_class_or_status_code: type[_E],
+        handler: Callable[[Request, _E], Response | Awaitable[Response]] | Callable[[WebSocket, _E], Awaitable[None]],
     ) -> None: ...
 
     @overload

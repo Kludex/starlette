@@ -468,7 +468,7 @@ async def test_metric_flags_precedence(
 @pytest.mark.parametrize("value", ["invalid", ""])
 def test_invalid_metric_flag_environment(monkeypatch: pytest.MonkeyPatch, name: str, value: str) -> None:
     monkeypatch.setenv(name, value)
-    with pytest.raises(ValueError, match=f"Config '{name}'.*Not a valid bool"):
+    with pytest.raises(ValueError, match=f"{name} must be true, false, 1, or 0"):
         OpenTelemetryMiddleware(PlainTextResponse("ok"))
 
 

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from time import perf_counter
-from typing import TypeVar
 
 import anyio
 
@@ -15,33 +14,23 @@ except ImportError:  # pragma: no cover
     raise ImportError("The `opentelemetry-api` package is required to use `OpenTelemetryMiddleware`.") from None
 
 from starlette import __version__
-from starlette.config import Config
 from starlette.datastructures import URL
 from starlette.routing import Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-
-T = TypeVar("T")
 
 
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans and metrics for incoming HTTP requests.
 
-    Extract distributed trace context from request headers and name server spans
-    using the matched route template. Record `http.server.request.duration` in
-    seconds, including the application's background tasks. Tracing and metrics
-    work independently; a no-op provider disables only its own signal.
+    Extract trace context from request headers and name spans using route templates.
+    Record `http.server.request.duration` in seconds, including background tasks.
+    Tracing and metrics work independently. Body sizes count complete ASGI bodies
+    without buffering or draining requests. Unknown metric methods use `_OTHER`.
+    Skip non-HTTP scopes and excluded URLs; nested instances emit telemetry once.
 
-    Body sizes count bytes in complete ASGI bodies without buffering or draining
-    unread requests. Metric methods use `_OTHER` for unknown methods.
-
-    Environment-backed options resolve once at construction. Pass None to use
-    the first defined environment variable listed for each option, then its
-    default. Explicit values, including False, "", and [], override the environment.
+    Resolve None options once at construction from the listed environment variables
+    in order, then the default. Explicit False, "", and [] override the environment.
     Boolean environment values accept true, false, 1, and 0, ignoring case.
-
-    Skip non-HTTP scopes and excluded URLs. Multiple native middleware instances
-    on the same request emit telemetry once. Your application configures exporters
-    and owns provider shutdown. Global providers can be configured after the app.
 
     Args:
         app: The ASGI application to wrap.
@@ -73,28 +62,27 @@ class OpenTelemetryMiddleware:
         known_methods: str | Sequence[str] | None = None,
     ) -> None:
         self.app = app
-        excluded_urls = _resolve_option(
-            excluded_urls,
-            "OTEL_PYTHON_STARLETTE_EXCLUDED_URLS",
-            "OTEL_PYTHON_EXCLUDED_URLS",
-            default=(),
-            cast=str,
-        )
+        if excluded_urls is None:
+            excluded_urls = os.environ.get(
+                "OTEL_PYTHON_STARLETTE_EXCLUDED_URLS", os.environ.get("OTEL_PYTHON_EXCLUDED_URLS", "")
+            )
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         self._excluded_urls = tuple(re.compile(pattern) for pattern in excluded_urls)
-        record_active_requests = _resolve_option(
-            record_active_requests, "OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", default=False, cast=bool
-        )
-        record_body_sizes = _resolve_option(
-            record_body_sizes, "OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES", default=False, cast=bool
-        )
-        known_methods = _resolve_option(
-            known_methods,
-            "OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS",
-            default="CONNECT,DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT,QUERY,TRACE",
-            cast=str,
-        )
+        if record_active_requests is None:
+            value = os.environ.get("OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", "false").lower()
+            if value not in ("true", "false", "1", "0"):
+                raise ValueError("OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS must be true, false, 1, or 0.")
+            record_active_requests = value in ("true", "1")
+        if record_body_sizes is None:
+            value = os.environ.get("OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES", "false").lower()
+            if value not in ("true", "false", "1", "0"):
+                raise ValueError("OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES must be true, false, 1, or 0.")
+            record_body_sizes = value in ("true", "1")
+        if known_methods is None:
+            known_methods = os.environ.get(
+                "OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", "CONNECT,DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT,QUERY,TRACE"
+            )
         if isinstance(known_methods, str):
             known_methods = [method.strip() for method in known_methods.split(",")] if known_methods else ()
         self._known_methods = set(known_methods)
@@ -263,13 +251,3 @@ class OpenTelemetryMiddleware:
                         self._response_body_size.record(response_size, metric_attributes)
         finally:
             del scope["starlette.opentelemetry"]
-
-
-def _resolve_option(value: T | None, *env_vars: str, default: T, cast: Callable[[str], T]) -> T:
-    if value is not None:
-        return value
-    config = Config(environ=os.environ)
-    for name in env_vars:
-        if name in config.environ:
-            return config(name, cast=cast)
-    return default

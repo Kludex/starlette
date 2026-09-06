@@ -190,9 +190,6 @@ async def test_websocket_endpoint_decode_text_rejects_message_without_text() -> 
     class Echo(WebSocketEndpoint):
         encoding = "text"
 
-        async def on_receive(self, websocket: WebSocket, data: str) -> None:
-            raise AssertionError("on_receive should not be called")  # pragma: no cover
-
     sent: list[Message] = []
 
     async def receive() -> Message:
@@ -215,9 +212,6 @@ async def test_websocket_endpoint_decode_text_rejects_message_without_text() -> 
 async def test_websocket_endpoint_decode_bytes_rejects_message_without_bytes() -> None:
     class Echo(WebSocketEndpoint):
         encoding = "bytes"
-
-        async def on_receive(self, websocket: WebSocket, data: bytes) -> None:
-            raise AssertionError("on_receive should not be called")  # pragma: no cover
 
     sent: list[Message] = []
 

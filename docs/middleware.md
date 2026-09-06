@@ -52,8 +52,10 @@ The following middleware implementations are available in the Starlette package:
 Creates an OpenTelemetry server span for every incoming HTTP request. The span follows the
 OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
 headers, and uses the matched route template for its name and `http.route` attribute.
+The middleware also records `http.server.request.duration` in seconds using your meter provider.
+Tracing and metrics work independently.
 
-Install the optional API dependency with `pip install opentelemetry-api`, or as part of
+Install the optional API dependency with `pip install "opentelemetry-api>=1.30.0"`, or as part of
 `pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application
 chooses and configures the SDK and exporter. If no tracer provider is configured, the middleware
 skips tracing.

@@ -11,16 +11,35 @@ except ImportError:  # pragma: no cover
 
 from starlette import __version__
 from starlette.datastructures import URL
-from starlette.routing import Mount
+from starlette.middleware._opentelemetry import HTTPMetricsResponder, get_route_template
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 class OpenTelemetryMiddleware:
-    """Create OpenTelemetry server spans for incoming HTTP requests.
+    """Create OpenTelemetry server spans and metrics for incoming HTTP requests.
+
+    Extract distributed trace context from request headers and name server spans
+    using the matched route template. Record `http.server.request.duration` in
+    seconds, including the application's background tasks. Tracing and metrics
+    work independently; a no-op provider disables only its own signal.
+
+    Body sizes count bytes in complete ASGI bodies without buffering or draining
+    unread requests. Metric methods use `_OTHER` for unknown methods. Set
+    `OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS` to override the known method list.
+
+    Skip non-HTTP scopes and excluded URLs. Multiple native middleware instances
+    on the same request emit telemetry once. Your application configures exporters
+    and owns provider shutdown. Global providers can be configured after the app.
 
     Args:
+        app: The ASGI application to wrap.
+        excluded_urls: Regular expressions matched against the full request URL.
+            Pass a comma-separated string or a sequence. By default, exclude no URLs.
         tracer_provider: Optional tracer provider. If omitted, use the global tracer provider.
         meter_provider: Optional meter provider. If omitted, use the global meter provider.
+        record_active_requests: Enable `http.server.active_requests`. Defaults to False.
+        record_body_sizes: Enable `http.server.request.body.size` and
+            `http.server.response.body.size` in bytes. Defaults to False.
     """
 
     def __init__(
@@ -30,13 +49,15 @@ class OpenTelemetryMiddleware:
         excluded_urls: str | Sequence[str] = (),
         tracer_provider: trace.TracerProvider | None = None,
         meter_provider: metrics.MeterProvider | None = None,
+        record_active_requests: bool = False,
+        record_body_sizes: bool = False,
     ) -> None:
         self.app = app
-        self._meter_provider = meter_provider
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         patterns = tuple(re.compile(pattern) for pattern in excluded_urls)
-        self._responder = OpenTelemetryResponder(app, patterns, tracer_provider)
+        metrics_app = HTTPMetricsResponder(app, meter_provider, record_active_requests, record_body_sizes)
+        self._responder = OpenTelemetryResponder(app, patterns, tracer_provider, metrics_app)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -55,16 +76,15 @@ class OpenTelemetryResponder:
         app: ASGIApp,
         excluded_urls: tuple[re.Pattern[str], ...],
         tracer_provider: trace.TracerProvider | None,
+        metrics_app: ASGIApp,
     ) -> None:
         self.app = app
         self._excluded_urls = excluded_urls
         self._tracer_provider = tracer_provider or trace.get_tracer_provider()
+        self._metrics_app = metrics_app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         tracer_provider = self._tracer_provider
-        if isinstance(tracer_provider, trace.NoOpTracerProvider):
-            return await self.app(scope, receive, send)
-
         url = URL(scope=scope)
         if any(pattern.search(str(url)) for pattern in self._excluded_urls):
             return await self.app(scope, receive, send)
@@ -115,21 +135,12 @@ class OpenTelemetryResponder:
                 await send(message)
 
             try:
-                await self.app(scope, receive, send_with_telemetry)
+                await self._metrics_app(scope, receive, send_with_telemetry)
             except Exception as exc:
                 span.set_attribute("error.type", type(exc).__qualname__)
                 raise
             finally:
-                route = scope.get("route")
-                if isinstance(route, Mount):
-                    route_path = scope.get("root_path") or "/"
-                else:
-                    path_format = getattr(route, "path_format", None)
-                    route_path = (
-                        scope.get("root_path", "").rstrip("/") + path_format or "/"
-                        if isinstance(path_format, str)
-                        else None
-                    )
+                route_path = get_route_template(scope)
                 if route_path is not None:
                     span.update_name(f"{method} {route_path}")
                     span.set_attribute("http.route", route_path)

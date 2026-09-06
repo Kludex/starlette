@@ -76,6 +76,33 @@ def test_session(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"session": {}}
 
 
+@pytest.mark.parametrize("partitioned", [False, True])
+def test_partitioned_session(test_client_factory: TestClientFactory, partitioned: bool) -> None:
+    app = Starlette(
+        routes=[
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/clear_session", endpoint=clear_session, methods=["POST"]),
+        ],
+        middleware=[
+            Middleware(
+                SessionMiddleware,
+                secret_key="example",
+                https_only=True,
+                same_site="none",
+                partitioned=partitioned,
+            )
+        ],
+    )
+    client = test_client_factory(app, base_url="https://testserver")
+    response = client.post("/update_session", json={"some": "data"})
+    attributes = response.headers["set-cookie"].split("; ")
+    assert ("partitioned" in attributes) is partitioned
+
+    response = client.post("/clear_session")
+    attributes = response.headers["set-cookie"].split("; ")
+    assert ("partitioned" in attributes) is partitioned
+
+
 def test_session_expires(test_client_factory: TestClientFactory) -> None:
     app = Starlette(
         routes=[

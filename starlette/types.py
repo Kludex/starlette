@@ -3,9 +3,9 @@ from collections.abc import Awaitable, Callable, Mapping, MutableMapping
 from contextlib import AbstractAsyncContextManager
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info >= (3, 13):  # pragma: no cover - depends on the Python version
+if sys.version_info >= (3, 13):  # pragma: no cover
     from typing import TypeVar
-else:  # pragma: no cover - depends on the Python version
+else:  # pragma: no cover
     from typing_extensions import TypeVar
 
 if TYPE_CHECKING:

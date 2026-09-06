@@ -1331,8 +1331,10 @@ async def test_background_task_runs_after_response_sent_with_middleware() -> Non
     async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
         return await call_next(request)
 
-    app = Starlette(routes=[Route("/", homepage)])
-    app.add_middleware(BaseHTTPMiddleware, dispatch=passthrough)
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+    )
 
     scope = {
         "type": "http",

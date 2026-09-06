@@ -233,7 +233,7 @@ def test_staticfiles_304_with_if_none_match_wildcard(
     assert response.content == b""
 
 
-@pytest.mark.parametrize("if_none_match", ['"123"', '"foo,*,bar"'])
+@pytest.mark.parametrize("if_none_match", ['"123"', '"*"', '"foo,*,bar"'])
 def test_staticfiles_200_with_etag_mismatch(
     tmp_path: Path,
     test_client_factory: TestClientFactory,

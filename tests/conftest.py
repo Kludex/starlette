@@ -20,6 +20,7 @@ def blockbuster() -> Iterator[None]:
         bb.functions["os.scandir"] = BlockBusterFunction(None, "os.scandir", scanned_modules="starlette")
     bb.functions["os.stat"].can_block_in("/mimetypes.py", "init")
     bb.functions["os.stat"].can_block_in("<frozen linecache>", {"checkcache", "updatecache"})
+    bb.functions["io.BufferedReader.read"].can_block_in("/starlette/testclient.py", "receive")
     bb.activate()
     try:
         yield

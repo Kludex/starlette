@@ -296,7 +296,7 @@ class _TestClientTransport(httpx.BaseTransport):
                     await response_complete.wait()
                 return {"type": "http.disconnect"}
 
-            body = await anyio.to_thread.run_sync(request.read)
+            body = request.read()
             if isinstance(body, str):
                 body_bytes: bytes = body.encode("utf-8")  # pragma: no cover
             elif body is None:

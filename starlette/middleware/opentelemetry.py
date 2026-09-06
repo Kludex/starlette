@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from time import perf_counter
+from typing import TypeVar
 
 import anyio
 
@@ -14,9 +15,12 @@ except ImportError:  # pragma: no cover
     raise ImportError("The `opentelemetry-api` package is required to use `OpenTelemetryMiddleware`.") from None
 
 from starlette import __version__
+from starlette.config import Config
 from starlette.datastructures import URL
 from starlette.routing import Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+T = TypeVar("T")
 
 
 class OpenTelemetryMiddleware:
@@ -28,8 +32,12 @@ class OpenTelemetryMiddleware:
     work independently; a no-op provider disables only its own signal.
 
     Body sizes count bytes in complete ASGI bodies without buffering or draining
-    unread requests. Metric methods use `_OTHER` for unknown methods. Set
-    `OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS` to override the known method list.
+    unread requests. Metric methods use `_OTHER` for unknown methods.
+
+    Environment-backed options resolve once at construction. Pass None to use
+    the first defined environment variable listed for each option, then its
+    default. Explicit values, including False, "", and [], override the environment.
+    Boolean environment values accept true, false, 1, and 0, ignoring case.
 
     Skip non-HTTP scopes and excluded URLs. Multiple native middleware instances
     on the same request emit telemetry once. Your application configures exporters
@@ -38,29 +46,59 @@ class OpenTelemetryMiddleware:
     Args:
         app: The ASGI application to wrap.
         excluded_urls: Regular expressions matched against the full request URL.
-            Pass a comma-separated string or a sequence. By default, exclude no URLs.
+            Pass a comma-separated string or a sequence. Resolve None from
+            `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`, then `OTEL_PYTHON_EXCLUDED_URLS`.
+            By default, exclude no URLs.
         tracer_provider: Optional tracer provider. If omitted, use the global tracer provider.
         meter_provider: Optional meter provider. If omitted, use the global meter provider.
-        record_active_requests: Enable `http.server.active_requests`. Defaults to False.
+        record_active_requests: Enable `http.server.active_requests`. Resolve None
+            from `OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS`. Defaults to False.
         record_body_sizes: Enable `http.server.request.body.size` and
-            `http.server.response.body.size` in bytes. Defaults to False.
+            `http.server.response.body.size` in bytes. Resolve None from
+            `OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES`. Defaults to False.
+        known_methods: Known HTTP methods for metric labels, as a comma-separated
+            string or sequence. Resolve None from `OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS`.
+            Defaults to CONNECT, DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT, QUERY, TRACE.
     """
 
     def __init__(
         self,
         app: ASGIApp,
         *,
-        excluded_urls: str | Sequence[str] = (),
+        excluded_urls: str | Sequence[str] | None = None,
         tracer_provider: trace.TracerProvider | None = None,
         meter_provider: metrics.MeterProvider | None = None,
-        record_active_requests: bool = False,
-        record_body_sizes: bool = False,
+        record_active_requests: bool | None = None,
+        record_body_sizes: bool | None = None,
+        known_methods: str | Sequence[str] | None = None,
     ) -> None:
         self.app = app
+        excluded_urls = _resolve_option(
+            excluded_urls,
+            "OTEL_PYTHON_STARLETTE_EXCLUDED_URLS",
+            "OTEL_PYTHON_EXCLUDED_URLS",
+            default=(),
+            cast=str,
+        )
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         self._excluded_urls = tuple(re.compile(pattern) for pattern in excluded_urls)
-        self._tracer_provider = tracer_provider or trace.get_tracer_provider()
+        record_active_requests = _resolve_option(
+            record_active_requests, "OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", default=False, cast=bool
+        )
+        record_body_sizes = _resolve_option(
+            record_body_sizes, "OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES", default=False, cast=bool
+        )
+        known_methods = _resolve_option(
+            known_methods,
+            "OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS",
+            default="CONNECT,DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT,QUERY,TRACE",
+            cast=str,
+        )
+        if isinstance(known_methods, str):
+            known_methods = [method.strip() for method in known_methods.split(",")] if known_methods else ()
+        self._known_methods = set(known_methods)
+        self._tracer_provider = tracer_provider if tracer_provider is not None else trace.get_tracer_provider()
         provider = meter_provider if meter_provider is not None else metrics.get_meter_provider()
         meter = provider.get_meter("starlette", __version__)
         self._duration = meter.create_histogram(
@@ -105,12 +143,6 @@ class OpenTelemetryMiddleware:
             if record_body_sizes
             else None
         )
-        self._known_methods = {
-            method.strip()
-            for method in os.environ.get(
-                "OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", "CONNECT,DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT,QUERY,TRACE"
-            ).split(",")
-        }
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -231,3 +263,13 @@ class OpenTelemetryMiddleware:
                         self._response_body_size.record(response_size, metric_attributes)
         finally:
             del scope["starlette.opentelemetry"]
+
+
+def _resolve_option(value: T | None, *env_vars: str, default: T, cast: Callable[[str], T]) -> T:
+    if value is not None:
+        return value
+    config = Config(environ=os.environ)
+    for name in env_vars:
+        if name in config.environ:
+            return config(name, cast=cast)
+    return default

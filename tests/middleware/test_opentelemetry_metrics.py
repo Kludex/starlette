@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Generator
+from collections.abc import AsyncIterator, Generator, Sequence
 
 import anyio
 import httpx
@@ -346,25 +346,157 @@ async def test_disconnect_and_response_trailers(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    ("known_methods", "method", "expected"),
-    [(None, "BREW", "_OTHER"), ("BREW", "BREW", "BREW"), ("BREW", "GET", "_OTHER"), ("", "GET", "_OTHER")],
+    ("environment", "known_methods", "method", "expected"),
+    [
+        (None, None, "GET", "GET"),
+        (None, None, "BREW", "_OTHER"),
+        ("BREW", None, "BREW", "BREW"),
+        ("BREW", None, "GET", "_OTHER"),
+        ("", None, "GET", "_OTHER"),
+        ("GET", "", "GET", "_OTHER"),
+        ("GET", [], "GET", "_OTHER"),
+        ("GET", ["BREW"], "BREW", "BREW"),
+        ("GET", " BREW, POST ", "BREW", "BREW"),
+    ],
 )
 async def test_known_http_methods(
     monkeypatch: pytest.MonkeyPatch,
     meter_provider: tuple[MeterProvider, InMemoryMetricReader],
-    known_methods: str | None,
+    environment: str | None,
+    known_methods: str | Sequence[str] | None,
     method: str,
     expected: str,
 ) -> None:
     _, reader = meter_provider
-    if known_methods is None:
+    if environment is None:
         monkeypatch.delenv("OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", raising=False)
     else:
-        monkeypatch.setenv("OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", known_methods)
-    app = OpenTelemetryMiddleware(PlainTextResponse("ok"))
+        monkeypatch.setenv("OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", environment)
+    app = OpenTelemetryMiddleware(PlainTextResponse("ok"), known_methods=known_methods)
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
         assert (await client.request(method, "/")).status_code == 200
     duration = get_metrics(reader)["http.server.request.duration"]
     assert isinstance(duration.data, Histogram)
     assert duration.data.data_points[0].attributes is not None
     assert duration.data.data_points[0].attributes["http.request.method"] == expected
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("excluded_urls", "starlette_environment", "general_environment", "excluded"),
+    [
+        (None, None, None, False),
+        (None, None, "/excluded", True),
+        (None, "/excluded", "[", True),
+        (None, "/other", "/excluded", False),
+        (None, "", "/excluded", False),
+        ("", "/excluded", "[", False),
+        ([], "/excluded", "[", False),
+        (["/excluded"], "[", "[", True),
+        ("/excluded", "[", "[", True),
+    ],
+)
+async def test_excluded_urls_precedence(
+    monkeypatch: pytest.MonkeyPatch,
+    meter_provider: tuple[MeterProvider, InMemoryMetricReader],
+    excluded_urls: str | Sequence[str] | None,
+    starlette_environment: str | None,
+    general_environment: str | None,
+    excluded: bool,
+) -> None:
+    _, reader = meter_provider
+    for name, value in (
+        ("OTEL_PYTHON_STARLETTE_EXCLUDED_URLS", starlette_environment),
+        ("OTEL_PYTHON_EXCLUDED_URLS", general_environment),
+    ):
+        if value is None:
+            monkeypatch.delenv(name, raising=False)
+        else:
+            monkeypatch.setenv(name, value)
+    app = OpenTelemetryMiddleware(PlainTextResponse("ok"), excluded_urls=excluded_urls)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        assert (await client.get("/excluded")).status_code == 200
+    assert ("http.server.request.duration" not in get_metrics(reader)) == excluded
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("active_environment", "body_environment", "explicit", "active_enabled", "body_enabled"),
+    [
+        ("true", "false", None, True, False),
+        ("0", "1", None, False, True),
+        ("FALSE", "TRUE", None, False, True),
+        ("true", "1", False, False, False),
+        ("false", "0", True, True, True),
+        ("invalid", "invalid", False, False, False),
+        ("invalid", "invalid", True, True, True),
+    ],
+)
+async def test_metric_flags_precedence(
+    monkeypatch: pytest.MonkeyPatch,
+    meter_provider: tuple[MeterProvider, InMemoryMetricReader],
+    active_environment: str,
+    body_environment: str,
+    explicit: bool | None,
+    active_enabled: bool,
+    body_enabled: bool,
+) -> None:
+    _, reader = meter_provider
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", active_environment)
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES", body_environment)
+
+    async def echo(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(await request.body())
+
+    app = OpenTelemetryMiddleware(
+        Starlette(routes=[Route("/", echo, methods=["POST"])]),
+        record_active_requests=explicit,
+        record_body_sizes=explicit,
+    )
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        assert (await client.post("/", content=b"hello")).text == "hello"
+    recorded = get_metrics(reader)
+    assert "http.server.request.duration" in recorded
+    assert ("http.server.active_requests" in recorded) == active_enabled
+    assert ("http.server.request.body.size" in recorded) == body_enabled
+    assert ("http.server.response.body.size" in recorded) == body_enabled
+
+
+@pytest.mark.parametrize(
+    "name", ["OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", "OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES"]
+)
+@pytest.mark.parametrize("value", ["invalid", ""])
+def test_invalid_metric_flag_environment(monkeypatch: pytest.MonkeyPatch, name: str, value: str) -> None:
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError, match=f"Config '{name}'.*Not a valid bool"):
+        OpenTelemetryMiddleware(PlainTextResponse("ok"))
+
+
+@pytest.mark.anyio
+async def test_environment_resolved_at_construction(
+    monkeypatch: pytest.MonkeyPatch,
+    meter_provider: tuple[MeterProvider, InMemoryMetricReader],
+) -> None:
+    _, reader = meter_provider
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_EXCLUDED_URLS", "/excluded")
+    monkeypatch.setenv("OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", "GET")
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", "true")
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES", "true")
+    app = OpenTelemetryMiddleware(PlainTextResponse("ok"))
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_EXCLUDED_URLS", "/included")
+    monkeypatch.setenv("OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", "POST")
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", "false")
+    monkeypatch.setenv("OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES", "false")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        assert (await client.get("/excluded")).status_code == 200
+        assert (await client.get("/included")).status_code == 200
+    recorded = get_metrics(reader)
+    assert "http.server.active_requests" in recorded
+    assert "http.server.response.body.size" in recorded
+    duration = recorded["http.server.request.duration"]
+    assert isinstance(duration.data, Histogram)
+    assert len(duration.data.data_points) == 1
+    point = duration.data.data_points[0]
+    assert point.count == 1
+    assert point.attributes is not None
+    assert point.attributes["http.request.method"] == "GET"

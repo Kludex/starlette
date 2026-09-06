@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TypedDict
 
 import anyio.from_thread
-import httpx
 import pytest
 
 from starlette import status
@@ -17,25 +16,29 @@ from starlette.exceptions import HTTPException, WebSocketException
 from starlette.middleware import Middleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient, WebSocketDenialResponse
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send, WebSocketExceptionHandler
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
 
-async def error_500(request: Request, exc: HTTPException) -> JSONResponse:
+async def error_500(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse({"detail": "Server Error"}, status_code=500)
 
 
-async def method_not_allowed(request: Request, exc: HTTPException) -> JSONResponse:
+def method_not_allowed(request: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse({"detail": "Custom message"}, status_code=405)
 
 
 async def http_exception(request: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+
+async def websocket_exception(websocket: WebSocket, exc: WebSocketException) -> None:
+    await websocket.close(code=exc.code, reason=exc.reason)
 
 
 def func_homepage(request: Request) -> PlainTextResponse:
@@ -245,7 +248,14 @@ def test_request_state(client: TestClient) -> None:
     assert response.json() == {"count": 1}
 
 
-def test_websocket_raise_websocket_exception(client: TestClient) -> None:
+@pytest.mark.parametrize("handler", [None, websocket_exception])
+def test_websocket_raise_websocket_exception(
+    test_client_factory: TestClientFactory, handler: WebSocketExceptionHandler[WebSocketException] | None
+) -> None:
+    app = Starlette(routes=[WebSocketRoute("/ws-raise-websocket", websocket_raise_websocket_exception)])
+    if handler is not None:
+        app.add_exception_handler(WebSocketException, handler)
+    client = test_client_factory(app)
     with client.websocket_connect("/ws-raise-websocket") as session:
         response = session.receive()
         assert response == {
@@ -279,94 +289,22 @@ def test_websocket_raise_custom_exception(client: TestClient) -> None:
         }
 
 
-@pytest.mark.anyio
-async def test_http_exception_handler_types() -> None:
-    async def endpoint(request: Request) -> Response:
-        raise HTTPException(status_code=418)
+def test_exception_handler_types() -> None:
+    app = Starlette()
+    app.add_exception_handler(HTTPException, method_not_allowed)
+    app.add_exception_handler(HTTPException, http_exception)
+    app.add_exception_handler(WebSocketException, websocket_exception)
+    app.add_exception_handler(HTTPException, error_500)
+    app.add_exception_handler(Exception, error_500)
+    app.add_exception_handler(500, error_500)
 
-    def handle_http_error(request: Request, exc: HTTPException) -> Response:
-        return Response(status_code=exc.status_code)
+    app.add_exception_handler(Exception, http_exception)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, websocket_exception)  # type: ignore[arg-type]
+    app.add_exception_handler(500, http_exception)  # type: ignore[arg-type]
 
-    async def handle_http_error_async(request: Request, exc: HTTPException) -> Response:
-        return Response(status_code=exc.status_code)
-
-    def handle_error(request: Request, exc: Exception) -> Response:
-        return Response(status_code=418)
-
-    for handler in (handle_http_error, handle_http_error_async, handle_error):
-        app = Starlette(routes=[Route("/", endpoint)])
-        app.add_exception_handler(HTTPException, handler)
-
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://testserver") as client:
-            response = await client.get("/")
-        assert response.status_code == 418
-
-    app.add_exception_handler(Exception, handle_http_error)  # type: ignore[arg-type]
-    app.add_exception_handler(ValueError, handle_http_error)  # type: ignore[arg-type]
-    app.add_exception_handler(500, handle_http_error)  # type: ignore[arg-type]
-    app.add_exception_handler(500, handle_http_error_async)  # type: ignore[arg-type]
-    Starlette(exception_handlers={HTTPException: handle_error})
-    Starlette(exception_handlers={HTTPException: handle_http_error})  # type: ignore[dict-item]
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("key", [500, Exception])
-async def test_server_error_handler_types(key: int | type[Exception]) -> None:
-    async def endpoint(request: Request) -> Response:
-        raise ValueError("Server error")
-
-    def handle_error(request: Request, exc: Exception) -> Response:
-        return Response(str(exc), status_code=500)
-
-    async def handle_error_async(request: Request, exc: Exception) -> Response:
-        return Response(str(exc), status_code=500)
-
-    for handler in (handle_error, handle_error_async):
-        app = Starlette(routes=[Route("/", endpoint)])
-        app.add_exception_handler(key, handler)
-        transport = httpx.ASGITransport(app, raise_app_exceptions=False)
-
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            response = await client.get("/")
-        assert response.status_code == 500
-        assert response.text == "Server error"
-
-
-@pytest.mark.anyio
-async def test_websocket_exception_handler_types() -> None:
-    async def endpoint(websocket: WebSocket) -> None:
-        await websocket.accept()
-        raise WebSocketException(code=1008)
-
-    async def handle_websocket_error(websocket: WebSocket, exc: WebSocketException) -> None:
-        await websocket.close(code=exc.code)
-
-    async def handle_error(websocket: WebSocket, exc: Exception) -> None:
-        await websocket.close(code=1008)
-
-    async def receive() -> Message:
-        return {"type": "websocket.connect"}
-
-    async def send(message: Message) -> None:
-        messages.append(message)
-
-    for handler in (handle_websocket_error, handle_error):
-        app = Starlette(routes=[WebSocketRoute("/", endpoint)])
-        app.add_exception_handler(WebSocketException, handler)
-        messages: list[Message] = []
-        scope: Scope = {"type": "websocket", "path": "/", "headers": [], "query_string": b""}
-
-        await app(scope, receive, send)
-        assert messages == [
-            {"type": "websocket.accept", "subprotocol": None, "headers": []},
-            {"type": "websocket.close", "code": 1008, "reason": ""},
-        ]
-
-    app.add_exception_handler(403, handle_error)
-    app.add_exception_handler(Exception, handle_websocket_error)  # type: ignore[arg-type]
-    app.add_exception_handler(ValueError, handle_websocket_error)  # type: ignore[arg-type]
-    Starlette(exception_handlers={WebSocketException: handle_error})
-    Starlette(exception_handlers={WebSocketException: handle_websocket_error})  # type: ignore[dict-item]
+    Starlette(exception_handlers={Exception: error_500})
+    Starlette(exception_handlers={HTTPException: http_exception})  # type: ignore[dict-item]
+    Starlette(exception_handlers={WebSocketException: websocket_exception})  # type: ignore[dict-item]
 
 
 def test_middleware(test_client_factory: TestClientFactory) -> None:

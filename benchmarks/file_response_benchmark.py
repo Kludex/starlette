@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import anyio
 import pytest
 from pytest_codspeed.plugin import BenchmarkFixture
 
@@ -40,12 +41,12 @@ class FileApp:
         await FileResponse(self.path, media_type="application/octet-stream")(scope, receive, send)
 
 
-def http_scope(case: BenchmarkCase) -> Scope:
+def http_scope(case: BenchmarkCase, spec_version: str = "2.5") -> Scope:
     headers = [] if case.range_header is None else [(b"range", case.range_header)]
     extensions: dict[str, dict[str, object]] = {"http.response.pathsend": {}} if case.pathsend else {}
     return {
         "type": "http",
-        "asgi": {"version": "3.0", "spec_version": "2.5"},
+        "asgi": {"version": "3.0", "spec_version": spec_version},
         "http_version": "1.1",
         "method": "GET",
         "scheme": "http",
@@ -60,8 +61,12 @@ def http_scope(case: BenchmarkCase) -> Scope:
     }
 
 
-def dispatch(runner: ASGIRunner, app: FileApp, case: BenchmarkCase) -> list[Message]:
-    return runner.run(app, http_scope(case))
+def dispatch(runner: ASGIRunner, app: FileApp, case: BenchmarkCase, spec_version: str = "2.5") -> list[Message]:
+    async def receive() -> Message:
+        await anyio.sleep_forever()
+        raise AssertionError("The disconnect listener should be cancelled")
+
+    return runner.run(app, http_scope(case, spec_version), receive)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -80,16 +85,18 @@ def warm_file_response(asgi_runner: ASGIRunner, tmp_path_factory: pytest.TempPat
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
+@pytest.mark.parametrize("spec_version", ["2.3", "2.5"])
 @pytest.mark.benchmark(max_time=0.5, max_rounds=1)
 def test_file_response(
     tmp_path: Path,
     asgi_runner: ASGIRunner,
     benchmark: BenchmarkFixture,
     case: BenchmarkCase,
+    spec_version: str,
 ) -> None:
     path = tmp_path / "file.bin"
     path.write_bytes(b"x" * case.file_size)
-    messages = benchmark.pedantic(dispatch, args=(asgi_runner, FileApp(path), case), rounds=1)
+    messages = benchmark.pedantic(dispatch, args=(asgi_runner, FileApp(path), case, spec_version), rounds=1)
 
     expected_status = 206 if case.range_header is not None else 200
     assert messages[0]["type"] == "http.response.start"
@@ -111,3 +118,4 @@ def test_file_response(
     benchmark.extra_info["file_bytes"] = case.file_size
     benchmark.extra_info["response_bytes"] = expected_size
     benchmark.extra_info["pathsend"] = case.pathsend
+    benchmark.extra_info["asgi_spec_version"] = spec_version

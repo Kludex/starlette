@@ -38,6 +38,8 @@ async def test_http_exception_handler_types() -> None:
     app.add_exception_handler(ValueError, handle_http_error)  # type: ignore[arg-type]
     app.add_exception_handler(500, handle_http_error)  # type: ignore[arg-type]
     app.add_exception_handler(500, handle_http_error_async)  # type: ignore[arg-type]
+    Starlette(exception_handlers={HTTPException: handle_error})
+    Starlette(exception_handlers={HTTPException: handle_http_error})  # type: ignore[dict-item]
 
 
 @pytest.mark.anyio
@@ -96,3 +98,5 @@ async def test_websocket_exception_handler_types() -> None:
     app.add_exception_handler(403, handle_error)
     app.add_exception_handler(Exception, handle_websocket_error)  # type: ignore[arg-type]
     app.add_exception_handler(ValueError, handle_websocket_error)  # type: ignore[arg-type]
+    Starlette(exception_handlers={WebSocketException: handle_error})
+    Starlette(exception_handlers={WebSocketException: handle_websocket_error})  # type: ignore[dict-item]

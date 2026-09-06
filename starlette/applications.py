@@ -11,7 +11,6 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Router
 from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope, Send
-from starlette.websockets import WebSocket
 
 AppType = TypeVar("AppType", bound="Starlette")
 P = ParamSpec("P")
@@ -106,20 +105,20 @@ class Starlette:
     def add_exception_handler(
         self,
         exc_class_or_status_code: type[_E],
-        handler: Callable[[Request, _E], Response | Awaitable[Response]] | Callable[[WebSocket, _E], Awaitable[None]],
+        handler: ExceptionHandler[_E],
     ) -> None: ...
 
     @overload
     def add_exception_handler(
         self,
         exc_class_or_status_code: int,
-        handler: ExceptionHandler,
+        handler: ExceptionHandler[Exception],
     ) -> None: ...
 
     def add_exception_handler(
         self,
         exc_class_or_status_code: int | type[Exception],
-        handler: Callable[..., Any],
+        handler: ExceptionHandler[Any],
     ) -> None:
         self.exception_handlers[exc_class_or_status_code] = handler
 

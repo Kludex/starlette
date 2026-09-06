@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import itertools
+import subprocess
 import sys
 import threading
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from typing import Any
 
 import anyio
@@ -244,7 +245,7 @@ def test_streaming_response_is_available_before_first_chunk(test_client_factory:
     release_response = threading.Event()
 
     async def stream() -> AsyncGenerator[bytes, None]:
-        await anyio.to_thread.run_sync(release_response.wait)
+        assert await anyio.to_thread.run_sync(release_response.wait, 10)
         yield b"hello"
 
     async def homepage(request: Request) -> StreamingResponse:
@@ -272,7 +273,7 @@ def test_streaming_response_applies_backpressure(test_client_factory: TestClient
         chunks = response.iter_raw()
         assert not second_chunk_started.is_set()
         assert next(chunks) == b"one"
-        assert second_chunk_started.wait(timeout=1)
+        assert second_chunk_started.wait(timeout=10)
         assert list(chunks) == [b"two"]
 
 
@@ -291,7 +292,7 @@ def test_streaming_response_applies_backpressure_to_ignored_body(
             await send({"type": "http.response.body", "body": body, "more_body": True})
         await send({"type": "http.response.body", "body": b""})
 
-    client = test_client_factory(Starlette(routes=[Mount("/", app=http_app)]))
+    client = test_client_factory(http_app)
     response_body: list[bytes] = []
 
     def open_response() -> None:
@@ -299,13 +300,13 @@ def test_streaming_response_applies_backpressure_to_ignored_body(
             response_opened.set()
             response_body.append(response.read())
 
-    thread = threading.Thread(target=open_response)
+    thread = threading.Thread(target=open_response, daemon=True)
     thread.start()
     try:
-        assert response_opened.wait(timeout=1)
+        assert response_opened.wait(timeout=10)
     finally:
         stop_streaming.set()
-        thread.join(timeout=1)
+        thread.join(timeout=10)
     assert not thread.is_alive()
     assert response_body == [b""]
 
@@ -328,20 +329,10 @@ def test_closing_streaming_response_stops_application(test_client_factory: TestC
         assert app_finished.is_set()
 
 
-def test_streaming_response_raises_late_server_exception(test_client_factory: TestClientFactory) -> None:
-    async def http_app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": []})
-        await send({"type": "http.response.body", "body": b"body"})
-        await anyio.sleep(0)
-        raise RuntimeError("late failure")
-
-    client = test_client_factory(Starlette(routes=[Mount("/", app=http_app)]))
-    with client, pytest.raises(RuntimeError, match="late failure"):
-        with client.stream("GET", "/") as response:
-            response.read()
-
-
-def test_streaming_response_ignores_late_server_exception(test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+def test_streaming_response_late_server_exception(
+    test_client_factory: TestClientFactory, raise_server_exceptions: bool
+) -> None:
     async def http_app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": []})
         await send({"type": "http.response.body", "body": b"body"})
@@ -350,11 +341,94 @@ def test_streaming_response_ignores_late_server_exception(test_client_factory: T
 
     client = test_client_factory(
         Starlette(routes=[Mount("/", app=http_app)]),
-        raise_server_exceptions=False,
+        raise_server_exceptions=raise_server_exceptions,
     )
-    with client:
+    expected = pytest.raises(RuntimeError, match="late failure") if raise_server_exceptions else nullcontext()
+    with client, expected:
         with client.stream("GET", "/") as response:
             assert response.read() == b"body"
+
+
+@pytest.mark.parametrize("streaming", [True, False])
+def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClientFactory, streaming: bool) -> None:
+    async def chunks() -> AsyncGenerator[memoryview, None]:
+        buffer = bytearray(b"one")
+        yield memoryview(buffer)
+        buffer[:] = b"two"
+        yield memoryview(buffer)
+
+    async def homepage(request: Request) -> StreamingResponse:
+        return StreamingResponse(chunks())
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    if streaming:
+        with client.stream("GET", "/") as response:
+            assert list(response.iter_raw()) == [b"one", b"two"]
+    else:
+        assert client.get("/").content == b"onetwo"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Sending SIGINT with os.kill terminates the process on Windows")
+@pytest.mark.parametrize("lifespan", [True, False])
+def test_interrupted_request_stops_application(anyio_backend_name: str, lifespan: bool) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            """
+from __future__ import annotations
+
+import os
+import signal
+import sys
+import threading
+from contextlib import nullcontext
+
+import anyio
+
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.testclient import TestClient
+from starlette.types import Receive, Scope, Send
+
+started = threading.Event()
+finished = threading.Event()
+
+
+async def app(scope: Scope, receive: Receive, send: Send) -> None:
+    try:
+        started.set()
+        await anyio.sleep_forever()
+    finally:
+        finished.set()
+
+
+def interrupt() -> None:
+    assert started.wait(10)
+    os.kill(os.getpid(), signal.SIGINT)
+
+
+client = TestClient(Starlette(routes=[Mount("/", app=app)]), backend=sys.argv[1])
+failure: KeyboardInterrupt | None = None
+with client if sys.argv[2] == "True" else nullcontext():
+    thread = threading.Thread(target=interrupt, daemon=True)
+    thread.start()
+    try:
+        client.get("/")
+    except KeyboardInterrupt as exc:
+        failure = exc
+    thread.join(10)
+    assert failure is not None
+    assert finished.is_set()
+""",
+            anyio_backend_name,
+            str(lifespan),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:

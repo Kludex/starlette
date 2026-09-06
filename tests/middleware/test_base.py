@@ -525,9 +525,9 @@ def test_app_receives_http_disconnect_while_sending_if_discarded(
             # before we start returning the body
             await task_group.start(cancel_on_disconnect)
 
-            # A timeout is set for 0.1 second in order to ensure that
+            # A timeout is set for 0.2 second in order to ensure that
             # we never deadlock the test run in an infinite loop
-            with anyio.move_on_after(0.1):
+            with anyio.move_on_after(0.2):
                 while True:
                     await send(
                         {

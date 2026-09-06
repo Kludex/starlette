@@ -11,7 +11,7 @@ from starlette import status
 from starlette.responses import FileResponse, Response, StreamingResponse
 from starlette.testclient import WebSocketDenialResponse
 from starlette.types import Message, Receive, Scope, Send
-from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
+from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketDisconnected, WebSocketState
 from tests.types import TestClientFactory
 
 
@@ -488,7 +488,7 @@ def test_duplicate_close(test_client_factory: TestClientFactory) -> None:
         await websocket.close()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 
@@ -502,7 +502,7 @@ def test_duplicate_disconnect(test_client_factory: TestClientFactory) -> None:
         message = await websocket.receive()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/") as websocket:
             websocket.close()
 
@@ -578,7 +578,7 @@ def test_receive_text_before_accept(test_client_factory: TestClientFactory) -> N
         await websocket.receive_text()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 
@@ -589,7 +589,7 @@ def test_receive_bytes_before_accept(test_client_factory: TestClientFactory) -> 
         await websocket.receive_bytes()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 
@@ -600,7 +600,7 @@ def test_receive_json_before_accept(test_client_factory: TestClientFactory) -> N
         await websocket.receive_json()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 

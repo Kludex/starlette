@@ -208,6 +208,8 @@ class StaticFiles:
         "Not Modified" response could be returned instead.
         """
         if if_none_match := request_headers.get("if-none-match"):
+            if if_none_match.strip() == "*":
+                return True
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
             return etag in [tag.strip().removeprefix("W/") for tag in if_none_match.split(",")]

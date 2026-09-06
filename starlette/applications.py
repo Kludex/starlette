@@ -18,7 +18,7 @@ P = ParamSpec("P")
 
 
 class Starlette:
-    """Creates an Starlette application."""
+    """Creates a Starlette application."""
 
     def __init__(
         self: AppType,

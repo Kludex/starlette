@@ -167,9 +167,7 @@ def test_websocket_endpoint_on_default(test_client_factory: TestClientFactory) -
         assert _text == "Message text was: Hello, world!"
 
 
-def test_websocket_endpoint_on_default_with_empty_text(
-    test_client_factory: TestClientFactory,
-) -> None:
+def test_websocket_endpoint_on_default_with_empty_text(test_client_factory: TestClientFactory) -> None:
     class WebSocketApp(WebSocketEndpoint):
         encoding = None
 

@@ -21,7 +21,6 @@ class OpenTelemetryMiddleware:
     Args:
         tracer_provider: Optional tracer provider. If omitted, use the global tracer provider.
         meter_provider: Optional meter provider. If omitted, use the global meter provider.
-            Reserved for future metrics support.
     """
 
     def __init__(

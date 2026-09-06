@@ -104,20 +104,15 @@ class OpenTelemetryMiddleware:
             if record_active_requests
             else None
         )
-        self._request_body_size = (
-            meter.create_histogram(
+        self._request_body_size: metrics.Histogram | None = None
+        self._response_body_size: metrics.Histogram | None = None
+        if record_body_sizes:
+            self._request_body_size = meter.create_histogram(
                 "http.server.request.body.size", unit="By", description="Size of HTTP request bodies."
             )
-            if record_body_sizes
-            else None
-        )
-        self._response_body_size = (
-            meter.create_histogram(
+            self._response_body_size = meter.create_histogram(
                 "http.server.response.body.size", unit="By", description="Size of HTTP response bodies."
             )
-            if record_body_sizes
-            else None
-        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):

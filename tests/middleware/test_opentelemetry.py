@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from opentelemetry import trace
+from opentelemetry import metrics, trace
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -132,6 +132,54 @@ def test_provider_configured_after_middleware_stack_is_built(
         assert get_span(exporter).name == "GET /"
     finally:
         provider.shutdown()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("global_noop", [False, True])
+async def test_explicit_tracer_provider(
+    monkeypatch: pytest.MonkeyPatch,
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+    global_noop: bool,
+) -> None:
+    _, global_exporter = tracer_provider
+    if global_noop:
+        monkeypatch.setattr(trace, "get_tracer_provider", trace.NoOpTracerProvider)
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[
+            Middleware(
+                OpenTelemetryMiddleware,
+                tracer_provider=provider,
+                meter_provider=metrics.NoOpMeterProvider(),
+            )
+        ],
+    )
+
+    try:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+            assert (await client.get("/")).status_code == 200
+        assert get_span(exporter).name == "GET /"
+        assert global_exporter.get_finished_spans() == ()
+    finally:
+        provider.shutdown()
+
+
+@pytest.mark.anyio
+async def test_explicit_noop_tracer_provider(
+    tracer_provider: tuple[TracerProvider, InMemorySpanExporter],
+) -> None:
+    _, exporter = tracer_provider
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(OpenTelemetryMiddleware, tracer_provider=trace.NoOpTracerProvider())],
+    )
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        assert (await client.get("/")).status_code == 200
+    assert exporter.get_finished_spans() == ()
 
 
 def test_http_span_uses_route_and_semantic_attributes(

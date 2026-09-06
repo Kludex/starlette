@@ -4,7 +4,7 @@ import re
 from collections.abc import Sequence
 
 try:
-    from opentelemetry import propagate, trace
+    from opentelemetry import metrics, propagate, trace
     from opentelemetry.trace import SpanKind, Status, StatusCode
 except ImportError:  # pragma: no cover
     raise ImportError("The `opentelemetry-api` package is required to use `OpenTelemetryMiddleware`.") from None
@@ -18,12 +18,20 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests."""
 
-    def __init__(self, app: ASGIApp, *, excluded_urls: str | Sequence[str] = ()) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        excluded_urls: str | Sequence[str] = (),
+        tracer_provider: trace.TracerProvider | None = None,
+        meter_provider: metrics.MeterProvider | None = None,
+    ) -> None:
         self.app = app
+        self._meter_provider = meter_provider
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         patterns = tuple(re.compile(pattern) for pattern in excluded_urls)
-        self._responder = OpenTelemetryResponder(app, patterns)
+        self._responder = OpenTelemetryResponder(app, patterns, tracer_provider)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -37,12 +45,20 @@ class OpenTelemetryMiddleware:
 
 
 class OpenTelemetryResponder:
-    def __init__(self, app: ASGIApp, excluded_urls: tuple[re.Pattern[str], ...]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        excluded_urls: tuple[re.Pattern[str], ...],
+        tracer_provider: trace.TracerProvider | None,
+    ) -> None:
         self.app = app
         self._excluded_urls = excluded_urls
+        self._tracer_provider = tracer_provider
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        tracer_provider = trace.get_tracer_provider()
+        tracer_provider = self._tracer_provider
+        if tracer_provider is None:
+            tracer_provider = trace.get_tracer_provider()
         if isinstance(tracer_provider, (trace.NoOpTracerProvider, trace.ProxyTracerProvider)):
             return await self.app(scope, receive, send)
 

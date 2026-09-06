@@ -139,6 +139,7 @@ class Response:
         secure: bool = False,
         httponly: bool = False,
         samesite: Literal["lax", "strict", "none"] | None = "lax",
+        partitioned: bool = False,
     ) -> None:
         self.set_cookie(
             key,
@@ -149,6 +150,7 @@ class Response:
             secure=secure,
             httponly=httponly,
             samesite=samesite,
+            partitioned=partitioned,
         )
 
     def _wrap_websocket_denial_send(self, send: Send) -> Send:
@@ -295,6 +297,7 @@ class RangeNotSatisfiable(Exception):
 
 class FileResponse(Response):
     chunk_size = 64 * 1024
+    max_ranges = 100
 
     def __init__(
         self,
@@ -372,7 +375,9 @@ class FileResponse(Response):
                 response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
                 return await response(scope, receive, send)
 
-            if len(ranges) == 1:
+            if len(ranges) == 0:
+                await self._handle_simple(send, send_header_only, send_pathsend)
+            elif len(ranges) == 1:
                 start, end = ranges[0]
                 await self._handle_single_range(send, start, end, stat_result.st_size, send_header_only)
             else:
@@ -466,6 +471,9 @@ class FileResponse(Response):
         if units != "bytes":
             raise MalformedRangeHeader("Only support bytes range")
 
+        if range_.count(",") + 1 > cls.max_ranges:
+            return []
+
         ranges = cls._parse_ranges(range_, file_size)
 
         if len(ranges) == 0:
@@ -474,7 +482,7 @@ class FileResponse(Response):
         if any(not (0 <= start < file_size) for start, _ in ranges):
             raise RangeNotSatisfiable(file_size)
 
-        if any(start > end for start, end in ranges):
+        if any(start >= end for start, end in ranges):
             raise MalformedRangeHeader("Range header: start must be less than end")
 
         if len(ranges) == 1:

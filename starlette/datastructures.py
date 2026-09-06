@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import re
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 
+from starlette._utils import parse_host_header
 from starlette.concurrency import run_in_threadpool
 from starlette.types import Scope
 
@@ -20,9 +20,6 @@ _KeyType = TypeVar("_KeyType")
 # you can only read them
 # that is, you can't do `Mapping[str, Animal]()["fido"] = Dog()`
 _CovariantValueType = TypeVar("_CovariantValueType", covariant=True)
-
-# Rejects Host header chars (/, ?, #, @, ...) that would let urlsplit produce a path differing from scope["path"].
-_HOST_RE = re.compile(r"^([a-z0-9.-]+|\[[a-f0-9]*:[a-f0-9.:]+\])(?::[0-9]+)?$", re.IGNORECASE)
 
 
 class URL:
@@ -46,10 +43,13 @@ class URL:
                     host_header = value.decode("latin-1")
                     break
 
-            if host_header is not None and _HOST_RE.fullmatch(host_header):
-                netloc = host_header
+            parsed_host = parse_host_header(host_header)
+            if parsed_host is not None and parsed_host.is_valid_port:
+                netloc = parsed_host.authority
             elif server is not None:
                 host, port = server
+                if ":" in host and not host.startswith("["):
+                    host = f"[{host}]"
                 default_port = {"http": 80, "https": 443, "ws": 80, "wss": 443}[scheme]
                 netloc = host if port == default_port else f"{host}:{port}"
             else:

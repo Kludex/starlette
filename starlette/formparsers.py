@@ -11,14 +11,17 @@ from starlette.datastructures import FormData, Headers, UploadFile
 
 if TYPE_CHECKING:
     import python_multipart as multipart
+    from python_multipart.exceptions import FormParserError
     from python_multipart.multipart import MultipartCallbacks, QuerystringCallbacks, parse_options_header
 else:
     try:
         try:
             import python_multipart as multipart
+            from python_multipart.exceptions import FormParserError
             from python_multipart.multipart import parse_options_header
         except ModuleNotFoundError:  # pragma: no cover
             import multipart
+            from multipart.exceptions import FormParserError
             from multipart.multipart import parse_options_header
     except ModuleNotFoundError:  # pragma: no cover
         multipart = None
@@ -268,9 +271,8 @@ class MultiPartParser:
             "on_end": self.on_end,
         }
 
-        # Create the parser.
-        parser = multipart.MultipartParser(boundary, callbacks)
         try:
+            parser = multipart.MultipartParser(boundary, callbacks)
             # Feed the parser with data from the request.
             async for chunk in self.stream:
                 parser.write(chunk)
@@ -288,10 +290,12 @@ class MultiPartParser:
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()
             parser.finalize()
-        except (MultiPartException, OSError) as exc:
-            # Close all the files if there was an error.
+        except BaseException as exc:
+            # Close all the files if parsing or reading the request stream fails.
             for file in self._files_to_close_on_error:
                 file.close()
-            raise exc
+            if isinstance(exc, FormParserError):
+                raise MultiPartException("Invalid multipart data.") from exc
+            raise
 
         return FormData(self.items)

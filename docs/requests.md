@@ -115,7 +115,10 @@ Request files are normally sent as multipart form data (`multipart/form-data`).
 
 Signature: `request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024)`
 
-You can configure the number of maximum fields or files with the parameters `max_files` and `max_fields`; and part size using `max_part_size`:
+You can configure the maximum number of fields or files with `max_files` and
+`max_fields`. The `max_part_size` parameter limits the size of each non-file
+field; uploaded files are spooled to temporary storage and are not limited by
+`max_part_size`:
 
 ```python
 async with request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024):
@@ -124,6 +127,10 @@ async with request.form(max_files=1000, max_fields=1000, max_part_size=1024*1024
 
 !!! info
     These limits are for security reasons, allowing an unlimited number of fields or files could lead to a denial of service attack by consuming a lot of CPU and memory parsing too many empty fields.
+
+To limit the complete request body, including uploaded files and multipart
+encoding overhead, configure `max_body_size` on the application, router, mount,
+or route, or use `RequestBodyLimitMiddleware`.
 
 When you call `async with request.form() as form` you receive a `starlette.datastructures.FormData` which is an immutable
 multidict, containing both file uploads and text input. File upload items are represented as instances of `starlette.datastructures.UploadFile`.

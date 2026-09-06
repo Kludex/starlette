@@ -5,6 +5,22 @@
   --md-code-bg-color: #2e3c43;
 }
 
+/* Logfire announcement banner */
+.md-banner {
+  text-align: center;
+}
+
+a.md-banner__link {
+  color: currentcolor;
+  text-decoration: none;
+}
+
+a.md-banner__link:hover,
+a.md-banner__link:focus {
+  color: currentcolor;
+  text-decoration: underline;
+}
+
 /* Sidebar sponsors */
 .md-nav__sponsors {
   display: flex;

@@ -219,19 +219,36 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     assert second_resp.content == b""
 
 
-def test_staticfiles_200_with_etag_mismatch(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
-    path = os.path.join(tmpdir, "example.txt")
-    with open(path, "w") as file:
-        file.write("<file content>")
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+@pytest.mark.parametrize("if_none_match", ["*", " \t* \t"])
+def test_staticfiles_304_with_if_none_match_wildcard(
+    tmp_path: Path,
+    test_client_factory: TestClientFactory,
+    method: str,
+    if_none_match: str,
+) -> None:
+    (tmp_path / "example.txt").write_text("<file content>", encoding="utf-8")
 
-    app = StaticFiles(directory=tmpdir)
+    app = StaticFiles(directory=tmp_path)
     client = test_client_factory(app)
-    first_resp = client.get("/example.txt")
-    assert first_resp.status_code == 200
-    assert first_resp.headers["etag"] != '"123"'
-    second_resp = client.get("/example.txt", headers={"if-none-match": '"123"'})
-    assert second_resp.status_code == 200
-    assert second_resp.content == b"<file content>"
+    response = client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
+    assert response.status_code == 304
+    assert response.content == b""
+
+
+@pytest.mark.parametrize("if_none_match", ['"123"', '"*"', '"foo,*,bar"'])
+def test_staticfiles_200_with_etag_mismatch(
+    tmp_path: Path,
+    test_client_factory: TestClientFactory,
+    if_none_match: str,
+) -> None:
+    (tmp_path / "example.txt").write_text("<file content>", encoding="utf-8")
+
+    app = StaticFiles(directory=tmp_path)
+    client = test_client_factory(app)
+    response = client.get("/example.txt", headers={"if-none-match": if_none_match})
+    assert response.status_code == 200
+    assert response.content == b"<file content>"
 
 
 def test_staticfiles_200_with_etag_mismatch_and_timestamp_match(

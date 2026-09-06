@@ -7,7 +7,7 @@ import math
 import sys
 import threading
 import warnings
-from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, Sequence
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from types import GeneratorType
@@ -52,7 +52,7 @@ else:
                 stacklevel=2,
             )
 
-_PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+_PortalFactoryType = Callable[[], AbstractContextManager[anyio.from_thread.BlockingPortal]]
 
 ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
 ASGI2App = Callable[[Scope], ASGIInstance]
@@ -136,10 +136,8 @@ class WebSocketTestSession:
         """
         The sub-thread in which the websocket session runs.
         """
-        send: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream(math.inf)
-        send_tx, send_rx = send
-        receive: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream(math.inf)
-        receive_tx, receive_rx = receive
+        send_tx, send_rx = anyio.create_memory_object_stream[Message](math.inf)
+        receive_tx, receive_rx = anyio.create_memory_object_stream[Message](math.inf)
         with send_tx, send_rx, receive_tx, receive_rx, anyio.CancelScope() as cs:
             self._receive_tx = receive_tx
             self._send_rx = send_rx
@@ -451,7 +449,7 @@ class _TestClientTransport(httpx.BaseTransport):
 class TestClient(httpx.Client):
     __test__ = False
     task: Future[None]
-    portal: anyio.abc.BlockingPortal | None = None
+    portal: anyio.from_thread.BlockingPortal | None = None
 
     def __init__(
         self,
@@ -494,7 +492,7 @@ class TestClient(httpx.Client):
         )
 
     @contextlib.contextmanager
-    def _portal_factory(self) -> Generator[anyio.abc.BlockingPortal, None, None]:
+    def _portal_factory(self) -> Generator[anyio.from_thread.BlockingPortal, None, None]:
         if self.portal is not None:
             yield self.portal
         else:
@@ -573,12 +571,8 @@ class TestClient(httpx.Client):
             def reset_portal() -> None:
                 self.portal = None
 
-            send: anyio.create_memory_object_stream[MutableMapping[str, Any] | None] = (
-                anyio.create_memory_object_stream(math.inf)
-            )
-            receive: anyio.create_memory_object_stream[MutableMapping[str, Any]] = anyio.create_memory_object_stream(
-                math.inf
-            )
+            send = anyio.create_memory_object_stream[Message | None](math.inf)
+            receive = anyio.create_memory_object_stream[Message](math.inf)
             for channel in (*send, *receive):
                 stack.callback(channel.close)
             self.stream_send = StapledObjectStream(*send)

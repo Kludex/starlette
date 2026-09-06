@@ -3,8 +3,9 @@ from __future__ import annotations
 import itertools
 import sys
 from asyncio import Task, current_task as asyncio_current_task
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Callable
+from typing import Any
 
 import anyio
 import anyio.lowlevel
@@ -13,6 +14,7 @@ import sniffio
 import trio.lowlevel
 
 from starlette.applications import Starlette
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -20,8 +22,7 @@ from starlette.routing import Route
 from starlette.testclient import ASGIInstance, TestClient
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
-
-TestClientFactory = Callable[..., TestClient]
+from tests.types import TestClientFactory
 
 
 def mock_service_endpoint(request: Request) -> JSONResponse:
@@ -44,10 +45,6 @@ def current_task() -> Task[Any] | trio.lowlevel.Task:
             raise RuntimeError("must be called from a running task")  # pragma: no cover
         return task
     raise RuntimeError(f"unsupported asynclib={asynclib_name}")  # pragma: no cover
-
-
-def startup() -> None:
-    raise RuntimeError()
 
 
 def test_use_testclient_in_endpoint(test_client_factory: TestClientFactory) -> None:
@@ -89,9 +86,7 @@ def test_testclient_headers_behavior() -> None:
     assert client.headers.get("Authentication") == "Bearer 123"
 
 
-def test_use_testclient_as_contextmanager(
-    test_client_factory: TestClientFactory, anyio_backend_name: str
-) -> None:
+def test_use_testclient_as_contextmanager(test_client_factory: TestClientFactory, anyio_backend_name: str) -> None:
     """
     This test asserts a number of properties that are important for an
     app level task_group
@@ -170,12 +165,14 @@ def test_use_testclient_as_contextmanager(
 
 
 def test_error_on_startup(test_client_factory: TestClientFactory) -> None:
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
-        startup_error_app = Starlette(on_startup=[startup])
+    @asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncGenerator[None, None]:
+        raise RuntimeError("Startup error")
+        yield
 
-    with pytest.raises(RuntimeError):
+    startup_error_app = Starlette(lifespan=lifespan)
+
+    with pytest.raises(RuntimeError, match="Startup error"):
         with test_client_factory(startup_error_app):
             pass  # pragma: no cover
 
@@ -212,7 +209,7 @@ def test_testclient_asgi2(test_client_factory: TestClientFactory) -> None:
 
         return inner
 
-    client = test_client_factory(app)
+    client = test_client_factory(app)  # type: ignore
     response = client.get("/")
     assert response.text == "Hello, world!"
 
@@ -231,6 +228,45 @@ def test_testclient_asgi3(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
+
+
+def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": {"fragment": "header", "blocks": ["nav", "title"]}})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == {"fragment": "header", "blocks": ["nav", "title"]}
+    assert not hasattr(response, "template")
+
+
+def test_debug_info_in_response_extensions_with_template(test_client_factory: TestClientFactory) -> None:
+    info = {"template": "index.html", "context": {"name": "world"}, "blocks": ["nav"]}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": info})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == info
+    assert response.template == "index.html"  # type: ignore[attr-defined]
+    assert response.context == {"name": "world"}  # type: ignore[attr-defined]
 
 
 def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> None:
@@ -252,26 +288,32 @@ def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> N
 
         return asgi
 
-    client = test_client_factory(app)
+    client = test_client_factory(app)  # type: ignore
     with client.websocket_connect("/") as websocket:
         data = websocket.receive_json()
         assert data == {"message": "test"}
 
 
 def test_websocket_not_block_on_close(test_client_factory: TestClientFactory) -> None:
+    cancelled = False
+
     def app(scope: Scope) -> ASGIInstance:
         async def asgi(receive: Receive, send: Send) -> None:
-            websocket = WebSocket(scope, receive=receive, send=send)
-            await websocket.accept()
-            while True:
-                await anyio.sleep(0.1)
+            nonlocal cancelled
+            try:
+                websocket = WebSocket(scope, receive=receive, send=send)
+                await websocket.accept()
+                await anyio.sleep_forever()
+            except anyio.get_cancelled_exc_class():
+                cancelled = True
+                raise
 
         return asgi
 
-    client = test_client_factory(app)
-    with client.websocket_connect("/") as websocket:
+    client = test_client_factory(app)  # type: ignore
+    with client.websocket_connect("/"):
         ...
-    assert websocket.should_close.is_set()
+    assert cancelled
 
 
 def test_client(test_client_factory: TestClientFactory) -> None:
@@ -285,6 +327,19 @@ def test_client(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/")
     assert response.json() == {"host": "testclient", "port": 50000}
+
+
+def test_client_custom_client(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        client = scope.get("client")
+        assert client is not None
+        host, port = client
+        response = JSONResponse({"host": host, "port": port})
+        await response(scope, receive, send)
+
+    client = test_client_factory(app, client=("192.168.0.1", 3000))
+    response = client.get("/")
+    assert response.json() == {"host": "192.168.0.1", "port": 3000}
 
 
 @pytest.mark.parametrize("param", ("2020-07-14T00:00:00+00:00", "España", "voilà"))
@@ -307,8 +362,7 @@ def test_query_params(test_client_factory: TestClientFactory, param: str) -> Non
             marks=[
                 pytest.mark.xfail(
                     sys.version_info < (3, 11),
-                    reason="Fails due to domain handling in http.cookiejar module (see "
-                    "#2152)",
+                    reason="Fails due to domain handling in http.cookiejar module (see #2152)",
                 ),
             ],
         ),
@@ -317,9 +371,7 @@ def test_query_params(test_client_factory: TestClientFactory, param: str) -> Non
         ("example.com", False),
     ],
 )
-def test_domain_restricted_cookies(
-    test_client_factory: TestClientFactory, domain: str, ok: bool
-) -> None:
+def test_domain_restricted_cookies(test_client_factory: TestClientFactory, domain: str, ok: bool) -> None:
     """
     Test that test client discards domain restricted cookies which do not match the
     base_url of the testclient (`http://testserver` by default).
@@ -386,3 +438,55 @@ def test_merge_url(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app, base_url="http://testserver/api/v1/")
     response = client.get("/bar")
     assert response.text == "/api/v1/bar"
+
+
+def test_raw_path_with_querystring(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        response = Response(scope.get("raw_path"))
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/hello-world", params={"foo": "bar"})
+    assert response.content == b"/hello-world"
+
+
+@pytest.mark.parametrize(
+    ("base_url", "server", "host"),
+    [
+        ("http://[::1]", ["::1", 80], "[::1]"),
+        ("http://[::1]:8000", ["::1", 8000], "[::1]:8000"),
+        ("http://[::1]:0", ["::1", 0], "[::1]:0"),
+    ],
+)
+def test_ipv6_base_url(
+    test_client_factory: TestClientFactory, base_url: str, server: list[str | int], host: str
+) -> None:
+    def homepage(request: Request) -> JSONResponse:
+        return JSONResponse({"server": request.scope["server"], "host": request.headers["host"]})
+
+    app = Starlette(routes=[Route("/", endpoint=homepage)])
+    client = test_client_factory(app, base_url=base_url)
+    response = client.get("/")
+    assert response.json() == {"server": server, "host": host}
+
+
+def test_websocket_raw_path_without_params(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        await websocket.accept()
+        raw_path = scope.get("raw_path")
+        assert raw_path is not None
+        await websocket.send_bytes(raw_path)
+
+    client = test_client_factory(app)
+    with client.websocket_connect("/hello-world", params={"foo": "bar"}) as websocket:
+        data = websocket.receive_bytes()
+        assert data == b"/hello-world"
+
+
+def test_timeout_deprecation() -> None:
+    with pytest.warns(
+        StarletteDeprecationWarning, match="You should not use the 'timeout' argument with the TestClient."
+    ):
+        client = TestClient(mock_service)
+        client.get("/", timeout=1)

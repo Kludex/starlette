@@ -1,19 +1,11 @@
 from __future__ import annotations
 
 import http
-import typing
-import warnings
-
-__all__ = ("HTTPException", "WebSocketException")
+from collections.abc import Mapping
 
 
 class HTTPException(Exception):
-    def __init__(
-        self,
-        status_code: int,
-        detail: str | None = None,
-        headers: dict[str, str] | None = None,
-    ) -> None:
+    def __init__(self, status_code: int, detail: str | None = None, headers: Mapping[str, str] | None = None) -> None:
         if detail is None:
             detail = http.HTTPStatus(status_code).phrase
         self.status_code = status_code
@@ -41,22 +33,11 @@ class WebSocketException(Exception):
         return f"{class_name}(code={self.code!r}, reason={self.reason!r})"
 
 
-__deprecated__ = "ExceptionMiddleware"
+class StarletteDeprecationWarning(UserWarning):
+    """A custom deprecation warning for Starlette.
 
+    Unlike the built-in DeprecationWarning, this inherits from UserWarning to ensure it is visible by default, helping
+    users discover deprecated features without needing to enable warnings explicitly.
 
-def __getattr__(name: str) -> typing.Any:  # pragma: no cover
-    if name == __deprecated__:
-        from starlette.middleware.exceptions import ExceptionMiddleware
-
-        warnings.warn(
-            f"{__deprecated__} is deprecated on `starlette.exceptions`. "
-            f"Import it from `starlette.middleware.exceptions` instead.",
-            category=DeprecationWarning,
-            stacklevel=3,
-        )
-        return ExceptionMiddleware
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
-
-
-def __dir__() -> list[str]:
-    return sorted(list(__all__) + [__deprecated__])  # pragma: no cover
+    Reference: https://sethmlarson.dev/deprecations-via-warnings-dont-work-for-python-libraries
+    """

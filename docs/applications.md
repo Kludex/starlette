@@ -1,8 +1,19 @@
 
+??? abstract "API Reference"
+    ::: starlette.applications.Starlette
+        options:
+            parameter_headings: false
+            show_root_heading: true
+            heading_level: 3
+            filters:
+                - "__init__"
+
 Starlette includes an application class `Starlette` that nicely ties together all of
 its other functionality.
 
 ```python
+from contextlib import asynccontextmanager
+
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Mount, WebSocketRoute
@@ -25,8 +36,11 @@ async def websocket_endpoint(websocket):
     await websocket.send_text('Hello, websocket!')
     await websocket.close()
 
-def startup():
-    print('Ready to go')
+@asynccontextmanager
+async def lifespan(app):
+    print('Startup')
+    yield
+    print('Shutdown')
 
 
 routes = [
@@ -37,13 +51,8 @@ routes = [
     Mount('/static', StaticFiles(directory="static")),
 ]
 
-app = Starlette(debug=True, routes=routes, on_startup=[startup])
+app = Starlette(debug=True, routes=routes, lifespan=lifespan)
 ```
-
-### Instantiating the application
-
-::: starlette.applications.Starlette
-    :docstring:
 
 ### Storing state on the app instance
 

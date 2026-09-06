@@ -3,13 +3,16 @@ HTTP codes
 See HTTP Status Code Registry:
 https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
 
-And RFC 2324 - https://tools.ietf.org/html/rfc2324
+And RFC 9110 - https://www.rfc-editor.org/rfc/rfc9110
 """
+
 from __future__ import annotations
 
 import warnings
 
-__all__ = (
+from starlette.exceptions import StarletteDeprecationWarning
+
+__all__ = [
     "HTTP_100_CONTINUE",
     "HTTP_101_SWITCHING_PROTOCOLS",
     "HTTP_102_PROCESSING",
@@ -46,14 +49,14 @@ __all__ = (
     "HTTP_410_GONE",
     "HTTP_411_LENGTH_REQUIRED",
     "HTTP_412_PRECONDITION_FAILED",
-    "HTTP_413_REQUEST_ENTITY_TOO_LARGE",
-    "HTTP_414_REQUEST_URI_TOO_LONG",
+    "HTTP_413_CONTENT_TOO_LARGE",
+    "HTTP_414_URI_TOO_LONG",
     "HTTP_415_UNSUPPORTED_MEDIA_TYPE",
-    "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE",
+    "HTTP_416_RANGE_NOT_SATISFIABLE",
     "HTTP_417_EXPECTATION_FAILED",
     "HTTP_418_IM_A_TEAPOT",
     "HTTP_421_MISDIRECTED_REQUEST",
-    "HTTP_422_UNPROCESSABLE_ENTITY",
+    "HTTP_422_UNPROCESSABLE_CONTENT",
     "HTTP_423_LOCKED",
     "HTTP_424_FAILED_DEPENDENCY",
     "HTTP_425_TOO_EARLY",
@@ -88,7 +91,7 @@ __all__ = (
     "WS_1013_TRY_AGAIN_LATER",
     "WS_1014_BAD_GATEWAY",
     "WS_1015_TLS_HANDSHAKE",
-)
+]
 
 HTTP_100_CONTINUE = 100
 HTTP_101_SWITCHING_PROTOCOLS = 101
@@ -126,14 +129,14 @@ HTTP_409_CONFLICT = 409
 HTTP_410_GONE = 410
 HTTP_411_LENGTH_REQUIRED = 411
 HTTP_412_PRECONDITION_FAILED = 412
-HTTP_413_REQUEST_ENTITY_TOO_LARGE = 413
-HTTP_414_REQUEST_URI_TOO_LONG = 414
+HTTP_413_CONTENT_TOO_LARGE = 413
+HTTP_414_URI_TOO_LONG = 414
 HTTP_415_UNSUPPORTED_MEDIA_TYPE = 415
-HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE = 416
+HTTP_416_RANGE_NOT_SATISFIABLE = 416
 HTTP_417_EXPECTATION_FAILED = 417
 HTTP_418_IM_A_TEAPOT = 418
 HTTP_421_MISDIRECTED_REQUEST = 421
-HTTP_422_UNPROCESSABLE_ENTITY = 422
+HTTP_422_UNPROCESSABLE_CONTENT = 422
 HTTP_423_LOCKED = 423
 HTTP_424_FAILED_DEPENDENCY = 424
 HTTP_425_TOO_EARLY = 425
@@ -176,24 +179,32 @@ WS_1013_TRY_AGAIN_LATER = 1013
 WS_1014_BAD_GATEWAY = 1014
 WS_1015_TLS_HANDSHAKE = 1015
 
-
-__deprecated__ = {"WS_1004_NO_STATUS_RCVD": 1004, "WS_1005_ABNORMAL_CLOSURE": 1005}
+__deprecated__ = {
+    "HTTP_413_REQUEST_ENTITY_TOO_LARGE": 413,
+    "HTTP_414_REQUEST_URI_TOO_LONG": 414,
+    "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE": 416,
+    "HTTP_422_UNPROCESSABLE_ENTITY": 422,
+}
 
 
 def __getattr__(name: str) -> int:
     deprecation_changes = {
-        "WS_1004_NO_STATUS_RCVD": "WS_1005_NO_STATUS_RCVD",
-        "WS_1005_ABNORMAL_CLOSURE": "WS_1006_ABNORMAL_CLOSURE",
+        "HTTP_413_REQUEST_ENTITY_TOO_LARGE": "HTTP_413_CONTENT_TOO_LARGE",
+        "HTTP_414_REQUEST_URI_TOO_LONG": "HTTP_414_URI_TOO_LONG",
+        "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE": "HTTP_416_RANGE_NOT_SATISFIABLE",
+        "HTTP_422_UNPROCESSABLE_ENTITY": "HTTP_422_UNPROCESSABLE_CONTENT",
     }
+
     deprecated = __deprecated__.get(name)
     if deprecated:
         warnings.warn(
             f"'{name}' is deprecated. Use '{deprecation_changes[name]}' instead.",
-            category=DeprecationWarning,
+            category=StarletteDeprecationWarning,
             stacklevel=3,
         )
         return deprecated
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+    raise AttributeError(f"module 'starlette.status' has no attribute '{name}'")
 
 
 def __dir__() -> list[str]:

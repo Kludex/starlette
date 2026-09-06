@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import typing
+from collections.abc import Mapping
+from typing import Any
 
 from starlette._exception_handler import (
     ExceptionHandlers,
@@ -10,7 +11,7 @@ from starlette._exception_handler import (
 from starlette.exceptions import HTTPException, WebSocketException
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, ExceptionHandler, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
 
@@ -18,10 +19,7 @@ class ExceptionMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        handlers: typing.Mapping[
-            typing.Any, typing.Callable[[Request, Exception], Response]
-        ]
-        | None = None,
+        handlers: Mapping[Any, ExceptionHandler] | None = None,
         debug: bool = False,
     ) -> None:
         self.app = app
@@ -31,14 +29,14 @@ class ExceptionMiddleware:
             HTTPException: self.http_exception,
             WebSocketException: self.websocket_exception,
         }
-        if handlers is not None:
+        if handlers is not None:  # pragma: no branch
             for key, value in handlers.items():
                 self.add_exception_handler(key, value)
 
     def add_exception_handler(
         self,
         exc_class_or_status_code: int | type[Exception],
-        handler: typing.Callable[[Request, Exception], Response],
+        handler: ExceptionHandler,
     ) -> None:
         if isinstance(exc_class_or_status_code, int):
             self._status_handlers[exc_class_or_status_code] = handler
@@ -64,13 +62,11 @@ class ExceptionMiddleware:
 
         await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
 
-    def http_exception(self, request: Request, exc: Exception) -> Response:
+    async def http_exception(self, request: Request, exc: Exception) -> Response:
         assert isinstance(exc, HTTPException)
         if exc.status_code in {204, 304}:
             return Response(status_code=exc.status_code, headers=exc.headers)
-        return PlainTextResponse(
-            exc.detail, status_code=exc.status_code, headers=exc.headers
-        )
+        return PlainTextResponse(exc.detail, status_code=exc.status_code, headers=exc.headers)
 
     async def websocket_exception(self, websocket: WebSocket, exc: Exception) -> None:
         assert isinstance(exc, WebSocketException)

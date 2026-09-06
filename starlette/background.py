@@ -1,12 +1,7 @@
 from __future__ import annotations
 
-import sys
-import typing
-
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import ParamSpec
-else:  # pragma: no cover
-    from typing_extensions import ParamSpec
+from collections.abc import Callable, Sequence
+from typing import Any, ParamSpec
 
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
@@ -15,9 +10,7 @@ P = ParamSpec("P")
 
 
 class BackgroundTask:
-    def __init__(
-        self, func: typing.Callable[P, typing.Any], *args: P.args, **kwargs: P.kwargs
-    ) -> None:
+    def __init__(self, func: Callable[P, Any], *args: P.args, **kwargs: P.kwargs) -> None:
         self.func = func
         self.args = args
         self.kwargs = kwargs
@@ -31,12 +24,10 @@ class BackgroundTask:
 
 
 class BackgroundTasks(BackgroundTask):
-    def __init__(self, tasks: typing.Sequence[BackgroundTask] | None = None):
+    def __init__(self, tasks: Sequence[BackgroundTask] | None = None):
         self.tasks = list(tasks) if tasks else []
 
-    def add_task(
-        self, func: typing.Callable[P, typing.Any], *args: P.args, **kwargs: P.kwargs
-    ) -> None:
+    def add_task(self, func: Callable[P, Any], *args: P.args, **kwargs: P.kwargs) -> None:
         task = BackgroundTask(func, *args, **kwargs)
         self.tasks.append(task)
 

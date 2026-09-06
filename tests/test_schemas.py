@@ -1,19 +1,13 @@
-from typing import Callable
-
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Host, Mount, Route, Router, WebSocketRoute
 from starlette.schemas import SchemaGenerator
-from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
+from tests.types import TestClientFactory
 
-schemas = SchemaGenerator(
-    {"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}}
-)
-
-TestClientFactory = Callable[..., TestClient]
+schemas = SchemaGenerator({"openapi": "3.2.0", "info": {"title": "Example API", "version": "1.0"}})
 
 
 def ws(session: WebSocket) -> None:
@@ -54,6 +48,17 @@ def create_user(request: Request) -> None:
     pass  # pragma: no cover
 
 
+def query_users(request: Request) -> None:
+    """
+    responses:
+      200:
+        description: Users matching a query.
+        examples:
+          [{"username": "tom"}]
+    """
+    pass  # pragma: no cover
+
+
 class OrganisationsEndpoint(HTTPEndpoint):
     def get(self, request: Request) -> None:
         """
@@ -72,6 +77,16 @@ class OrganisationsEndpoint(HTTPEndpoint):
             description: An organisation.
             examples:
               {"name": "Foo Corp."}
+        """
+        pass  # pragma: no cover
+
+    def query(self, request: Request) -> None:
+        """
+        responses:
+          200:
+            description: Organisations matching a query.
+            examples:
+              [{"name": "Foo Corp."}]
         """
         pass  # pragma: no cover
 
@@ -125,6 +140,7 @@ app = Starlette(
         Route("/users/{id:int}", endpoint=get_user, methods=["GET"]),
         Route("/users", endpoint=list_users, methods=["GET", "HEAD"]),
         Route("/users", endpoint=create_user, methods=["POST"]),
+        Route("/users", endpoint=query_users, methods=["QUERY"]),
         Route("/orgs", endpoint=OrganisationsEndpoint),
         Route("/regular-docstring-and-schema", endpoint=regular_docstring_and_schema),
         Route("/regular-docstring", endpoint=regular_docstring),
@@ -139,14 +155,14 @@ app = Starlette(
 def test_schema_generation() -> None:
     schema = schemas.get_schema(routes=app.routes)
     assert schema == {
-        "openapi": "3.0.0",
+        "openapi": "3.2.0",
         "info": {"title": "Example API", "version": "1.0"},
         "paths": {
             "/orgs": {
                 "get": {
                     "responses": {
                         200: {
-                            "description": "A list of " "organisations.",
+                            "description": "A list of organisations.",
                             "examples": [{"name": "Foo Corp."}, {"name": "Acme Ltd."}],
                         }
                     }
@@ -159,27 +175,23 @@ def test_schema_generation() -> None:
                         }
                     }
                 },
+                "query": {
+                    "responses": {
+                        200: {
+                            "description": "Organisations matching a query.",
+                            "examples": [{"name": "Foo Corp."}],
+                        }
+                    }
+                },
             },
             "/regular-docstring-and-schema": {
-                "get": {
-                    "responses": {
-                        200: {"description": "This is included in the schema."}
-                    }
-                }
+                "get": {"responses": {200: {"description": "This is included in the schema."}}}
             },
             "/subapp/subapp-endpoint": {
-                "get": {
-                    "responses": {
-                        200: {"description": "This endpoint is part of a subapp."}
-                    }
-                }
+                "get": {"responses": {200: {"description": "This endpoint is part of a subapp."}}}
             },
             "/subapp2/subapp-endpoint": {
-                "get": {
-                    "responses": {
-                        200: {"description": "This endpoint is part of a subapp."}
-                    }
-                }
+                "get": {"responses": {200: {"description": "This endpoint is part of a subapp."}}}
             },
             "/users": {
                 "get": {
@@ -190,9 +202,13 @@ def test_schema_generation() -> None:
                         }
                     }
                 },
-                "post": {
+                "post": {"responses": {200: {"description": "A user.", "examples": {"username": "tom"}}}},
+                "query": {
                     "responses": {
-                        200: {"description": "A user.", "examples": {"username": "tom"}}
+                        200: {
+                            "description": "Users matching a query.",
+                            "examples": [{"username": "tom"}],
+                        }
                     }
                 },
             },
@@ -210,11 +226,19 @@ def test_schema_generation() -> None:
     }
 
 
+def test_query_schema_requires_openapi_3_2() -> None:
+    schemas = SchemaGenerator({"openapi": "3.1.2", "info": {"title": "Example API", "version": "1.0"}})
+    schema = schemas.get_schema(routes=app.routes)
+
+    assert "query" not in schema["paths"]["/users"]
+    assert "query" not in schema["paths"]["/orgs"]
+
+
 EXPECTED_SCHEMA = """
 info:
   title: Example API
   version: '1.0'
-openapi: 3.0.0
+openapi: 3.2.0
 paths:
   /orgs:
     get:
@@ -230,6 +254,12 @@ paths:
           description: An organisation.
           examples:
             name: Foo Corp.
+    query:
+      responses:
+        200:
+          description: Organisations matching a query.
+          examples:
+          - name: Foo Corp.
   /regular-docstring-and-schema:
     get:
       responses:
@@ -259,6 +289,12 @@ paths:
           description: A user.
           examples:
             username: tom
+    query:
+      responses:
+        200:
+          description: Users matching a query.
+          examples:
+          - username: tom
   /users/{id}:
     get:
       responses:

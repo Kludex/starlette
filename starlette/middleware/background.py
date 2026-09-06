@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import cast
 
 from starlette.background import BackgroundTask
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -8,7 +8,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 _SCOPE_KEY = "starlette._background"
 
 
-_BackgroundTaskList = List[BackgroundTask]
+_BackgroundTaskList = list[BackgroundTask]
 
 
 def is_background_task_middleware_installed(scope: Scope) -> bool:
@@ -17,9 +17,7 @@ def is_background_task_middleware_installed(scope: Scope) -> bool:
 
 def add_tasks(scope: Scope, task: BackgroundTask, /) -> None:
     if _SCOPE_KEY not in scope:  # pragma: no cover
-        raise RuntimeError(
-            "`add_tasks` can only be used if `BackgroundTaskMIddleware is installed"
-        )
+        raise RuntimeError("`add_tasks` can only be used if `BackgroundTaskMIddleware is installed")
     cast(_BackgroundTaskList, scope[_SCOPE_KEY]).append(task)
 
 

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import inspect
 import re
-import typing
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 from starlette.requests import Request
 from starlette.responses import Response
@@ -10,29 +11,30 @@ from starlette.routing import BaseRoute, Host, Mount, Route
 
 try:
     import yaml
-except ModuleNotFoundError:  # pragma: nocover
+except ModuleNotFoundError:  # pragma: no cover
     yaml = None  # type: ignore[assignment]
 
 
 class OpenAPIResponse(Response):
     media_type = "application/vnd.oai.openapi"
 
-    def render(self, content: typing.Any) -> bytes:
+    def render(self, content: Any) -> bytes:
         assert yaml is not None, "`pyyaml` must be installed to use OpenAPIResponse."
-        assert isinstance(
-            content, dict
-        ), "The schema passed to OpenAPIResponse should be a dictionary."
+        assert isinstance(content, dict), "The schema passed to OpenAPIResponse should be a dictionary."
         return yaml.dump(content, default_flow_style=False).encode("utf-8")
 
 
-class EndpointInfo(typing.NamedTuple):
+class EndpointInfo(NamedTuple):
     path: str
     http_method: str
-    func: typing.Callable[..., typing.Any]
+    func: Callable[..., Any]
+
+
+_remove_converter_pattern = re.compile(r":\w+}")
 
 
 class BaseSchemaGenerator:
-    def get_schema(self, routes: list[BaseRoute]) -> dict[str, typing.Any]:
+    def get_schema(self, routes: list[BaseRoute]) -> dict[str, Any]:
         raise NotImplementedError()  # pragma: no cover
 
     def get_endpoints(self, routes: list[BaseRoute]) -> list[EndpointInfo]:
@@ -42,14 +44,14 @@ class BaseSchemaGenerator:
         - path
             eg: /users/
         - http_method
-            one of 'get', 'post', 'put', 'patch', 'delete', 'options'
+            one of 'get', 'post', 'put', 'patch', 'delete', 'options', 'query'
         - func
             method ready to extract the docstring
         """
         endpoints_info: list[EndpointInfo] = []
 
         for route in routes:
-            if isinstance(route, (Mount, Host)):
+            if isinstance(route, Mount | Host):
                 routes = route.routes or []
                 if isinstance(route, Mount):
                     path = self._remove_converter(route.path)
@@ -73,12 +75,10 @@ class BaseSchemaGenerator:
                 for method in route.methods or ["GET"]:
                     if method == "HEAD":
                         continue
-                    endpoints_info.append(
-                        EndpointInfo(path, method.lower(), route.endpoint)
-                    )
+                    endpoints_info.append(EndpointInfo(path, method.lower(), route.endpoint))
             else:
                 path = self._remove_converter(route.path)
-                for method in ["get", "post", "put", "patch", "delete", "options"]:
+                for method in ["get", "post", "put", "patch", "delete", "options", "query"]:
                     if not hasattr(route.endpoint, method):
                         continue
                     func = getattr(route.endpoint, method)
@@ -93,11 +93,9 @@ class BaseSchemaGenerator:
             Route("/users/{id:int}", endpoint=get_user, methods=["GET"])
         Should be represented as `/users/{id}` in the OpenAPI schema.
         """
-        return re.sub(r":\w+}", "}", path)
+        return _remove_converter_pattern.sub("}", path)
 
-    def parse_docstring(
-        self, func_or_method: typing.Callable[..., typing.Any]
-    ) -> dict[str, typing.Any]:
+    def parse_docstring(self, func_or_method: Callable[..., Any]) -> dict[str, Any]:
         """
         Given a function, parse the docstring as YAML and return a dictionary of info.
         """
@@ -128,15 +126,19 @@ class BaseSchemaGenerator:
 
 
 class SchemaGenerator(BaseSchemaGenerator):
-    def __init__(self, base_schema: dict[str, typing.Any]) -> None:
+    def __init__(self, base_schema: dict[str, Any]) -> None:
         self.base_schema = base_schema
 
-    def get_schema(self, routes: list[BaseRoute]) -> dict[str, typing.Any]:
+    def get_schema(self, routes: list[BaseRoute]) -> dict[str, Any]:
         schema = dict(self.base_schema)
         schema.setdefault("paths", {})
+        openapi_version_match = re.match(r"^(\d+)\.(\d+)", str(schema.get("openapi", "")))
+        supports_query = openapi_version_match is not None and tuple(map(int, openapi_version_match.groups())) >= (3, 2)
         endpoints_info = self.get_endpoints(routes)
 
         for endpoint in endpoints_info:
+            if endpoint.http_method == "query" and not supports_query:
+                continue
             parsed = self.parse_docstring(endpoint.func)
 
             if not parsed:

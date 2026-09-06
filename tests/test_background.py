@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterable, Callable
 from tempfile import NamedTemporaryFile
-from typing import Any, AsyncIterable, Callable
+from typing import Any
 
 import pytest
 
@@ -10,17 +11,14 @@ from starlette.middleware.background import BackgroundTaskMiddleware
 from starlette.responses import FileResponse, Response, StreamingResponse
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Receive, Scope, Send
-
-TestClientFactory = Callable[[ASGIApp], TestClient]
+from tests.types import TestClientFactory
 
 
 @pytest.fixture(
     params=[[], [BackgroundTaskMiddleware]],
     ids=["without BackgroundTaskMiddleware", "with BackgroundTaskMiddleware"],
 )
-def test_client_factory_mw(
-    test_client_factory: TestClientFactory, request: Any
-) -> TestClientFactory:
+def test_client_factory_mw(test_client_factory: TestClientFactory, request: Any) -> TestClientFactory:
     mw_stack: list[Callable[[ASGIApp], ASGIApp]] = request.param
 
     def client_factory(app: ASGIApp) -> TestClient:
@@ -120,9 +118,7 @@ def test_multiple_tasks(test_client_factory: TestClientFactory) -> None:
         tasks.add_task(increment, amount=1)
         tasks.add_task(increment, amount=2)
         tasks.add_task(increment, amount=3)
-        response = Response(
-            "tasks initiated", media_type="text/plain", background=tasks
-        )
+        response = Response("tasks initiated", media_type="text/plain", background=tasks)
         await response(scope, receive, send)
 
     client = test_client_factory(app)
@@ -139,16 +135,14 @@ def test_multi_tasks_failure_avoids_next_execution(
     def increment() -> None:
         nonlocal task_counter
         task_counter += 1
-        if task_counter == 1:
+        if task_counter == 1:  # pragma: no branch
             raise Exception("task failed")
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         tasks = BackgroundTasks()
         tasks.add_task(increment)
         tasks.add_task(increment)
-        response = Response(
-            "tasks initiated", media_type="text/plain", background=tasks
-        )
+        response = Response("tasks initiated", media_type="text/plain", background=tasks)
         await response(scope, receive, send)
 
     client = test_client_factory(app)

@@ -1,17 +1,18 @@
 import sys
-from typing import Any, Callable, MutableMapping
+from collections.abc import AsyncGenerator, MutableMapping
+from pathlib import Path
+from typing import Any
 
 import anyio
 import pytest
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
 from starlette import status
-from starlette.responses import Response
-from starlette.testclient import TestClient, WebSocketDenialResponse
+from starlette.responses import FileResponse, Response, StreamingResponse
+from starlette.testclient import WebSocketDenialResponse
 from starlette.types import Message, Receive, Scope, Send
-from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
-
-TestClientFactory = Callable[..., TestClient]
+from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketDisconnected, WebSocketState
+from tests.types import TestClientFactory
 
 
 def test_websocket_url(test_client_factory: TestClientFactory) -> None:
@@ -90,7 +91,7 @@ def test_websocket_headers(test_client_factory: TestClientFactory) -> None:
     with client.websocket_connect("/") as websocket:
         expected_headers = {
             "accept": "*/*",
-            "accept-encoding": "gzip, deflate",
+            "accept-encoding": "gzip, deflate, zstd",
             "connection": "upgrade",
             "host": "testserver",
             "user-agent": "testclient",
@@ -271,8 +272,7 @@ async def test_client_disconnect_on_send() -> None:
     async def send(message: Message) -> None:
         if message["type"] == "websocket.accept":
             return
-        # Simulate the exception the server would send to the application when the
-        # client disconnects.
+        # Simulate the exception the server would send to the application when the client disconnects.
         raise OSError
 
     with pytest.raises(WebSocketDisconnect) as ctx:
@@ -323,6 +323,44 @@ def test_send_denial_response(test_client_factory: TestClientFactory) -> None:
     assert exc.value.content == b"foo"
 
 
+def test_send_denial_response_with_streaming_response(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        message = await websocket.receive()
+        assert message == {"type": "websocket.connect"}
+
+        async def content() -> AsyncGenerator[bytes]:
+            yield b"hello"
+            yield b"world"
+
+        await websocket.send_denial_response(StreamingResponse(content(), status_code=403))
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            ...  # pragma: no cover
+    assert exc.value.status_code == 403
+    assert exc.value.content == b"helloworld"
+
+
+def test_send_denial_response_with_file_response(test_client_factory: TestClientFactory, tmp_path: Path) -> None:
+    file_path = tmp_path / "denial.txt"
+    file_path.write_text("test content")
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        websocket = WebSocket(scope, receive=receive, send=send)
+        msg = await websocket.receive()
+        assert msg == {"type": "websocket.connect"}
+        await websocket.send_denial_response(FileResponse(file_path, status_code=401))
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.status_code == 401
+    assert exc.value.content == b"test content"
+
+
 def test_send_response_multi(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)
@@ -335,19 +373,8 @@ def test_send_response_multi(test_client_factory: TestClientFactory) -> None:
                 "headers": [(b"content-type", b"text/plain"), (b"foo", b"bar")],
             }
         )
-        await websocket.send(
-            {
-                "type": "websocket.http.response.body",
-                "body": b"hard",
-                "more_body": True,
-            }
-        )
-        await websocket.send(
-            {
-                "type": "websocket.http.response.body",
-                "body": b"body",
-            }
-        )
+        await websocket.send({"type": "websocket.http.response.body", "body": b"hard", "more_body": True})
+        await websocket.send({"type": "websocket.http.response.body", "body": b"body"})
 
     client = test_client_factory(app)
     with pytest.raises(WebSocketDenialResponse) as exc:
@@ -403,10 +430,7 @@ def test_send_response_duplicate_start(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     with pytest.raises(
         RuntimeError,
-        match=(
-            'Expected ASGI message "websocket.http.response.body", but got '
-            "'websocket.http.response.start'"
-        ),
+        match=("Expected ASGI message \"websocket.http.response.body\", but got 'websocket.http.response.start'"),
     ):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
@@ -464,7 +488,7 @@ def test_duplicate_close(test_client_factory: TestClientFactory) -> None:
         await websocket.close()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 
@@ -478,7 +502,7 @@ def test_duplicate_disconnect(test_client_factory: TestClientFactory) -> None:
         message = await websocket.receive()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/") as websocket:
             websocket.close()
 
@@ -492,14 +516,9 @@ def test_websocket_scope_interface() -> None:
     async def mock_receive() -> Message:  # type: ignore
         ...  # pragma: no cover
 
-    async def mock_send(message: Message) -> None:
-        ...  # pragma: no cover
+    async def mock_send(message: Message) -> None: ...  # pragma: no cover
 
-    websocket = WebSocket(
-        {"type": "websocket", "path": "/abc/", "headers": []},
-        receive=mock_receive,
-        send=mock_send,
-    )
+    websocket = WebSocket({"type": "websocket", "path": "/abc/", "headers": []}, receive=mock_receive, send=mock_send)
     assert websocket["type"] == "websocket"
     assert dict(websocket) == {"type": "websocket", "path": "/abc/", "headers": []}
     assert len(websocket) == 3
@@ -550,7 +569,7 @@ def test_receive_json_invalid_mode(test_client_factory: TestClientFactory) -> No
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_receive_text_before_accept(test_client_factory: TestClientFactory) -> None:
@@ -559,9 +578,9 @@ def test_receive_text_before_accept(test_client_factory: TestClientFactory) -> N
         await websocket.receive_text()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_receive_bytes_before_accept(test_client_factory: TestClientFactory) -> None:
@@ -570,9 +589,9 @@ def test_receive_bytes_before_accept(test_client_factory: TestClientFactory) -> 
         await websocket.receive_bytes()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_receive_json_before_accept(test_client_factory: TestClientFactory) -> None:
@@ -581,7 +600,7 @@ def test_receive_json_before_accept(test_client_factory: TestClientFactory) -> N
         await websocket.receive_json()
 
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(WebSocketDisconnected):
         with client.websocket_connect("/"):
             pass  # pragma: no cover
 
@@ -594,7 +613,7 @@ def test_send_before_accept(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     with pytest.raises(RuntimeError):
         with client.websocket_connect("/"):
-            pass  # pragma: nocover
+            pass  # pragma: no cover
 
 
 def test_send_wrong_message_type(test_client_factory: TestClientFactory) -> None:

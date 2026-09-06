@@ -7,10 +7,10 @@ Here are some of those third party packages:
 
 ### Apitally
 
-<a href="https://github.com/apitally/python-client" target="_blank">GitHub</a> |
+<a href="https://github.com/apitally/apitally-py" target="_blank">GitHub</a> |
 <a href="https://docs.apitally.io/frameworks/starlette" target="_blank">Documentation</a>
 
-Simple traffic, error and response time monitoring plus API key and permission management for Starlette (and other frameworks).
+Analytics, request logging and monitoring for REST APIs built with Starlette (and other frameworks).
 
 ### Authlib
 
@@ -21,10 +21,10 @@ The ultimate Python library in building OAuth and OpenID Connect clients and ser
 
 ### ChannelBox
 
-<a href="https://github.com/Sobolev5/channel-box" target="_blank">GitHub</a>
+<a href="https://github.com/Sobolev5/channel-box" target="_blank">GitHub Repository</a>
 
-Another solution for websocket broadcast. Send messages to channel groups from any part of your code.
-Checkout <a href="https://channel-box.andrey-sobolev.ru/" target="_blank">MySimpleChat</a>, a simple chat application built using `channel-box` and `starlette`.
+ChannelBox is a lightweight solution for WebSocket broadcasting in ASGI applications.
+It allows sending messages to named WebSocket channel groups and integrates with Starlette and FastAPI.
 
 ### Imia
 
@@ -65,6 +65,13 @@ Generate OpenAPI spec document and validate request & response with Python annot
 Simple APISpec integration for Starlette.
 Document your REST API built with Starlette by declaring OpenAPI (Swagger)
 schemas in YAML format in your endpoint's docstrings.
+
+### Starlette Compress
+
+<a href="https://github.com/Zaczero/starlette-compress" target="_blank">GitHub</a>
+
+Starlette-Compress is a fast and simple middleware for compressing responses in Starlette.
+It adds ZStd, Brotli, and GZip compression support with sensible default configuration.
 
 ### Starlette Context
 
@@ -147,6 +154,12 @@ Simple and extensible admin interface framework.
 Built with [Tabler](https://tabler.io/) and [Datatables](https://datatables.net/), it allows you
 to quickly generate fully customizable admin interface for your models. You can export your data to many formats (*CSV*, *PDF*,
 *Excel*, etc), filter your data with complex query including `AND` and `OR` conditions,  upload files, ...
+
+### Vellox
+
+<a href="https://github.com/junah201/vellox" target="_blank">GitHub</a>
+
+Serverless ASGI adapter for GCP Cloud Functions.
 
 ## Starlette Bridge
 
@@ -239,7 +252,7 @@ Provides translations, localization, and timezone support via Babel integration.
 
 <a href="https://github.com/DavidVentura/starlette-static-resources" target="_blank">GitHub</a>
 
-Allows mounting [package resources](https://docs.python.org/3/library/importlib.resources.html#module-importlib.resources) for static data, similar to [StaticFiles](https://www.starlette.io/staticfiles/).
+Allows mounting [package resources](https://docs.python.org/3/library/importlib.resources.html#module-importlib.resources) for static data, similar to [StaticFiles](staticfiles.md).
 
 ### Sentry
 
@@ -247,3 +260,10 @@ Allows mounting [package resources](https://docs.python.org/3/library/importlib.
 <a href="https://docs.sentry.io/platforms/python/guides/starlette/" target="_blank">Documentation</a>
 
 Sentry is a software error detection tool. It offers actionable insights for resolving performance issues and errors, allowing users to diagnose, fix, and optimize Python debugging. Additionally, it integrates seamlessly with Starlette for Python application development. Sentry's capabilities include error tracking, performance insights, contextual information, and alerts/notifications.
+
+### Shiny
+
+<a href="https://github.com/posit-dev/py-shiny" target="_blank">GitHub</a> |
+<a href="https://shiny.posit.co/py/" target="_blank">Documentation</a>
+
+Leveraging Starlette and asyncio, Shiny allows developers to create effortless Python web applications using the power of reactive programming. Shiny eliminates the hassle of manual state management, automatically determining the best execution path for your app at runtime while simultaneously minimizing re-rendering. This means that Shiny can support everything from the simplest dashboard to full-featured web apps.

@@ -120,12 +120,13 @@ def test_provider_configured_after_middleware_stack_is_built(
     monkeypatch: pytest.MonkeyPatch,
     test_client_factory: TestClientFactory,
 ) -> None:
+    monkeypatch.setattr(trace, "get_tracer_provider", trace.ProxyTracerProvider)
     app = Starlette(routes=[Route("/", homepage)], middleware=[Middleware(OpenTelemetryMiddleware)])
     app.middleware_stack = app.build_middleware_stack()
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    monkeypatch.setattr(trace, "get_tracer_provider", lambda: provider)
+    monkeypatch.setattr(trace.ProxyTracerProvider, "get_tracer", provider.get_tracer)
 
     try:
         assert test_client_factory(app).get("/").status_code == 200

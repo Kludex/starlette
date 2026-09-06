@@ -58,17 +58,11 @@ class OpenTelemetryResponder:
     ) -> None:
         self.app = app
         self._excluded_urls = excluded_urls
-        self._tracer_provider = tracer_provider
-
-    @property
-    def tracer_provider(self) -> trace.TracerProvider:
-        if self._tracer_provider is None:
-            return trace.get_tracer_provider()
-        return self._tracer_provider
+        self._tracer_provider = tracer_provider or trace.get_tracer_provider()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        tracer_provider = self.tracer_provider
-        if isinstance(tracer_provider, (trace.NoOpTracerProvider, trace.ProxyTracerProvider)):
+        tracer_provider = self._tracer_provider
+        if isinstance(tracer_provider, trace.NoOpTracerProvider):
             return await self.app(scope, receive, send)
 
         url = URL(scope=scope)

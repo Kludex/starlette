@@ -91,8 +91,7 @@ trace.set_tracer_provider(tracer_provider)
 app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
 ```
 
-The middleware discovers the global provider at request time. This means you can create the app
-before you configure the provider.
+You can create the app before you configure the global provider.
 
 You can also wrap any ASGI application directly:
 

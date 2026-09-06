@@ -1347,9 +1347,8 @@ async def test_background_task_runs_after_response_sent() -> None:
         "http_version": "1.1",
     }
 
-    async def receive() -> Message:
-        await anyio.sleep(3600)
-        return {"type": "http.disconnect"}
+    async def receive() -> Message:  # type: ignore[empty-body]
+        ...  # pragma: no cover
 
     async def send(message: Message) -> None:
         events.append(message["type"])

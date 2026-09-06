@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import functools
 import re
-import typing
+from collections.abc import Collection
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-ALL_METHODS = ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT")
+ALL_METHODS = ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY")
 SAFELISTED_HEADERS = {"Accept", "Accept-Language", "Content-Language", "Content-Type"}
 
 
@@ -16,12 +16,13 @@ class CORSMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        allow_origins: typing.Sequence[str] = (),
-        allow_methods: typing.Sequence[str] = ("GET",),
-        allow_headers: typing.Sequence[str] = (),
+        allow_origins: Collection[str] = (),
+        allow_methods: Collection[str] = ("GET",),
+        allow_headers: Collection[str] = (),
         allow_credentials: bool = False,
         allow_origin_regex: str | None = None,
-        expose_headers: typing.Sequence[str] = (),
+        allow_private_network: bool = False,
+        expose_headers: Collection[str] = (),
         max_age: int = 600,
     ) -> None:
         if "*" in allow_methods:
@@ -35,7 +36,7 @@ class CORSMiddleware:
         allow_all_headers = "*" in allow_headers
         preflight_explicit_allow_origin = not allow_all_origins or allow_credentials
 
-        simple_headers = {}
+        simple_headers: dict[str, str] = {}
         if allow_all_origins:
             simple_headers["Access-Control-Allow-Origin"] = "*"
         if allow_credentials:
@@ -43,11 +44,10 @@ class CORSMiddleware:
         if expose_headers:
             simple_headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
 
-        preflight_headers = {}
-        if preflight_explicit_allow_origin:
-            # The origin value will be set in preflight_response() if it is allowed.
-            preflight_headers["Vary"] = "Origin"
-        else:
+        preflight_headers: dict[str, str] = {
+            "Vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"  # noqa: E501  # fmt: skip
+        }
+        if not preflight_explicit_allow_origin:
             preflight_headers["Access-Control-Allow-Origin"] = "*"
         preflight_headers.update(
             {
@@ -67,8 +67,10 @@ class CORSMiddleware:
         self.allow_headers = [h.lower() for h in allow_headers]
         self.allow_all_origins = allow_all_origins
         self.allow_all_headers = allow_all_headers
+        self.allow_credentials = allow_credentials
         self.preflight_explicit_allow_origin = preflight_explicit_allow_origin
         self.allow_origin_regex = compiled_allow_origin_regex
+        self.allow_private_network = allow_private_network
         self.simple_headers = simple_headers
         self.preflight_headers = preflight_headers
 
@@ -81,11 +83,7 @@ class CORSMiddleware:
         headers = Headers(scope=scope)
         origin = headers.get("origin")
 
-        if origin is None:
-            await self.app(scope, receive, send)
-            return
-
-        if method == "OPTIONS" and "access-control-request-method" in headers:
+        if origin is not None and method == "OPTIONS" and "access-control-request-method" in headers:
             response = self.preflight_response(request_headers=headers)
             await response(scope, receive, send)
             return
@@ -105,9 +103,10 @@ class CORSMiddleware:
         requested_origin = request_headers["origin"]
         requested_method = request_headers["access-control-request-method"]
         requested_headers = request_headers.get("access-control-request-headers")
+        requested_private_network = request_headers.get("access-control-request-private-network")
 
         headers = dict(self.preflight_headers)
-        failures = []
+        failures: list[str] = []
 
         if self.is_allowed_origin(origin=requested_origin):
             if self.preflight_explicit_allow_origin:
@@ -130,6 +129,12 @@ class CORSMiddleware:
                     failures.append("headers")
                     break
 
+        if requested_private_network is not None:
+            if self.allow_private_network:
+                headers["Access-Control-Allow-Private-Network"] = "true"
+            else:
+                failures.append("private-network")
+
         # We don't strictly need to use 400 responses here, since its up to
         # the browser to enforce the CORS policy, but its more informative
         # if we do.
@@ -150,23 +155,23 @@ class CORSMiddleware:
 
         message.setdefault("headers", [])
         headers = MutableHeaders(scope=message)
-        headers.update(self.simple_headers)
-        origin = request_headers["Origin"]
-        has_cookie = "cookie" in request_headers
+        origin = request_headers.get("Origin")
+        if origin is not None:
+            headers.update(self.simple_headers)
 
-        # If request includes any cookie headers, then we must respond
-        # with the specific origin instead of '*'.
-        if self.allow_all_origins and has_cookie:
+        # If credentials are allowed, then we must respond with the specific origin instead of '*'.
+        if origin is not None and self.allow_all_origins and self.allow_credentials:
             self.allow_explicit_origin(headers, origin)
 
-        # If we only allow specific origins, then we have to mirror back
-        # the Origin header in the response.
-        elif not self.allow_all_origins and self.is_allowed_origin(origin=origin):
+        # If we only allow specific origins, then we have to mirror back the Origin header in the response.
+        elif origin is not None and not self.allow_all_origins and self.is_allowed_origin(origin=origin):
             self.allow_explicit_origin(headers, origin)
+        else:
+            headers["Vary"] = ", ".join([*headers.getlist("Vary"), "Origin"])
 
         await send(message)
 
     @staticmethod
     def allow_explicit_origin(headers: MutableHeaders, origin: str) -> None:
         headers["Access-Control-Allow-Origin"] = origin
-        headers.add_vary_header("Origin")
+        headers["Vary"] = ", ".join([*headers.getlist("Vary"), "Origin"])

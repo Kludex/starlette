@@ -31,7 +31,7 @@ async def app(scope, receive, send):
 
 Starlette provides a `set_cookie` method to allow you to set cookies on the response object.
 
-Signature: `Response.set_cookie(key, value, max_age=None, expires=None, path="/", domain=None, secure=False, httponly=False, samesite="lax")`
+Signature: `Response.set_cookie(key, value, max_age=None, expires=None, path="/", domain=None, secure=False, httponly=False, samesite="lax", partitioned=False)`
 
 * `key` - A string that will be the cookie's key.
 * `value` - A string that will be the cookie's value.
@@ -42,12 +42,30 @@ Signature: `Response.set_cookie(key, value, max_age=None, expires=None, path="/"
 * `secure` - A bool indicating that the cookie will only be sent to the server if request is made using SSL and the HTTPS protocol. `Optional`
 * `httponly` - A bool indicating that the cookie cannot be accessed via JavaScript through `Document.cookie` property, the `XMLHttpRequest` or `Request` APIs. `Optional`
 * `samesite` - A string that specifies the samesite strategy for the cookie. Valid values are `'lax'`, `'strict'` and `'none'`. Defaults to `'lax'`. `Optional`
+* `partitioned` - A bool that indicates to user agents that these cross-site cookies should only be available in the same top-level context that the cookie was first set in. Only available for Python 3.14+, otherwise an error will be raised. `Optional`
 
 #### Delete Cookie
 
 Conversely, Starlette also provides a `delete_cookie` method to manually expire a set cookie.
 
-Signature: `Response.delete_cookie(key, path='/', domain=None)`
+Signature: `Response.delete_cookie(key, path='/', domain=None, secure=False, httponly=False, samesite="lax", partitioned=False)`
+
+To delete a partitioned cookie on Python 3.14+:
+
+```python
+from starlette.responses import Response
+
+response = Response()
+response.delete_cookie("session", secure=True, samesite="none", partitioned=True)
+```
+
+Pass `partitioned=True` to expire the cookie in the current partition. It defaults to `False`.
+Use the same `path` and `domain` as the original cookie, within the same top-level site context.
+For cross-site requests, use `samesite="none"`.
+
+!!! warning "Partitioned cookies require Secure"
+    Pass `secure=True` when deleting a partitioned cookie over HTTPS.
+    Browsers reject the expiration header if it includes `Partitioned` without `Secure`.
 
 
 ### HTMLResponse

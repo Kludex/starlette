@@ -68,7 +68,7 @@ and `SimpleUser(username)`.
 
 ## AuthCredentials
 
-It is important that authentication credentials are treated as separate concept
+It is important that authentication credentials are treated as a separate concept
 from users. An authentication scheme should be able to restrict or grant
 particular privileges independently of the user identity.
 
@@ -135,7 +135,7 @@ async def dashboard(request):
     ...
 ```
 
-When redirecting users, the page you redirect them to will include URL they originally requested at the `next` query param:
+When redirecting users, the page you redirect them to will include the URL they originally requested at the `next` query param:
 
 ```python
 from starlette.authentication import requires

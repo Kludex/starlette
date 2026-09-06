@@ -6,10 +6,12 @@ import io
 import json
 import math
 import sys
-import typing
 import warnings
+from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, Sequence
 from concurrent.futures import Future
+from contextlib import AbstractContextManager
 from types import GeneratorType
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeGuard, cast
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -18,30 +20,44 @@ import anyio.from_thread
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
 
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from typing import TypeGuard
+if sys.version_info >= (3, 11):  # pragma: no cover
+    from typing import Self
 else:  # pragma: no cover
-    from typing_extensions import TypeGuard
+    from typing_extensions import Self
 
-try:
-    import httpx
-except ModuleNotFoundError:  # pragma: no cover
-    raise RuntimeError(
-        "The starlette.testclient module requires the httpx package to be installed.\n"
-        "You can install this with:\n"
-        "    $ pip install httpx\n"
-    )
-_PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+if TYPE_CHECKING:
+    import httpx2 as httpx
+else:
+    try:
+        import httpx2 as httpx
+    except ModuleNotFoundError:  # pragma: no cover
+        try:
+            import httpx
+        except ModuleNotFoundError:
+            raise RuntimeError(
+                "The starlette.testclient module requires the httpx2 package to be installed.\n"
+                "You can install this with:\n"
+                "    $ pip install httpx2\n"
+            ) from None
+        else:
+            warnings.warn(
+                "Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.",
+                StarletteDeprecationWarning,
+                stacklevel=2,
+            )
 
-ASGIInstance = typing.Callable[[Receive, Send], typing.Awaitable[None]]
-ASGI2App = typing.Callable[[Scope], ASGIInstance]
-ASGI3App = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
+_PortalFactoryType = Callable[[], AbstractContextManager[anyio.from_thread.BlockingPortal]]
+
+ASGIInstance = Callable[[Receive, Send], Awaitable[None]]
+ASGI2App = Callable[[Scope], ASGIInstance]
+ASGI3App = Callable[[Scope, Receive, Send], Awaitable[None]]
 
 
-_RequestData = typing.Mapping[str, typing.Union[str, typing.Iterable[str], bytes]]
+_RequestData = Mapping[str, str | Iterable[str] | bytes]
 
 
 def _is_asgi3(app: ASGI2App | ASGI3App) -> TypeGuard[ASGI3App]:
@@ -63,9 +79,9 @@ class _WrapASGI2:
         await instance(receive, send)
 
 
-class _AsyncBackend(typing.TypedDict):
+class _AsyncBackend(TypedDict):
     backend: str
-    backend_options: dict[str, typing.Any]
+    backend_options: dict[str, Any]
 
 
 class _Upgrade(Exception):
@@ -96,7 +112,7 @@ class WebSocketTestSession:
         self.portal_factory = portal_factory
         self.extra_headers = None
 
-    def __enter__(self) -> WebSocketTestSession:
+    def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
             self.portal = portal = stack.enter_context(self.portal_factory())
             fut, cs = portal.start_task(self._run)
@@ -111,17 +127,15 @@ class WebSocketTestSession:
             self.exit_stack = stack.pop_all()
             return self
 
-    def __exit__(self, *args: typing.Any) -> bool | None:
+    def __exit__(self, *args: Any) -> bool | None:
         return self.exit_stack.__exit__(*args)
 
     async def _run(self, *, task_status: anyio.abc.TaskStatus[anyio.CancelScope]) -> None:
         """
         The sub-thread in which the websocket session runs.
         """
-        send: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream(math.inf)
-        send_tx, send_rx = send
-        receive: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream(math.inf)
-        receive_tx, receive_rx = receive
+        send_tx, send_rx = anyio.create_memory_object_stream[Message](math.inf)
+        receive_tx, receive_rx = anyio.create_memory_object_stream[Message](math.inf)
         with send_tx, send_rx, receive_tx, receive_rx, anyio.CancelScope() as cs:
             self._receive_tx = receive_tx
             self._send_rx = send_rx
@@ -155,7 +169,7 @@ class WebSocketTestSession:
     def send_bytes(self, data: bytes) -> None:
         self.send({"type": "websocket.receive", "bytes": data})
 
-    def send_json(self, data: typing.Any, mode: typing.Literal["text", "binary"] = "text") -> None:
+    def send_json(self, data: Any, mode: Literal["text", "binary"] = "text") -> None:
         text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
         if mode == "text":
             self.send({"type": "websocket.receive", "text": text})
@@ -171,14 +185,14 @@ class WebSocketTestSession:
     def receive_text(self) -> str:
         message = self.receive()
         self._raise_on_close(message)
-        return typing.cast(str, message["text"])
+        return cast(str, message["text"])
 
     def receive_bytes(self) -> bytes:
         message = self.receive()
         self._raise_on_close(message)
-        return typing.cast(bytes, message["bytes"])
+        return cast(bytes, message["bytes"])
 
-    def receive_json(self, mode: typing.Literal["text", "binary"] = "text") -> typing.Any:
+    def receive_json(self, mode: Literal["text", "binary"] = "text") -> Any:
         message = self.receive()
         self._raise_on_close(message)
         if mode == "text":
@@ -197,7 +211,7 @@ class _TestClientTransport(httpx.BaseTransport):
         root_path: str = "",
         *,
         client: tuple[str, int],
-        app_state: dict[str, typing.Any],
+        app_state: dict[str, Any],
     ) -> None:
         self.app = app
         self.raise_server_exceptions = raise_server_exceptions
@@ -208,37 +222,31 @@ class _TestClientTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         scheme = request.url.scheme
-        netloc = request.url.netloc.decode(encoding="ascii")
+        host = request.url.raw_host.decode(encoding="ascii")
         path = request.url.path
         raw_path = request.url.raw_path
         query = request.url.query.decode(encoding="ascii")
 
         default_port = {"http": 80, "ws": 80, "https": 443, "wss": 443}[scheme]
-
-        if ":" in netloc:
-            host, port_string = netloc.split(":", 1)
-            port = int(port_string)
-        else:
-            host = netloc
+        port = request.url.port
+        if port is None:
             port = default_port
 
         # Include the 'host' header.
         if "host" in request.headers:
             headers: list[tuple[bytes, bytes]] = []
-        elif port == default_port:  # pragma: no cover
-            headers = [(b"host", host.encode())]
         else:  # pragma: no cover
-            headers = [(b"host", (f"{host}:{port}").encode())]
+            headers = [(b"host", request.url.netloc)]
 
         # Include other request headers.
         headers += [(key.lower().encode(), value.encode()) for key, value in request.headers.multi_items()]
 
-        scope: dict[str, typing.Any]
+        scope: dict[str, Any]
 
         if scheme in {"ws", "wss"}:
             subprotocol = request.headers.get("sec-websocket-protocol", None)
             if subprotocol is None:
-                subprotocols: typing.Sequence[str] = []
+                subprotocols: Sequence[str] = []
             else:
                 subprotocols = [value.strip() for value in subprotocol.split(",")]
             scope = {
@@ -277,9 +285,8 @@ class _TestClientTransport(httpx.BaseTransport):
         request_complete = False
         response_started = False
         response_complete: anyio.Event
-        raw_kwargs: dict[str, typing.Any] = {"stream": io.BytesIO()}
-        template = None
-        context = None
+        raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
+        debug_info: dict[str, Any] | None = None
 
         async def receive() -> Message:
             nonlocal request_complete
@@ -310,7 +317,7 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, template, context
+            nonlocal raw_kwargs, response_started, debug_info
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
@@ -328,8 +335,7 @@ class _TestClientTransport(httpx.BaseTransport):
                     raw_kwargs["stream"].seek(0)
                     response_complete.set()
             elif message["type"] == "http.response.debug":
-                template = message["info"]["template"]
-                context = message["info"]["context"]
+                debug_info = message["info"]
 
         try:
             with self.portal_factory() as portal:
@@ -351,16 +357,19 @@ class _TestClientTransport(httpx.BaseTransport):
         raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
 
         response = httpx.Response(**raw_kwargs, request=request)
-        if template is not None:
-            response.template = template  # type: ignore[attr-defined]
-            response.context = context  # type: ignore[attr-defined]
+        if debug_info is not None:
+            response.extensions["http.response.debug"] = debug_info
+            if "template" in debug_info:
+                response.template = debug_info["template"]  # type: ignore[attr-defined]
+            if "context" in debug_info:
+                response.context = debug_info["context"]  # type: ignore[attr-defined]
         return response
 
 
 class TestClient(httpx.Client):
     __test__ = False
     task: Future[None]
-    portal: anyio.abc.BlockingPortal | None = None
+    portal: anyio.from_thread.BlockingPortal | None = None
 
     def __init__(
         self,
@@ -368,8 +377,8 @@ class TestClient(httpx.Client):
         base_url: str = "http://testserver",
         raise_server_exceptions: bool = True,
         root_path: str = "",
-        backend: typing.Literal["asyncio", "trio"] = "asyncio",
-        backend_options: dict[str, typing.Any] | None = None,
+        backend: Literal["asyncio", "trio"] = "asyncio",
+        backend_options: dict[str, Any] | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         headers: dict[str, str] | None = None,
         follow_redirects: bool = True,
@@ -379,10 +388,10 @@ class TestClient(httpx.Client):
         if _is_asgi3(app):
             asgi_app = app
         else:
-            app = typing.cast(ASGI2App, app)  # type: ignore[assignment]
+            app = cast(ASGI2App, app)  # type: ignore[assignment]
             asgi_app = _WrapASGI2(app)  # type: ignore[arg-type]
         self.app = asgi_app
-        self.app_state: dict[str, typing.Any] = {}
+        self.app_state: dict[str, Any] = {}
         transport = _TestClientTransport(
             self.app,
             portal_factory=self._portal_factory,
@@ -403,7 +412,7 @@ class TestClient(httpx.Client):
         )
 
     @contextlib.contextmanager
-    def _portal_factory(self) -> typing.Generator[anyio.abc.BlockingPortal, None, None]:
+    def _portal_factory(self) -> Generator[anyio.from_thread.BlockingPortal, None, None]:
         if self.portal is not None:
             yield self.portal
         else:
@@ -418,20 +427,21 @@ class TestClient(httpx.Client):
         content: httpx._types.RequestContent | None = None,
         data: _RequestData | None = None,
         files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
+        json: Any = None,
         params: httpx._types.QueryParamTypes | None = None,
         headers: httpx._types.HeaderTypes | None = None,
         cookies: httpx._types.CookieTypes | None = None,
         auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
         timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> httpx.Response:
         if timeout is not httpx.USE_CLIENT_DEFAULT:
             warnings.warn(
                 "You should not use the 'timeout' argument with the TestClient. "
-                "See https://github.com/encode/starlette/issues/1108 for more information.",
-                DeprecationWarning,
+                "See https://github.com/Kludex/starlette/issues/1108 for more information.",
+                StarletteDeprecationWarning,
+                stacklevel=2,
             )
         url = self._merge_url(url)
         return super().request(
@@ -450,196 +460,11 @@ class TestClient(httpx.Client):
             extensions=extensions,
         )
 
-    def get(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
-    ) -> httpx.Response:
-        return super().get(
-            url,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def options(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
-    ) -> httpx.Response:
-        return super().options(
-            url,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def head(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
-    ) -> httpx.Response:
-        return super().head(
-            url,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def post(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        content: httpx._types.RequestContent | None = None,
-        data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
-    ) -> httpx.Response:
-        return super().post(
-            url,
-            content=content,
-            data=data,
-            files=files,
-            json=json,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def put(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        content: httpx._types.RequestContent | None = None,
-        data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
-    ) -> httpx.Response:
-        return super().put(
-            url,
-            content=content,
-            data=data,
-            files=files,
-            json=json,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def patch(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        content: httpx._types.RequestContent | None = None,
-        data: _RequestData | None = None,
-        files: httpx._types.RequestFiles | None = None,
-        json: typing.Any = None,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
-    ) -> httpx.Response:
-        return super().patch(
-            url,
-            content=content,
-            data=data,
-            files=files,
-            json=json,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
-    def delete(  # type: ignore[override]
-        self,
-        url: httpx._types.URLTypes,
-        *,
-        params: httpx._types.QueryParamTypes | None = None,
-        headers: httpx._types.HeaderTypes | None = None,
-        cookies: httpx._types.CookieTypes | None = None,
-        auth: httpx._types.AuthTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        follow_redirects: bool | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        timeout: httpx._types.TimeoutTypes | httpx._client.UseClientDefault = httpx._client.USE_CLIENT_DEFAULT,
-        extensions: dict[str, typing.Any] | None = None,
-    ) -> httpx.Response:
-        return super().delete(
-            url,
-            params=params,
-            headers=headers,
-            cookies=cookies,
-            auth=auth,
-            follow_redirects=follow_redirects,
-            timeout=timeout,
-            extensions=extensions,
-        )
-
     def websocket_connect(
         self,
         url: str,
-        subprotocols: typing.Sequence[str] | None = None,
-        **kwargs: typing.Any,
+        subprotocols: Sequence[str] | None = None,
+        **kwargs: Any,
     ) -> WebSocketTestSession:
         url = urljoin("ws://testserver", url)
         headers = kwargs.get("headers", {})
@@ -658,7 +483,7 @@ class TestClient(httpx.Client):
 
         return session
 
-    def __enter__(self) -> TestClient:
+    def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
             self.portal = portal = stack.enter_context(anyio.from_thread.start_blocking_portal(**self.async_backend))
 
@@ -666,12 +491,8 @@ class TestClient(httpx.Client):
             def reset_portal() -> None:
                 self.portal = None
 
-            send: anyio.create_memory_object_stream[typing.MutableMapping[str, typing.Any] | None] = (
-                anyio.create_memory_object_stream(math.inf)
-            )
-            receive: anyio.create_memory_object_stream[typing.MutableMapping[str, typing.Any]] = (
-                anyio.create_memory_object_stream(math.inf)
-            )
+            send = anyio.create_memory_object_stream[Message | None](math.inf)
+            receive = anyio.create_memory_object_stream[Message](math.inf)
             for channel in (*send, *receive):
                 stack.callback(channel.close)
             self.stream_send = StapledObjectStream(*send)
@@ -687,7 +508,7 @@ class TestClient(httpx.Client):
 
         return self
 
-    def __exit__(self, *args: typing.Any) -> None:
+    def __exit__(self, *args: Any) -> None:
         self.exit_stack.close()
 
     async def lifespan(self) -> None:
@@ -700,7 +521,7 @@ class TestClient(httpx.Client):
     async def wait_startup(self) -> None:
         await self.stream_receive.send({"type": "lifespan.startup"})
 
-        async def receive() -> typing.Any:
+        async def receive() -> Any:
             message = await self.stream_send.receive()
             if message is None:
                 self.task.result()
@@ -715,7 +536,7 @@ class TestClient(httpx.Client):
             await receive()
 
     async def wait_shutdown(self) -> None:
-        async def receive() -> typing.Any:
+        async def receive() -> Any:
             message = await self.stream_send.receive()
             if message is None:
                 self.task.result()

@@ -423,11 +423,7 @@ class _TestClientTransport(httpx.BaseTransport):
                     if exception is not None:
                         raise exception
                     raise AssertionError("TestClient did not receive any response.")
-                raw_kwargs = {
-                    "status_code": 500,
-                    "headers": [],
-                    "stream": httpx.ByteStream(b""),
-                }
+                raw_kwargs = {"status_code": 500, "headers": [], "stream": httpx.ByteStream(b"")}
             else:
                 raw_kwargs["stream"] = stream
 

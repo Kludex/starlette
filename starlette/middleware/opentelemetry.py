@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 from collections.abc import Sequence
 from time import perf_counter
@@ -30,25 +29,16 @@ class OpenTelemetryMiddleware:
     without buffering or draining requests. Unknown metric methods use `_OTHER`.
     Skip non-HTTP scopes and excluded URLs; nested instances emit telemetry once.
 
-    Resolve None options once at construction from the listed environment variables
-    in order, then the default. Explicit False, "", and [] override the environment.
-    Boolean environment values accept true, false, 1, and 0, ignoring case.
-
     Args:
         app: The ASGI application to wrap.
         excluded_urls: Regular expressions matched against the full request URL.
-            Pass a comma-separated string or a sequence. Resolve None from
-            `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`, then `OTEL_PYTHON_EXCLUDED_URLS`.
-            By default, exclude no URLs.
+            Pass a comma-separated string or a sequence. By default, exclude no URLs.
         tracer_provider: Optional tracer provider. If omitted, use the global tracer provider.
         meter_provider: Optional meter provider. If omitted, use the global meter provider.
-        record_active_requests: Enable `http.server.active_requests`. Resolve None
-            from `OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS`. Defaults to False.
+        record_active_requests: Enable `http.server.active_requests`. Defaults to False.
         record_body_sizes: Enable `http.server.request.body.size` and
-            `http.server.response.body.size` in bytes. Resolve None from
-            `OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES`. Defaults to False.
-        known_methods: Known HTTP methods for metric labels, as a comma-separated
-            string or sequence. Resolve None from `OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS`.
+            `http.server.response.body.size` in bytes. Defaults to False.
+        known_methods: Sequence of known HTTP methods for metric labels, replacing the default list.
             Defaults to CONNECT, DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT, QUERY, TRACE.
     """
 
@@ -56,37 +46,19 @@ class OpenTelemetryMiddleware:
         self,
         app: ASGIApp,
         *,
-        excluded_urls: str | Sequence[str] | None = None,
+        excluded_urls: str | Sequence[str] = (),
         tracer_provider: trace.TracerProvider | None = None,
         meter_provider: metrics.MeterProvider | None = None,
-        record_active_requests: bool | None = None,
-        record_body_sizes: bool | None = None,
-        known_methods: str | Sequence[str] | None = None,
+        record_active_requests: bool = False,
+        record_body_sizes: bool = False,
+        known_methods: Sequence[str] | None = None,
     ) -> None:
         self.app = app
-        if excluded_urls is None:
-            excluded_urls = os.environ.get(
-                "OTEL_PYTHON_STARLETTE_EXCLUDED_URLS", os.environ.get("OTEL_PYTHON_EXCLUDED_URLS", "")
-            )
         if isinstance(excluded_urls, str):
             excluded_urls = [pattern.strip() for pattern in excluded_urls.split(",")] if excluded_urls else ()
         self._excluded_urls = tuple(re.compile(pattern) for pattern in excluded_urls)
-        if record_active_requests is None:
-            value = os.environ.get("OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS", "false").lower()
-            if value not in ("true", "false", "1", "0"):
-                raise ValueError("OTEL_PYTHON_STARLETTE_RECORD_ACTIVE_REQUESTS must be true, false, 1, or 0.")
-            record_active_requests = value in ("true", "1")
-        if record_body_sizes is None:
-            value = os.environ.get("OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES", "false").lower()
-            if value not in ("true", "false", "1", "0"):
-                raise ValueError("OTEL_PYTHON_STARLETTE_RECORD_BODY_SIZES must be true, false, 1, or 0.")
-            record_body_sizes = value in ("true", "1")
         if known_methods is None:
-            known_methods = os.environ.get(
-                "OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS", "CONNECT,DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT,QUERY,TRACE"
-            )
-        if isinstance(known_methods, str):
-            known_methods = [method.strip() for method in known_methods.split(",")] if known_methods else ()
+            known_methods = ("CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY", "TRACE")
         self._known_methods = set(known_methods)
         self._tracer_provider = tracer_provider if tracer_provider is not None else trace.get_tracer_provider()
         provider = meter_provider if meter_provider is not None else metrics.get_meter_provider()

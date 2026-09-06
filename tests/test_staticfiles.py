@@ -229,7 +229,6 @@ def test_staticfiles_304_with_if_none_match_wildcard(
     app = StaticFiles(directory=tmp_path)
     client = test_client_factory(app)
     response = client.request(method, "/example.txt", headers={"if-none-match": if_none_match})
-
     assert response.status_code == 304
     assert response.content == b""
 
@@ -245,7 +244,6 @@ def test_staticfiles_200_with_etag_mismatch(
     app = StaticFiles(directory=tmp_path)
     client = test_client_factory(app)
     response = client.get("/example.txt", headers={"if-none-match": if_none_match})
-
     assert response.status_code == 200
     assert response.content == b"<file content>"
 

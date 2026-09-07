@@ -45,6 +45,7 @@ class StaticFiles:
         html: bool = False,
         check_dir: bool = True,
         follow_symlink: bool = False,
+        cache_control: str | None = None,
     ) -> None:
         self.directory = directory
         self.packages = packages
@@ -52,6 +53,7 @@ class StaticFiles:
         self.html = html
         self.config_checked = False
         self.follow_symlink = follow_symlink
+        self.cache_control = cache_control
         if check_dir and directory is not None and not os.path.isdir(directory):
             raise RuntimeError(f"Directory '{directory}' does not exist")
 
@@ -129,7 +131,10 @@ class StaticFiles:
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
-            return self.file_response(full_path, stat_result, scope)
+            file_response = self.file_response(full_path, stat_result, scope)
+            if self.cache_control:
+                file_response.headers["Cache-Control"] = self.cache_control
+            return file_response
 
         elif stat_result and stat.S_ISDIR(stat_result.st_mode) and self.html:
             # We're in HTML mode, and have got a directory URL.

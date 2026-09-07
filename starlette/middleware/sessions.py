@@ -24,6 +24,7 @@ class SessionMiddleware:
         same_site: Literal["lax", "strict", "none"] = "lax",
         https_only: bool = False,
         domain: str | None = None,
+        partitioned: bool = False,
     ) -> None:
         self.app = app
         self.signer = itsdangerous.TimestampSigner(str(secret_key))
@@ -35,6 +36,8 @@ class SessionMiddleware:
             self.security_flags += "; secure"
         if domain is not None:
             self.security_flags += f"; domain={domain}"
+        if partitioned:
+            self.security_flags += "; partitioned"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ("http", "websocket"):  # pragma: no cover
@@ -115,6 +118,11 @@ class Session(dict[str, typing.Any]):
         self.modified = self.modified or key in self
         return super().pop(key, *args)
 
+    def popitem(self) -> tuple[str, typing.Any]:
+        item = super().popitem()
+        self.mark_modified()
+        return item
+
     def setdefault(self, key: str, default: typing.Any = None) -> typing.Any:
         if key not in self:
             self.mark_modified()
@@ -123,3 +131,7 @@ class Session(dict[str, typing.Any]):
     def update(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         self.mark_modified()
         super().update(*args, **kwargs)
+
+    def __ior__(self, other: typing.Any, /) -> Session:  # type: ignore[override,misc]
+        self.mark_modified()
+        return super().__ior__(other)

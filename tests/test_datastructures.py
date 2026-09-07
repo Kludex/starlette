@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 from tempfile import SpooledTemporaryFile
 from typing import BinaryIO
@@ -61,6 +63,13 @@ def test_url() -> None:
     url = URL("http://host:80")
     assert url.replace(username="u") == URL("http://u@host:80")
 
+    # Replacing authority components on a URL that has no authority should not
+    # raise, and should add the requested component to the netloc.
+    url = URL("/path?a=1")
+    assert url.replace(port=8080) == URL("//:8080/path?a=1")
+    assert url.replace(port=8080).port == 8080
+    assert url.replace(username="u") == URL("//u@/path?a=1")
+
 
 def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")
@@ -119,6 +128,10 @@ def test_url_from_scope() -> None:
     assert u == "/path/to/somewhere?abc=123"
     assert repr(u) == "URL('/path/to/somewhere?abc=123')"
 
+    u = URL(scope={"path": "/path/to/somewhere", "query_string": b"", "headers": []})
+    assert u == "/path/to/somewhere"
+    assert repr(u) == "URL('/path/to/somewhere')"
+
     u = URL(
         scope={
             "scheme": "https",
@@ -158,6 +171,109 @@ def test_url_from_scope() -> None:
     assert u == "http://example.com:8000/some/path?query=string"
     assert repr(u) == "URL('http://example.com:8000/some/path?query=string')"
 
+    u = URL(
+        scope={
+            "scheme": "http",
+            "path": "/some/path",
+            "query_string": b"",
+            "headers": [(b"host", b"example.com:000080")],
+        }
+    )
+    assert u == "http://example.com:000080/some/path"
+    assert u.port == 80
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        pytest.param(b"foo/?x=", id="question-mark"),
+        pytest.param(b"foo/#", id="hash"),
+        pytest.param(b"foo/bar", id="slash"),
+        pytest.param(b"user@foo", id="at-sign"),
+        pytest.param(b"foo\\bar", id="backslash"),
+        pytest.param(b"foo bar", id="space"),
+        pytest.param(b"foo:65536", id="port-out-of-range"),
+        pytest.param(b"foo:100000", id="port-too-long"),
+        pytest.param(b"[:::]", id="invalid-ipv6"),
+        pytest.param(b"[::ffff:999.999.999.999]", id="invalid-ipv4-mapped-ipv6"),
+        pytest.param(b"[V1.foo]", id="uppercase-ipvfuture"),
+    ],
+)
+def test_url_from_scope_with_invalid_host(host: bytes) -> None:
+    """An invalid Host header should be ignored, falling back to the server tuple."""
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": ("example.com", 80),
+            "path": "/admin",
+            "query_string": b"",
+            "headers": [(b"host", host)],
+        }
+    )
+    assert u.path == "/admin"
+    assert u.netloc == "example.com"
+
+
+@pytest.mark.parametrize(
+    ("server", "expected_netloc"),
+    [
+        (("::1", 80), "[::1]"),
+        (("::1", 8000), "[::1]:8000"),
+    ],
+)
+def test_url_from_scope_with_ipv6_server(server: tuple[str, int], expected_netloc: str) -> None:
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": server,
+            "path": "/admin",
+            "query_string": b"",
+            "headers": [(b"host", b"[:::]")],
+        }
+    )
+    assert u.hostname == "::1"
+    assert u.netloc == expected_netloc
+
+
+def test_url_from_scope_with_ipvfuture() -> None:
+    u = URL(
+        scope={
+            "scheme": "http",
+            "path": "/admin",
+            "query_string": b"",
+            "headers": [(b"host", b"[v1.foo]")],
+        }
+    )
+    assert u.hostname == "v1.foo"
+    assert u.netloc == "[v1.foo]"
+
+
+@pytest.mark.parametrize(
+    "path, expected_path",
+    [
+        pytest.param("@google.com", "/@google.com", id="at-sign"),
+        pytest.param("user:pass@google.com", "/user:pass@google.com", id="userinfo"),
+        pytest.param("//google.com/x", "//google.com/x", id="scheme-relative"),
+        pytest.param("http://google.com/x", "/http://google.com/x", id="absolute"),
+    ],
+)
+@pytest.mark.parametrize("with_host_header", [True, False], ids=["host-header", "server-fallback"])
+def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, with_host_header: bool) -> None:
+    """A path must not bleed into the authority."""
+    headers = [(b"host", b"localhost")] if with_host_header else []
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": ("localhost", 80),
+            "path": path,
+            "query_string": b"a=b",
+            "headers": headers,
+        }
+    )
+    assert u.hostname == "localhost"
+    assert u.path == expected_path
+    assert u.query == "a=b"
+
 
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
@@ -168,7 +284,7 @@ def test_headers() -> None:
     assert "c" not in h
     assert h["a"] == "123"
     assert h.get("a") == "123"
-    assert h.get("nope", default=None) is None
+    assert h.get("nope", None) is None
     assert h.getlist("a") == ["123", "456"]
     assert h.keys() == ["a", "a", "b"]
     assert h.values() == ["123", "456", "789"]
@@ -284,7 +400,7 @@ def test_queryparams() -> None:
     assert "c" not in q
     assert q["a"] == "456"
     assert q.get("a") == "456"
-    assert q.get("nope", default=None) is None
+    assert q.get("nope", None) is None
     assert q.getlist("a") == ["123", "456"]
     assert list(q.keys()) == ["a", "b"]
     assert list(q.values()) == ["456", "789"]
@@ -368,7 +484,7 @@ def test_formdata() -> None:
     assert "c" not in form
     assert form["a"] == "456"
     assert form.get("a") == "456"
-    assert form.get("nope", default=None) is None
+    assert form.get("nope", None) is None
     assert form.getlist("a") == ["123", "456"]
     assert list(form.keys()) == ["a", "b"]
     assert list(form.values()) == ["456", upload]
@@ -403,7 +519,7 @@ def test_multidict() -> None:
     assert "c" not in q
     assert q["a"] == "456"
     assert q.get("a") == "456"
-    assert q.get("nope", default=None) is None
+    assert q.get("nope", None) is None
     assert q.getlist("a") == ["123", "456"]
     assert list(q.keys()) == ["a", "b"]
     assert list(q.values()) == ["456", "789"]

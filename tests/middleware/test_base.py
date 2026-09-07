@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextvars
+import sys
 from collections.abc import AsyncGenerator, AsyncIterator, Generator
 from contextlib import AsyncExitStack
 from pathlib import Path
@@ -22,6 +23,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
+if sys.version_info < (3, 11):  # pragma: no cover
+    from exceptiongroup import ExceptionGroup
+
 
 class CustomMiddleware(BaseHTTPMiddleware):
     async def dispatch(
@@ -40,6 +44,10 @@ def homepage(request: Request) -> PlainTextResponse:
 
 def exc(request: Request) -> None:
     raise Exception("Exc")
+
+
+def exc_group(request: Request) -> None:
+    raise ExceptionGroup("my exception group", [ValueError("TEST")])
 
 
 def exc_stream(request: Request) -> StreamingResponse:
@@ -77,6 +85,7 @@ app = Starlette(
     routes=[
         Route("/", endpoint=homepage),
         Route("/exc", endpoint=exc),
+        Route("/exc-group", endpoint=exc_group),
         Route("/exc-stream", endpoint=exc_stream),
         Route("/no-response", endpoint=NoResponse),
         WebSocketRoute("/ws", endpoint=websocket_endpoint),
@@ -90,13 +99,18 @@ def test_custom_middleware(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.headers["Custom-Header"] == "Example"
 
-    with pytest.raises(Exception) as ctx:
+    with pytest.raises(Exception) as ctx1:
         response = client.get("/exc")
-    assert str(ctx.value) == "Exc"
+    assert str(ctx1.value) == "Exc"
 
-    with pytest.raises(Exception) as ctx:
+    with pytest.raises(Exception) as ctx2:
         response = client.get("/exc-stream")
-    assert str(ctx.value) == "Faulty Stream"
+    assert str(ctx2.value) == "Faulty Stream"
+
+    with pytest.raises(ExceptionGroup, match="my exception group") as ctx3:
+        client.get("/exc-group")
+    assert len(ctx3.value.exceptions) == 1
+    assert isinstance(ctx3.value.exceptions[0], ValueError)
 
     with pytest.raises(RuntimeError):
         response = client.get("/no-response")
@@ -511,9 +525,9 @@ def test_app_receives_http_disconnect_while_sending_if_discarded(
             # before we start returning the body
             await task_group.start(cancel_on_disconnect)
 
-            # A timeout is set for 0.1 second in order to ensure that
+            # A timeout is set for 0.2 second in order to ensure that
             # we never deadlock the test run in an infinite loop
-            with anyio.move_on_after(0.1):
+            with anyio.move_on_after(0.2):
                 while True:
                     await send(
                         {
@@ -1302,3 +1316,53 @@ def test_error_context_propagation(test_client_factory: TestClientFactory) -> No
     assert str(ctx.value) == "Outer exception"
     assert ctx.value.__cause__ is not None
     assert str(ctx.value.__cause__) == "Inner exception"
+
+
+@pytest.mark.anyio
+async def test_background_task_runs_after_response_sent_with_middleware() -> None:
+    events: list[tuple[str, float]] = []
+
+    async def bg() -> None:
+        events.append(("background-done", anyio.current_time()))
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(bg))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+    )
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "query_string": b"",
+        "root_path": "",
+        "scheme": "http",
+        "server": ("testserver", 80),
+        "client": ("testclient", 1),
+        "http_version": "1.1",
+        "asgi": {"spec_version": "2.4"},
+    }
+
+    async def receive() -> Message:  # pragma: no cover
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        events.append((message["type"], anyio.current_time()))
+        await anyio.sleep(0.05)
+
+    await app(scope, receive, send)
+
+    event_names = [name for name, _ in sorted(events, key=lambda e: e[1])]
+    assert event_names == [
+        "http.response.start",
+        "http.response.body",
+        "http.response.body",
+        "background-done",
+    ]

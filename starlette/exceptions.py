@@ -31,3 +31,13 @@ class WebSocketException(Exception):
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
         return f"{class_name}(code={self.code!r}, reason={self.reason!r})"
+
+
+class StarletteDeprecationWarning(UserWarning):
+    """A custom deprecation warning for Starlette.
+
+    Unlike the built-in DeprecationWarning, this inherits from UserWarning to ensure it is visible by default, helping
+    users discover deprecated features without needing to enable warnings explicitly.
+
+    Reference: https://sethmlarson.dev/deprecations-via-warnings-dont-work-for-python-libraries
+    """

@@ -143,7 +143,8 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
 
     @property
     def path_params(self) -> dict[str, Any]:
-        return self.scope.get("path_params", {})
+        path_params: dict[str, Any] = self.scope.get("path_params", {})
+        return path_params
 
     @property
     def cookies(self) -> dict[str, str]:
@@ -293,8 +294,18 @@ class Request(HTTPConnection[StateT]):
                         raise HTTPException(status_code=400, detail=exc.message)
                     raise exc
             elif content_type == b"application/x-www-form-urlencoded":
-                form_parser = FormParser(self.headers, self.stream())
-                self._form = await form_parser.parse()
+                try:
+                    form_parser = FormParser(
+                        self.headers,
+                        self.stream(),
+                        max_fields=max_fields,
+                        max_part_size=max_part_size,
+                    )
+                    self._form = await form_parser.parse()
+                except MultiPartException as exc:
+                    if "app" in self.scope:
+                        raise HTTPException(status_code=400, detail=exc.message)
+                    raise exc
             else:
                 self._form = FormData()
         return self._form

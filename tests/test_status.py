@@ -2,6 +2,8 @@ import importlib
 
 import pytest
 
+from starlette.exceptions import StarletteDeprecationWarning
+
 
 @pytest.mark.parametrize(
     "constant,msg",
@@ -17,7 +19,7 @@ import pytest
     ),
 )
 def test_deprecated_types(constant: str, msg: str) -> None:
-    with pytest.warns(DeprecationWarning) as record:
+    with pytest.warns(StarletteDeprecationWarning) as record:
         getattr(importlib.import_module("starlette.status"), constant)
         assert len(record) == 1
         assert msg in str(record.list[0])

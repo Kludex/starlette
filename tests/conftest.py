@@ -1,12 +1,31 @@
 from __future__ import annotations
 
 import functools
+import sys
+from collections.abc import Iterator
 from typing import Any, Literal
 
 import pytest
+from blockbuster import BlockBuster, BlockBusterFunction
 
 from starlette.testclient import TestClient
 from tests.types import TestClientFactory
+
+
+@pytest.fixture(autouse=True)
+def blockbuster() -> Iterator[None]:
+    bb = BlockBuster("starlette")
+    if sys.version_info >= (3, 15):  # pragma: no cover - Requires Python 3.15 or newer.
+        # Python 3.15 makes ScandirIterator immutable.
+        bb.functions["os.scandir"] = BlockBusterFunction(None, "os.scandir", scanned_modules="starlette")
+    bb.functions["os.stat"].can_block_in("/mimetypes.py", "init")
+    bb.functions["os.stat"].can_block_in("<frozen linecache>", {"checkcache", "updatecache"})
+    bb.functions["io.BufferedReader.read"].can_block_in("/starlette/testclient.py", "receive")
+    bb.activate()
+    try:
+        yield
+    finally:
+        bb.deactivate()
 
 
 @pytest.fixture

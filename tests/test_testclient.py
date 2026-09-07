@@ -14,6 +14,7 @@ import sniffio
 import trio.lowlevel
 
 from starlette.applications import Starlette
+from starlette.exceptions import StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -229,6 +230,45 @@ def test_testclient_asgi3(test_client_factory: TestClientFactory) -> None:
     assert response.text == "Hello, world!"
 
 
+def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": {"fragment": "header", "blocks": ["nav", "title"]}})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == {"fragment": "header", "blocks": ["nav", "title"]}
+    assert not hasattr(response, "template")
+
+
+def test_debug_info_in_response_extensions_with_template(test_client_factory: TestClientFactory) -> None:
+    info = {"template": "index.html", "context": {"name": "world"}, "blocks": ["nav"]}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.debug", "info": info})
+        await send({"type": "http.response.body", "body": b"Hello, world!"})
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.extensions["http.response.debug"] == info
+    assert response.template == "index.html"  # type: ignore[attr-defined]
+    assert response.context == {"name": "world"}  # type: ignore[attr-defined]
+
+
 def test_websocket_blocking_receive(test_client_factory: TestClientFactory) -> None:
     def app(scope: Scope) -> ASGIInstance:
         async def respond(websocket: WebSocket) -> None:
@@ -410,6 +450,26 @@ def test_raw_path_with_querystring(test_client_factory: TestClientFactory) -> No
     assert response.content == b"/hello-world"
 
 
+@pytest.mark.parametrize(
+    ("base_url", "server", "host"),
+    [
+        ("http://[::1]", ["::1", 80], "[::1]"),
+        ("http://[::1]:8000", ["::1", 8000], "[::1]:8000"),
+        ("http://[::1]:0", ["::1", 0], "[::1]:0"),
+    ],
+)
+def test_ipv6_base_url(
+    test_client_factory: TestClientFactory, base_url: str, server: list[str | int], host: str
+) -> None:
+    def homepage(request: Request) -> JSONResponse:
+        return JSONResponse({"server": request.scope["server"], "host": request.headers["host"]})
+
+    app = Starlette(routes=[Route("/", endpoint=homepage)])
+    client = test_client_factory(app, base_url=base_url)
+    response = client.get("/")
+    assert response.json() == {"server": server, "host": host}
+
+
 def test_websocket_raw_path_without_params(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)
@@ -425,6 +485,8 @@ def test_websocket_raw_path_without_params(test_client_factory: TestClientFactor
 
 
 def test_timeout_deprecation() -> None:
-    with pytest.deprecated_call(match="You should not use the 'timeout' argument with the TestClient."):
+    with pytest.warns(
+        StarletteDeprecationWarning, match="You should not use the 'timeout' argument with the TestClient."
+    ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)

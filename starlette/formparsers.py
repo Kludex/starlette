@@ -11,14 +11,17 @@ from starlette.datastructures import FormData, Headers, UploadFile
 
 if TYPE_CHECKING:
     import python_multipart as multipart
+    from python_multipart.exceptions import FormParserError
     from python_multipart.multipart import MultipartCallbacks, QuerystringCallbacks, parse_options_header
 else:
     try:
         try:
             import python_multipart as multipart
+            from python_multipart.exceptions import FormParserError
             from python_multipart.multipart import parse_options_header
         except ModuleNotFoundError:  # pragma: no cover
             import multipart
+            from multipart.exceptions import FormParserError
             from multipart.multipart import parse_options_header
     except ModuleNotFoundError:  # pragma: no cover
         multipart = None
@@ -55,25 +58,46 @@ class MultiPartException(Exception):
 
 
 class FormParser:
-    def __init__(self, headers: Headers, stream: AsyncGenerator[bytes, None]) -> None:
+    def __init__(
+        self,
+        headers: Headers,
+        stream: AsyncGenerator[bytes, None],
+        *,
+        max_fields: int | float = 1000,
+        max_part_size: int = 1024 * 1024,  # 1MB
+    ) -> None:
         assert multipart is not None, "The `python-multipart` library must be installed to use form parsing."
         self.headers = headers
         self.stream = stream
+        self.max_fields = max_fields
+        self.max_part_size = max_part_size
         self.messages: list[tuple[FormMessage, bytes]] = []
+        self._current_field_size = 0
+        self._current_fields = 0
 
     def on_field_start(self) -> None:
+        self._current_field_size = 0
         message = (FormMessage.FIELD_START, b"")
         self.messages.append(message)
 
     def on_field_name(self, data: bytes, start: int, end: int) -> None:
+        self._current_field_size += end - start
+        if self._current_field_size > self.max_part_size:
+            raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
         message = (FormMessage.FIELD_NAME, data[start:end])
         self.messages.append(message)
 
     def on_field_data(self, data: bytes, start: int, end: int) -> None:
+        self._current_field_size += end - start
+        if self._current_field_size > self.max_part_size:
+            raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
         message = (FormMessage.FIELD_DATA, data[start:end])
         self.messages.append(message)
 
     def on_field_end(self) -> None:
+        self._current_fields += 1
+        if self._current_fields > self.max_fields:
+            raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
         message = (FormMessage.FIELD_END, b"")
         self.messages.append(message)
 
@@ -247,9 +271,8 @@ class MultiPartParser:
             "on_end": self.on_end,
         }
 
-        # Create the parser.
-        parser = multipart.MultipartParser(boundary, callbacks)
         try:
+            parser = multipart.MultipartParser(boundary, callbacks)
             # Feed the parser with data from the request.
             async for chunk in self.stream:
                 parser.write(chunk)
@@ -267,10 +290,12 @@ class MultiPartParser:
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()
             parser.finalize()
-        except MultiPartException as exc:
-            # Close all the files if there was an error.
+        except BaseException as exc:
+            # Close all the files if parsing or reading the request stream fails.
             for file in self._files_to_close_on_error:
                 file.close()
-            raise exc
+            if isinstance(exc, FormParserError):
+                raise MultiPartException("Invalid multipart data.") from exc
+            raise
 
         return FormData(self.items)

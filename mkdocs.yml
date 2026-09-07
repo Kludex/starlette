@@ -60,9 +60,6 @@ nav:
 extra_css:
   - css/custom.css
 
-extra_javascript:
-  - js/custom.js
-
 extra:
   analytics:
     provider: google

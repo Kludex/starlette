@@ -9,14 +9,7 @@ from urllib.parse import urlencode
 import pytest
 
 from starlette.applications import Starlette
-from starlette.authentication import (
-    AuthCredentials,
-    AuthenticationBackend,
-    AuthenticationError,
-    SimpleUser,
-    UnauthenticatedUser,
-    requires,
-)
+from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires
 from starlette.endpoints import HTTPEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
@@ -54,6 +47,7 @@ def homepage(request: Request) -> JSONResponse:
         {
             "authenticated": request.user.is_authenticated,
             "user": request.user.display_name,
+            "identity": request.user.identity,
         }
     )
 
@@ -220,11 +214,11 @@ def test_user_interface(test_client_factory: TestClientFactory) -> None:
     with test_client_factory(app) as client:
         response = client.get("/")
         assert response.status_code == 200
-        assert response.json() == {"authenticated": False, "user": ""}
+        assert response.json() == {"authenticated": False, "user": "", "identity": ""}
 
         response = client.get("/", auth=("tomchristie", "example"))
         assert response.status_code == 200
-        assert response.json() == {"authenticated": True, "user": "tomchristie"}
+        assert response.json() == {"authenticated": True, "user": "tomchristie", "identity": "tomchristie"}
 
 
 def test_authentication_required(test_client_factory: TestClientFactory) -> None:
@@ -349,16 +343,6 @@ other_app = Starlette(
     routes=[Route("/control-panel", control_panel)],
     middleware=[Middleware(AuthenticationMiddleware, backend=BasicAuth(), on_error=on_auth_error)],
 )
-
-
-def test_simple_user_identity() -> None:
-    user = SimpleUser("tomchristie")
-    assert user.identity == "tomchristie"
-
-
-def test_unauthenticated_user_identity() -> None:
-    user = UnauthenticatedUser()
-    assert user.identity == ""
 
 
 def test_custom_on_error(test_client_factory: TestClientFactory) -> None:

@@ -151,6 +151,7 @@ class MultiPartParser:
     """The maximum size of the spooled temporary file used to store file data."""
     max_part_size = 1024 * 1024  # 1MB
     """The maximum size of a part in the multipart request."""
+    _file_write_size = 1024 * 1024  # 1MB
 
     def __init__(
         self,
@@ -282,10 +283,22 @@ class MultiPartParser:
                 # (regular, non-async functions), that would block the event loop in
                 # the main thread.
                 for part, data in self._file_parts_to_write:
-                    assert part.file  # for type checkers
-                    await part.file.write(data)
+                    assert part.file is not None
+                    if part.data and len(part.data) + len(data) > self._file_write_size:
+                        await part.file.write(part.data)
+                        part.data.clear()
+                    if part.data or (not part.file._in_memory and len(data) < self._file_write_size):
+                        part.data.extend(data)
+                        if len(part.data) >= self._file_write_size:
+                            await part.file.write(part.data)
+                            part.data.clear()
+                    else:
+                        await part.file.write(data)
                 for part in self._file_parts_to_finish:
-                    assert part.file  # for type checkers
+                    assert part.file is not None
+                    if part.data:
+                        await part.file.write(part.data)
+                        part.data.clear()
                     await part.file.seek(0)
                 self._file_parts_to_write.clear()
                 self._file_parts_to_finish.clear()

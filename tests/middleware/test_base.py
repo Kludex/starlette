@@ -394,8 +394,8 @@ async def test_do_not_block_on_background_tasks() -> None:
                 response_complete.set()
 
     async with anyio.create_task_group() as tg:
-        tg.start_soon(app, scope, receive, send)
-        tg.start_soon(app, scope, receive, send)
+        tg.start_soon(app, scope.copy(), receive, send)
+        tg.start_soon(app, scope.copy(), receive, send)
 
     # Without the fix, the background tasks would start and finish before the
     # last http.response.body is sent.

@@ -57,36 +57,14 @@ app = Starlette(routes=routes, middleware=middleware)
 Once `AuthenticationMiddleware` is installed the `request.user` interface
 will be available to endpoints or other middleware.
 
-Your user model should subclass `BaseUser` and implement three properties:
+This interface should subclass `BaseUser`, which provides two properties,
+as well as whatever other information your user model includes.
 
-* `.is_authenticated` - A boolean indicating whether the user is authenticated.
-* `.display_name` - A string you can use to display the user's name.
-* `.identity` - A string identifying the user.
+* `.is_authenticated`
+* `.display_name`
 
-Starlette provides two built-in user implementations:
-
-```python
-from starlette.authentication import SimpleUser, UnauthenticatedUser
-
-user = SimpleUser("alice")
-assert user.is_authenticated
-assert user.display_name == "alice"
-assert user.identity == "alice"
-
-user = UnauthenticatedUser()
-assert not user.is_authenticated
-assert user.display_name == ""
-assert user.identity == ""
-```
-
-`SimpleUser(username)` uses the username for both `display_name` and `identity`.
-Changing the username also changes the identity.
-`UnauthenticatedUser()` returns an empty string for both properties.
-
-!!! note "Check authentication with `is_authenticated`"
-    Use `is_authenticated` to check whether a user is authenticated.
-    An empty identity does not imply that a user is unauthenticated:
-    `SimpleUser("")` is authenticated, but its identity is an empty string.
+Starlette provides two built-in user implementations: `UnauthenticatedUser()`,
+and `SimpleUser(username)`.
 
 ## AuthCredentials
 

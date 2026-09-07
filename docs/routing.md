@@ -276,6 +276,10 @@ routes = [
 ]
 ```
 
+A `Route`, `WebSocketRoute`, or `Mount` subclass may narrow matching or add
+values to the child scope. It must not match paths outside its declared `path`.
+Implement `BaseRoute` directly when you need independent path-matching behavior.
+
 ## Working with Router instances
 
 If you're working at a low-level you might want to use a plain `Router`

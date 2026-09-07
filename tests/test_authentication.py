@@ -9,7 +9,14 @@ from urllib.parse import urlencode
 import pytest
 
 from starlette.applications import Starlette
-from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires
+from starlette.authentication import (
+    AuthCredentials,
+    AuthenticationBackend,
+    AuthenticationError,
+    SimpleUser,
+    UnauthenticatedUser,
+    requires,
+)
 from starlette.endpoints import HTTPEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
@@ -350,8 +357,6 @@ def test_simple_user_identity() -> None:
 
 
 def test_unauthenticated_user_identity() -> None:
-    from starlette.authentication import UnauthenticatedUser
-
     user = UnauthenticatedUser()
     assert user.identity == ""
 

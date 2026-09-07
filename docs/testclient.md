@@ -194,7 +194,7 @@ def test_app():
 The operations on session are standard function calls, not awaitables.
 
 It's important to use the session within a context-managed `with` block. This
-ensure that the background thread on which the ASGI application is properly
+ensures that the background thread on which the ASGI application is properly
 terminated, and that any exceptions that occur within the application are
 always raised by the test client.
 

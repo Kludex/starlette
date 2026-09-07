@@ -7,11 +7,12 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Generator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
+from dataclasses import dataclass
 from enum import Enum
 from re import Pattern
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable, parse_host_header
@@ -42,6 +43,51 @@ class Match(Enum):
     NONE = 0
     PARTIAL = 1
     FULL = 2
+
+
+@dataclass(frozen=True)
+class RoutePattern:
+    """Describe a declared route path that may be used to narrow candidates."""
+
+    path: str
+    param_convertors: Mapping[str, Convertor[Any]]
+
+    @classmethod
+    def from_route(cls, route: BaseRoute) -> RoutePattern | None:
+        if isinstance(route, Route) and type(route).matches is Route.matches:
+            return cls(route.path, route.param_convertors)
+        if isinstance(route, WebSocketRoute) and type(route).matches is WebSocketRoute.matches:
+            return cls(route.path, route.param_convertors)
+        if isinstance(route, Mount) and type(route).matches is Mount.matches:
+            return cls(route.path + "/{path:path}", route.param_convertors)
+        return None
+
+
+_RouteT = TypeVar("_RouteT")
+
+
+class RouteIndex(Generic[_RouteT]):
+    """Return a safe superset of route candidates for a path."""
+
+    def __init__(
+        self,
+        candidates: Sequence[_RouteT],
+        get_pattern: Callable[[_RouteT], RoutePattern | None],
+    ) -> None:
+        self._source = candidates
+        self._get_pattern = get_pattern
+        self._candidates: list[_RouteT] = []
+        self._patterns: list[RoutePattern | None] = []
+        self._rebuild()
+
+    def candidates(self, path: str) -> list[_RouteT]:
+        if self._candidates != self._source:
+            self._rebuild()
+        return self._candidates.copy()
+
+    def _rebuild(self) -> None:
+        self._candidates = list(self._source)
+        self._patterns = [self._get_pattern(candidate) for candidate in self._source]
 
 
 def request_response(
@@ -590,6 +636,7 @@ class Router:
         max_body_size: int | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
+        self._route_index = RouteIndex(self.routes, RoutePattern.from_route)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
 
@@ -687,7 +734,7 @@ class Router:
 
         partial = None
 
-        for route in self.routes:
+        for route in self._route_index.candidates(get_route_path(scope)):
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
@@ -717,7 +764,7 @@ class Router:
             else:
                 redirect_scope["path"] = redirect_scope["path"] + "/"
 
-            for route in self.routes:
+            for route in self._route_index.candidates(get_route_path(redirect_scope)):
                 match, child_scope = route.matches(redirect_scope)
                 if match != Match.NONE:
                     redirect_url = URL(scope=redirect_scope)

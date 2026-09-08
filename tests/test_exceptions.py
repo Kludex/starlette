@@ -179,10 +179,10 @@ def test_http_str() -> None:
     assert str(HTTPException(404, headers={"key": "value"})) == "404: Not Found"
 
 
-@pytest.mark.parametrize("status_code", [-1, 99, 600])
-def test_http_exception_invalid_status_without_detail(status_code: int) -> None:
+@pytest.mark.parametrize("status_code", [-1, 99, 600, 499.0, "499"])
+def test_http_exception_invalid_status_without_detail(status_code: int | float | str) -> None:
     with pytest.raises(ValueError, match="is not a valid HTTPStatus"):
-        HTTPException(status_code)
+        HTTPException(status_code)  # type: ignore[arg-type]
 
 
 def test_http_exception_explicit_detail_does_not_validate_status() -> None:

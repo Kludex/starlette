@@ -10,6 +10,8 @@ class HTTPException(Exception):
             try:
                 detail = http.HTTPStatus(status_code).phrase
             except ValueError:
+                if not 100 <= status_code <= 599:
+                    raise
                 detail = ""
         self.status_code = status_code
         self.detail = detail

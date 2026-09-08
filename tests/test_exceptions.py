@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Generator
 from typing import Any
 
@@ -102,6 +104,34 @@ def test_not_modified(client: TestClient) -> None:
 def test_with_headers(client: TestClient) -> None:
     response = client.get("/with_headers")
     assert response.status_code == 200
+    assert response.headers["x-potato"] == "always"
+
+
+@pytest.mark.parametrize(
+    ("status_code", "detail", "expected_detail"),
+    [
+        (404, None, "Not Found"),
+        (499, None, ""),
+        (599, None, ""),
+        (499, "Client Closed Request", "Client Closed Request"),
+        (499, "", ""),
+        (404, "", ""),
+    ],
+)
+def test_http_exception_detail(
+    test_client_factory: TestClientFactory,
+    status_code: int,
+    detail: str | None,
+    expected_detail: str,
+) -> None:
+    async def endpoint(request: Request) -> None:
+        raise HTTPException(status_code, detail=detail, headers={"x-potato": "always"})
+
+    app = ExceptionMiddleware(Router([Route("/", endpoint=endpoint)]))
+    with test_client_factory(app) as client:
+        response = client.get("/")
+    assert response.status_code == status_code
+    assert response.text == expected_detail
     assert response.headers["x-potato"] == "always"
 
 

@@ -7,7 +7,10 @@ from collections.abc import Mapping
 class HTTPException(Exception):
     def __init__(self, status_code: int, detail: str | None = None, headers: Mapping[str, str] | None = None) -> None:
         if detail is None:
-            detail = http.HTTPStatus(status_code).phrase
+            try:
+                detail = http.HTTPStatus(status_code).phrase
+            except ValueError:
+                detail = ""
         self.status_code = status_code
         self.detail = detail
         self.headers = headers

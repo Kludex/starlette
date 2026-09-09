@@ -88,6 +88,28 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/"
 
 
+def test_url_multivalued_query_params() -> None:
+    u = URL("https://example.org/path/")
+    u = u.include_query_params(a="b", c=["d", "e"])
+    assert str(u) == "https://example.org/path/?a=b&c=d&c=e"
+
+    # Updating multivalued query params
+    u = u.include_query_params(c=["f", "g"])
+    assert str(u) == "https://example.org/path/?a=b&c=f&c=g"
+
+    # Tuple and non-string sequences
+    u = u.include_query_params(num=(1, 2))
+    assert str(u) == "https://example.org/path/?a=b&c=f&c=g&num=1&num=2"
+
+    # Empty sequence removes the key
+    u = u.include_query_params(c=[])
+    assert str(u) == "https://example.org/path/?a=b&num=1&num=2"
+
+    # replace_query_params with multivalued values
+    u = u.replace_query_params(tag=["python", "asgi"], debug="true")
+    assert str(u) == "https://example.org/path/?tag=python&tag=asgi&debug=true"
+
+
 def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"

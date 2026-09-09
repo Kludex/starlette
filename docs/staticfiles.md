@@ -32,6 +32,9 @@ Static files will respond with "404 Not found" or "405 Method not allowed"
 responses for requests which do not match. In HTML mode if `404.html` file
 exists it will be shown as 404 response.
 
+WebSocket connections to static paths are rejected before the handshake is accepted.
+ASGI servers return an HTTP 403 response for these requests.
+
 The `packages` option can be used to include "static" directories contained within
 a python package. The Python "bootstrap4" package is an example of this.
 

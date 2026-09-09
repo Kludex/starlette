@@ -4,6 +4,7 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock
 
 import anyio
 import pytest
@@ -16,6 +17,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
+from starlette.types import ASGIApp
 from tests.types import TestClientFactory
 
 
@@ -29,6 +31,32 @@ def test_staticfiles(tmpdir: Path, test_client_factory: TestClientFactory) -> No
     response = client.get("/example.txt")
     assert response.status_code == 200
     assert response.text == "<file content>"
+
+
+@pytest.mark.parametrize("mounted", [False, True])
+@pytest.mark.parametrize("path", ["/example.txt", "/missing.txt", "/"])
+def test_staticfiles_websocket(
+    tmp_path: Path,
+    anyio_backend_name: str,
+    anyio_backend_options: dict[str, Any],
+    mounted: bool,
+    path: str,
+) -> None:
+    (tmp_path / "example.txt").write_text("<file content>")
+    static = StaticFiles(directory=tmp_path)
+    app: ASGIApp = static
+    if mounted:
+        app = Starlette(routes=[Mount("/static", app=static)])
+        path = "/static" + path
+
+    scope = {"type": "websocket", "path": path, "root_path": "", "headers": []}
+    receive = AsyncMock(return_value={"type": "websocket.connect"})
+    send = AsyncMock()
+
+    anyio.run(app, scope, receive, send, backend=anyio_backend_name, backend_options=anyio_backend_options)
+
+    send.assert_awaited_once_with({"type": "websocket.close", "code": 1000, "reason": ""})
+    assert not static.config_checked
 
 
 def test_staticfiles_with_pathlib(tmp_path: Path, test_client_factory: TestClientFactory) -> None:

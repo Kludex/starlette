@@ -86,6 +86,13 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/?page=4&search=testing"
     u = u.remove_query_params(["page", "search"])
     assert str(u) == "https://example.org/path/"
+    # Multi-valued query params should expand rather than stringify.
+    u = u.include_query_params(a="b", c=["d", "e"])
+    assert str(u) == "https://example.org/path/?a=b&c=d&c=e"
+    u = u.include_query_params(c=("f", "g"))
+    assert str(u) == "https://example.org/path/?a=b&c=f&c=g"
+    u = u.replace_query_params(tag=["x", "y"], page=1)
+    assert str(u) == "https://example.org/path/?tag=x&tag=y&page=1"
 
 
 def test_hidden_password() -> None:

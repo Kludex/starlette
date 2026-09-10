@@ -28,6 +28,7 @@ class Starlette:
         exception_handlers: Mapping[Any, ExceptionHandler] | None = None,
         lifespan: Lifespan[AppType] | None = None,
         *,
+        redirect_slashes: bool = True,
         max_body_size: int | None = None,
     ) -> None:
         """Initializes the application.
@@ -49,12 +50,14 @@ class Starlette:
             lifespan: A lifespan context function, which can be used to perform
                 startup and shutdown tasks. This is a newer style that replaces the
                 `on_startup` and `on_shutdown` handlers. Use one or the other, not both.
+            redirect_slashes: Whether to redirect requests to a matching route with
+                an added or removed trailing slash.
             max_body_size: Non-negative maximum total size in bytes of an HTTP request
                 body. The default, `None`, does not limit request body size.
         """
         self.debug = debug
         self.state = State()
-        self.router = Router(routes, lifespan=lifespan)
+        self.router = Router(routes, redirect_slashes=redirect_slashes, lifespan=lifespan)
         self.max_body_size = max_body_size
         self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
         self.user_middleware = [] if middleware is None else list(middleware)

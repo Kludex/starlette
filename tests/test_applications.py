@@ -195,6 +195,15 @@ def test_mounted_route(client: TestClient) -> None:
     assert response.text == "Hello, everyone!"
 
 
+def test_redirect_slashes_can_be_disabled(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(routes=[Route("/users/", endpoint=all_users_page)], redirect_slashes=False)
+    client = test_client_factory(app)
+
+    response = client.get("/users", follow_redirects=False)
+
+    assert response.status_code == 404
+
+
 def test_mounted_route_path_params(client: TestClient) -> None:
     response = client.get("/users/tomchristie")
     assert response.status_code == 200

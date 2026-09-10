@@ -54,6 +54,9 @@ routes = [
 app = Starlette(debug=True, routes=routes, lifespan=lifespan)
 ```
 
+By default, Starlette redirects requests when adding or removing a trailing slash
+would match a route. Pass `redirect_slashes=False` to disable these redirects.
+
 ### Storing state on the app instance
 
 You can store arbitrary extra state on the application instance, using the

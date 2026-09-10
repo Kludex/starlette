@@ -82,9 +82,17 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/?order=name"
     u = u.remove_query_params("order")
     assert str(u) == "https://example.org/path/"
+    u = u.replace_query_params(order=["name", "id"])
+    assert str(u) == "https://example.org/path/?order=name&order=id"
+    u = u.remove_query_params("order")
+    assert str(u) == "https://example.org/path/"
     u = u.include_query_params(page=4, search="testing")
     assert str(u) == "https://example.org/path/?page=4&search=testing"
     u = u.remove_query_params(["page", "search"])
+    assert str(u) == "https://example.org/path/"
+    u = u.include_query_params(page=4, category=["cat1", "cat2"])
+    assert str(u) == "https://example.org/path/?page=4&category=cat1&category=cat2"
+    u = u.remove_query_params(["page", "category"])
     assert str(u) == "https://example.org/path/"
 
 

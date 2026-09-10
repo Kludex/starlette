@@ -705,9 +705,7 @@ class Router:
                     if implicit_head is None:
                         implicit_head = route
                         implicit_head_scope = child_scope
-                        continue
-                    route = implicit_head
-                    child_scope = implicit_head_scope
+                    continue
                 elif implicit_head is not None and not (
                     isinstance(route, Route) and route.methods is not None and "HEAD" in route.methods
                 ):

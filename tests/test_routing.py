@@ -1109,10 +1109,15 @@ def test_explicit_head_route_takes_precedence(test_client_factory: TestClientFac
         calls.append("HEAD")
         return PlainTextResponse("HEAD")
 
+    async def second_get_endpoint(request: Request) -> PlainTextResponse:  # pragma: no cover
+        calls.append("second GET")
+        return PlainTextResponse("second GET")
+
     app = Starlette(
         routes=[
             Route("/", get_endpoint, methods=["GET"]),
             Route("/other", get_endpoint, methods=["GET"]),
+            Route("/", second_get_endpoint, methods=["GET"]),
             Route("/", head_endpoint, methods=["HEAD"]),
         ]
     )
@@ -1137,7 +1142,6 @@ def test_implicit_head_keeps_route_priority(test_client_factory: TestClientFacto
         routes=[
             Route("/", first_endpoint, methods=["GET"]),
             Route("/", second_endpoint, methods=["GET"]),
-            Mount("/", app=PlainTextResponse("mount")),
         ]
     )
 

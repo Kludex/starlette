@@ -163,7 +163,9 @@ def compile_path(
 
     path_format += path[idx:]
 
-    return re.compile(path_regex), path_format, param_convertors
+    # Host names are case-insensitive. See RFC 9110, section 4.2.3.
+    flags = re.IGNORECASE if is_host else 0
+    return re.compile(path_regex, flags), path_format, param_convertors
 
 
 class BaseRoute:

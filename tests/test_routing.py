@@ -1238,3 +1238,25 @@ def test_paths_with_root_path(test_client_factory: TestClientFactory) -> None:
         "path": "/root/root-queue/path",
         "root_path": "/root",
     }
+
+
+@pytest.mark.parametrize(
+    ("route_host", "request_host"),
+    [
+        ("example.org", "EXAMPLE.org"),
+        ("example.org", "Example.Org"),
+        ("example.org", "EXAMPLE.ORG:8000"),
+        ("EXAMPLE.org", "example.org"),
+        ("{subdomain}.example.org", "SUB.EXAMPLE.org"),
+    ],
+)
+def test_host_routing_is_case_insensitive(
+    test_client_factory: TestClientFactory, route_host: str, request_host: str
+) -> None:
+    """Host names are case-insensitive. See RFC 9110, section 4.2.3."""
+    router = Router(routes=[Host(route_host, app=PlainTextResponse("hello"))])
+
+    client = test_client_factory(router)
+    response = client.get("/", headers={"host": request_host})
+    assert response.status_code == 200
+    assert response.text == "hello"

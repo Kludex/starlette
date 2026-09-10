@@ -234,8 +234,10 @@ class Route(BaseRoute):
 
         if methods is None:
             self.methods = None
+            self._head_is_implicit = False
         else:
             self.methods = {method.upper() for method in methods}
+            self._head_is_implicit = "GET" in self.methods and "HEAD" not in self.methods
             if "GET" in self.methods:
                 self.methods.add("HEAD")
 
@@ -287,6 +289,7 @@ class Route(BaseRoute):
             and self.path == other.path
             and self.endpoint == other.endpoint
             and self.methods == other.methods
+            and self._head_is_implicit == other._head_is_implicit
         )
 
     def __repr__(self) -> str:
@@ -686,12 +689,30 @@ class Router:
             return
 
         partial = None
+        implicit_head: Route | None = None
 
         for route in self.routes:
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
+                if (
+                    scope["type"] == "http"
+                    and scope["method"] == "HEAD"
+                    and isinstance(route, Route)
+                    and route._head_is_implicit
+                ):
+                    if implicit_head is None:
+                        implicit_head = route
+                        implicit_head_scope = child_scope
+                        continue
+                    route = implicit_head
+                    child_scope = implicit_head_scope
+                elif implicit_head is not None and not (
+                    isinstance(route, Route) and route.methods is not None and "HEAD" in route.methods
+                ):
+                    route = implicit_head
+                    child_scope = implicit_head_scope
                 scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
@@ -699,6 +720,12 @@ class Router:
             elif match == Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
+
+        if implicit_head is not None:
+            scope["route"] = implicit_head
+            scope.update(implicit_head_scope)
+            await implicit_head.handle(scope, receive, send)
+            return
 
         if partial is not None:
             #  Handle partial matches. These are cases where an endpoint is

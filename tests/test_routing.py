@@ -1094,6 +1094,69 @@ def test_route_repr_without_methods() -> None:
     assert repr(route) == "Route(path='/welcome', name='Endpoint', methods=[])"
 
 
+def test_route_equality_distinguishes_implicit_head() -> None:
+    assert Route("/", homepage, methods=["GET"]) != Route("/", homepage, methods=["GET", "HEAD"])
+
+
+def test_explicit_head_route_takes_precedence(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+
+    async def get_endpoint(request: Request) -> PlainTextResponse:
+        calls.append("GET")
+        return PlainTextResponse("GET")
+
+    async def head_endpoint(request: Request) -> PlainTextResponse:
+        calls.append("HEAD")
+        return PlainTextResponse("HEAD")
+
+    app = Starlette(
+        routes=[
+            Route("/", get_endpoint, methods=["GET"]),
+            Route("/other", get_endpoint, methods=["GET"]),
+            Route("/", head_endpoint, methods=["HEAD"]),
+        ]
+    )
+
+    client = test_client_factory(app)
+    assert client.head("/").status_code == 200
+    assert calls == ["HEAD"]
+
+    calls.clear()
+    assert client.get("/").text == "GET"
+    assert calls == ["GET"]
+
+
+def test_implicit_head_keeps_route_priority(test_client_factory: TestClientFactory) -> None:
+    async def first_endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("first")
+
+    async def second_endpoint(request: Request) -> PlainTextResponse:  # pragma: no cover
+        return PlainTextResponse("second")
+
+    app = Starlette(
+        routes=[
+            Route("/", first_endpoint, methods=["GET"]),
+            Route("/", second_endpoint, methods=["GET"]),
+            Mount("/", app=PlainTextResponse("mount")),
+        ]
+    )
+
+    response = test_client_factory(app).head("/")
+    assert response.status_code == 200
+    assert response.headers["content-length"] == "5"
+
+
+def test_implicit_head_keeps_priority_over_later_mount(test_client_factory: TestClientFactory) -> None:
+    async def get_endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("GET")
+
+    app = Starlette(routes=[Route("/", get_endpoint, methods=["GET"]), Mount("/", app=PlainTextResponse("mount"))])
+
+    response = test_client_factory(app).head("/")
+    assert response.status_code == 200
+    assert response.headers["content-length"] == "3"
+
+
 def test_websocket_route_repr() -> None:
     route = WebSocketRoute("/ws", endpoint=websocket_endpoint)
     assert repr(route) == "WebSocketRoute(path='/ws', name='websocket_endpoint')"

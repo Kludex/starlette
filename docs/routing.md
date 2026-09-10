@@ -276,6 +276,9 @@ routes = [
 ]
 ```
 
+Explicit `HEAD` routes are an exception to route priority: they take precedence over an earlier matching `GET` route,
+which otherwise handles `HEAD` requests automatically.
+
 ## Working with Router instances
 
 If you're working at a low-level you might want to use a plain `Router`

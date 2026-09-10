@@ -17,7 +17,7 @@ from starlette import status
 from starlette.background import BackgroundTask
 from starlette.datastructures import Headers
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.testclient import TestClient
 from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
@@ -41,6 +41,17 @@ def test_bytes_response(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/")
     assert response.content == b"xxxxx"
+
+
+def test_html_response_supports_html_protocol(test_client_factory: TestClientFactory) -> None:
+    class HTML:
+        def __html__(self) -> str:
+            return "<strong>hello, world</strong>"
+
+    client = test_client_factory(HTMLResponse(HTML()))
+    response = client.get("/")
+    assert response.text == "<strong>hello, world</strong>"
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
 
 
 def test_json_none_response(test_client_factory: TestClientFactory) -> None:

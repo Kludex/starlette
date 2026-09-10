@@ -70,7 +70,7 @@ For cross-site requests, use `samesite="none"`.
 
 ### HTMLResponse
 
-Takes some text or bytes and returns an HTML response.
+Takes some text, bytes, or an object implementing `__html__()` and returns an HTML response.
 
 ```python
 from starlette.responses import HTMLResponse

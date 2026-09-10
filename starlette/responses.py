@@ -175,6 +175,11 @@ class Response:
 class HTMLResponse(Response):
     media_type = "text/html"
 
+    def render(self, content: Any) -> bytes | memoryview:
+        if hasattr(content, "__html__"):
+            content = content.__html__()
+        return super().render(content)
+
 
 class PlainTextResponse(Response):
     media_type = "text/plain"

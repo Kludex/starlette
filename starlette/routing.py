@@ -485,7 +485,9 @@ class Host(BaseRoute):
             parsed_host = parse_host_header(headers.get("host"))
             if parsed_host is None:
                 return Match.NONE, {}
-            host = parsed_host.host
+            # Match against the lowercased host so that captured host params are
+            # canonical, as they were when only lowercase hosts could match.
+            host = parsed_host.host.lower()
 
             match = self.host_regex.match(host)
             if match:

@@ -1260,3 +1260,18 @@ def test_host_routing_is_case_insensitive(
     response = client.get("/", headers={"host": request_host})
     assert response.status_code == 200
     assert response.text == "hello"
+
+
+def test_host_routing_params_are_lowercased(test_client_factory: TestClientFactory) -> None:
+    """A captured host param is canonical, as it was when only lowercase hosts matched."""
+
+    async def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(request.path_params["subdomain"])
+
+    router = Router(routes=[Host("{subdomain}.example.org", app=Router(routes=[Route("/", endpoint)]))])
+
+    client = test_client_factory(router)
+    for host in ("sub.example.org", "SUB.EXAMPLE.org", "Sub.Example.Org"):
+        response = client.get("/", headers={"host": host})
+        assert response.status_code == 200
+        assert response.text == "sub"

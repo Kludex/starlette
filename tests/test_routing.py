@@ -1238,3 +1238,40 @@ def test_paths_with_root_path(test_client_factory: TestClientFactory) -> None:
         "path": "/root/root-queue/path",
         "root_path": "/root",
     }
+
+
+@pytest.mark.parametrize(
+    ("route_host", "request_host"),
+    [
+        ("example.org", "EXAMPLE.org"),
+        ("example.org", "Example.Org"),
+        ("example.org", "EXAMPLE.ORG:8000"),
+        ("EXAMPLE.org", "example.org"),
+        ("{subdomain}.example.org", "SUB.EXAMPLE.org"),
+    ],
+)
+def test_host_routing_is_case_insensitive(
+    test_client_factory: TestClientFactory, route_host: str, request_host: str
+) -> None:
+    """Host names are case-insensitive. See RFC 9110, section 4.2.3."""
+    router = Router(routes=[Host(route_host, app=PlainTextResponse("hello"))])
+
+    client = test_client_factory(router)
+    response = client.get("/", headers={"host": request_host})
+    assert response.status_code == 200
+    assert response.text == "hello"
+
+
+def test_host_routing_params_are_lowercased(test_client_factory: TestClientFactory) -> None:
+    """A captured host param is canonical, as it was when only lowercase hosts matched."""
+
+    async def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(request.path_params["subdomain"])
+
+    router = Router(routes=[Host("{subdomain}.example.org", app=Router(routes=[Route("/", endpoint)]))])
+
+    client = test_client_factory(router)
+    for host in ("sub.example.org", "SUB.EXAMPLE.org", "Sub.Example.Org"):
+        response = client.get("/", headers={"host": host})
+        assert response.status_code == 200
+        assert response.text == "sub"

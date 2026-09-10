@@ -52,6 +52,8 @@ class Starlette:
             max_body_size: Non-negative maximum total size in bytes of an HTTP request
                 body. The default, `None`, does not limit request body size.
         """
+        if max_body_size is not None and max_body_size < 0:
+            raise ValueError("`max_body_size` must be greater than or equal to 0")
         self.debug = debug
         self.state = State()
         self.router = Router(routes, lifespan=lifespan)

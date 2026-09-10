@@ -20,6 +20,31 @@ async def echo(request: Request) -> Response:
     return Response(await request.body())
 
 
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: RequestBodyLimitMiddleware(Starlette(), max_body_size=-1),
+        lambda: Starlette(max_body_size=-1),
+        lambda: Router(max_body_size=-1),
+        lambda: Mount("/", app=Starlette(), max_body_size=-1),
+        lambda: Route("/", endpoint=echo, max_body_size=-1),
+    ],
+)
+def test_negative_body_size_limit(factory: Callable[[], object]) -> None:
+    with pytest.raises(ValueError, match="`max_body_size` must be greater than or equal to 0"):
+        factory()
+
+
+def test_zero_body_size_limit(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(routes=[Route("/", echo, methods=["POST"])], max_body_size=0)
+    client = test_client_factory(app)
+
+    response = client.post("/", content=b"")
+
+    assert response.status_code == 200
+    assert response.content == b""
+
+
 def test_body_size_limit(test_client_factory: TestClientFactory) -> None:
     app = RequestBodyLimitMiddleware(
         Starlette(routes=[Route("/", echo, methods=["POST"])]),

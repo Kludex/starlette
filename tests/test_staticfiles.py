@@ -16,6 +16,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
+from starlette.websockets import WebSocketDisconnect
 from tests.types import TestClientFactory
 
 
@@ -29,6 +30,17 @@ def test_staticfiles(tmpdir: Path, test_client_factory: TestClientFactory) -> No
     response = client.get("/example.txt")
     assert response.status_code == 200
     assert response.text == "<file content>"
+
+
+def test_staticfiles_websocket(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    app = Starlette(routes=[Mount("/static", app=StaticFiles(directory=tmp_path))])
+    client = test_client_factory(app)
+
+    with pytest.raises(WebSocketDisconnect) as exc:
+        with client.websocket_connect("/static/example.txt"):
+            pass  # pragma: no cover - The connection is rejected before entering the context.
+
+    assert exc.value.code == 1000
 
 
 def test_staticfiles_with_pathlib(tmp_path: Path, test_client_factory: TestClientFactory) -> None:

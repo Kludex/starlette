@@ -143,7 +143,9 @@ class URL:
     def append_query_params(self, params: Mapping[Any, Any] | Iterable[tuple[Any, Any]]) -> URL:
         params = MultiDict(params)
         appended = urlencode([(str(key), str(value)) for key, value in params.multi_items()])
-        separator = "&" if self.query and appended and not self.query.endswith("&") else ""
+        if not appended:
+            return self
+        separator = "&" if self.query and not self.query.endswith("&") else ""
         return self.replace(query=f"{self.query}{separator}{appended}")
 
     def include_query_params(self, **kwargs: Any) -> URL:

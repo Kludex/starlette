@@ -104,6 +104,11 @@ def test_url_append_query_params_preserves_existing_query() -> None:
     assert str(u) == "https://example.org/path/?flag&q=hello%20world&&invalid=%FF&category=books"
 
 
+def test_url_append_empty_query_params() -> None:
+    u = URL("https://example.org/path/?")
+    assert str(u.append_query_params({})) == "https://example.org/path/?"
+
+
 def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"

@@ -38,7 +38,7 @@ def test_staticfiles_websocket(tmp_path: Path, test_client_factory: TestClientFa
 
     with pytest.raises(WebSocketDisconnect) as exc:
         with client.websocket_connect("/static/example.txt"):
-            pass
+            pass  # pragma: no cover - The connection is rejected before entering the context.
 
     assert exc.value.code == 1000
 

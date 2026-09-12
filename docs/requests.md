@@ -40,6 +40,33 @@ components that can be parsed out of the URL.
 
 For example: `request.url.path`, `request.url.port`, `request.url.scheme`.
 
+##### Modifying query parameters
+
+You can add, replace, and remove query parameters from a URL. Each method returns a new `URL` instance.
+
+```python
+from starlette.datastructures import URL
+
+url = URL("https://example.com/?page=1")
+
+included = url.include_query_params(page=2, search="books")
+assert str(included) == "https://example.com/?page=2&search=books"
+
+appended = url.append_query_params([("category", "books"), ("category", "games")])
+assert str(appended) == "https://example.com/?page=1&category=books&category=games"
+
+replaced = url.replace_query_params(order="name")
+assert str(replaced) == "https://example.com/?order=name"
+
+removed = appended.remove_query_params("category")
+assert str(removed) == "https://example.com/?page=1"
+```
+
+Use `include_query_params()` to replace values for matching keys while preserving other parameters. Use
+`append_query_params()` with a mapping or an iterable of key-value pairs to preserve every existing value and add new
+ones. An iterable may contain the same key more than once. Use `replace_query_params()` to replace the complete query
+string, and `remove_query_params()` to remove one or more keys.
+
 #### Headers
 
 Headers are exposed as an immutable, case-insensitive, multi-dict.

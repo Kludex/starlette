@@ -89,13 +89,19 @@ def test_url_query_params() -> None:
 
 
 def test_url_append_query_params() -> None:
-    u = URL("https://example.org/path/?page=3")
+    u = URL("https://example.org/path/")
     u = u.append_query_params([("category", "cat1"), ("category", "cat2")])
-    assert str(u) == "https://example.org/path/?page=3&category=cat1&category=cat2"
+    assert str(u) == "https://example.org/path/?category=cat1&category=cat2"
     u = u.append_query_params({"page": 4})
-    assert str(u) == "https://example.org/path/?page=3&category=cat1&category=cat2&page=4"
+    assert str(u) == "https://example.org/path/?category=cat1&category=cat2&page=4"
     u = u.append_query_params(MultiDict([("filter", "new"), ("filter", "popular")]))
-    assert str(u) == ("https://example.org/path/?page=3&category=cat1&category=cat2&page=4&filter=new&filter=popular")
+    assert str(u) == "https://example.org/path/?category=cat1&category=cat2&page=4&filter=new&filter=popular"
+
+
+def test_url_append_query_params_preserves_existing_query() -> None:
+    u = URL("https://example.org/path/?flag&q=hello%20world&&invalid=%FF")
+    u = u.append_query_params([("category", "books")])
+    assert str(u) == "https://example.org/path/?flag&q=hello%20world&&invalid=%FF&category=books"
 
 
 def test_hidden_password() -> None:

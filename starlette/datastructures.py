@@ -141,10 +141,10 @@ class URL:
         return self.__class__(components.geturl())
 
     def append_query_params(self, params: Mapping[Any, Any] | Iterable[tuple[Any, Any]]) -> URL:
-        existing = parse_qsl(self.query, keep_blank_values=True)
-        appended = MultiDict(params)
-        query = urlencode(existing + [(str(key), str(value)) for key, value in appended.multi_items()])
-        return self.replace(query=query)
+        params = MultiDict(params)
+        appended = urlencode([(str(key), str(value)) for key, value in params.multi_items()])
+        separator = "&" if self.query and appended and not self.query.endswith("&") else ""
+        return self.replace(query=f"{self.query}{separator}{appended}")
 
     def include_query_params(self, **kwargs: Any) -> URL:
         params = MultiDict(parse_qsl(self.query, keep_blank_values=True))

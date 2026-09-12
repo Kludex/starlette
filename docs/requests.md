@@ -49,23 +49,22 @@ from starlette.datastructures import URL
 
 url = URL("https://example.com/?page=1")
 
+# Replace matching query parameters while preserving other parameters.
 included = url.include_query_params(page=2, search="books")
 assert str(included) == "https://example.com/?page=2&search=books"
 
+# Append query parameters while preserving every existing value.
 appended = url.append_query_params([("category", "books"), ("category", "games")])
 assert str(appended) == "https://example.com/?page=1&category=books&category=games"
 
+# Replace the complete query string.
 replaced = url.replace_query_params(order="name")
 assert str(replaced) == "https://example.com/?order=name"
 
+# Remove one or more query parameters.
 removed = appended.remove_query_params("category")
 assert str(removed) == "https://example.com/?page=1"
 ```
-
-Use `include_query_params()` to replace values for matching keys while preserving other parameters. Use
-`append_query_params()` with a mapping or an iterable of key-value pairs to preserve every existing value and add new
-ones. An iterable may contain the same key more than once. Use `replace_query_params()` to replace the complete query
-string, and `remove_query_params()` to remove one or more keys.
 
 #### Headers
 

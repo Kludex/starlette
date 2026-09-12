@@ -52,7 +52,8 @@ The following middleware implementations are available in the Starlette package:
 Creates an OpenTelemetry server span for every incoming HTTP request. The span follows the
 OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
 headers, and uses the matched route template for its name and `http.route` attribute.
-The middleware also records request duration, active requests, and request and response body sizes using your
+The middleware records `http.server.request.duration` in seconds and `http.server.active_requests` in requests.
+It also records `http.server.request.body.size` and `http.server.response.body.size` in bytes. These metrics use your
 meter provider. Tracing and metrics work independently. Body-size metrics are emitted after the middleware observes
 the complete ASGI body.
 

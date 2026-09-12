@@ -40,6 +40,18 @@ components that can be parsed out of the URL.
 
 For example: `request.url.path`, `request.url.port`, `request.url.scheme`.
 
+Use `URL.append_query_params()` to add query parameters without replacing existing values. Pass a mapping or an
+iterable of key-value pairs. An iterable can contain the same key more than once.
+
+```python
+from starlette.datastructures import URL
+
+url = URL("https://example.com/?page=1")
+url = url.append_query_params([("category", "books"), ("category", "games")])
+
+assert str(url) == "https://example.com/?page=1&category=books&category=games"
+```
+
 #### Headers
 
 Headers are exposed as an immutable, case-insensitive, multi-dict.

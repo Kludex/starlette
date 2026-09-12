@@ -140,6 +140,12 @@ class URL:
         components = self.components._replace(**kwargs)
         return self.__class__(components.geturl())
 
+    def append_query_params(self, params: Mapping[Any, Any] | Iterable[tuple[Any, Any]]) -> URL:
+        existing = parse_qsl(self.query, keep_blank_values=True)
+        appended = MultiDict(params)
+        query = urlencode(existing + [(str(key), str(value)) for key, value in appended.multi_items()])
+        return self.replace(query=query)
+
     def include_query_params(self, **kwargs: Any) -> URL:
         params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
         params.update({str(key): str(value) for key, value in kwargs.items()})

@@ -35,9 +35,6 @@ class OpenTelemetryMiddleware:
             Pass a comma-separated string or a sequence. By default, exclude no URLs.
         tracer_provider: Optional tracer provider. If omitted, use the global tracer provider.
         meter_provider: Optional meter provider. If omitted, use the global meter provider.
-        record_active_requests: Enable `http.server.active_requests`. Defaults to False.
-        record_body_sizes: Enable `http.server.request.body.size` and
-            `http.server.response.body.size` in bytes. Defaults to False.
     """
 
     def __init__(
@@ -47,8 +44,6 @@ class OpenTelemetryMiddleware:
         excluded_urls: str | Sequence[str] = (),
         tracer_provider: trace.TracerProvider | None = None,
         meter_provider: metrics.MeterProvider | None = None,
-        record_active_requests: bool = False,
-        record_body_sizes: bool = False,
     ) -> None:
         self.app = app
         if isinstance(excluded_urls, str):
@@ -63,22 +58,15 @@ class OpenTelemetryMiddleware:
             description="Duration of HTTP server requests.",
             explicit_bucket_boundaries_advisory=HTTP_DURATION_BUCKETS,
         )
-        self._active_requests = (
-            meter.create_up_down_counter(
-                "http.server.active_requests", unit="{request}", description="Number of active HTTP server requests."
-            )
-            if record_active_requests
-            else None
+        self._active_requests = meter.create_up_down_counter(
+            "http.server.active_requests", unit="{request}", description="Number of active HTTP server requests."
         )
-        self._request_body_size: metrics.Histogram | None = None
-        self._response_body_size: metrics.Histogram | None = None
-        if record_body_sizes:
-            self._request_body_size = meter.create_histogram(
-                "http.server.request.body.size", unit="By", description="Size of HTTP request bodies."
-            )
-            self._response_body_size = meter.create_histogram(
-                "http.server.response.body.size", unit="By", description="Size of HTTP response bodies."
-            )
+        self._request_body_size = meter.create_histogram(
+            "http.server.request.body.size", unit="By", description="Size of HTTP request bodies."
+        )
+        self._response_body_size = meter.create_histogram(
+            "http.server.response.body.size", unit="By", description="Size of HTTP response bodies."
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("starlette.opentelemetry"):
@@ -165,14 +153,9 @@ class OpenTelemetryMiddleware:
                         response_complete = not message.get("more_body", False)
 
                 start_time = perf_counter()
-                if self._active_requests is not None:
-                    self._active_requests.add(1, active_attributes)
+                self._active_requests.add(1, active_attributes)
                 try:
-                    await self.app(
-                        scope,
-                        receive_with_telemetry if self._request_body_size is not None else receive,
-                        send_with_telemetry,
-                    )
+                    await self.app(scope, receive_with_telemetry, send_with_telemetry)
                 except (Exception, anyio.get_cancelled_exc_class()) as exc:
                     metric_attributes["error.type"] = type(exc).__qualname__
                     if isinstance(exc, Exception):
@@ -180,8 +163,7 @@ class OpenTelemetryMiddleware:
                     raise
                 finally:
                     duration = perf_counter() - start_time
-                    if self._active_requests is not None:
-                        self._active_requests.add(-1, active_attributes)
+                    self._active_requests.add(-1, active_attributes)
                     route = scope.get("route")
                     root_path = scope.get("root_path_template", scope.get("root_path", ""))
                     route_path = None
@@ -196,9 +178,9 @@ class OpenTelemetryMiddleware:
                         span.set_attribute("http.route", route_path)
                         metric_attributes["http.route"] = route_path
                     self._duration.record(duration, metric_attributes)
-                    if self._request_body_size is not None and request_complete:
+                    if request_complete:
                         self._request_body_size.record(request_size, metric_attributes)
-                    if self._response_body_size is not None and response_complete:
+                    if response_complete:
                         self._response_body_size.record(response_size, metric_attributes)
         finally:
             del scope["starlette.opentelemetry"]

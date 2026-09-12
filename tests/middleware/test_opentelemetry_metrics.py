@@ -67,7 +67,11 @@ async def test_duration_with_noop_tracing(
         assert (await client.get("/users/bob?secret=two")).status_code == 200
 
     recorded = get_metrics(reader)
-    assert set(recorded) == {"http.server.request.duration"}
+    assert set(recorded) == {
+        "http.server.active_requests",
+        "http.server.request.duration",
+        "http.server.response.body.size",
+    }
     metric = recorded["http.server.request.duration"]
     assert metric.unit == "s"
     assert isinstance(metric.data, Histogram)
@@ -96,7 +100,11 @@ async def test_explicit_meter_provider_overrides_global(
     try:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
             assert (await client.get("/")).status_code == 200
-        assert set(get_metrics(reader)) == {"http.server.request.duration"}
+        assert set(get_metrics(reader)) == {
+            "http.server.active_requests",
+            "http.server.request.duration",
+            "http.server.response.body.size",
+        }
         assert get_metrics(global_reader) == {}
     finally:
         provider.shutdown()
@@ -197,7 +205,7 @@ async def test_concurrent_active_requests(
 
     app = Starlette(
         routes=[Route("/users/{user}", endpoint)],
-        middleware=[Middleware(OpenTelemetryMiddleware, record_active_requests=True)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
     )
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
         async with anyio.create_task_group() as group:
@@ -230,7 +238,7 @@ async def test_failed_requests_release_active_count(
 
     app = Starlette(
         routes=[Route("/", endpoint)],
-        middleware=[Middleware(OpenTelemetryMiddleware, record_active_requests=True)],
+        middleware=[Middleware(OpenTelemetryMiddleware)],
     )
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
         if cancel:
@@ -272,7 +280,7 @@ async def test_streaming_body_sizes(
         yield b"hello"
         yield b"world"
 
-    app = OpenTelemetryMiddleware(application, record_body_sizes=True)
+    app = OpenTelemetryMiddleware(application)
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
         response = await client.request(method, "/", content=body())
         assert response.content == (b"" if method == "HEAD" else b"helloworld")
@@ -334,7 +342,7 @@ async def test_disconnect_and_response_trailers(
         await send({"type": "http.response.body"})
         await send({"type": "http.response.trailers", "headers": []})
 
-    app = OpenTelemetryMiddleware(application, record_body_sizes=True)
+    app = OpenTelemetryMiddleware(application)
     await app({"type": "http", "method": "POST", "path": "/", "headers": []}, receive, send)
     assert len(messages) == 3
     recorded = get_metrics(reader)

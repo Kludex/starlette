@@ -52,8 +52,9 @@ The following middleware implementations are available in the Starlette package:
 Creates an OpenTelemetry server span for every incoming HTTP request. The span follows the
 OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
 headers, and uses the matched route template for its name and `http.route` attribute.
-The middleware also records `http.server.request.duration` in seconds using your meter provider.
-Tracing and metrics work independently.
+The middleware also records request duration, active requests, and request and response body sizes using your
+meter provider. Tracing and metrics work independently. Body-size metrics are emitted after the middleware observes
+the complete ASGI body.
 
 Install the optional API dependency with `pip install "opentelemetry-api>=1.30.0"`, or as part of
 `pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application

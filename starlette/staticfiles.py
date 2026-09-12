@@ -15,6 +15,7 @@ from starlette.datastructures import URL, Headers
 from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
+from starlette.websockets import WebSocketClose
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -88,6 +89,11 @@ class StaticFiles:
         """
         The ASGI entry point.
         """
+        if scope["type"] == "websocket":
+            websocket_close = WebSocketClose()
+            await websocket_close(scope, receive, send)
+            return
+
         assert scope["type"] == "http"
 
         if not self.config_checked:

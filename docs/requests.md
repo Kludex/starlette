@@ -42,7 +42,7 @@ For example: `request.url.path`, `request.url.port`, `request.url.scheme`.
 
 ##### Modifying query parameters
 
-You can add, replace, and remove query parameters from a URL. Each method returns a new `URL` instance.
+You can add, replace, and remove query parameters from a URL. Each method returns a `URL` instance.
 
 ```python
 from starlette.datastructures import URL

@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import BaseRoute, Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -226,6 +226,202 @@ def test_router(client: TestClient) -> None:
     response = client.get("/static/123")
     assert response.status_code == 200
     assert response.text == "xxxxx"
+
+
+def make_call_tracking_endpoint(calls: list[str], name: str) -> Callable[[Request], Response]:
+    def endpoint(request: Request) -> Response:
+        calls.append(name)
+        return Response(headers={"x-endpoint": name})
+
+    return endpoint
+
+
+class RouteSubclassWithoutHeadFlag(Route):
+    def __init__(self) -> None:
+        self.app = Response(headers={"x-endpoint": "route-subclass"})
+        self.matches_called = False
+        self.handled = False
+
+    def matches(self, scope: Scope) -> tuple[Match, Scope]:
+        self.matches_called = True
+        return Match.FULL, {}
+
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+        self.handled = True
+        await self.app(scope, receive, send)
+
+
+def test_route_subclass_without_head_flag_keeps_first_match(test_client_factory: TestClientFactory) -> None:
+    route = RouteSubclassWithoutHeadFlag()
+    app = Router(
+        [
+            route,
+            Route("/", Response(headers={"x-endpoint": "head"}), methods=["HEAD"]),
+        ]
+    )
+
+    response = test_client_factory(app).head("/")
+
+    assert response.headers["x-endpoint"] == "route-subclass"
+    assert route.matches_called
+    assert route.handled
+
+
+def test_route_subclass_after_implicit_head_is_not_called(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+    route = RouteSubclassWithoutHeadFlag()
+    app = Router(
+        [
+            Route("/", make_call_tracking_endpoint(calls, "get"), methods=["GET"]),
+            route,
+        ]
+    )
+
+    response = test_client_factory(app).head("/")
+
+    assert response.headers["x-endpoint"] == "get"
+    assert calls == ["get"]
+    assert not route.matches_called
+    assert not route.handled
+
+
+@pytest.mark.parametrize(("path", "url"), [("/", "/"), ("/{name}", "/item")])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_explicit_head_route_precedence(
+    test_client_factory: TestClientFactory, path: str, url: str, reverse: bool
+) -> None:
+    calls: list[str] = []
+    routes = [
+        Route(path, make_call_tracking_endpoint(calls, "get"), methods=["GET"]),
+        Route(path, make_call_tracking_endpoint(calls, "head"), methods=["HEAD"]),
+    ]
+    if reverse:
+        routes.reverse()
+
+    response = test_client_factory(Router(routes)).head(url)
+
+    assert response.headers["x-endpoint"] == "head"
+    assert calls == ["head"]
+
+
+def test_implicit_head_fallback(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+    app = Router(
+        [
+            Route("/", make_call_tracking_endpoint(calls, "first"), methods=["GET"]),
+            Route("/", make_call_tracking_endpoint(calls, "second"), methods=["GET"]),
+        ]
+    )
+
+    response = test_client_factory(app).head("/")
+
+    assert response.headers["x-endpoint"] == "first"
+    assert calls == ["first"]
+
+
+@pytest.mark.parametrize("later_route_type", ["mount", "asgi", "unrestricted"])
+def test_implicit_head_fallback_ignores_nonexplicit_full_matches(
+    test_client_factory: TestClientFactory, later_route_type: str
+) -> None:
+    calls: list[str] = []
+    if later_route_type == "mount":
+        later_route: BaseRoute = Mount("/", app=Response(headers={"x-endpoint": "mount"}))
+    elif later_route_type == "asgi":
+        later_route = Route("/", Response(headers={"x-endpoint": "asgi"}))
+    else:
+        later_route = Route("/", make_call_tracking_endpoint(calls, "unrestricted"), methods=[])
+    app = Router(
+        [
+            Route("/", make_call_tracking_endpoint(calls, "get"), methods=["GET"]),
+            later_route,
+        ]
+    )
+
+    response = test_client_factory(app).head("/")
+
+    assert response.headers["x-endpoint"] == "get"
+    assert calls == ["get"]
+
+
+def test_get_route_keeps_first_match(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+    app = Router(
+        [
+            Route("/", make_call_tracking_endpoint(calls, "get"), methods=["GET"]),
+            Route("/", make_call_tracking_endpoint(calls, "head"), methods=["HEAD"]),
+        ]
+    )
+
+    response = test_client_factory(app).get("/")
+
+    assert response.headers["x-endpoint"] == "get"
+    assert calls == ["get"]
+
+
+def test_explicit_get_head_route_keeps_first_match(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+    app = Router(
+        [
+            Route("/", make_call_tracking_endpoint(calls, "first"), methods=["GET", "HEAD"]),
+            Route("/", make_call_tracking_endpoint(calls, "second"), methods=["HEAD"]),
+        ]
+    )
+
+    response = test_client_factory(app).head("/")
+
+    assert response.headers["x-endpoint"] == "first"
+    assert calls == ["first"]
+
+
+def test_different_route_pattern_keeps_first_match(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+    app = Router(
+        [
+            Route("/{path:path}", make_call_tracking_endpoint(calls, "generic"), methods=["GET"]),
+            Route("/item", make_call_tracking_endpoint(calls, "exact"), methods=["HEAD"]),
+        ]
+    )
+
+    response = test_client_factory(app).head("/item")
+
+    assert response.headers["x-endpoint"] == "generic"
+    assert calls == ["generic"]
+
+
+def test_nested_router_resolves_explicit_head_route(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+    nested = Router(
+        [
+            Route("/{name}", make_call_tracking_endpoint(calls, "nested-get"), methods=["GET"]),
+            Route("/{name}", make_call_tracking_endpoint(calls, "nested-head"), methods=["HEAD"]),
+        ]
+    )
+    app = Router(
+        [
+            Mount("/mounted", app=nested),
+            Route("/mounted/{path:path}", make_call_tracking_endpoint(calls, "outer-head"), methods=["HEAD"]),
+        ]
+    )
+
+    response = test_client_factory(app).head("/mounted/item")
+
+    assert response.headers["x-endpoint"] == "nested-head"
+    assert calls == ["nested-head"]
+
+
+def test_asgi_route_keeps_first_match(test_client_factory: TestClientFactory) -> None:
+    calls: list[str] = []
+    app = Router(
+        [
+            Route("/", Response(headers={"x-endpoint": "asgi"})),
+            Route("/", make_call_tracking_endpoint(calls, "head"), methods=["HEAD"]),
+        ]
+    )
+
+    response = test_client_factory(app).head("/")
+
+    assert response.headers["x-endpoint"] == "asgi"
+    assert calls == []
 
 
 def test_route_converters(client: TestClient) -> None:

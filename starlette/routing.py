@@ -234,8 +234,10 @@ class Route(BaseRoute):
 
         if methods is None:
             self.methods = None
+            self._head_is_implicit = False
         else:
             self.methods = {method.upper() for method in methods}
+            self._head_is_implicit = "GET" in self.methods and "HEAD" not in self.methods
             if "GET" in self.methods:
                 self.methods.add("HEAD")
 
@@ -686,12 +688,26 @@ class Router:
             return
 
         partial = None
+        implicit_head_match: tuple[Route, Scope] | None = None
 
         for route in self.routes:
+            if implicit_head_match is not None:
+                implicit_route, _ = implicit_head_match
+                if (
+                    not isinstance(route, Route)
+                    or getattr(route, "path", None) != implicit_route.path
+                    or "HEAD" not in (getattr(route, "methods", None) or ())
+                    or getattr(route, "_head_is_implicit", False)
+                ):
+                    continue
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
+                if scope["type"] == "http" and scope["method"] == "HEAD":
+                    if isinstance(route, Route) and getattr(route, "_head_is_implicit", False):
+                        implicit_head_match = route, child_scope
+                        continue
                 scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
@@ -699,6 +715,13 @@ class Router:
             elif match == Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
+
+        if implicit_head_match is not None:
+            route, child_scope = implicit_head_match
+            scope["route"] = route
+            scope.update(child_scope)
+            await route.handle(scope, receive, send)
+            return
 
         if partial is not None:
             #  Handle partial matches. These are cases where an endpoint is

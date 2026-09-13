@@ -257,6 +257,11 @@ url = request.url_for("sub:users:user_list", subdomain=...)
 
 Incoming paths are matched against each `Route` in order.
 
+GET routes automatically handle HEAD requests. If an explicit HEAD route has
+the same declared path as a GET route, the explicit route takes precedence for
+HEAD regardless of their order. Routes with different path patterns continue
+to use their declared order.
+
 In cases where more that one route could match an incoming path, you should
 take care to ensure that more specific routes are listed before general cases.
 

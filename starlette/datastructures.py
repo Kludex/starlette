@@ -142,12 +142,24 @@ class URL:
 
     def include_query_params(self, **kwargs: Any) -> URL:
         params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
-        params.update({str(key): str(value) for key, value in kwargs.items()})
+        for key, value in kwargs.items():
+            key_str = str(key)
+            if isinstance(value, (list, tuple)):
+                params.setlist(key_str, [str(v) for v in value])
+            else:
+                params[key_str] = str(value)
         query = urlencode(params.multi_items())
         return self.replace(query=query)
 
     def replace_query_params(self, **kwargs: Any) -> URL:
-        query = urlencode([(str(key), str(value)) for key, value in kwargs.items()])
+        items: list[tuple[str, str]] = []
+        for key, value in kwargs.items():
+            key_str = str(key)
+            if isinstance(value, (list, tuple)):
+                items.extend((key_str, str(v)) for v in value)
+            else:
+                items.append((key_str, str(value)))
+        query = urlencode(items)
         return self.replace(query=query)
 
     def remove_query_params(self, keys: str | Sequence[str]) -> URL:

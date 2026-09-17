@@ -88,6 +88,24 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/"
 
 
+def test_url_include_query_params_multi_value() -> None:
+    # List values should expand to repeated key=value pairs, not stringify
+    # the list object.  See https://github.com/encode/starlette/issues/3528
+    u = URL("https://example.org/path/")
+    u = u.include_query_params(a="b", c=["d", "e"])
+    assert str(u) == "https://example.org/path/?a=b&c=d&c=e"
+
+    # Tuple values should behave the same as lists.
+    u = URL("https://example.org/path/")
+    u = u.include_query_params(ids=(1, 2, 3))
+    assert str(u) == "https://example.org/path/?ids=1&ids=2&ids=3"
+
+    # Replacing an existing multi-value key clears the old values.
+    u = URL("https://example.org/path/?c=old1&c=old2")
+    u = u.include_query_params(c=["new1", "new2"])
+    assert str(u) == "https://example.org/path/?c=new1&c=new2"
+
+
 def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"

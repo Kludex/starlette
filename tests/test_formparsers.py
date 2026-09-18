@@ -14,7 +14,7 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.datastructures import Headers, UploadFile
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser, _user_safe_decode
+from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -613,14 +613,26 @@ async def test_urlencoded_limits_stop_parsing_within_a_single_chunk() -> None:
     assert sum(len(data) for _, data in parser.messages) <= 1024
 
 
-def test_user_safe_decode_helper() -> None:
-    result = _user_safe_decode(b"\xc4\x99\xc5\xbc\xc4\x87", "utf-8")
-    assert result == "ężć"
-
-
-def test_user_safe_decode_ignores_wrong_charset() -> None:
-    result = _user_safe_decode(b"abc", "latin-8")
-    assert result == "abc"
+@pytest.mark.parametrize(
+    "charset,value,expected",
+    [
+        ("utf-8", b"\xc4\x99\xc5\xbc\xc4\x87", "ężć"),
+        ("utf-8", b"\xe9", "é"),
+        ("invalid-charset", b"\xe9", "é"),
+    ],
+)
+def test_multipart_request_decodes_charset(
+    charset: str, value: bytes, expected: str, test_client_factory: TestClientFactory
+) -> None:
+    content = b'--boundary\r\nContent-Disposition: form-data; name="value"\r\n\r\n' + value + b"\r\n--boundary--\r\n"
+    client = test_client_factory(app)
+    response = client.post(
+        "/",
+        content=content,
+        headers={"Content-Type": f"multipart/form-data; charset={charset}; boundary=boundary"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"value": expected}
 
 
 @pytest.mark.parametrize(

@@ -34,6 +34,10 @@ def with_headers(request: Request) -> None:
     raise HTTPException(status_code=200, headers={"x-potato": "always"})
 
 
+def non_standard_status_code(request: Request) -> None:
+    raise HTTPException(status_code=499)
+
+
 class BadBodyException(HTTPException):
     pass
 
@@ -62,6 +66,7 @@ router = Router(
         Route("/no_content", endpoint=no_content),
         Route("/not_modified", endpoint=not_modified),
         Route("/with_headers", endpoint=with_headers),
+        Route("/non_standard_status_code", endpoint=non_standard_status_code),
         Route("/handled_exc_after_response", endpoint=HandledExcAfterResponse()),
         WebSocketRoute("/runtime_error", endpoint=raise_runtime_error),
         Route("/consume_body_in_endpoint_and_handler", endpoint=read_body_and_raise_exc, methods=["POST"]),
@@ -103,6 +108,12 @@ def test_with_headers(client: TestClient) -> None:
     response = client.get("/with_headers")
     assert response.status_code == 200
     assert response.headers["x-potato"] == "always"
+
+
+def test_non_standard_status_code(client: TestClient) -> None:
+    response = client.get("/non_standard_status_code")
+    assert response.status_code == 499
+    assert response.text == ""
 
 
 def test_websockets_should_raise(client: TestClient) -> None:

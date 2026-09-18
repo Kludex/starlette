@@ -136,6 +136,11 @@ class BaseHTTPMiddleware:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
+                if message["type"] == "http.response.pathsend" or (
+                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                ):
+                    await response_sent.wait()
+
             async def coro() -> None:
                 nonlocal app_exc
 
@@ -186,8 +191,7 @@ class BaseHTTPMiddleware:
             response.raw_headers = message["headers"]
             return response
 
-        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
-        send_stream, recv_stream = streams
+        send_stream, recv_stream = anyio.create_memory_object_stream[Message]()
         with recv_stream, send_stream:
             async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)

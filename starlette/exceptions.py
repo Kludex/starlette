@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import http
+import http.client
 from collections.abc import Mapping
 
 
 class HTTPException(Exception):
     def __init__(self, status_code: int, detail: str | None = None, headers: Mapping[str, str] | None = None) -> None:
         if detail is None:
-            detail = http.HTTPStatus(status_code).phrase
+            detail = http.client.responses.get(status_code, "")
         self.status_code = status_code
         self.detail = detail
         self.headers = headers

@@ -48,7 +48,24 @@ Signature: `Response.set_cookie(key, value, max_age=None, expires=None, path="/"
 
 Conversely, Starlette also provides a `delete_cookie` method to manually expire a set cookie.
 
-Signature: `Response.delete_cookie(key, path='/', domain=None)`
+Signature: `Response.delete_cookie(key, path='/', domain=None, secure=False, httponly=False, samesite="lax", partitioned=False)`
+
+To delete a partitioned cookie on Python 3.14+:
+
+```python
+from starlette.responses import Response
+
+response = Response()
+response.delete_cookie("session", secure=True, samesite="none", partitioned=True)
+```
+
+Pass `partitioned=True` to expire the cookie in the current partition. It defaults to `False`.
+Use the same `path` and `domain` as the original cookie, within the same top-level site context.
+For cross-site requests, use `samesite="none"`.
+
+!!! warning "Partitioned cookies require Secure"
+    Pass `secure=True` when deleting a partitioned cookie over HTTPS.
+    Browsers reject the expiration header if it includes `Partitioned` without `Secure`.
 
 
 ### HTMLResponse

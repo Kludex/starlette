@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 import re
-from collections.abc import Sequence
+from collections.abc import Collection
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import PlainTextResponse, Response
@@ -16,13 +16,13 @@ class CORSMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        allow_origins: Sequence[str] = (),
-        allow_methods: Sequence[str] = ("GET",),
-        allow_headers: Sequence[str] = (),
+        allow_origins: Collection[str] = (),
+        allow_methods: Collection[str] = ("GET",),
+        allow_headers: Collection[str] = (),
         allow_credentials: bool = False,
         allow_origin_regex: str | None = None,
         allow_private_network: bool = False,
-        expose_headers: Sequence[str] = (),
+        expose_headers: Collection[str] = (),
         max_age: int = 600,
     ) -> None:
         if "*" in allow_methods:
@@ -44,11 +44,10 @@ class CORSMiddleware:
         if expose_headers:
             simple_headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
 
-        preflight_headers: dict[str, str] = {}
-        if preflight_explicit_allow_origin:
-            # The origin value will be set in preflight_response() if it is allowed.
-            preflight_headers["Vary"] = "Origin"
-        else:
+        preflight_headers: dict[str, str] = {
+            "Vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"  # noqa: E501  # fmt: skip
+        }
+        if not preflight_explicit_allow_origin:
             preflight_headers["Access-Control-Allow-Origin"] = "*"
         preflight_headers.update(
             {
@@ -84,11 +83,7 @@ class CORSMiddleware:
         headers = Headers(scope=scope)
         origin = headers.get("origin")
 
-        if origin is None:
-            await self.app(scope, receive, send)
-            return
-
-        if method == "OPTIONS" and "access-control-request-method" in headers:
+        if origin is not None and method == "OPTIONS" and "access-control-request-method" in headers:
             response = self.preflight_response(request_headers=headers)
             await response(scope, receive, send)
             return
@@ -160,20 +155,23 @@ class CORSMiddleware:
 
         message.setdefault("headers", [])
         headers = MutableHeaders(scope=message)
-        headers.update(self.simple_headers)
-        origin = request_headers["Origin"]
+        origin = request_headers.get("Origin")
+        if origin is not None:
+            headers.update(self.simple_headers)
 
         # If credentials are allowed, then we must respond with the specific origin instead of '*'.
-        if self.allow_all_origins and self.allow_credentials:
+        if origin is not None and self.allow_all_origins and self.allow_credentials:
             self.allow_explicit_origin(headers, origin)
 
         # If we only allow specific origins, then we have to mirror back the Origin header in the response.
-        elif not self.allow_all_origins and self.is_allowed_origin(origin=origin):
+        elif origin is not None and not self.allow_all_origins and self.is_allowed_origin(origin=origin):
             self.allow_explicit_origin(headers, origin)
+        else:
+            headers["Vary"] = ", ".join([*headers.getlist("Vary"), "Origin"])
 
         await send(message)
 
     @staticmethod
     def allow_explicit_origin(headers: MutableHeaders, origin: str) -> None:
         headers["Access-Control-Allow-Origin"] = origin
-        headers.add_vary_header("Origin")
+        headers["Vary"] = ", ".join([*headers.getlist("Vary"), "Origin"])

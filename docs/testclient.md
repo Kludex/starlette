@@ -224,7 +224,7 @@ def test_app():
 The operations on session are standard function calls, not awaitables.
 
 It's important to use the session within a context-managed `with` block. This
-ensure that the background thread on which the ASGI application is properly
+ensures that the background thread on which the ASGI application is properly
 terminated, and that any exceptions that occur within the application are
 always raised by the test client.
 
@@ -301,5 +301,11 @@ async def test_app() -> None:
         assert r.status_code == 200
         assert r.text == "Hello World!"
 ```
+
+!!! warning "A pytest event loop fixture does not configure TestClient"
+
+    Defining an `event_loop` fixture does not make `TestClient` use that loop.
+    For synchronous tests, create and close resources in [lifespan](lifespan.md#lifespan-state)
+    and use [`TestClient` as a context manager](lifespan.md#running-lifespan-in-tests).
 
 [httpx2.AsyncClient]: https://www.python-httpx.org/advanced/#calling-into-python-web-apps

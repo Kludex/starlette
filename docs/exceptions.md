@@ -120,6 +120,9 @@ The `ExceptionMiddleware` implementation defaults to returning plain-text HTTP r
 
 * `HTTPException(status_code, detail=None, headers=None)`
 
+When `detail` is not provided, it defaults to the standard phrase for the status code. If no standard phrase exists,
+it defaults to an empty string.
+
 You should only raise `HTTPException` inside routing or endpoints.
 Middleware classes should instead just return appropriate responses directly.
 

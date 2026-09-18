@@ -18,7 +18,8 @@ jobs:
     env:
       PYTHONHASHSEED: "0"
       # https://sourceware.org/glibc/manual/latest/html_node/Hardware-Capability-Tunables.html
-      GLIBC_TUNABLES: "glibc.cpu.hwcaps=-AVX512F,-AVX512VL,-AVX512BW,-ERMS,-FSRM"
+      # Keep upload buffers above a fixed mmap threshold to reduce heap-dependent realloc copies.
+      GLIBC_TUNABLES: "glibc.cpu.hwcaps=-AVX512F,-AVX512VL,-AVX512BW,-ERMS,-FSRM:glibc.malloc.mmap_threshold=32768"
 
     steps:
       - uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1

@@ -1060,3 +1060,19 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         b"\r\n",
         f"--{boundary}--".encode(),
     ]
+
+
+@pytest.mark.parametrize("status_code", [True, False, 1.5, "200", None])
+def test_response_rejects_bool_status_code(status_code: object) -> None:
+    with pytest.raises(TypeError, match="status_code must be an integer"):
+        Response("hi", status_code=status_code)  # type: ignore[arg-type]
+
+
+def test_response_allows_non_standard_int_status_code() -> None:
+    assert Response("hi", status_code=499).status_code == 499
+
+
+@pytest.mark.parametrize("status_code", [True, False])
+def test_redirect_rejects_bool_status_code(status_code: object) -> None:
+    with pytest.raises(TypeError, match="status_code must be an integer"):
+        RedirectResponse("https://example.org/", status_code=status_code)  # type: ignore[arg-type]

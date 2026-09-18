@@ -18,7 +18,7 @@ from urllib.parse import quote
 import anyio
 import anyio.to_thread
 
-from starlette._utils import create_collapsing_task_group
+from starlette._utils import create_collapsing_task_group, validate_status_code
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
@@ -38,7 +38,7 @@ class Response:
         media_type: str | None = None,
         background: BackgroundTask | None = None,
     ) -> None:
-        self.status_code = status_code
+        self.status_code = validate_status_code(status_code)
         if media_type is not None:
             self.media_type = media_type
         self.background = background
@@ -236,7 +236,7 @@ class StreamingResponse(Response):
             self.body_iterator = content
         else:
             self.body_iterator = iterate_in_threadpool(content)
-        self.status_code = status_code
+        self.status_code = validate_status_code(status_code)
         self.media_type = self.media_type if media_type is None else media_type
         self.background = background
         self.init_headers(headers)
@@ -311,7 +311,7 @@ class FileResponse(Response):
         content_disposition_type: str = "attachment",
     ) -> None:
         self.path = path
-        self.status_code = status_code
+        self.status_code = validate_status_code(status_code)
         self.filename = filename
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "application/octet-stream"

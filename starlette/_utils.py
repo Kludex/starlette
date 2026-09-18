@@ -153,3 +153,17 @@ def get_route_path(scope: Scope) -> str:
         return path[len(root_path) :]
 
     return path
+
+def validate_status_code(status_code: Any) -> int:
+    """Ensure ``status_code`` is a real ``int`` (not ``bool``).
+
+    ASGI requires ``http.response.start`` status to be an integer.  Because
+    ``bool`` is a subclass of ``int``, ``status_code=True`` would otherwise be
+    accepted and emitted as ``status: True`` in the ASGI message.
+    """
+    if isinstance(status_code, bool) or not isinstance(status_code, int):
+        raise TypeError(
+            f"status_code must be an integer, not {type(status_code).__name__}"
+        )
+    return status_code
+

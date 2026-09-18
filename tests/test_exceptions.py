@@ -233,3 +233,9 @@ def test_handlers_annotations() -> None:
 
     ExceptionMiddleware(router, handlers={Exception: sync_catch_all_handler})
     ExceptionMiddleware(router, handlers={Exception: async_catch_all_handler})
+
+
+@pytest.mark.parametrize("status_code", [True, False, 1.5, "404", None])
+def test_http_exception_rejects_bool_status_code(status_code: object) -> None:
+    with pytest.raises(TypeError, match="status_code must be an integer"):
+        HTTPException(status_code=status_code)  # type: ignore[arg-type]

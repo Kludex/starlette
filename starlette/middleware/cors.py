@@ -135,8 +135,8 @@ class CORSMiddleware:
             else:
                 failures.append("private-network")
 
-        # We don't strictly need to use 400 responses here, since its up to
-        # the browser to enforce the CORS policy, but its more informative
+        # We don't strictly need to use 400 responses here, since it's up to
+        # the browser to enforce the CORS policy, but it's more informative
         # if we do.
         if failures:
             failure_text = "Disallowed CORS " + ", ".join(failures)

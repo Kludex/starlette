@@ -38,7 +38,7 @@ class _CachedRequest(Request):
             # we don't need to wait to get another one
             # (although most ASGI servers will just keep sending it)
             return {"type": "http.disconnect"}
-        # wrapped_rcv state 1: consumed but not yet disconnected
+        # wrapped_rcv state 2: consumed but not yet disconnected
         if self._wrapped_rcv_consumed:
             # since the downstream app has consumed us all that is left
             # is to send it a disconnect

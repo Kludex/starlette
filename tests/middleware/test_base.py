@@ -1402,6 +1402,7 @@ def test_mounted_trailers_through_http_middleware(
     response = test_client_factory(app).post("/rpc/method", headers={"origin": "https://example.org", "te": "trailers"})
     assert response.content == payload
     assert response.headers["access-control-allow-origin"] == "*"
+    assert response.headers.get("x-middleware") == ("present" if depth else None)
     assert response.extensions["http.response.trailers"] == [
         (b"x-item", b"one"),
         (b"x-item", b"two"),
@@ -1431,14 +1432,22 @@ def test_replace_trailer_response(test_client_factory: TestClientFactory, consum
 
 
 @pytest.mark.anyio
-async def test_middleware_does_not_disconnect_before_trailers() -> None:
+@pytest.mark.parametrize("pathsend", [True, False])
+@pytest.mark.parametrize("depth", [1, 2])
+async def test_middleware_does_not_disconnect_before_trailers(pathsend: bool, depth: int, tmp_path: Path) -> None:
     received_body = anyio.Event()
     received_trailers = anyio.Event()
+    path = tmp_path / "body.txt"
+    path.write_bytes(b"hello")
+    messages: list[Message] = []
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await receive()
         await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
-        await send({"type": "http.response.body", "body": b"hello"})
+        if pathsend:
+            await send({"type": "http.response.pathsend", "path": str(path)})
+        else:
+            await send({"type": "http.response.body", "body": b"hello"})
         await received_body.wait()
         await send({"type": "http.response.trailers", "headers": [], "more_trailers": True})
         await send({"type": "http.response.trailers", "headers": []})
@@ -1452,13 +1461,28 @@ async def test_middleware_does_not_disconnect_before_trailers() -> None:
         return {"type": "http.request", "body": b""}
 
     async def send(message: Message) -> None:
-        if message["type"] == "http.response.body" and not message.get("more_body", False):
+        messages.append(message)
+        if message["type"] == "http.response.pathsend" or (
+            message["type"] == "http.response.body" and not message.get("more_body", False)
+        ):
             received_body.set()
         if message["type"] == "http.response.trailers" and not message.get("more_trailers", False):
             received_trailers.set()
 
+    wrapped: ASGIApp = app
+    for _ in range(depth):
+        wrapped = BaseHTTPMiddleware(wrapped, dispatch=dispatch)
     with anyio.fail_after(2):
-        await BaseHTTPMiddleware(app, dispatch=dispatch)({"type": "http"}, receive, send)
+        await wrapped(
+            {"type": "http", "extensions": {"http.response.pathsend": {}, "http.response.trailers": {}}}, receive, send
+        )
+    if pathsend:
+        assert messages == [
+            {"type": "http.response.start", "status": 200, "headers": [], "trailers": True},
+            {"type": "http.response.pathsend", "path": str(path)},
+            {"type": "http.response.trailers", "headers": [], "more_trailers": True},
+            {"type": "http.response.trailers", "headers": []},
+        ]
 
 
 @pytest.mark.parametrize("raises", [True, False])

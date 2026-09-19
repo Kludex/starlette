@@ -142,7 +142,7 @@ class BaseHTTPMiddleware:
                     return
 
                 if (
-                    message["type"] == "http.response.pathsend"
+                    (message["type"] == "http.response.pathsend" and not trailers_expected)
                     or (
                         message["type"] == "http.response.body"
                         and not message.get("more_body", False)

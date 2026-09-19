@@ -495,6 +495,7 @@ def test_timeout_deprecation() -> None:
 @pytest.mark.parametrize(
     "messages, error",
     [
+        ([], "TestClient did not receive any response"),
         ([{"type": "http.response.trailers"}], "without declaring trailers"),
         (
             [{"type": "http.response.start", "status": 200, "trailers": True}, {"type": "http.response.trailers"}],
@@ -516,18 +517,6 @@ def test_timeout_deprecation() -> None:
                 {"type": "http.response.trailers"},
             ],
             "after response completed",
-        ),
-        (
-            [{"type": "http.response.start", "status": 200, "trailers": True}, {"type": "http.response.body"}],
-            "without completing trailers",
-        ),
-        (
-            [
-                {"type": "http.response.start", "status": 200, "trailers": True},
-                {"type": "http.response.body"},
-                {"type": "http.response.trailers", "more_trailers": True},
-            ],
-            "without completing trailers",
         ),
     ],
 )
@@ -560,13 +549,25 @@ def test_capture_trailers(test_client_factory: TestClientFactory, empty: bool) -
     assert "x-item" not in response.headers
 
 
-def test_incomplete_trailers_without_raising(test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize("partial", [True, False])
+@pytest.mark.parametrize("raises", [True, False])
+@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+def test_incomplete_trailers(
+    test_client_factory: TestClientFactory, partial: bool, raises: bool, raise_server_exceptions: bool
+) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "trailers": True})
         await send({"type": "http.response.body", "body": b"hello"})
-        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"partial")], "more_trailers": True})
-        raise ValueError("trailer production failed")
+        if partial:
+            await send({"type": "http.response.trailers", "headers": [(b"x-item", b"partial")], "more_trailers": True})
+        if raises:
+            raise ValueError("trailer production failed")
 
-    response = test_client_factory(app, raise_server_exceptions=False).get("/")
+    client = test_client_factory(app, raise_server_exceptions=raise_server_exceptions)
+    if raises and raise_server_exceptions:
+        with pytest.raises(ValueError, match="trailer production failed"):
+            client.get("/")
+        return
+    response = client.get("/")
     assert response.content == b"hello"
-    assert response.extensions["http.response.trailers"] == [(b"x-item", b"partial")]
+    assert response.extensions["http.response.trailers"] == ([(b"x-item", b"partial")] if partial else [])

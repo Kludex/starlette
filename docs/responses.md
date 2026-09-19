@@ -177,6 +177,66 @@ async def app(scope, receive, send):
 
 Have in mind that <a href="https://docs.python.org/3/glossary.html#term-file-like-object" target="_blank">file-like</a> objects (like those created by `open()`) are normal iterators. So, you can return them directly in a `StreamingResponse`.
 
+#### HTTP trailers
+
+Use `trailers` to compute response metadata after the body has finished streaming.
+Declare the field names in the `Trailer` header and pass an async callback that returns their values.
+
+```python
+from collections.abc import AsyncIterator
+
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import StreamingResponse
+from starlette.routing import Route
+
+
+async def download(request: Request) -> StreamingResponse:
+    bytes_sent = 0
+
+    async def body() -> AsyncIterator[bytes]:
+        nonlocal bytes_sent
+        for chunk in (b"hello", b" ", b"world"):
+            bytes_sent += len(chunk)
+            yield chunk
+
+    async def trailers() -> dict[str, str]:
+        return {"x-bytes-sent": str(bytes_sent)}
+
+    return StreamingResponse(
+        body(),
+        media_type="application/octet-stream",
+        headers={"Trailer": "x-bytes-sent"},
+        trailers=trailers,
+    )
+
+
+app = Starlette(routes=[Route("/download", download)])
+```
+
+Starlette awaits the callback once, after sending the final body chunk. It sends the returned
+fields in a final `http.response.trailers` message, then runs background tasks. Field names
+are case-insensitive. You may omit declared fields or return an empty mapping, but you cannot
+return undeclared fields. Trailer values use the same Latin-1 encoding as response headers.
+
+Your server must advertise the ASGI `http.response.trailers` extension. Without it, Starlette
+raises `RuntimeError` before starting the response. Clients should send `TE: trailers`;
+the server decides whether to deliver the trailing fields. `HEAD` responses omit trailers
+and skip both the body iterator and the trailer callback.
+
+Do not set `Content-Length` on an HTTP/1.1 response with trailers. HTTP/1.1 needs chunked
+framing to carry them. Trailers are unavailable for WebSocket denial responses or response
+statuses that prohibit a body, including `204` and `304`.
+
+!!! warning "Streaming failures do not produce success trailers"
+    If the body fails or sending it detects a disconnect, Starlette does not invoke the callback.
+    Callback errors propagate after the response has started. Exception handlers cannot replace
+    that response. RPC libraries must translate their own errors into protocol-specific trailers.
+
+!!! warning "Body transformations can invalidate trailer values"
+    Middleware may transform the bytes you yield. A checksum computed before compression
+    describes the original body, not the compressed bytes sent to the client.
+
 ### FileResponse
 
 Asynchronously streams a file as the response.

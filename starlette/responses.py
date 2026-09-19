@@ -4,6 +4,7 @@ import hashlib
 import http.cookies
 import json
 import os
+import re
 import stat
 import sys
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Mapping, Sequence
@@ -231,6 +232,8 @@ class StreamingResponse(Response):
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         background: BackgroundTask | None = None,
+        *,
+        trailers: Callable[[], Awaitable[Mapping[str, str]]] | None = None,
     ) -> None:
         if isinstance(content, AsyncIterable):
             self.body_iterator = content
@@ -240,6 +243,26 @@ class StreamingResponse(Response):
         self.media_type = self.media_type if media_type is None else media_type
         self.background = background
         self.init_headers(headers)
+        self.trailers = trailers
+        self.trailer_names: set[str] = set()
+        if trailers is not None:
+            if status_code < 200 or status_code in (204, 304):
+                raise ValueError("Trailers require a response status that permits a body.")
+            names = self.headers.get("trailer", "").lower().split(",")
+            for name in names:
+                name = name.strip()
+                if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9a-z-]+", name) or name in {
+                    "connection",
+                    "content-length",
+                    "host",
+                    "keep-alive",
+                    "te",
+                    "trailer",
+                    "transfer-encoding",
+                    "upgrade",
+                }:
+                    raise ValueError("Declare valid trailer field names in the Trailer header.")
+                self.trailer_names.add(name)
 
     async def listen_for_disconnect(self, receive: Receive) -> None:
         while True:
@@ -248,15 +271,51 @@ class StreamingResponse(Response):
                 break
 
     async def stream_response(self, send: Send) -> None:
-        await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
+        await send(
+            {
+                "type": "http.response.start",
+                "status": self.status_code,
+                "headers": self.raw_headers,
+                **({"trailers": True} if self.trailers is not None else {}),
+            }
+        )
         async for chunk in self.body_iterator:
             if not isinstance(chunk, bytes | memoryview):
                 chunk = chunk.encode(self.charset)
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
 
         await send({"type": "http.response.body", "body": b"", "more_body": False})
+        if self.trailers is not None:
+            headers: list[tuple[bytes, bytes]] = []
+            for name, value in (await self.trailers()).items():
+                name = name.lower()
+                if name not in self.trailer_names:
+                    raise ValueError(f"Trailer field {name!r} was not declared in the Trailer header.")
+                if "\r" in value or "\n" in value:
+                    raise ValueError("Trailer values must not contain line breaks.")
+                headers.append((name.encode("ascii"), value.encode("latin-1")))
+            await send({"type": "http.response.trailers", "headers": headers, "more_trailers": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.trailers is not None:
+            if scope["type"] != "http":
+                raise RuntimeError("Trailers are only supported for HTTP responses.")
+            if scope["method"] == "HEAD":
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": self.status_code,
+                        "headers": [(name, value) for name, value in self.raw_headers if name != b"trailer"],
+                    }
+                )
+                await send({"type": "http.response.body", "body": b""})
+                if self.background is not None:
+                    await self.background()
+                return
+            if "http.response.trailers" not in scope.get("extensions", {}):
+                raise RuntimeError("The ASGI server does not support HTTP response trailers.")
+            if scope["http_version"] == "1.1" and "content-length" in self.headers:
+                raise ValueError("HTTP/1.1 responses with trailers must not set Content-Length.")
         if scope["type"] == "websocket":
             send = self._wrap_websocket_denial_send(send)
             await self.stream_response(send)

@@ -244,25 +244,8 @@ class StreamingResponse(Response):
         self.background = background
         self.init_headers(headers)
         self.trailers = trailers
-        self.trailer_names: set[str] = set()
         if trailers is not None:
-            if status_code < 200 or status_code in (204, 304):
-                raise ValueError("Trailers require a response status that permits a body.")
-            names = self.headers.get("trailer", "").lower().split(",")
-            for name in names:
-                name = name.strip()
-                if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9a-z-]+", name) or name in {
-                    "connection",
-                    "content-length",
-                    "host",
-                    "keep-alive",
-                    "te",
-                    "trailer",
-                    "transfer-encoding",
-                    "upgrade",
-                }:
-                    raise ValueError("Declare valid trailer field names in the Trailer header.")
-                self.trailer_names.add(name)
+            self._validate_trailers()
 
     async def listen_for_disconnect(self, receive: Receive) -> None:
         while True:
@@ -271,6 +254,7 @@ class StreamingResponse(Response):
                 break
 
     async def stream_response(self, send: Send) -> None:
+        trailer_names = self._validate_trailers() if self.trailers is not None else set()
         await send(
             {
                 "type": "http.response.start",
@@ -289,7 +273,7 @@ class StreamingResponse(Response):
             headers: list[tuple[bytes, bytes]] = []
             for name, value in (await self.trailers()).items():
                 name = name.lower()
-                if name not in self.trailer_names:
+                if name not in trailer_names:
                     raise ValueError(f"Trailer field {name!r} was not declared in the Trailer header.")
                 if "\r" in value or "\n" in value:
                     raise ValueError("Trailer values must not contain line breaks.")
@@ -297,9 +281,28 @@ class StreamingResponse(Response):
             await send({"type": "http.response.trailers", "headers": headers, "more_trailers": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.trailers is not None and scope["type"] != "http":
+            raise RuntimeError("Trailers are only supported for HTTP responses.")
+        if scope["type"] == "websocket":
+            send = self._wrap_websocket_denial_send(send)
+            await self.stream_response(send)
+            if self.background is not None:
+                await self.background()
+            return
+
+        spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
+        if spec_version >= (2, 4):
+            original_send = send
+
+            async def send_with_disconnect(message: Message) -> None:
+                try:
+                    await original_send(message)
+                except OSError:
+                    raise ClientDisconnect()
+
+            send = send_with_disconnect
+
         if self.trailers is not None:
-            if scope["type"] != "http":
-                raise RuntimeError("Trailers are only supported for HTTP responses.")
             if scope["method"] == "HEAD":
                 await send(
                     {
@@ -314,22 +317,13 @@ class StreamingResponse(Response):
                 return
             if "http.response.trailers" not in scope.get("extensions", {}):
                 raise RuntimeError("The ASGI server does not support HTTP response trailers.")
+            if scope["http_version"] == "1.0":
+                raise RuntimeError("HTTP/1.0 does not support response trailers.")
             if scope["http_version"] == "1.1" and "content-length" in self.headers:
                 raise ValueError("HTTP/1.1 responses with trailers must not set Content-Length.")
-        if scope["type"] == "websocket":
-            send = self._wrap_websocket_denial_send(send)
-            await self.stream_response(send)
-            if self.background is not None:
-                await self.background()
-            return
-
-        spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
         if spec_version >= (2, 4):
-            try:
-                await self.stream_response(send)
-            except OSError:
-                raise ClientDisconnect()
+            await self.stream_response(send)
         else:
             async with create_collapsing_task_group() as task_group:
 
@@ -342,6 +336,30 @@ class StreamingResponse(Response):
 
         if self.background is not None:
             await self.background()
+
+    def _validate_trailers(self) -> set[str]:
+        if self.status_code < 200 or self.status_code in (204, 304):
+            raise ValueError("Trailers are not supported for this response status.")
+        names = ",".join(self.headers.getlist("trailer")).lower().split(",")
+        trailer_names: set[str] = set()
+        for name in names:
+            name = name.strip()
+            if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9a-z-]+", name) or name in {
+                "connection",
+                "content-encoding",
+                "content-length",
+                "content-range",
+                "content-type",
+                "host",
+                "keep-alive",
+                "te",
+                "trailer",
+                "transfer-encoding",
+                "upgrade",
+            }:
+                raise ValueError("Declare valid trailer field names in the Trailer header.")
+            trailer_names.add(name)
+        return trailer_names
 
 
 class MalformedRangeHeader(Exception):

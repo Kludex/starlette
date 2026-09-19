@@ -225,8 +225,8 @@ the server decides whether to deliver the trailing fields. `HEAD` responses omit
 and skip both the body iterator and the trailer callback.
 
 Do not set `Content-Length` on an HTTP/1.1 response with trailers. HTTP/1.1 needs chunked
-framing to carry them. Trailers are unavailable for WebSocket denial responses or response
-statuses that prohibit a body, including `204` and `304`.
+framing to carry them. Trailers are unavailable for HTTP/1.0, WebSocket denial responses,
+or responses with a `1xx`, `204`, or `304` status code.
 
 !!! warning "Streaming failures do not produce success trailers"
     If the body fails or sending it detects a disconnect, Starlette does not invoke the callback.

@@ -1099,7 +1099,20 @@ def test_streaming_trailers(test_client_factory: TestClientFactory, depth: int, 
     assert events == ["body", "trailers", "background"]
 
 
-@pytest.mark.parametrize("declaration", ["", ":status", "content-length", "x foo", "x-test,", "x-test\r\nother"])
+@pytest.mark.parametrize(
+    "declaration",
+    [
+        "",
+        ":status",
+        "content-length",
+        "Content-Encoding",
+        "Content-Type",
+        "Content-Range",
+        "x foo",
+        "x-test,",
+        "x-test\r\nother",
+    ],
+)
 def test_invalid_trailer_declaration(declaration: str) -> None:
     async def trailers() -> dict[str, str]:
         return {}  # pragma: no cover - Invalid configuration never invokes the callback.
@@ -1113,7 +1126,7 @@ def test_bodyless_status(status: int) -> None:
     async def trailers() -> dict[str, str]:
         return {}  # pragma: no cover - Invalid configuration never invokes the callback.
 
-    with pytest.raises(ValueError, match="permits a body"):
+    with pytest.raises(ValueError, match="not supported for this response status"):
         StreamingResponse(iter(()), status_code=status, headers={"trailer": "x-test"}, trailers=trailers)
 
 
@@ -1179,7 +1192,7 @@ def test_head_trailers(test_client_factory: TestClientFactory, background: bool)
     assert events == (["background"] if background else [])
 
 
-@pytest.mark.parametrize("scenario", ["unsupported", "length", "websocket", "http2"])
+@pytest.mark.parametrize("scenario", ["unsupported", "length", "websocket", "http2", "http1.0", "http1.0-length"])
 def test_trailer_capabilities(test_client_factory: TestClientFactory, scenario: str) -> None:
     sent: list[Message] = []
 
@@ -1194,14 +1207,17 @@ def test_trailer_capabilities(test_client_factory: TestClientFactory, scenario: 
             scope["type"] = "websocket"
         if scenario == "http2":
             scope["http_version"] = "2"
+        if scenario.startswith("http1.0"):
+            scope["http_version"] = "1.0"
 
         async def capture(message: Message) -> None:
             sent.append(message)
             await send(message)
 
-        await StreamingResponse(
-            iter([b"hello"]), headers={"trailer": "x-test", "content-length": "5"}, trailers=trailers
-        )(scope, receive, capture)
+        headers = {"trailer": "x-test"}
+        if scenario != "http1.0":
+            headers["content-length"] = "5"
+        await StreamingResponse(iter([b"hello"]), headers=headers, trailers=trailers)(scope, receive, capture)
 
     client = test_client_factory(app)
     if scenario == "http2":
@@ -1215,8 +1231,17 @@ def test_trailer_capabilities(test_client_factory: TestClientFactory, scenario: 
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("fail_at", ["http.response.body", "http.response.trailers"])
-async def test_trailer_disconnect(fail_at: str) -> None:
+@pytest.mark.parametrize(
+    ("method", "fail_at"),
+    [
+        ("GET", "http.response.start"),
+        ("GET", "http.response.body"),
+        ("GET", "http.response.trailers"),
+        ("HEAD", "http.response.start"),
+        ("HEAD", "http.response.body"),
+    ],
+)
+async def test_trailer_disconnect(method: str, fail_at: str) -> None:
     events: list[str] = []
 
     async def trailers() -> dict[str, str]:
@@ -1239,7 +1264,7 @@ async def test_trailer_disconnect(fail_at: str) -> None:
             await response(
                 {
                     "type": "http",
-                    "method": "GET",
+                    "method": method,
                     "http_version": "2",
                     "asgi": {"spec_version": "2.4"},
                     "extensions": {"http.response.trailers": {}},
@@ -1248,3 +1273,97 @@ async def test_trailer_disconnect(fail_at: str) -> None:
                 send,
             )
     assert events == (["trailers"] if fail_at == "http.response.trailers" else [])
+
+
+@pytest.mark.parametrize("scenario", ["repeated", "append", "replace", "remove", "forbidden", "undeclared"])
+def test_trailer_header_changes(test_client_factory: TestClientFactory, scenario: str) -> None:
+    sent: list[Message] = []
+
+    async def trailers() -> dict[str, str]:
+        if scenario == "replace":
+            return {"x-two": "two"}
+        return {"x-one": "one", "x-two": "two"}
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        headers = Headers(raw=[(b"trailer", b"x-one"), (b"trailer", b"X-Two")])
+        response = StreamingResponse(iter([b"hello"]), headers=headers, trailers=trailers)
+        if scenario != "repeated":
+            response.headers["trailer"] = "x-one"
+        if scenario == "append":
+            response.headers.append("trailer", "X-Two")
+        if scenario in ("replace", "undeclared"):
+            response.headers["trailer"] = "X-Two"
+        if scenario == "remove":
+            del response.headers["trailer"]
+        if scenario == "forbidden":
+            response.headers.append("trailer", "Content-Type")
+
+        async def capture(message: Message) -> None:
+            sent.append(message)
+            await send(message)
+
+        await response(scope, receive, capture)
+
+    client = test_client_factory(app)
+    if scenario in ("remove", "forbidden", "undeclared"):
+        with pytest.raises(ValueError, match="not declared" if scenario == "undeclared" else "Declare valid trailer"):
+            client.get("/")
+        if scenario != "undeclared":
+            assert sent == []
+    else:
+        response = client.get("/")
+        assert response.content == b"hello"
+        assert response.extensions["http.response.trailers"] == (
+            [(b"x-two", b"two")] if scenario == "replace" else [(b"x-one", b"one"), (b"x-two", b"two")]
+        )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("spec_version", ["2.0", "2.4"])
+@pytest.mark.parametrize(
+    ("method", "failure"), [("GET", "body"), ("GET", "callback"), ("GET", "background"), ("HEAD", "background")]
+)
+async def test_trailer_application_oserror(spec_version: str, method: str, failure: str) -> None:
+    error = OSError("application failure")
+    sent: list[Message] = []
+
+    async def body() -> AsyncGenerator[bytes, None]:
+        yield b"hello"
+        if failure == "body":
+            raise error
+
+    async def trailers() -> dict[str, str]:
+        if failure == "callback":
+            raise error
+        return {"x-test": "done"}
+
+    async def background() -> None:
+        raise error
+
+    async def receive() -> Message:
+        await anyio.sleep_forever()
+        raise AssertionError("Unreachable")  # pragma: no cover - sleep_forever only exits by cancellation.
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    async with aclosing(body()) as stream:
+        response = StreamingResponse(
+            stream, headers={"trailer": "x-test"}, trailers=trailers, background=BackgroundTask(background)
+        )
+        with pytest.raises(OSError) as exc_info:
+            await response(
+                {
+                    "type": "http",
+                    "method": method,
+                    "http_version": "2",
+                    "asgi": {"spec_version": spec_version},
+                    "extensions": {"http.response.trailers": {}},
+                },
+                receive,
+                send,
+            )
+    assert exc_info.value is error
+    assert any(message["type"] == "http.response.trailers" for message in sent) == (
+        method == "GET" and failure == "background"
+    )

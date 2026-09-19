@@ -547,9 +547,10 @@ def test_capture_trailers(test_client_factory: TestClientFactory, empty: bool) -
         await send({"type": "http.response.start", "status": 200, "trailers": True})
         await send({"type": "http.response.body", "body": b"hello"})
         await anyio.lowlevel.checkpoint()
-        headers = [] if empty else [(b"x-item", b"one"), (b"x-item", b"two")]
+        headers = [] if empty else [(b"x-item", b"one")]
         await send({"type": "http.response.trailers", "headers": headers, "more_trailers": True})
-        await send({"type": "http.response.trailers", "headers": []})
+        headers = [] if empty else [(b"x-item", b"two")]
+        await send({"type": "http.response.trailers", "headers": headers})
 
     response = test_client_factory(app).get("/", headers={"te": "trailers"})
     assert response.content == b"hello"

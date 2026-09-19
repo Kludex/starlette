@@ -110,6 +110,8 @@ class BaseHTTPMiddleware:
         exception_already_raised = False
 
         async def call_next(request: Request) -> Response:
+            trailers_expected = False
+
             async def receive_or_disconnect() -> Message:
                 if response_sent.is_set():
                     return {"type": "http.disconnect"}
@@ -130,14 +132,23 @@ class BaseHTTPMiddleware:
                 return message
 
             async def send_no_error(message: Message) -> None:
+                nonlocal trailers_expected
+                if message["type"] == "http.response.start":
+                    trailers_expected = message.get("trailers", False)
                 try:
                     await send_stream.send(message)
                 except anyio.BrokenResourceError:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
-                if message["type"] == "http.response.pathsend" or (
-                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                if (
+                    message["type"] == "http.response.pathsend"
+                    or (
+                        message["type"] == "http.response.body"
+                        and not message.get("more_body", False)
+                        and not trailers_expected
+                    )
+                    or (message["type"] == "http.response.trailers" and not message.get("more_trailers", False))
                 ):
                     await response_sent.wait()
 
@@ -187,7 +198,19 @@ class BaseHTTPMiddleware:
                     if not message.get("more_body", False):
                         break
 
-            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
+            async def trailer_stream() -> AsyncGenerator[Message, None]:
+                async for trailer in recv_stream:
+                    assert trailer["type"] == "http.response.trailers", f"Unexpected message: {trailer}"
+                    yield trailer
+                    if not trailer.get("more_trailers", False):
+                        break
+
+            response = _StreamingResponse(
+                status_code=message["status"],
+                content=body_stream(),
+                info=info,
+                trailers=trailer_stream() if trailers_expected else None,
+            )
             response.raw_headers = message["headers"]
             return response
 
@@ -213,8 +236,10 @@ class _StreamingResponse(Response):
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         info: Mapping[str, Any] | None = None,
+        trailers: AsyncIterable[Message] | None = None,
     ) -> None:
         self.info = info
+        self.trailers = trailers
         self.body_iterator = content
         self.status_code = status_code
         self.media_type = media_type
@@ -229,6 +254,7 @@ class _StreamingResponse(Response):
                 "type": "http.response.start",
                 "status": self.status_code,
                 "headers": self.raw_headers,
+                **({"trailers": True} if self.trailers is not None else {}),
             }
         )
 
@@ -243,6 +269,10 @@ class _StreamingResponse(Response):
 
         if should_close_body:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
+
+        if self.trailers is not None:
+            async for message in self.trailers:
+                await send(message)
 
         if self.background:
             await self.background()

@@ -1496,5 +1496,11 @@ def test_missing_trailers_through_middleware(test_client_factory: TestClientFact
     async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
         return await call_next(request)
 
-    with pytest.raises(ValueError if raises else AssertionError, match="failed|without completing trailers"):
-        test_client_factory(BaseHTTPMiddleware(app, dispatch=dispatch)).get("/")
+    client = test_client_factory(BaseHTTPMiddleware(app, dispatch=dispatch))
+    if raises:
+        with pytest.raises(ValueError, match="trailer production failed"):
+            client.get("/")
+    else:
+        response = client.get("/")
+        assert response.content == b"hello"
+        assert response.extensions["http.response.trailers"] == []

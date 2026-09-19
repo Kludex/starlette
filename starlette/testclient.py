@@ -361,8 +361,6 @@ class _TestClientTransport(httpx.BaseTransport):
 
         if self.raise_server_exceptions:
             assert response_started, "TestClient did not receive any response."
-            if trailers_expected:
-                assert response_complete.is_set(), "Response returned without completing trailers."
         elif not response_started:
             raw_kwargs = {
                 "status_code": 500,

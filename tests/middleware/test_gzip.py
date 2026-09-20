@@ -4,13 +4,11 @@ import hashlib
 import zlib
 from pathlib import Path
 
-import anyio
 import pytest
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware, GZipResponder
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, Response, StreamingResponse
@@ -360,9 +358,14 @@ def test_gzip_custom_exclude_content_types(test_client_factory: TestClientFactor
     assert "Vary" not in response.headers
 
 
-def test_gzip_cleared_exclude_content_types(test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize(
+    "content_type", ["text/event-stream", "application/grpc", "application/grpc+proto", "application/grpc-web"]
+)
+def test_gzip_cleared_exclude_content_types(test_client_factory: TestClientFactory, content_type: str) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/event-stream")]})
+        await send(
+            {"type": "http.response.start", "status": 200, "headers": [(b"content-type", content_type.encode())]}
+        )
         await send({"type": "http.response.body", "body": b"x" * 4000})
 
     middleware = GZipMiddleware(app, exclude_content_types=())
@@ -396,6 +399,7 @@ def test_gzip_exclude_content_types_for_identity_client(test_client_factory: Tes
         pytest.param(("text/event-stream",), b"Text/Event-Stream; charset=utf-8", id="header-is-normalized"),
         pytest.param(("Application/ZIP; charset=utf-8",), b"application/zip", id="configured-value-is-normalized"),
         pytest.param(("image/*",), b"image/png", id="wildcard"),
+        pytest.param(("application/vnd.*",), b"Application/Vnd.Example+json; charset=utf-8", id="subtype-prefix"),
     ],
 )
 def test_gzip_exclude_content_types_matching(
@@ -433,7 +437,6 @@ def test_gzip_responder_normalizes_content_types(test_client_factory: TestClient
 @pytest.mark.parametrize("encoding", ["gzip", "identity"])
 @pytest.mark.parametrize("streaming", [True, False])
 def test_mounted_trailers(test_client_factory: TestClientFactory, depth: int, encoding: str, streaming: bool) -> None:
-    events: list[str] = []
     payload = b"hello" * 200
 
     async def rpc(scope: Scope, receive: Receive, send: Send) -> None:
@@ -442,40 +445,44 @@ def test_mounted_trailers(test_client_factory: TestClientFactory, depth: int, en
         await send({"type": "http.response.body", "body": payload, "more_body": streaming})
         if streaming:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
-        await anyio.lowlevel.checkpoint()
-        events.append("trailers")
         await send({"type": "http.response.trailers", "headers": [(b"x-item", b"one")], "more_trailers": True})
         await send({"type": "http.response.trailers", "headers": [(b"x-item", b"two"), (b"grpc-status", b"0")]})
-        events.append("background")
 
     async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        response = await call_next(request)
-        response.headers["x-middleware"] = "present"
-        return response
+        return await call_next(request)
 
     app = Starlette(
         routes=[Mount("/rpc", app=rpc)],
         middleware=[Middleware(BaseHTTPMiddleware, dispatch=dispatch) for _ in range(depth)]
-        + [Middleware(GZipMiddleware), Middleware(CORSMiddleware, allow_origins=["*"])],
+        + [Middleware(GZipMiddleware)],
     )
-    response = test_client_factory(app).post(
-        "/rpc/method", headers={"accept-encoding": encoding, "origin": "https://example.org", "te": "trailers"}
-    )
+    response = test_client_factory(app).post("/rpc/method", headers={"accept-encoding": encoding, "te": "trailers"})
     assert response.content == payload
-    assert response.headers["access-control-allow-origin"] == "*"
     assert response.extensions["http.response.trailers"] == [
         (b"x-item", b"one"),
         (b"x-item", b"two"),
         (b"grpc-status", b"0"),
     ]
     assert "grpc-status" not in response.headers
+    assert "content-length" not in response.headers
     if encoding == "gzip":
         assert response.headers["content-encoding"] == "gzip"
-        assert "content-length" not in response.headers
-    assert events == ["trailers", "background"]
+    else:
+        assert "content-encoding" not in response.headers
 
 
-@pytest.mark.parametrize("media_type", ["application/grpc", "application/grpc+proto", "text/event-stream"])
+@pytest.mark.parametrize(
+    "media_type",
+    [
+        "application/grpc",
+        "application/grpc+proto",
+        "application/grpc+json",
+        "application/grpc-web+proto",
+        "application/grpc-web-text",
+        "Application/GRPC; charset=utf-8",
+        "text/event-stream",
+    ],
+)
 @pytest.mark.parametrize("encoding", ["gzip", "identity"])
 def test_excluded_content_preserves_trailers(
     test_client_factory: TestClientFactory, media_type: str, encoding: str

@@ -141,15 +141,13 @@ class BaseHTTPMiddleware:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
-                if (
-                    (message["type"] == "http.response.pathsend" and not trailers_expected)
-                    or (
-                        message["type"] == "http.response.body"
-                        and not message.get("more_body", False)
-                        and not trailers_expected
-                    )
-                    or (message["type"] == "http.response.trailers" and not message.get("more_trailers", False))
-                ):
+                body_complete = message["type"] == "http.response.pathsend" or (
+                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                )
+                trailers_complete = message["type"] == "http.response.trailers" and not message.get(
+                    "more_trailers", False
+                )
+                if (body_complete and not trailers_expected) or trailers_complete:
                     await response_sent.wait()
 
             async def coro() -> None:
@@ -236,6 +234,7 @@ class _StreamingResponse(Response):
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         info: Mapping[str, Any] | None = None,
+        *,
         trailers: AsyncIterable[Message] | None = None,
     ) -> None:
         self.info = info

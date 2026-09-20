@@ -375,10 +375,6 @@ gain.
 An abstract class that allows you to write ASGI middleware against a request/response
 interface.
 
-Returning the response from `call_next()` preserves its trailers, including repeated fields
-and multiple trailer messages. Returning a replacement response uses the replacement's trailer
-configuration instead.
-
 ### Usage
 
 To implement a middleware class using `BaseHTTPMiddleware`, you must override the

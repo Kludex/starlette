@@ -745,6 +745,18 @@ def test_file_response_without_range(file_response_client: TestClient) -> None:
     assert response.text == README
 
 
+def test_file_response_ignores_range_for_non_success_status(
+    readme_file: Path, test_client_factory: TestClientFactory
+) -> None:
+    client = test_client_factory(app=FileResponse(str(readme_file), status_code=404))
+    response = client.get("/", headers={"Range": "bytes=0-100"})
+
+    assert response.status_code == 404
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.content == README.encode("utf8")
+
+
 def test_file_response_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/")
     assert response.status_code == 200

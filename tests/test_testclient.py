@@ -550,24 +550,33 @@ def test_capture_trailers(test_client_factory: TestClientFactory, empty: bool) -
 
 
 @pytest.mark.parametrize("partial", [True, False])
-@pytest.mark.parametrize("raises", [True, False])
-@pytest.mark.parametrize("raise_server_exceptions", [True, False])
-def test_incomplete_trailers(
-    test_client_factory: TestClientFactory, partial: bool, raises: bool, raise_server_exceptions: bool
-) -> None:
+def test_incomplete_trailers(test_client_factory: TestClientFactory, partial: bool) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "trailers": True})
         await send({"type": "http.response.body", "body": b"hello"})
         if partial:
             await send({"type": "http.response.trailers", "headers": [(b"x-item", b"partial")], "more_trailers": True})
-        if raises:
-            raise ValueError("trailer production failed")
 
-    client = test_client_factory(app, raise_server_exceptions=raise_server_exceptions)
-    if raises and raise_server_exceptions:
-        with pytest.raises(ValueError, match="trailer production failed"):
-            client.get("/")
-        return
-    response = client.get("/")
+    response = test_client_factory(app).get("/")
     assert response.content == b"hello"
     assert response.extensions["http.response.trailers"] == ([(b"x-item", b"partial")] if partial else [])
+
+
+@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+def test_trailer_error_respects_raise_server_exceptions(
+    test_client_factory: TestClientFactory, raise_server_exceptions: bool
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "trailers": True})
+        await send({"type": "http.response.body", "body": b"hello"})
+        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"partial")], "more_trailers": True})
+        raise ValueError("trailer production failed")
+
+    client = test_client_factory(app, raise_server_exceptions=raise_server_exceptions)
+    if raise_server_exceptions:
+        with pytest.raises(ValueError, match="trailer production failed"):
+            client.get("/")
+    else:
+        response = client.get("/")
+        assert response.content == b"hello"
+        assert response.extensions["http.response.trailers"] == [(b"x-item", b"partial")]

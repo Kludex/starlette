@@ -456,6 +456,8 @@ class FileResponse(Response):
                 )
 
     def _should_use_range(self, http_if_range: str) -> bool:
+        if http_if_range.startswith("W/"):
+            return False
         return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]
 
     @classmethod

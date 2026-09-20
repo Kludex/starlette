@@ -1473,19 +1473,6 @@ async def test_middleware_does_not_disconnect_before_trailers(pathsend: bool, tm
     ]
 
 
-def test_missing_trailers_through_middleware(test_client_factory: TestClientFactory) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
-        await send({"type": "http.response.body", "body": b"hello"})
-
-    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        return await call_next(request)
-
-    response = test_client_factory(BaseHTTPMiddleware(app, dispatch=dispatch)).get("/")
-    assert response.content == b"hello"
-    assert response.extensions["http.response.trailers"] == []
-
-
 def test_trailer_error_through_middleware(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})

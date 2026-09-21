@@ -756,6 +756,12 @@ def test_file_response_ignores_range_for_non_success_status(
     assert response.headers["content-length"] == str(len(README.encode("utf8")))
     assert response.content == README.encode("utf8")
 
+    head_response = client.head("/", headers={"Range": "bytes=0-100"})
+    assert head_response.status_code == 404
+    assert "content-range" not in head_response.headers
+    assert head_response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert head_response.content == b""
+
 
 def test_file_response_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/")

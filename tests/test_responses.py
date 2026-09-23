@@ -890,11 +890,11 @@ def test_file_response_range_error_runs_background_task(
     range_header: str,
     expected_status: int,
 ) -> None:
-    task_completed = False
+    task_run_count = 0
 
     def on_complete() -> None:
-        nonlocal task_completed
-        task_completed = True
+        nonlocal task_run_count
+        task_run_count += 1
 
     response = FileResponse(
         str(readme_file),
@@ -904,7 +904,7 @@ def test_file_response_range_error_runs_background_task(
     res = client.get("/", headers={"Range": range_header})
 
     assert res.status_code == expected_status
-    assert task_completed is True
+    assert task_run_count == 1
 
 
 def test_file_response_single_byte_range(file_response_client: TestClient) -> None:

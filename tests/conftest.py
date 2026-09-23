@@ -6,13 +6,19 @@ from collections.abc import Iterator
 from typing import Any, Literal
 
 import pytest
-from blockbuster import BlockBuster, BlockBusterFunction
+
+try:
+    from blockbuster import BlockBuster, BlockBusterFunction
+except ImportError:
+    HAS_BLOCKBUSTER = False
+else:
+    HAS_BLOCKBUSTER = True
 
 from starlette.testclient import TestClient
 from tests.types import TestClientFactory
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=HAS_BLOCKBUSTER)
 def blockbuster() -> Iterator[None]:
     bb = BlockBuster("starlette")
     if sys.version_info >= (3, 15):  # pragma: no cover - Requires Python 3.15 or newer.

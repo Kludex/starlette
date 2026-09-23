@@ -9,8 +9,8 @@ import pytest
 
 try:
     from blockbuster import BlockBuster, BlockBusterFunction
-except ImportError:
-    HAS_BLOCKBUSTER = False
+except ImportError:  # pragma: no cover - Requires the `dev` dependency group.
+    HAS_BLOCKBUSTER = False  # pragma: no cover
 else:
     HAS_BLOCKBUSTER = True
 

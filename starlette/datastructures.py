@@ -655,10 +655,39 @@ class MutableHeaders(Headers):
         self._list.append((append_key, append_value))
 
     def add_vary_header(self, vary: str) -> None:
-        existing = self.get("vary")
-        if existing is not None:
-            vary = ", ".join([existing, vary])
-        self["vary"] = vary
+        existing_lines = self.getlist("vary")
+        if not existing_lines:
+            self["vary"] = vary
+            return
+
+        existing_tokens: list[str] = []
+        seen: set[str] = set()
+        for line in existing_lines:
+            for item in line.split(","):
+                token = item.strip()
+                if token:
+                    existing_tokens.append(token)
+                    seen.add(token.lower())
+
+        if "*" in seen:
+            return
+
+        vary_clean = vary.strip()
+        if vary_clean == "*":
+            self["vary"] = "*"
+            return
+
+        new_tokens: list[str] = []
+        for item in vary.split(","):
+            token = item.strip()
+            if token and token.lower() not in seen:
+                new_tokens.append(token)
+                seen.add(token.lower())
+
+        if new_tokens:
+            self["vary"] = ", ".join(existing_tokens + new_tokens)
+        elif len(existing_lines) > 1:
+            self["vary"] = ", ".join(existing_tokens)
 
 
 class State:

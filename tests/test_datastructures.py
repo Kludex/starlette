@@ -401,6 +401,24 @@ def test_mutable_headers_from_scope() -> None:
             "Accept-Encoding, Cookie",
         ),
         ([(b"vary", b"Accept-Encoding")], ", Cookie, ", "Accept-Encoding, Cookie"),
+        ([], "Cookie, Cookie", "Cookie"),
+        ([], "Cookie, *", "*"),
+        (
+            [(b"vary", b"Cookie"), (b"vary", b"Cookie")],
+            "Origin",
+            "Cookie, Origin",
+        ),
+        (
+            [(b"vary", b"Cookie"), (b"vary", b"COOKIE")],
+            "Origin",
+            "Cookie, Origin",
+        ),
+        ([(b"vary", b"Cookie, Cookie")], "Cookie", "Cookie"),
+        (
+            [(b"vary", b"Cookie"), (b"vary", b"cookie")],
+            "Cookie",
+            "Cookie",
+        ),
     ],
 )
 def test_mutable_headers_add_vary_header(
@@ -410,6 +428,13 @@ def test_mutable_headers_add_vary_header(
     h.add_vary_header(vary_to_add)
     assert h.get("vary") == expected_vary
     assert h.getlist("vary") == [expected_vary]
+
+
+def test_mutable_headers_add_vary_header_empty() -> None:
+    h = MutableHeaders()
+    h.add_vary_header("")
+    assert h.get("vary") is None
+    assert h.getlist("vary") == []
 
 
 def test_url_blank_params() -> None:

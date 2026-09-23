@@ -374,9 +374,15 @@ class FileResponse(Response):
             try:
                 ranges = self._parse_range_header(http_range, stat_result.st_size)
             except MalformedRangeHeader as exc:
-                return await PlainTextResponse(exc.content, status_code=400)(scope, receive, send)
+                return await PlainTextResponse(exc.content, status_code=400, background=self.background)(
+                    scope, receive, send
+                )
             except RangeNotSatisfiable as exc:
-                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
+                response = PlainTextResponse(
+                    status_code=416,
+                    headers={"Content-Range": f"bytes */{exc.max_size}"},
+                    background=self.background,
+                )
                 return await response(scope, receive, send)
 
             if len(ranges) == 0:

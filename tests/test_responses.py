@@ -875,6 +875,38 @@ def test_file_response_inverted_single_byte_range(file_response_client: TestClie
     assert response.text == "Range header: start must be less than end"
 
 
+@pytest.mark.parametrize(
+    "range_header,expected_status",
+    [
+        (f"bytes={len(README.encode('utf8')) + 1000}-", 416),
+        ("items=0-100", 400),
+        ("bytes=", 400),
+        ("bytes=100-0", 400),
+    ],
+)
+def test_file_response_range_error_runs_background_task(
+    readme_file: Path,
+    test_client_factory: TestClientFactory,
+    range_header: str,
+    expected_status: int,
+) -> None:
+    task_completed = False
+
+    def on_complete() -> None:
+        nonlocal task_completed
+        task_completed = True
+
+    response = FileResponse(
+        str(readme_file),
+        background=BackgroundTask(on_complete),
+    )
+    client = test_client_factory(app=response)
+    res = client.get("/", headers={"Range": range_header})
+
+    assert res.status_code == expected_status
+    assert task_completed is True
+
+
 def test_file_response_single_byte_range(file_response_client: TestClient) -> None:
     response = file_response_client.get("/", headers={"Range": "bytes=5-5"})
     assert response.status_code == 206

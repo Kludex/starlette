@@ -167,11 +167,11 @@ class CORSMiddleware:
         elif origin is not None and not self.allow_all_origins and self.is_allowed_origin(origin=origin):
             self.allow_explicit_origin(headers, origin)
         else:
-            headers["Vary"] = ", ".join([*headers.getlist("Vary"), "Origin"])
+            headers.add_vary_header("Origin")
 
         await send(message)
 
     @staticmethod
     def allow_explicit_origin(headers: MutableHeaders, origin: str) -> None:
         headers["Access-Control-Allow-Origin"] = origin
-        headers["Vary"] = ", ".join([*headers.getlist("Vary"), "Origin"])
+        headers.add_vary_header("Origin")

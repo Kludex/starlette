@@ -53,6 +53,10 @@ Creates an OpenTelemetry server span for every incoming HTTP request. The span f
 OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
 headers, and uses the matched route template for its name and `http.route` attribute.
 
+!!! warning "Experimental API"
+    `OpenTelemetryMiddleware` is experimental. Its API and emitted telemetry may change in minor
+    releases without a deprecation period.
+
 Install the optional API dependency with `pip install opentelemetry-api`, or as part of
 `pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application
 chooses and configures the SDK and exporter. If no tracer provider is configured, the middleware

@@ -16,7 +16,10 @@ from tests.types import TestClientFactory
 def refresh_convertor_types() -> Iterator[None]:
     convert_types = convertors.CONVERTOR_TYPES.copy()
     yield
-    convertors.CONVERTOR_TYPES = convert_types
+    # Restore in place: `starlette.routing` imports CONVERTOR_TYPES by value, so
+    # rebinding the module attribute would leave routing pointing at a stale dict.
+    convertors.CONVERTOR_TYPES.clear()
+    convertors.CONVERTOR_TYPES.update(convert_types)
 
 
 class DateTimeConvertor(Convertor[datetime]):

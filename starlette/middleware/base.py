@@ -6,6 +6,7 @@ from typing import Any, TypeVar
 import anyio
 
 from starlette._utils import create_collapsing_task_group
+from starlette.middleware.background import _run_background
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -244,5 +245,4 @@ class _StreamingResponse(Response):
         if should_close_body:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
 
-        if self.background:
-            await self.background()
+        await _run_background(scope, self.background)

@@ -1078,3 +1078,32 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         b"\r\n",
         f"--{boundary}--".encode(),
     ]
+
+
+@pytest.mark.anyio
+async def test_file_response_multi_range_unexpected_eof(tmp_path: Path) -> None:
+    path = tmp_path / "file.txt"
+    path.write_bytes(b"0123456789")
+    stat_result = path.stat()
+    path.write_bytes(b"012")
+    app = FileResponse(path, stat_result=stat_result)
+    received_chunks: list[bytes] = []
+
+    async def receive() -> Message:
+        raise NotImplementedError("Should not be called!")
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            received_chunks.append(message["body"])
+
+    with anyio.fail_after(1), pytest.raises(RuntimeError, match="is shorter than expected"):
+        await app(
+            {"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-2,5-7")]},
+            receive,
+            send,
+        )
+
+    assert len(received_chunks) == 4
+    assert b"Content-Range: bytes 0-2/10" in received_chunks[0]
+    assert received_chunks[1:3] == [b"012", b"\r\n"]
+    assert b"Content-Range: bytes 5-7/10" in received_chunks[3]

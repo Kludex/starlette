@@ -4,7 +4,7 @@ the incoming request, rather than accessing the ASGI scope and receive channel d
 
 ### Request
 
-Signature: `Request(scope, receive=None)`
+Signature: `Request(scope, receive=empty_receive, send=empty_send)`
 
 ```python
 from starlette.requests import Request

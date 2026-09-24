@@ -141,6 +141,10 @@ def test_websocket_endpoint_on_receive_json_binary(
         data = websocket.receive_json(mode="binary")
         assert data == {"message": {"hello": "world"}}
 
+    with pytest.raises(RuntimeError, match="Malformed JSON data received."):
+        with client.websocket_connect("/ws") as websocket:
+            websocket.send_bytes(b"\xff\xff")
+
 
 def test_websocket_endpoint_on_receive_text(
     test_client_factory: TestClientFactory,
@@ -233,6 +237,52 @@ async def test_websocket_endpoint_decode_bytes_rejects_message_without_bytes() -
     message: Message = {"type": "websocket.receive", "text": "hi", "bytes": None}
 
     with pytest.raises(RuntimeError, match="Expected bytes websocket messages, but got text"):
+        await ep.decode(websocket, message)
+
+    assert sent == [{"type": "websocket.close", "code": status.WS_1003_UNSUPPORTED_DATA, "reason": ""}]
+
+
+@pytest.mark.anyio
+async def test_websocket_endpoint_decode_json_rejects_message_without_payload() -> None:
+    class Echo(WebSocketEndpoint):
+        encoding = "json"
+
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        raise AssertionError("receive should not be called")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    ep = Echo({"type": "websocket", "path": "/", "headers": [], "query_string": b""}, receive=receive, send=send)
+    websocket = WebSocket(ep.scope, receive=ep.receive, send=send)
+    message: Message = {"type": "websocket.receive", "text": None, "bytes": None}
+
+    with pytest.raises(RuntimeError, match="Malformed JSON data received."):
+        await ep.decode(websocket, message)
+
+    assert sent == [{"type": "websocket.close", "code": status.WS_1003_UNSUPPORTED_DATA, "reason": ""}]
+
+
+@pytest.mark.anyio
+async def test_websocket_endpoint_decode_json_rejects_invalid_utf8_bytes() -> None:
+    class Echo(WebSocketEndpoint):
+        encoding = "json"
+
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        raise AssertionError("receive should not be called")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    ep = Echo({"type": "websocket", "path": "/", "headers": [], "query_string": b""}, receive=receive, send=send)
+    websocket = WebSocket(ep.scope, receive=ep.receive, send=send)
+    message: Message = {"type": "websocket.receive", "text": None, "bytes": b"\xff\xff"}
+
+    with pytest.raises(RuntimeError, match="Malformed JSON data received."):
         await ep.decode(websocket, message)
 
     assert sent == [{"type": "websocket.close", "code": status.WS_1003_UNSUPPORTED_DATA, "reason": ""}]

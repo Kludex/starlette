@@ -16,6 +16,7 @@ from starlette.datastructures import (
     QueryParams,
     UploadFile,
 )
+from starlette.types import Scope
 
 
 def test_url() -> None:
@@ -273,6 +274,57 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.hostname == "localhost"
     assert u.path == expected_path
     assert u.query == "a=b"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/path",
+        "/",
+        "//",
+        "//evil.example",
+        "//evil.example/x",
+        "///x",
+        "////x",
+    ],
+)
+@pytest.mark.parametrize("query_string", [b"", b"a=1"], ids=["no-query", "with-query"])
+def test_url_from_scope_without_authority_preserves_path(path: str, query_string: bytes) -> None:
+    """An authority-less scope must preserve //-prefixed paths as path data, not authority."""
+    query = query_string.decode()
+    u = URL(
+        scope={
+            "scheme": "http",
+            "path": path,
+            "query_string": query_string,
+            "headers": [],
+            "server": None,
+        }
+    )
+    assert u.netloc == ""
+    assert u.hostname is None
+    assert u.path == path
+    assert u.query == query
+
+
+def test_redirect_response_with_authority_less_double_slash_path() -> None:
+    from starlette.requests import Request
+    from starlette.responses import RedirectResponse
+
+    scope: Scope = {
+        "type": "http",
+        "scheme": "http",
+        "path": "//evil.example/x",
+        "query_string": b"a=1",
+        "headers": [],
+        "server": None,
+    }
+    url = Request(scope).url
+    response = RedirectResponse(url)
+    assert response.headers["location"] == str(url)
+    assert url.netloc == ""
+    assert url.hostname is None
+    assert url.path == "//evil.example/x"
 
 
 def test_headers() -> None:

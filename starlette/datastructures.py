@@ -59,9 +59,8 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
-                url = SplitResult(scheme="", netloc="", path=path, query=query, fragment="").geturl()
-                if path.startswith("//") and not url.startswith("////"):
-                    url = f"//{url}"
+                prefix = "//" if path.startswith("//") else ""
+                url = f"{prefix}{path}?{query}" if query else f"{prefix}{path}"
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
             url = URL("").replace(**components).components.geturl()

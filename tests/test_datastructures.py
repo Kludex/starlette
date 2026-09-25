@@ -276,27 +276,30 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
 
 
 @pytest.mark.parametrize(
-    "path, expected_path",
+    "path, query_string, expected_path, expected_query",
     [
-        pytest.param("//google.com/x", "//google.com/x", id="scheme-relative"),
-        pytest.param("///google.com/x", "///google.com/x", id="three-slashes"),
+        pytest.param("//google.com/x", b"a=b", "//google.com/x", "a=b", id="scheme-relative-with-query"),
+        pytest.param("//google.com/x", b"", "//google.com/x", "", id="scheme-relative-no-query"),
+        pytest.param("///google.com/x", b"", "///google.com/x", "", id="three-slashes"),
     ],
 )
-def test_url_from_scope_without_host_or_server_scheme_relative_path(path: str, expected_path: str) -> None:
+def test_url_from_scope_without_host_or_server_scheme_relative_path(
+    path: str, query_string: bytes, expected_path: str, expected_query: str
+) -> None:
     """A path must not bleed into the authority when no host header or server is present."""
     u = URL(
         scope={
             "scheme": "http",
             "server": None,
             "path": path,
-            "query_string": b"a=b",
+            "query_string": query_string,
             "headers": [],
         }
     )
     assert u.hostname is None
     assert u.netloc == ""
     assert u.path == expected_path
-    assert u.query == "a=b"
+    assert u.query == expected_query
 
 
 def test_headers() -> None:

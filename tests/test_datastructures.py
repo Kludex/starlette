@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 from tempfile import SpooledTemporaryFile
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
 import pytest
 
@@ -69,6 +69,105 @@ def test_url() -> None:
     assert url.replace(port=8080) == URL("//:8080/path?a=1")
     assert url.replace(port=8080).port == 8080
     assert url.replace(username="u") == URL("//u@/path?a=1")
+
+
+@pytest.mark.parametrize(
+    "initial_url,replace_kwargs,expected_url,expected_hostname,expected_port",
+    [
+        (
+            "https://example.org:8443/path?a=1#anchor",
+            {"hostname": "::1"},
+            "https://[::1]:8443/path?a=1#anchor",
+            "::1",
+            8443,
+        ),
+        (
+            "https://example.org/path",
+            {"hostname": "::1"},
+            "https://[::1]/path",
+            "::1",
+            None,
+        ),
+        (
+            "https://example.org:8443/path",
+            {"hostname": "[::1]"},
+            "https://[::1]:8443/path",
+            "::1",
+            8443,
+        ),
+        (
+            "https://example.org:8443/path",
+            {"hostname": "2001:db8::1", "port": 9000},
+            "https://[2001:db8::1]:9000/path",
+            "2001:db8::1",
+            9000,
+        ),
+        (
+            "https://example.org:8443/path",
+            {"hostname": "fe80::1%eth0"},
+            "https://[fe80::1%eth0]:8443/path",
+            "fe80::1%eth0",
+            8443,
+        ),
+        (
+            "https://example.org:8443/path",
+            {"hostname": "::ffff:192.0.2.1"},
+            "https://[::ffff:192.0.2.1]:8443/path",
+            "::ffff:192.0.2.1",
+            8443,
+        ),
+        (
+            "https://[fe::2]:12345/path",
+            {},  # round-trip check via hostname
+            "https://[fe::2]:12345/path",
+            "fe::2",
+            12345,
+        ),
+        (
+            "/path?a=1",
+            {"hostname": "::1"},
+            "//[::1]/path?a=1",
+            "::1",
+            None,
+        ),
+        (
+            "/path?a=1",
+            {"hostname": "::1", "port": 8080},
+            "//[::1]:8080/path?a=1",
+            "::1",
+            8080,
+        ),
+        (
+            "https://example.org:8443/path",
+            {"hostname": "[::1]:8080", "port": None},
+            "https://[::1]:8080/path",
+            "::1",
+            8080,
+        ),
+        (
+            "https://example.org:8443/path",
+            {"hostname": "example.org:8080", "port": None},
+            "https://example.org:8080/path",
+            "example.org",
+            8080,
+        ),
+    ],
+)
+def test_url_replace_ipv6_hostname(
+    initial_url: str,
+    replace_kwargs: dict[str, Any],
+    expected_url: str,
+    expected_hostname: str,
+    expected_port: int | None,
+) -> None:
+    url = URL(initial_url)
+    if not replace_kwargs:
+        new = url.replace(hostname=url.hostname)
+    else:
+        new = url.replace(**replace_kwargs)
+    assert new == expected_url
+    assert new.hostname == expected_hostname
+    assert new.port == expected_port
 
 
 def test_url_query_params() -> None:

@@ -335,6 +335,27 @@ def test_staticfiles_html_normal(tmpdir: Path, test_client_factory: TestClientFa
     assert response.text == "<h1>Custom not found page</h1>"
 
 
+def test_staticfiles_html_directory_redirect_with_hash_in_name(
+    tmpdir: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = os.path.join(tmpdir, "c#")
+    os.mkdir(path)
+    with open(os.path.join(path, "index.html"), "w") as file:
+        file.write("<h1>C#</h1>")
+
+    app = StaticFiles(directory=tmpdir, html=True)
+    client = test_client_factory(app)
+
+    response = client.get("/c%23", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "http://testserver/c%23/"
+
+    response = client.get("/c%23")
+    assert response.url == "http://testserver/c%23/"
+    assert response.status_code == 200
+    assert response.text == "<h1>C#</h1>"
+
+
 def test_staticfiles_html_without_index(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     path = os.path.join(tmpdir, "404.html")
     with open(path, "w") as file:

@@ -228,6 +228,19 @@ def test_router(client: TestClient) -> None:
     assert response.text == "xxxxx"
 
 
+@pytest.mark.parametrize("encoded, decoded", [("%3F", "?"), ("%23", "#")])
+def test_router_redirect_slashes_with_query_or_fragment_delimiter_in_path(
+    client: TestClient, encoded: str, decoded: str
+) -> None:
+    response = client.get(f"/users/tom{encoded}christie/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == f"http://testserver/users/tom{encoded}christie"
+
+    response = client.get(f"/users/tom{encoded}christie/")
+    assert response.status_code == 200
+    assert response.text == f"User tom{decoded}christie"
+
+
 def test_route_converters(client: TestClient) -> None:
     # Test integer conversion
     response = client.get("/int/5")

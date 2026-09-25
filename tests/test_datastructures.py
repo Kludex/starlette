@@ -183,6 +183,22 @@ def test_url_from_scope() -> None:
     assert u.port == 80
 
 
+def test_url_from_scope_without_origin_does_not_treat_path_as_authority() -> None:
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": None,
+            "path": "//evil.example/x",
+            "query_string": b"a=1",
+            "headers": [],
+        }
+    )
+
+    assert u.netloc == ""
+    assert u.path == "/.//evil.example/x"
+    assert u == "/.//evil.example/x?a=1"
+
+
 @pytest.mark.parametrize(
     "host",
     [

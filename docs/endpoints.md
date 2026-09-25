@@ -48,7 +48,9 @@ app = Starlette(routes=routes)
 ```
 
 HTTP endpoint classes will respond with "405 Method not allowed" responses for any
-request methods which do not map to a corresponding handler.
+request methods which do not map to a corresponding handler. A `get` handler also serves
+`HEAD` requests, unless the endpoint defines its own `head` handler, so `HEAD` appears in the
+`Allow` header of those 405 responses.
 
 ### WebSocketEndpoint
 

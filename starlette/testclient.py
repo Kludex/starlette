@@ -212,6 +212,7 @@ class ASGIResponseStream(httpx.SyncByteStream):
         portal_context: AbstractContextManager[anyio.abc.BlockingPortal],
         app_exception: list[BaseException],
         raise_server_exceptions: bool,
+        trailers_expected: bool = False,
     ) -> None:
         self.body_tx = body_tx
         self.body_rx = body_rx
@@ -220,6 +221,7 @@ class ASGIResponseStream(httpx.SyncByteStream):
         self.portal_context = portal_context
         self.app_exception = app_exception
         self.raise_server_exceptions = raise_server_exceptions
+        self.trailers_expected = trailers_expected
         self.closed = False
 
     def __iter__(self) -> Iterator[bytes]:
@@ -230,6 +232,8 @@ class ASGIResponseStream(httpx.SyncByteStream):
                     yield chunk
                 except (anyio.EndOfStream, anyio.ClosedResourceError):
                     break
+            if self.trailers_expected:
+                self.portal.call(self.response_complete.wait)
         finally:
             self.close()
 
@@ -331,12 +335,15 @@ class _TestClientTransport(httpx.BaseTransport):
             "headers": headers,
             "client": self.client,
             "server": [host, port],
-            "extensions": {"http.response.debug": {}},
+            "extensions": {"http.response.debug": {}, "http.response.trailers": {}},
             "state": self.app_state.copy(),
         }
 
         request_complete = False
         response_started = False
+        body_complete = False
+        trailers_expected = False
+        trailers: list[tuple[bytes, bytes]] = []
         response_complete: anyio.Event
         raw_kwargs: dict[str, Any] = {}
         debug_info: dict[str, Any] | None = None
@@ -370,22 +377,34 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, debug_info
+            nonlocal raw_kwargs, response_started, debug_info, body_complete, trailers_expected
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
                 raw_kwargs["status_code"] = message["status"]
                 raw_kwargs["headers"] = [(key.decode(), value.decode()) for key, value in message.get("headers", [])]
                 response_started = True
+                trailers_expected = message.get("trailers", False)
                 response_started_event.set()
             elif message["type"] == "http.response.body":
                 assert response_started, 'Received "http.response.body" without "http.response.start".'
+                assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
+                assert not body_complete, 'Received "http.response.body" after body completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
                 if request.method != "HEAD":
                     await body_tx.send(body)
                 if not more_body:
                     body_tx.close()
+                    body_complete = True
+                    if not trailers_expected:
+                        response_complete.set()
+            elif message["type"] == "http.response.trailers":
+                assert trailers_expected, 'Received "http.response.trailers" without declaring trailers.'
+                assert body_complete, 'Received "http.response.trailers" before body completed.'
+                assert not response_complete.is_set(), 'Received "http.response.trailers" after response completed.'
+                trailers.extend(message.get("headers", []))
+                if not message.get("more_trailers", False):
                     response_complete.set()
             elif message["type"] == "http.response.debug":
                 debug_info = message["info"]
@@ -397,6 +416,7 @@ class _TestClientTransport(httpx.BaseTransport):
                 await self.app(scope, receive, send)
             except BaseException as exc:
                 app_exception.append(exc)
+            finally:
                 response_started_event.set()
                 body_tx.close()
                 response_complete.set()
@@ -428,8 +448,8 @@ class _TestClientTransport(httpx.BaseTransport):
             if self.raise_server_exceptions:
                 raise exc
 
-        if "status_code" not in raw_kwargs:
-            if self.raise_server_exceptions and app_exception:
+        if not response_started:
+            if self.raise_server_exceptions:
                 try:
                     body_tx.close()
                 except Exception:  # pragma: no cover
@@ -439,7 +459,9 @@ class _TestClientTransport(httpx.BaseTransport):
                 except Exception:  # pragma: no cover
                     pass
                 portal_context.__exit__(None, None, None)
-                raise app_exception[0]
+                if app_exception:
+                    raise app_exception[0]
+                assert response_started, "TestClient did not receive any response."
             raw_kwargs = {
                 "status_code": 500,
                 "headers": [],
@@ -453,9 +475,12 @@ class _TestClientTransport(httpx.BaseTransport):
             portal_context=portal_context,
             app_exception=app_exception,
             raise_server_exceptions=self.raise_server_exceptions,
+            trailers_expected=trailers_expected,
         )
 
         response = httpx.Response(**raw_kwargs, request=request)
+        if trailers_expected:
+            response.extensions["http.response.trailers"] = trailers
         if debug_info is not None:
             response.extensions["http.response.debug"] = debug_info
             if "template" in debug_info:

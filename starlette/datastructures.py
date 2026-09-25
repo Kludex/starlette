@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
@@ -8,6 +9,14 @@ from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
 from starlette._utils import parse_host_header
 from starlette.concurrency import run_in_threadpool
 from starlette.types import Scope
+
+
+def _is_ipv6_address(host: str) -> bool:
+    try:
+        ipaddress.IPv6Address(host.split("%", 1)[0])
+        return True
+    except ValueError:
+        return False
 
 
 class Address(NamedTuple):
@@ -125,6 +134,8 @@ class URL:
 
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
+            elif ":" in hostname and not hostname.startswith("[") and _is_ipv6_address(hostname):
+                hostname = f"[{hostname}]"
 
             netloc = hostname
             if port is not None:

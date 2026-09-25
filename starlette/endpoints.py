@@ -13,6 +13,8 @@ from starlette.responses import PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
+_HTTP_METHODS = ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY")
+
 
 class HTTPEndpoint:
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -20,11 +22,11 @@ class HTTPEndpoint:
         self.scope = scope
         self.receive = receive
         self.send = send
-        self._allowed_methods = [
-            method
-            for method in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY")
-            if getattr(self, method.lower(), None) is not None
-        ]
+        handled = {method for method in _HTTP_METHODS if getattr(self, method.lower(), None) is not None}
+        if "GET" in handled:
+            # A `get` handler also serves `HEAD`, the same way `Route` adds `HEAD` alongside `GET`.
+            handled.add("HEAD")
+        self._allowed_methods = [method for method in _HTTP_METHODS if method in handled]
 
     def __await__(self) -> Generator[Any, None, None]:
         return self.dispatch().__await__()
@@ -34,7 +36,7 @@ class HTTPEndpoint:
         handler_name = "get" if request.method == "HEAD" and not hasattr(self, "head") else request.method.lower()
 
         handler: Callable[[Request], Any]
-        if request.method in self._allowed_methods or (request.method == "HEAD" and "GET" in self._allowed_methods):
+        if request.method in self._allowed_methods:
             handler = getattr(self, handler_name)
         else:
             handler = self.method_not_allowed

@@ -59,6 +59,8 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                if path and not path.startswith("/"):
+                    path = f"/{path}"
                 prefix = "//" if path.startswith("//") else ""
                 url = f"{prefix}{path}?{query}" if query else f"{prefix}{path}"
         elif components:

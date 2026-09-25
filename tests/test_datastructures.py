@@ -281,6 +281,8 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
         pytest.param("//google.com/x", b"a=b", "//google.com/x", "a=b", id="scheme-relative-with-query"),
         pytest.param("//google.com/x", b"", "//google.com/x", "", id="scheme-relative-no-query"),
         pytest.param("///google.com/x", b"", "///google.com/x", "", id="three-slashes"),
+        pytest.param("http://google.com/x", b"a=b", "/http://google.com/x", "a=b", id="absolute-with-query"),
+        pytest.param("user:pass@google.com", b"", "/user:pass@google.com", "", id="userinfo"),
     ],
 )
 def test_url_from_scope_without_host_or_server_scheme_relative_path(

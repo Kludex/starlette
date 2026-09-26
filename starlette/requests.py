@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import deque
 from collections.abc import AsyncGenerator, Iterator, Mapping
 from http import cookies as http_cookies
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
@@ -221,6 +222,7 @@ class Request(HTTPConnection[StateT]):
         self._send = send
         self._stream_consumed = False
         self._is_disconnected = False
+        self._polled_messages: deque[Message] = deque()
         self._form = None
 
     @property
@@ -229,7 +231,15 @@ class Request(HTTPConnection[StateT]):
 
     @property
     def receive(self) -> Receive:
-        return self._receive
+        return self._receive_message
+
+    async def _receive_message(self) -> Message:
+        # `is_disconnected()` may have polled messages off the channel; hand those out
+        # before reading the channel again, so every consumer of `receive` — `stream()`
+        # or anything the request is delegated to — sees the channel in order.
+        if self._polled_messages:
+            return self._polled_messages.popleft()
+        return await self._receive()
 
     async def stream(self) -> AsyncGenerator[bytes, None]:
         if hasattr(self, "_body"):
@@ -239,7 +249,7 @@ class Request(HTTPConnection[StateT]):
         if self._stream_consumed:
             raise RuntimeError("Stream consumed")
         while not self._stream_consumed:
-            message = await self._receive()
+            message = await self._receive_message()
             if message["type"] == "http.request":
                 body = message.get("body", b"")
                 if not message.get("more_body", False):
@@ -334,8 +344,14 @@ class Request(HTTPConnection[StateT]):
                 cs.cancel()
                 message = await self._receive()
 
-            if message.get("type") == "http.disconnect":
-                self._is_disconnected = True
+            if message:
+                # The server had a message ready. Hold on to it so `stream()` still sees
+                # the receive channel in order — dropping a body message loses part of
+                # the body, and dropping the disconnect loses the only thing that ends
+                # the stream, so a later `body()` waits for a message that never comes.
+                self._polled_messages.append(message)
+                if message["type"] == "http.disconnect":
+                    self._is_disconnected = True
 
         return self._is_disconnected
 

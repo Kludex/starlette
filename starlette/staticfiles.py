@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import errno
+import functools
+import hashlib
 import importlib.util
 import os
 import stat
@@ -18,6 +20,16 @@ from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocketClose
 
 PathLike = Union[str, "os.PathLike[str]"]
+
+
+@functools.lru_cache(maxsize=1024)
+def _content_etag(path: str, st_ino: int, st_size: int, st_mtime_ns: int, st_ctime_ns: int) -> str:
+    # The stat fields only key the cache: any write to the file changes its ctime.
+    digest = hashlib.md5(usedforsecurity=False)
+    with open(path, "rb") as file:
+        while chunk := file.read(FileResponse.chunk_size):
+            digest.update(chunk)
+    return f'"{digest.hexdigest()}"'
 
 
 class NotModifiedResponse(Response):
@@ -46,6 +58,7 @@ class StaticFiles:
         html: bool = False,
         check_dir: bool = True,
         follow_symlink: bool = False,
+        content_etag: bool = False,
     ) -> None:
         self.directory = directory
         self.packages = packages
@@ -53,6 +66,7 @@ class StaticFiles:
         self.html = html
         self.config_checked = False
         self.follow_symlink = follow_symlink
+        self.content_etag = content_etag
         if check_dir and directory is not None and not os.path.isdir(directory):
             raise RuntimeError(f"Directory '{directory}' does not exist")
 
@@ -135,6 +149,7 @@ class StaticFiles:
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
+            await self.prepare_content_etag(full_path, stat_result)
             return self.file_response(full_path, stat_result, scope)
 
         elif stat_result and stat.S_ISDIR(stat_result.st_mode) and self.html:
@@ -148,6 +163,7 @@ class StaticFiles:
                     url = URL(scope=scope)
                     url = url.replace(path=url.path + "/")
                     return RedirectResponse(url=url)
+                await self.prepare_content_etag(full_path, stat_result)
                 return self.file_response(full_path, stat_result, scope)
 
         if self.html:
@@ -178,6 +194,26 @@ class StaticFiles:
                 continue
         return "", None
 
+    async def prepare_content_etag(self, full_path: PathLike, stat_result: os.stat_result) -> None:
+        """
+        Hash the file off the event loop when `content_etag` is enabled, so that
+        `file_response` finds its ETag already cached.
+        """
+        if self.content_etag:
+            await anyio.to_thread.run_sync(self.get_content_etag, full_path, stat_result)
+
+    def get_content_etag(self, full_path: PathLike, stat_result: os.stat_result) -> str:
+        """
+        Return an ETag computed from the file's content rather than its modification time and size.
+        """
+        return _content_etag(
+            os.fspath(full_path),
+            stat_result.st_ino,
+            stat_result.st_size,
+            stat_result.st_mtime_ns,
+            stat_result.st_ctime_ns,
+        )
+
     def file_response(
         self,
         full_path: PathLike,
@@ -187,7 +223,8 @@ class StaticFiles:
     ) -> Response:
         request_headers = Headers(scope=scope)
 
-        response = FileResponse(full_path, status_code=status_code, stat_result=stat_result)
+        headers = {"etag": self.get_content_etag(full_path, stat_result)} if self.content_etag else None
+        response = FileResponse(full_path, status_code=status_code, stat_result=stat_result, headers=headers)
         if self.is_not_modified(response.headers, request_headers):
             return NotModifiedResponse(response.headers)
         return response

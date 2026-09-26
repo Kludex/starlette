@@ -1,3 +1,4 @@
+import hashlib
 import os
 import stat
 import tempfile
@@ -229,6 +230,59 @@ def test_staticfiles_304_with_etag_match(tmpdir: Path, test_client_factory: Test
     second_resp = client.get("/example.txt", headers={"if-none-match": f'"123",\tW/{last_etag}'})
     assert second_resp.status_code == 304
     assert second_resp.content == b""
+
+
+def replace_file(path: Path, content: str) -> None:
+    # A new file swapped into place, as a deploy does, with every version sharing one mtime.
+    new_path = path.with_name(path.name + ".new")
+    new_path.write_text(content)
+    os.utime(new_path, (1, 1))
+    os.replace(new_path, path)
+
+
+def test_staticfiles_content_etag_changes_with_content_of_same_size_and_mtime(
+    tmp_path: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = tmp_path / "example.txt"
+    replace_file(path, "<version 1>")
+
+    app = StaticFiles(directory=tmp_path, content_etag=True)
+    client = test_client_factory(app)
+    first_resp = client.get("/example.txt")
+    assert first_resp.status_code == 200
+    first_etag = first_resp.headers["etag"]
+    assert client.get("/example.txt", headers={"if-none-match": first_etag}).status_code == 304
+
+    replace_file(path, "<version 2>")
+    second_resp = client.get("/example.txt", headers={"if-none-match": first_etag})
+    assert second_resp.status_code == 200
+    assert second_resp.text == "<version 2>"
+    assert second_resp.headers["etag"] != first_etag
+    assert client.get("/example.txt", headers={"if-none-match": second_resp.headers["etag"]}).status_code == 304
+
+
+def test_staticfiles_content_etag_in_html_mode(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    (tmp_path / "index.html").write_text("<h1>Hello</h1>")
+
+    app = StaticFiles(directory=tmp_path, html=True, content_etag=True)
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["etag"] == f'"{hashlib.md5(b"<h1>Hello</h1>", usedforsecurity=False).hexdigest()}"'
+
+
+def test_staticfiles_etag_without_content_etag_ignores_content_of_same_size_and_mtime(
+    tmp_path: Path, test_client_factory: TestClientFactory
+) -> None:
+    path = tmp_path / "example.txt"
+    replace_file(path, "<version 1>")
+
+    app = StaticFiles(directory=tmp_path)
+    client = test_client_factory(app)
+    first_etag = client.get("/example.txt").headers["etag"]
+
+    replace_file(path, "<version 2>")
+    assert client.get("/example.txt", headers={"if-none-match": first_etag}).status_code == 304
 
 
 @pytest.mark.parametrize("method", ["GET", "HEAD"])

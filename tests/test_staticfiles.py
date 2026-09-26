@@ -271,6 +271,17 @@ def test_staticfiles_content_etag_in_html_mode(tmp_path: Path, test_client_facto
     assert response.headers["etag"] == f'"{hashlib.md5(b"<h1>Hello</h1>", usedforsecurity=False).hexdigest()}"'
 
 
+def test_staticfiles_content_etag_for_404_page(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    (tmp_path / "404.html").write_text("<h1>Custom not found page</h1>")
+
+    app = StaticFiles(directory=tmp_path, html=True, content_etag=True)
+    client = test_client_factory(app)
+    response = client.get("/missing")
+    assert response.status_code == 404
+    expected = hashlib.md5(b"<h1>Custom not found page</h1>", usedforsecurity=False).hexdigest()
+    assert response.headers["etag"] == f'"{expected}"'
+
+
 def test_staticfiles_etag_without_content_etag_ignores_content_of_same_size_and_mtime(
     tmp_path: Path, test_client_factory: TestClientFactory
 ) -> None:

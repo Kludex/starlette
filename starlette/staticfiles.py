@@ -149,7 +149,9 @@ class StaticFiles:
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
-            await self.prepare_content_etag(full_path, stat_result)
+            if self.content_etag:
+                # Hash off the event loop, so that `file_response` finds the ETag cached.
+                await anyio.to_thread.run_sync(self.get_content_etag, full_path, stat_result)
             return self.file_response(full_path, stat_result, scope)
 
         elif stat_result and stat.S_ISDIR(stat_result.st_mode) and self.html:
@@ -163,14 +165,18 @@ class StaticFiles:
                     url = URL(scope=scope)
                     url = url.replace(path=url.path + "/")
                     return RedirectResponse(url=url)
-                await self.prepare_content_etag(full_path, stat_result)
+                if self.content_etag:
+                    await anyio.to_thread.run_sync(self.get_content_etag, full_path, stat_result)
                 return self.file_response(full_path, stat_result, scope)
 
         if self.html:
             # Check for '404.html' if we're in HTML mode.
             full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, "404.html")
             if stat_result and stat.S_ISREG(stat_result.st_mode):
-                return FileResponse(full_path, stat_result=stat_result, status_code=404)
+                headers = None
+                if self.content_etag:
+                    headers = {"etag": await anyio.to_thread.run_sync(self.get_content_etag, full_path, stat_result)}
+                return FileResponse(full_path, stat_result=stat_result, status_code=404, headers=headers)
         raise HTTPException(status_code=404)
 
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
@@ -193,14 +199,6 @@ class StaticFiles:
             except (FileNotFoundError, NotADirectoryError):
                 continue
         return "", None
-
-    async def prepare_content_etag(self, full_path: PathLike, stat_result: os.stat_result) -> None:
-        """
-        Hash the file off the event loop when `content_etag` is enabled, so that
-        `file_response` finds its ETag already cached.
-        """
-        if self.content_etag:
-            await anyio.to_thread.run_sync(self.get_content_etag, full_path, stat_result)
 
     def get_content_etag(self, full_path: PathLike, stat_result: os.stat_result) -> str:
         """

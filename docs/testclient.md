@@ -73,7 +73,7 @@ For more information you can check the `httpx2` [documentation](https://www.pyth
 
 By default the `TestClient` will raise any exceptions that occur in the
 application. Occasionally you might want to test the content of 500 error
-responses, rather than allowing client to raise the server exception. In this
+responses, rather than allowing the client to raise the server exception. In this
 case you should use `client = TestClient(app, raise_server_exceptions=False)`.
 
 !!! note

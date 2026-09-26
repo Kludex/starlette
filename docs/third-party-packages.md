@@ -17,7 +17,7 @@ Analytics, request logging and monitoring for REST APIs built with Starlette (an
 <a href="https://github.com/lepture/Authlib" target="_blank">GitHub</a> |
 <a href="https://docs.authlib.org/en/latest/" target="_blank">Documentation</a>
 
-The ultimate Python library in building OAuth and OpenID Connect clients and servers. Check out how to integrate with [Starlette](https://docs.authlib.org/en/latest/client/starlette.html).
+The ultimate Python library in building OAuth and OpenID Connect clients and servers. Check out how to integrate with [Starlette](https://docs.authlib.org/en/stable/oauth2/client/web/starlette.html).
 
 ### ChannelBox
 

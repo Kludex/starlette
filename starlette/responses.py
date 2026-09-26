@@ -448,6 +448,8 @@ class FileResponse(Response):
                     await file.seek(start)
                     while start < end:
                         chunk = await file.read(min(self.chunk_size, end - start))
+                        if not chunk:
+                            raise RuntimeError(f"File at path {self.path} is shorter than expected.")
                         start += len(chunk)
                         await send({"type": "http.response.body", "body": chunk, "more_body": True})
                     await send({"type": "http.response.body", "body": b"\r\n", "more_body": True})

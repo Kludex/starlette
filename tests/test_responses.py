@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 import sys
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Iterator
@@ -10,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import anyio
+import httpx2 as httpx
 import pytest
 from python_multipart import MultipartParser
 
@@ -1078,3 +1080,22 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         b"\r\n",
         f"--{boundary}--".encode(),
     ]
+
+
+@pytest.mark.anyio
+async def test_file_response_multi_range_unexpected_eof(tmp_path: Path) -> None:
+    path = tmp_path / "file.txt"
+    path.write_bytes(b"0123456789")
+    response = FileResponse(path, stat_result=path.stat())
+    path.write_bytes(b"012")
+
+    transport = httpx.ASGITransport(app=response)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        with (
+            anyio.fail_after(1),
+            pytest.raises(
+                RuntimeError,
+                match=re.escape(f"File at path {path} is shorter than expected."),
+            ),
+        ):
+            await client.get("/", headers={"Range": "bytes=0-2,5-7"})

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 import sys
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Iterator
@@ -1091,5 +1092,6 @@ async def test_file_response_multi_range_unexpected_eof(tmp_path: Path) -> None:
     transport = httpx.ASGITransport(app=response)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         with anyio.fail_after(1):
-            with pytest.raises(RuntimeError, match="is shorter than expected"):
+            message = re.escape(f"File at path {path} is shorter than expected.")
+            with pytest.raises(RuntimeError, match=f"^{message}$"):
                 await client.get("/", headers={"Range": "bytes=0-2,5-7"})

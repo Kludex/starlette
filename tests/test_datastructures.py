@@ -275,6 +275,32 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.query == "a=b"
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        pytest.param("//evil.example/x", id="scheme-relative"),
+        pytest.param("//evil.example", id="bare-authority"),
+    ],
+)
+def test_url_from_scope_no_host_no_server_with_authority_in_path(path: str) -> None:
+    """Regression test for #3579: a //-prefixed path must not bleed into the
+    authority when the scope has neither a Host header nor a server tuple."""
+    u = URL(
+        scope={
+            "type": "http",
+            "scheme": "http",
+            "path": path,
+            "query_string": b"a=1",
+            "headers": [],
+        }
+    )
+    # The path must remain a path — not be interpreted as a netloc.
+    assert u.netloc == ""
+    assert u.hostname is None
+    assert u.path == path
+    assert u.query == "a=1"
+
+
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h

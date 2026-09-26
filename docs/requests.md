@@ -4,7 +4,8 @@ the incoming request, rather than accessing the ASGI scope and receive channel d
 
 ### Request
 
-Signature: `Request(scope, receive=empty_receive, send=empty_send)`
+Create a request with `Request(scope)`. You can also pass the optional
+`receive` and `send` callables.
 
 ```python
 from starlette.requests import Request
@@ -24,8 +25,8 @@ way as a `scope`.
 
 For instance: `request['path']` will return the ASGI path.
 
-If you don't need to access the request body you can instantiate a request
-without providing an argument to `receive`.
+Pass `receive` to read the request body or check for client disconnects.
+Pass `send` only if you need [server push](server-push.md).
 
 #### Method
 

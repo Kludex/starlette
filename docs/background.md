@@ -32,7 +32,6 @@ async def send_welcome_email(to_address):
 
 
 routes = [
-    ...
     Route('/user/signup', endpoint=signup, methods=['POST'])
 ]
 
@@ -49,6 +48,7 @@ Signature: `BackgroundTasks(tasks=[])`
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.background import BackgroundTasks
+from starlette.routing import Route
 
 async def signup(request):
     data = await request.json()

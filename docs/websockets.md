@@ -4,7 +4,7 @@ to the HTTP request, but that allows sending and receiving data on a websocket.
 
 ### WebSocket
 
-Signature: `WebSocket(scope, receive=None, send=None)`
+Signature: `WebSocket(scope, receive, send)`
 
 ```python
 from starlette.websockets import WebSocket

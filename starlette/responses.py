@@ -364,7 +364,11 @@ class FileResponse(Response):
         http_range = headers.get("range")
         http_if_range = headers.get("if-range")
 
-        if http_range is None or (http_if_range is not None and not self._should_use_range(http_if_range)):
+        if (
+            self.status_code != 200
+            or http_range is None
+            or (http_if_range is not None and not self._should_use_range(http_if_range))
+        ):
             await self._handle_simple(send, send_header_only, send_pathsend)
         else:
             try:
@@ -444,6 +448,8 @@ class FileResponse(Response):
                     await file.seek(start)
                     while start < end:
                         chunk = await file.read(min(self.chunk_size, end - start))
+                        if not chunk:
+                            raise RuntimeError(f"File at path {self.path} is shorter than expected.")
                         start += len(chunk)
                         await send({"type": "http.response.body", "body": chunk, "more_body": True})
                     await send({"type": "http.response.body", "body": b"\r\n", "more_body": True})
@@ -456,6 +462,8 @@ class FileResponse(Response):
                 )
 
     def _should_use_range(self, http_if_range: str) -> bool:
+        if http_if_range.startswith("W/"):
+            return False
         return http_if_range == self.headers["last-modified"] or http_if_range == self.headers["etag"]
 
     @classmethod

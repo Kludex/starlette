@@ -39,7 +39,7 @@ It is production-ready, and gives you the following:
 * WebSocket support.
 * In-process background tasks.
 * Startup and shutdown events.
-* Test client built on `httpx`.
+* Test client built on `httpx2`.
 * CORS, GZip, Static Files, Streaming responses.
 * Session and Cookie support.
 * 100% test coverage.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 import sys
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Iterator
@@ -10,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import anyio
+import httpx2 as httpx
 import pytest
 from python_multipart import MultipartParser
 
@@ -363,6 +365,21 @@ def test_file_response_with_range_header(tmp_path: Path, test_client_factory: Te
     assert response.headers["content-range"] == f"bytes 0-4/{len(content)}"
 
 
+def test_file_response_ignores_weak_if_range(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    content = b"file content"
+    path = tmp_path / "hello.txt"
+    path.write_bytes(content)
+    etag = 'W/"a_weak_etag"'
+    app = FileResponse(path=path, headers={"etag": etag})
+    client = test_client_factory(app)
+
+    response = client.get("/", headers={"range": "bytes=0-4", "if-range": etag})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.content == content
+    assert "content-range" not in response.headers
+
+
 @pytest.mark.anyio
 async def test_file_response_with_pathsend(tmpdir: Path) -> None:
     path = tmpdir / "xyz"
@@ -397,7 +414,7 @@ async def test_file_response_with_pathsend(tmpdir: Path) -> None:
 
 def test_set_cookie(test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
-    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
+    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.UTC)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -470,7 +487,7 @@ def test_set_cookie_samesite_none(test_client_factory: TestClientFactory) -> Non
 @pytest.mark.parametrize(
     "expires",
     [
-        pytest.param(dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"),
+        pytest.param(dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.UTC), id="datetime"),
         pytest.param("Thu, 22 Jan 2037 12:00:10 GMT", id="str"),
         pytest.param(10, id="int"),
     ],
@@ -481,7 +498,7 @@ def test_expires_on_set_cookie(
     expires: str,
 ) -> None:
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
-    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
+    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.UTC)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -743,6 +760,24 @@ def test_file_response_without_range(file_response_client: TestClient) -> None:
     assert response.headers["content-length"] == str(len(README.encode("utf8")))
     assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.text == README
+
+
+def test_file_response_ignores_range_for_non_success_status(
+    readme_file: Path, test_client_factory: TestClientFactory
+) -> None:
+    client = test_client_factory(app=FileResponse(str(readme_file), status_code=404))
+    response = client.get("/", headers={"Range": "bytes=0-100"})
+
+    assert response.status_code == 404
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.content == README.encode("utf8")
+
+    head_response = client.head("/", headers={"Range": "bytes=0-100"})
+    assert head_response.status_code == 404
+    assert "content-range" not in head_response.headers
+    assert head_response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert head_response.content == b""
 
 
 def test_file_response_head(file_response_client: TestClient) -> None:
@@ -1060,3 +1095,22 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         b"\r\n",
         f"--{boundary}--".encode(),
     ]
+
+
+@pytest.mark.anyio
+async def test_file_response_multi_range_unexpected_eof(tmp_path: Path) -> None:
+    path = tmp_path / "file.txt"
+    path.write_bytes(b"0123456789")
+    response = FileResponse(path, stat_result=path.stat())
+    path.write_bytes(b"012")
+
+    transport = httpx.ASGITransport(app=response)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        with (
+            anyio.fail_after(1),
+            pytest.raises(
+                RuntimeError,
+                match=re.escape(f"File at path {path} is shorter than expected."),
+            ),
+        ):
+            await client.get("/", headers={"Range": "bytes=0-2,5-7"})

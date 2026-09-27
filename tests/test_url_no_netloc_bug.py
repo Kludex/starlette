@@ -1,5 +1,6 @@
 from starlette.requests import Request
 
+
 def test_url_no_netloc():
     scope = {
         "type": "http",

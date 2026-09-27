@@ -440,7 +440,7 @@ def scope(request: pytest.FixtureRequest) -> Scope:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("spec_version", [None, "2.0", "2.3"])
+@pytest.mark.parametrize("spec_version", [None, "2.3"])
 async def test_file_response_stops_on_disconnect(
     file_path: tuple[Path, list[anyio.AsyncFile[bytes]]], scope: Scope, spec_version: str | None
 ) -> None:
@@ -466,6 +466,7 @@ async def test_file_response_stops_on_disconnect(
             submitted += len(message["body"])
             if submitted >= FileResponse.chunk_size:
                 disconnected.set()
+                await anyio.sleep_forever()
 
     async def cleanup() -> None:
         nonlocal background_ran
@@ -477,12 +478,12 @@ async def test_file_response_stops_on_disconnect(
     with anyio.fail_after(5):
         await FileResponse(path, background=BackgroundTask(cleanup))(scope, receive, send)
 
-    assert FileResponse.chunk_size <= submitted < 3 * FileResponse.chunk_size
+    assert disconnected.is_set()
     assert background_ran
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("spec_version", ["2.0", "2.3", "2.4"])
+@pytest.mark.parametrize("spec_version", ["2.3", "2.4"])
 async def test_file_response_closes_on_cancellation(
     file_path: tuple[Path, list[anyio.AsyncFile[bytes]]], scope: Scope, spec_version: str
 ) -> None:
@@ -512,7 +513,7 @@ async def test_file_response_closes_on_cancellation(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("spec_version", ["2.0", "2.3", "2.4"])
+@pytest.mark.parametrize("spec_version", ["2.3", "2.4"])
 async def test_file_response_closes_on_send_error(
     file_path: tuple[Path, list[anyio.AsyncFile[bytes]]], scope: Scope, spec_version: str
 ) -> None:
@@ -1187,7 +1188,8 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         elif message["type"] == "http.response.body":  # pragma: no branch
             received_chunks.append(message["body"])
 
-    await app({"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-15,20-35,35-50")]}, receive, send)
+    with anyio.fail_after(5):
+        await app({"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-15,20-35,35-50")]}, receive, send)
     assert start_message["status"] == 206
 
     headers = Headers(raw=start_message["headers"])

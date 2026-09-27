@@ -1,8 +1,9 @@
+import typing
 from starlette.requests import Request
 
 
-def test_url_no_netloc():
-    scope = {
+def test_url_no_netloc() -> None:
+    scope: typing.Dict[str, typing.Any] = {
         "type": "http",
         "scheme": "http",
         "path": "//evil.example/x",

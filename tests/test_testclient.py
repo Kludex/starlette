@@ -435,8 +435,7 @@ def test_streaming_response_late_server_exception(
             assert response.read() == b"body"
 
 
-@pytest.mark.parametrize("streaming", [True, False])
-def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClientFactory, streaming: bool) -> None:
+def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClientFactory) -> None:
     async def chunks() -> AsyncGenerator[memoryview, None]:
         buffer = bytearray(b"one")
         yield memoryview(buffer)
@@ -447,11 +446,22 @@ def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClien
         return StreamingResponse(chunks())
 
     client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
-    if streaming:
-        with client.stream("GET", "/") as response:
-            assert list(response.iter_raw()) == [b"one", b"two"]
-    else:
-        assert client.get("/").content == b"onetwo"
+    with client.stream("GET", "/") as response:
+        assert list(response.iter_raw()) == [b"one", b"two"]
+
+
+def test_buffered_response_copies_mutable_chunks(test_client_factory: TestClientFactory) -> None:
+    async def chunks() -> AsyncGenerator[memoryview, None]:
+        buffer = bytearray(b"one")
+        yield memoryview(buffer)
+        buffer[:] = b"two"
+        yield memoryview(buffer)
+
+    async def homepage(request: Request) -> StreamingResponse:
+        return StreamingResponse(chunks())
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    assert client.get("/").content == b"onetwo"
 
 
 @pytest.mark.parametrize("lifespan", [True, False])
@@ -845,30 +855,41 @@ def test_invalid_trailer_sequence(test_client_factory: TestClientFactory, messag
         test_client_factory(app).get("/")
 
 
-@pytest.mark.parametrize("empty", [True, False])
-@pytest.mark.parametrize("streaming", [True, False])
-def test_capture_trailers(test_client_factory: TestClientFactory, empty: bool, streaming: bool) -> None:
+@pytest.mark.parametrize("trailers", [[], [(b"x-item", b"one"), (b"x-item", b"two")]])
+def test_capture_trailers(test_client_factory: TestClientFactory, trailers: list[tuple[bytes, bytes]]) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         assert "http.response.trailers" in scope["extensions"]
         await send({"type": "http.response.start", "status": 200, "trailers": True})
         await send({"type": "http.response.body", "body": b"hello"})
         await anyio.lowlevel.checkpoint()
-        headers = [] if empty else [(b"x-item", b"one")]
-        await send({"type": "http.response.trailers", "headers": headers, "more_trailers": True})
-        headers = [] if empty else [(b"x-item", b"two")]
-        await send({"type": "http.response.trailers", "headers": headers})
+        await send({"type": "http.response.trailers", "headers": trailers[:1], "more_trailers": True})
+        await send({"type": "http.response.trailers", "headers": trailers[1:]})
 
     client = test_client_factory(app)
-    if streaming:
-        with client.stream("GET", "/", headers={"te": "trailers"}) as response:
-            assert response.extensions["http.response.trailers"] == []
-            assert response.read() == b"hello"
-    else:
-        response = client.get("/", headers={"te": "trailers"})
+    response = client.get("/", headers={"te": "trailers"})
     assert response.content == b"hello"
-    assert response.extensions["http.response.trailers"] == (
-        [] if empty else [(b"x-item", b"one"), (b"x-item", b"two")]
-    )
+    assert response.extensions["http.response.trailers"] == trailers
+    assert "x-item" not in response.headers
+
+
+@pytest.mark.parametrize("trailers", [[], [(b"x-item", b"one"), (b"x-item", b"two")]])
+def test_streaming_response_captures_trailers(
+    test_client_factory: TestClientFactory, trailers: list[tuple[bytes, bytes]]
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert "http.response.trailers" in scope["extensions"]
+        await send({"type": "http.response.start", "status": 200, "trailers": True})
+        await send({"type": "http.response.body", "body": b"hello"})
+        await anyio.lowlevel.checkpoint()
+        await send({"type": "http.response.trailers", "headers": trailers[:1], "more_trailers": True})
+        await send({"type": "http.response.trailers", "headers": trailers[1:]})
+
+    client = test_client_factory(app)
+    with client.stream("GET", "/", headers={"te": "trailers"}) as response:
+        assert response.extensions["http.response.trailers"] == []
+        assert response.read() == b"hello"
+    assert response.content == b"hello"
+    assert response.extensions["http.response.trailers"] == trailers
     assert "x-item" not in response.headers
 
 

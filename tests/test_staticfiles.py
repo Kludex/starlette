@@ -1,9 +1,10 @@
+import errno
 import os
 import stat
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 import anyio
 import pytest
@@ -16,6 +17,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
+from starlette.types import Message, Scope
 from starlette.websockets import WebSocketDisconnect
 from tests.types import TestClientFactory
 
@@ -634,6 +636,336 @@ def test_staticfiles_avoids_path_traversal(tmp_path: Path) -> None:
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Not Found"
+
+
+def test_staticfiles_rejects_symlink_swapped_after_lookup(
+    tmp_path: Path, test_client_factory: TestClientFactory
+) -> None:
+    statics_path = tmp_path / "static"
+    assets_path = statics_path / "assets"
+    outside_path = tmp_path / "outside"
+    assets_path.mkdir(parents=True)
+    outside_path.mkdir()
+    (assets_path / "file.txt").write_text("safe", encoding="utf-8")
+    (outside_path / "file.txt").write_text("secret", encoding="utf-8")
+
+    class SwappingStaticFiles(StaticFiles):
+        swapped = False
+
+        def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+            result = super().lookup_path(path)
+            if not self.swapped and result[1] is not None and stat.S_ISREG(result[1].st_mode):  # pragma: no branch
+                assets_path.rename(statics_path / "assets-old")
+                assets_path.symlink_to(outside_path, target_is_directory=True)
+                self.swapped = True
+            return result
+
+    app = Starlette(routes=[Mount("/", app=SwappingStaticFiles(directory=statics_path))])
+    client = test_client_factory(app)
+    response = client.get("/assets/file.txt")
+
+    assert response.status_code == 404
+    assert response.content != b"secret"
+
+
+def test_staticfiles_rejects_root_symlink_swapped_after_lookup(
+    tmp_path: Path, test_client_factory: TestClientFactory
+) -> None:
+    statics_path = tmp_path / "static"
+    outside_path = tmp_path / "outside"
+    statics_path.mkdir()
+    outside_path.mkdir()
+    (statics_path / "file.txt").write_text("safe", encoding="utf-8")
+    (outside_path / "file.txt").write_text("secret", encoding="utf-8")
+
+    class SwappingStaticFiles(StaticFiles):
+        swapped = False
+
+        def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+            result = super().lookup_path(path)
+            if not self.swapped and result[1] is not None:  # pragma: no branch
+                statics_path.rename(tmp_path / "static-old")
+                statics_path.symlink_to(outside_path, target_is_directory=True)
+                self.swapped = True
+            return result
+
+    app = Starlette(routes=[Mount("/", app=SwappingStaticFiles(directory=statics_path))])
+    client = test_client_factory(app)
+    response = client.get("/file.txt")
+
+    assert response.status_code == 404
+    assert response.content != b"secret"
+
+
+def test_open_path_rejects_replaced_root_directory(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    (statics_path / "file.txt").write_text("safe", encoding="utf-8")
+    app = StaticFiles(directory=statics_path)
+    app.lookup_path("file.txt")
+
+    statics_path.rename(tmp_path / "static-old")
+    statics_path.mkdir()
+    (statics_path / "file.txt").write_text("secret", encoding="utf-8")
+
+    assert app._open_path("file.txt") is None
+
+
+def test_directory_anchor_handles_missing_directory(tmp_path: Path) -> None:
+    app = StaticFiles(directory=tmp_path / "missing", check_dir=False)
+
+    assert app.lookup_path("file.txt") == ("", None)
+    assert app._open_path("file.txt") is None
+
+
+def test_staticfiles_uses_metadata_from_opened_file(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    target_path = statics_path / "file.txt"
+    replacement_path = statics_path / "replacement.txt"
+    target_path.write_text("old", encoding="utf-8")
+    replacement_path.write_text("replacement", encoding="utf-8")
+
+    class ReplacingStaticFiles(StaticFiles):
+        replaced = False
+
+        def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+            result = super().lookup_path(path)
+            if not self.replaced and result[1] is not None and stat.S_ISREG(result[1].st_mode):  # pragma: no branch
+                replacement_path.replace(target_path)
+                self.replaced = True
+            return result
+
+    client = test_client_factory(ReplacingStaticFiles(directory=statics_path))
+    response = client.get("/file.txt")
+
+    assert response.content == b"replacement"
+    assert response.headers["content-length"] == str(len(b"replacement"))
+
+
+@pytest.mark.anyio
+async def test_staticfiles_does_not_use_pathsend_for_preopened_files(tmp_path: Path) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    (statics_path / "file.txt").write_text("content", encoding="utf-8")
+    app = StaticFiles(directory=statics_path, check_dir=False)
+    messages: list[Message] = []
+
+    async def receive() -> Message:
+        raise AssertionError("receive should not be called")  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    await app(
+        {
+            "type": "http",
+            "asgi": {"spec_version": "2.4"},
+            "method": "GET",
+            "path": "/file.txt",
+            "root_path": "",
+            "headers": [],
+            "extensions": {"http.response.pathsend": {}},
+        },
+        receive,
+        send,
+    )
+
+    assert all(message["type"] != "http.response.pathsend" for message in messages)
+    assert (
+        b"".join(message.get("body", b"") for message in messages if message["type"] == "http.response.body")
+        == b"content"
+    )
+
+
+@pytest.mark.anyio
+async def test_staticfiles_handles_files_disappearing_after_lookup(tmp_path: Path) -> None:
+    class VanishingStaticFiles(StaticFiles):
+        async def _open_file_response(self, path: str, scope: Scope, status_code: int = 200) -> Response | None:
+            return None
+
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    (statics_path / "index.html").write_text("index", encoding="utf-8")
+    (statics_path / "404.html").write_text("not found", encoding="utf-8")
+    app = VanishingStaticFiles(directory=statics_path, html=True, check_dir=False)
+    scope: Scope = {"type": "http", "method": "GET", "path": "/"}
+
+    with pytest.raises(HTTPException) as exc_info:
+        await app.get_response("", scope)
+    assert exc_info.value.status_code == 404
+
+    with pytest.raises(HTTPException) as exc_info:
+        await app.get_response("missing.txt", scope)
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_open_file_response_handles_open_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    app = StaticFiles(directory=tmp_path, check_dir=False)
+    scope: Scope = {"type": "http", "method": "GET", "path": "/file.txt"}
+
+    def raise_permission_error(path: str) -> None:
+        raise PermissionError
+
+    monkeypatch.setattr(app, "_open_path", raise_permission_error)
+    with pytest.raises(HTTPException) as permission_exc:
+        await app._open_file_response("file.txt", scope)
+    assert permission_exc.value.status_code == 401
+
+    def raise_name_too_long(path: str) -> None:
+        raise OSError(errno.ENAMETOOLONG, "Name too long")
+
+    monkeypatch.setattr(app, "_open_path", raise_name_too_long)
+    assert await app._open_file_response("file.txt", scope) is None
+
+    error = OSError(errno.EIO, "I/O error")
+
+    def raise_io_error(path: str) -> None:
+        raise error
+
+    monkeypatch.setattr(app, "_open_path", raise_io_error)
+    with pytest.raises(OSError) as os_exc:
+        await app._open_file_response("file.txt", scope)
+    assert os_exc.value is error
+
+
+@pytest.mark.anyio
+async def test_open_file_response_closes_file_on_response_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    file_path = tmp_path / "file.txt"
+    file_path.write_text("content", encoding="utf-8")
+    file = file_path.open("rb")
+    app = StaticFiles(directory=tmp_path, check_dir=False)
+    scope: Scope = {"type": "http", "method": "GET", "path": "/file.txt"}
+    error = RuntimeError("response construction failed")
+
+    monkeypatch.setattr(app, "_open_path", lambda path: (str(file_path), os.fstat(file.fileno()), file))
+
+    def raise_response_error(full_path: Any, stat_result: os.stat_result, scope: Scope) -> Response:
+        raise error
+
+    monkeypatch.setattr(app, "file_response", raise_response_error)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await app._open_file_response("file.txt", scope)
+    assert exc_info.value is error
+    assert file.closed
+
+
+def test_open_path_rejects_invalid_paths_and_expected_open_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    statics_path = tmp_path / "static"
+    statics_path.mkdir()
+    app = StaticFiles(directory=statics_path)
+
+    assert app._open_path("/file.txt") is None
+    assert app._open_path("../file.txt") is None
+
+    app.follow_symlink = True
+    assert app._open_path("../file.txt") is None
+    assert app._open_path("missing.txt") is None
+
+    app.follow_symlink = False
+    error = OSError(errno.EIO, "I/O error")
+
+    def raise_io_error(directory: str, path: str, directory_stat: os.stat_result) -> BinaryIO:
+        raise error
+
+    monkeypatch.setattr(app, "_open_path_without_symlinks", raise_io_error)
+    with pytest.raises(OSError) as exc_info:
+        app._open_path("file.txt")
+    assert exc_info.value is error
+
+
+def test_open_path_closes_file_on_stat_error_or_non_regular_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    file_path = tmp_path / "file.txt"
+    file_path.write_text("content", encoding="utf-8")
+    app = StaticFiles(directory=tmp_path)
+
+    file = file_path.open("rb")
+    with monkeypatch.context() as patch:
+        patch.setattr(app, "_open_path_without_symlinks", lambda directory, path, directory_stat: file)
+        patch.setattr(os, "fstat", lambda fd: (_ for _ in ()).throw(OSError(errno.EIO, "I/O error")))
+        with pytest.raises(OSError):
+            app._open_path("file.txt")
+    assert file.closed
+
+    file = file_path.open("rb")
+    with monkeypatch.context() as patch:
+        patch.setattr(app, "_open_path_without_symlinks", lambda directory, path, directory_stat: file)
+        patch.setattr(stat, "S_ISREG", lambda mode: False)
+        assert app._open_path("file.txt") is None
+    assert file.closed
+
+
+def test_open_path_without_symlinks_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    file_path = tmp_path / "file.txt"
+    file_path.write_text("content", encoding="utf-8")
+    directory_stat = os.stat(tmp_path)
+
+    monkeypatch.setattr(os, "supports_dir_fd", set())
+    file = StaticFiles._open_path_without_symlinks(tmp_path, "file.txt", directory_stat)
+    assert file.read() == b"content"
+    file.close()
+
+    outside_path = tmp_path.parent / "outside.txt"
+    outside_path.write_text("outside", encoding="utf-8")
+    link_path = tmp_path / "link.txt"
+    link_path.symlink_to(outside_path)
+    with pytest.raises(OSError) as exc_info:
+        StaticFiles._open_path_without_symlinks(tmp_path, "link.txt", directory_stat)
+    assert exc_info.value.errno == errno.ELOOP
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "fstat", lambda fd: (_ for _ in ()).throw(OSError(errno.EIO, "I/O error")))
+        with pytest.raises(OSError):
+            StaticFiles._open_path_without_symlinks(tmp_path, "file.txt", directory_stat)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os.path, "samestat", lambda stat1, stat2: False)
+        with pytest.raises(OSError) as exc_info:
+            StaticFiles._open_path_without_symlinks(tmp_path, "file.txt")
+    assert exc_info.value.errno == errno.ELOOP
+
+    with pytest.raises(OSError) as exc_info:
+        StaticFiles._open_path_without_symlinks(tmp_path, "file.txt", os.stat(tmp_path.parent))
+    assert exc_info.value.errno == errno.ELOOP
+
+
+def test_open_path_without_symlinks_rejects_empty_and_parent_paths(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        StaticFiles._open_path_without_symlinks(tmp_path, "")
+    with pytest.raises(FileNotFoundError):
+        StaticFiles._open_path_without_symlinks(tmp_path, "../file.txt")
+
+
+@pytest.mark.skipif(
+    not getattr(os, "O_NOFOLLOW", 0) or not getattr(os, "O_DIRECTORY", 0) or os.open not in os.supports_dir_fd,
+    reason="requires descriptor-relative file opening",
+)
+def test_open_path_without_symlinks_closes_descriptor_if_fdopen_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    file_path = tmp_path / "file.txt"
+    file_path.write_text("content", encoding="utf-8")
+    opened_fds: list[int] = []
+
+    def fail_fdopen(fd: int, mode: str) -> BinaryIO:
+        opened_fds.append(fd)
+        raise OSError(errno.EIO, "I/O error")
+
+    monkeypatch.setattr(os, "fdopen", fail_fdopen)
+    with pytest.raises(OSError):
+        StaticFiles._open_path_without_symlinks(tmp_path, "file.txt")
+
+    with pytest.raises(OSError) as exc_info:
+        os.fstat(opened_fds[0])
+    assert exc_info.value.errno == errno.EBADF
 
 
 def test_staticfiles_rejects_absolute_paths(tmp_path: Path) -> None:

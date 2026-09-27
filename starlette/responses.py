@@ -13,7 +13,7 @@ from email.utils import format_datetime, formatdate
 from functools import partial
 from mimetypes import guess_type
 from secrets import token_hex
-from typing import Any, Literal
+from typing import Any, BinaryIO, Literal
 from urllib.parse import quote
 
 import anyio
@@ -328,6 +328,7 @@ class FileResponse(Response):
                 content_disposition = f'{content_disposition_type}; filename="{self.filename}"'
             self.headers.setdefault("content-disposition", content_disposition)
         self.stat_result = stat_result
+        self._file: BinaryIO | None = None
         if stat_result is not None:
             self.set_stat_headers(stat_result)
 
@@ -344,67 +345,77 @@ class FileResponse(Response):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         scope_type = scope["type"]
         send_header_only = scope_type == "http" and scope["method"].upper() == "HEAD"
-        send_pathsend = scope_type == "http" and "http.response.pathsend" in scope.get("extensions", {})
+        send_pathsend = (
+            scope_type == "http" and self._file is None and "http.response.pathsend" in scope.get("extensions", {})
+        )
         if scope_type == "websocket":
             send = self._wrap_websocket_denial_send(send)
 
-        if self.stat_result is None:
-            try:
-                stat_result = await anyio.to_thread.run_sync(os.stat, self.path)
-                self.set_stat_headers(stat_result)
-            except FileNotFoundError:
-                raise RuntimeError(f"File at path {self.path} does not exist.")
+        try:
+            if self.stat_result is None:
+                try:
+                    stat_result = await anyio.to_thread.run_sync(os.stat, self.path)
+                    self.set_stat_headers(stat_result)
+                except FileNotFoundError:
+                    raise RuntimeError(f"File at path {self.path} does not exist.")
+                else:
+                    mode = stat_result.st_mode
+                    if not stat.S_ISREG(mode):
+                        raise RuntimeError(f"File at path {self.path} is not a file.")
             else:
-                mode = stat_result.st_mode
-                if not stat.S_ISREG(mode):
-                    raise RuntimeError(f"File at path {self.path} is not a file.")
-        else:
-            stat_result = self.stat_result
+                stat_result = self.stat_result
 
-        headers = Headers(scope=scope)
-        http_range = headers.get("range")
-        http_if_range = headers.get("if-range")
+            headers = Headers(scope=scope)
+            http_range = headers.get("range")
+            http_if_range = headers.get("if-range")
 
-        if (
-            self.status_code != 200
-            or http_range is None
-            or (http_if_range is not None and not self._should_use_range(http_if_range))
-        ):
-            send_file = partial(self._handle_simple, send, send_header_only, send_pathsend)
-        else:
-            try:
-                ranges = self._parse_range_header(http_range, stat_result.st_size)
-            except MalformedRangeHeader as exc:
-                return await PlainTextResponse(exc.content, status_code=400)(scope, receive, send)
-            except RangeNotSatisfiable as exc:
-                response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
-                return await response(scope, receive, send)
-
-            if len(ranges) == 0:
+            if (
+                self.status_code != 200
+                or http_range is None
+                or (http_if_range is not None and not self._should_use_range(http_if_range))
+            ):
                 send_file = partial(self._handle_simple, send, send_header_only, send_pathsend)
-            elif len(ranges) == 1:
-                start, end = ranges[0]
-                send_file = partial(self._handle_single_range, send, start, end, stat_result.st_size, send_header_only)
-                send_pathsend = False
             else:
-                send_file = partial(self._handle_multiple_ranges, send, ranges, stat_result.st_size, send_header_only)
-                send_pathsend = False
+                try:
+                    ranges = self._parse_range_header(http_range, stat_result.st_size)
+                except MalformedRangeHeader as exc:
+                    return await PlainTextResponse(exc.content, status_code=400)(scope, receive, send)
+                except RangeNotSatisfiable as exc:
+                    response = PlainTextResponse(status_code=416, headers={"Content-Range": f"bytes */{exc.max_size}"})
+                    return await response(scope, receive, send)
 
-        spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
-        if scope_type != "http" or send_header_only or send_pathsend or spec_version >= (2, 4):
-            await send_file()
-        else:
-            async with create_collapsing_task_group() as task_group:
+                if len(ranges) == 0:
+                    send_file = partial(self._handle_simple, send, send_header_only, send_pathsend)
+                elif len(ranges) == 1:
+                    start, end = ranges[0]
+                    send_file = partial(
+                        self._handle_single_range, send, start, end, stat_result.st_size, send_header_only
+                    )
+                    send_pathsend = False
+                else:
+                    send_file = partial(
+                        self._handle_multiple_ranges, send, ranges, stat_result.st_size, send_header_only
+                    )
+                    send_pathsend = False
 
-                async def stream_file() -> None:
-                    await send_file()
-                    task_group.cancel_scope.cancel()
+            spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
+            if scope_type != "http" or send_header_only or send_pathsend or spec_version >= (2, 4):
+                await send_file()
+            else:
+                async with create_collapsing_task_group() as task_group:
 
-                task_group.start_soon(stream_file)
-                while True:
-                    if (await receive())["type"] == "http.disconnect":
+                    async def stream_file() -> None:
+                        await send_file()
                         task_group.cancel_scope.cancel()
-                        break
+
+                    task_group.start_soon(stream_file)
+                    while True:
+                        if (await receive())["type"] == "http.disconnect":
+                            task_group.cancel_scope.cancel()
+                            break
+        finally:
+            if self._file is not None:
+                self._file.close()
 
         if self.background is not None:
             await self.background()
@@ -412,6 +423,10 @@ class FileResponse(Response):
     # TODO: Remove this wrapper once minimum AnyIO includes https://github.com/agronholm/anyio/pull/1314.
     @asynccontextmanager
     async def _open_file(self) -> AsyncIterator[anyio.AsyncFile[bytes]]:
+        if self._file is not None:
+            yield anyio.wrap_file(self._file)
+            return
+
         file = await anyio.open_file(self.path, mode="rb")
         try:
             yield file

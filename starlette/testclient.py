@@ -5,13 +5,12 @@ import inspect
 import io
 import json
 import math
-import sys
 import warnings
 from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, Sequence
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from types import GeneratorType
-from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeGuard, cast
+from typing import TYPE_CHECKING, Any, Literal, Self, TypedDict, TypeGuard, cast
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -23,11 +22,6 @@ from starlette._utils import is_async_callable
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
-
-if sys.version_info >= (3, 11):  # pragma: no cover
-    from typing import Self
-else:  # pragma: no cover
-    from typing_extensions import Self
 
 if TYPE_CHECKING:
     import httpx2 as httpx
@@ -278,12 +272,15 @@ class _TestClientTransport(httpx.BaseTransport):
             "headers": headers,
             "client": self.client,
             "server": [host, port],
-            "extensions": {"http.response.debug": {}},
+            "extensions": {"http.response.debug": {}, "http.response.trailers": {}},
             "state": self.app_state.copy(),
         }
 
         request_complete = False
         response_started = False
+        body_complete = False
+        trailers_expected = False
+        trailers: list[tuple[bytes, bytes]] = []
         response_complete: anyio.Event
         raw_kwargs: dict[str, Any] = {"stream": io.BytesIO()}
         debug_info: dict[str, Any] | None = None
@@ -317,22 +314,33 @@ class _TestClientTransport(httpx.BaseTransport):
             return {"type": "http.request", "body": body_bytes}
 
         async def send(message: Message) -> None:
-            nonlocal raw_kwargs, response_started, debug_info
+            nonlocal raw_kwargs, response_started, debug_info, body_complete, trailers_expected
 
             if message["type"] == "http.response.start":
                 assert not response_started, 'Received multiple "http.response.start" messages.'
                 raw_kwargs["status_code"] = message["status"]
                 raw_kwargs["headers"] = [(key.decode(), value.decode()) for key, value in message.get("headers", [])]
                 response_started = True
+                trailers_expected = message.get("trailers", False)
             elif message["type"] == "http.response.body":
                 assert response_started, 'Received "http.response.body" without "http.response.start".'
                 assert not response_complete.is_set(), 'Received "http.response.body" after response completed.'
+                assert not body_complete, 'Received "http.response.body" after body completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
                 if request.method != "HEAD":
                     raw_kwargs["stream"].write(body)
                 if not more_body:
                     raw_kwargs["stream"].seek(0)
+                    body_complete = True
+                    if not trailers_expected:
+                        response_complete.set()
+            elif message["type"] == "http.response.trailers":
+                assert trailers_expected, 'Received "http.response.trailers" without declaring trailers.'
+                assert body_complete, 'Received "http.response.trailers" before body completed.'
+                assert not response_complete.is_set(), 'Received "http.response.trailers" after response completed.'
+                trailers.extend(message.get("headers", []))
+                if not message.get("more_trailers", False):
                     response_complete.set()
             elif message["type"] == "http.response.debug":
                 debug_info = message["info"]
@@ -357,6 +365,8 @@ class _TestClientTransport(httpx.BaseTransport):
         raw_kwargs["stream"] = httpx.ByteStream(raw_kwargs["stream"].read())
 
         response = httpx.Response(**raw_kwargs, request=request)
+        if trailers_expected:
+            response.extensions["http.response.trailers"] = trailers
         if debug_info is not None:
             response.extensions["http.response.debug"] = debug_info
             if "template" in debug_info:

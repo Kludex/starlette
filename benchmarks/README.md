@@ -115,6 +115,20 @@ Run it locally with:
 uv run pytest benchmarks/multipart_benchmark.py --codspeed
 ```
 
+On Linux with glibc, you can use the same allocator setting as CI:
+
+```console
+GLIBC_TUNABLES=glibc.malloc.mmap_threshold=32768 PYTHONHASHSEED=0 uv run pytest benchmarks/multipart_benchmark.py --codspeed
+```
+
+glibc normally adjusts the
+[`mmap` threshold](https://sourceware.org/glibc/manual/2.39/html_node/Memory-Allocation-Tunables.html)
+based on earlier allocations. This can make an upload buffer grow in place
+in one run and require a copy in another. CI fixes the threshold at 32 KiB,
+below the 64 KiB upload chunks, to reduce this variation. Allocation, parsing,
+and cleanup stay inside the measured region. Changing this setting shifts
+the simulation baseline, so compare runs that use the same setting.
+
 ## Routing
 
 The routing benchmark exercises `Router` dispatch through its ASGI interface

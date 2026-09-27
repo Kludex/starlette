@@ -405,6 +405,7 @@ class FileResponse(Response):
         if self.background is not None:
             await self.background()
 
+    # TODO: Remove this wrapper once minimum AnyIO includes https://github.com/agronholm/anyio/pull/1314.
     @asynccontextmanager
     async def _open_file(self) -> AsyncIterator[anyio.AsyncFile[bytes]]:
         file = await anyio.open_file(self.path, mode="rb")

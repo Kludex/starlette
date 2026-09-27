@@ -201,10 +201,11 @@ class WebSocketTestSession:
 class _TestClientResponseStream(httpx.SyncByteStream):
     def __init__(
         self,
-        body_rx: MemoryObjectReceiveStream[bytes],
+        body_rx: MemoryObjectReceiveStream[tuple[bytes, bool]],
         portal: anyio.abc.BlockingPortal,
         app_task: Future[None],
         cancel_scope: anyio.CancelScope,
+        response_complete: anyio.Event,
         exit_stack: contextlib.ExitStack,
         raise_server_exceptions: bool,
         include_body: bool,
@@ -213,14 +214,21 @@ class _TestClientResponseStream(httpx.SyncByteStream):
         self._portal = portal
         self._app_task = app_task
         self._cancel_scope = cancel_scope
+        self._response_complete = response_complete
         self._exit_stack = exit_stack
         self._raise_server_exceptions = raise_server_exceptions
         self._include_body = include_body
 
     def __iter__(self) -> Generator[bytes, None, None]:
+        async def receive() -> bytes:
+            body, complete = await self._body_rx.receive()
+            if complete:
+                self._response_complete.set()
+            return body
+
         while True:
             try:
-                body = self._portal.call(self._body_rx.receive)
+                body = self._portal.call(receive)
             except anyio.EndOfStream:
                 self._wait_for_app()
                 return
@@ -228,9 +236,13 @@ class _TestClientResponseStream(httpx.SyncByteStream):
                 yield body
 
     def close(self) -> None:
-        if not self._app_task.done():
-            self._portal.call(self._cancel_scope.cancel)
+        def cancel_if_incomplete() -> None:
+            if not self._response_complete.is_set():
+                self._cancel_scope.cancel()
+
         try:
+            if not self._app_task.done():
+                self._portal.call(cancel_if_incomplete)
             self._wait_for_app()
         finally:
             self._exit_stack.close()
@@ -374,11 +386,9 @@ class _TestClientTransport(httpx.BaseTransport):
                 assert not body_complete, 'Received "http.response.body" after body completed.'
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
-                await body_tx.send(bytes(body))
+                await body_tx.send((bytes(body), not more_body and not trailers_expected))
                 if not more_body:
                     body_complete = True
-                    if not trailers_expected:
-                        response_complete.set()
             elif message["type"] == "http.response.trailers":
                 assert trailers_expected, 'Received "http.response.trailers" without declaring trailers.'
                 assert body_complete, 'Received "http.response.trailers" before body completed.'
@@ -404,7 +414,7 @@ class _TestClientTransport(httpx.BaseTransport):
             portal = exit_stack.enter_context(self.portal_factory())
             response_available = portal.call(anyio.Event)
             response_complete = portal.call(anyio.Event)
-            body_tx, body_rx = portal.call(anyio.create_memory_object_stream[bytes], 0)
+            body_tx, body_rx = portal.call(anyio.create_memory_object_stream[tuple[bytes, bool]], 0)
             exit_stack.callback(body_tx.close)
             exit_stack.callback(body_rx.close)
             app_complete = threading.Event()
@@ -418,6 +428,7 @@ class _TestClientTransport(httpx.BaseTransport):
                 portal=portal,
                 app_task=app_task,
                 cancel_scope=cancel_scope,
+                response_complete=response_complete,
                 exit_stack=exit_stack,
                 raise_server_exceptions=self.raise_server_exceptions,
                 include_body=request.method != "HEAD",

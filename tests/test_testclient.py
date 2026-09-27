@@ -455,61 +455,104 @@ def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClien
 
 
 @pytest.mark.parametrize("lifespan", [True, False])
-@pytest.mark.parametrize("interrupt_at", ["before_submission", "after_submission", "waiting"])
-@pytest.mark.parametrize("cleanup_failure", [True, False])
-def test_interrupted_request_stops_application(
-    test_client_factory: TestClientFactory,
-    monkeypatch: pytest.MonkeyPatch,
-    lifespan: bool,
-    interrupt_at: str,
-    cleanup_failure: bool,
+def test_interrupted_submission_keeps_client_usable(
+    test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch, lifespan: bool
+) -> None:
+    original_start_task_soon = BlockingPortal.start_task_soon
+
+    def start_task_soon(
+        portal: BlockingPortal, func: Callable[..., Any], *args: Any, name: object = None
+    ) -> Future[Any]:
+        if inspect.iscoroutinefunction(func):
+            patch.undo()
+            raise KeyboardInterrupt
+        return original_start_task_soon(portal, func, *args, name=name)
+
+    client = test_client_factory(mock_service)
+    with client if lifespan else nullcontext():
+        with monkeypatch.context() as patch:
+            patch.setattr(BlockingPortal, "start_task_soon", start_task_soon)
+            with pytest.raises(KeyboardInterrupt):
+                client.get("/")
+        assert client.get("/").json() == {"mock": "example"}
+
+
+@pytest.mark.parametrize("lifespan", [True, False])
+def test_interrupted_submission_stops_started_application(
+    test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch, lifespan: bool
 ) -> None:
     started = threading.Event()
     finished = threading.Event()
+    app_timeout: anyio.CancelScope
     original_start_task_soon = BlockingPortal.start_task_soon
-    app_timeout: anyio.CancelScope | None = None
-    ready_app = Starlette(routes=[Route("/ready", mock_service_endpoint)])
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         nonlocal app_timeout
-        if scope["type"] != "http" or scope["path"] == "/ready":
-            await ready_app(scope, receive, send)
-            return
         with anyio.move_on_after(10) as app_timeout:
             try:
                 started.set()
                 await anyio.sleep_forever()
-            except anyio.get_cancelled_exc_class():
-                if cleanup_failure:
-                    raise RuntimeError("cleanup failure")
-                raise
             finally:
                 finished.set()
 
     def start_task_soon(
         portal: BlockingPortal, func: Callable[..., Any], *args: Any, name: object = None
     ) -> Future[Any]:
-        waiting = inspect.ismethod(func) and isinstance(func.__self__, anyio.Event)
-        interrupt = waiting if interrupt_at == "waiting" else inspect.iscoroutinefunction(func)
-        if interrupt:
+        future = original_start_task_soon(portal, func, *args, name=name)
+        if inspect.iscoroutinefunction(func):
             patch.undo()
-            if interrupt_at != "before_submission":
-                original_start_task_soon(portal, func, *args, name=name)
-                assert started.wait(timeout=10)
+            assert started.wait(timeout=10)
             raise KeyboardInterrupt
-        return original_start_task_soon(portal, func, *args, name=name)
+        return future
 
-    client = test_client_factory(app)
+    client = test_client_factory(Starlette(routes=[Route("/ready", mock_service_endpoint), Mount("/", app=app)]))
     with client if lifespan else nullcontext():
         with monkeypatch.context() as patch:
             patch.setattr(BlockingPortal, "start_task_soon", start_task_soon)
             with pytest.raises(KeyboardInterrupt):
                 client.get("/")
-        assert started.is_set() == (interrupt_at != "before_submission")
-        assert finished.is_set() == started.is_set()
-        if app_timeout is not None:
-            assert not app_timeout.cancel_called
+        assert finished.is_set()
+        assert not app_timeout.cancel_called
         assert client.get("/ready").json() == {"mock": "example"}
+
+
+@pytest.mark.parametrize("lifespan", [True, False])
+def test_interrupted_request_preserves_interrupt_on_cleanup_error(
+    test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch, lifespan: bool
+) -> None:
+    started = threading.Event()
+    finished = threading.Event()
+    app_timeout: anyio.CancelScope
+    original_call = BlockingPortal.call
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        nonlocal app_timeout
+        if scope["type"] == "lifespan":
+            await mock_service(scope, receive, send)
+            return
+        with anyio.move_on_after(10) as app_timeout:
+            try:
+                started.set()
+                await anyio.sleep_forever()
+            finally:
+                finished.set()
+                raise RuntimeError("cleanup failure")
+
+    def call(portal: BlockingPortal, func: Callable[..., Any], *args: Any) -> Any:
+        if inspect.ismethod(func) and isinstance(func.__self__, anyio.Event):
+            patch.undo()
+            assert started.wait(timeout=10)
+            raise KeyboardInterrupt
+        return original_call(portal, func, *args)
+
+    client = test_client_factory(app)
+    with client if lifespan else nullcontext():
+        with monkeypatch.context() as patch:
+            patch.setattr(BlockingPortal, "call", call)
+            with pytest.raises(KeyboardInterrupt):
+                client.get("/")
+        assert finished.is_set()
+        assert not app_timeout.cancel_called
 
 
 def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:

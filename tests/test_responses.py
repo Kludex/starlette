@@ -373,7 +373,7 @@ def test_file_response_ignores_weak_if_range(tmp_path: Path, test_client_factory
     path = tmp_path / "hello.txt"
     path.write_bytes(content)
     etag = 'W/"a_weak_etag"'
-    app = FileResponse(path=path, headers={"etag": etag, "last-modified": etag})
+    app = FileResponse(path=path, headers={"etag": etag})
     client = test_client_factory(app)
 
     response = client.get("/", headers={"range": "bytes=0-4", "if-range": etag})

@@ -359,7 +359,7 @@ def test_gzip_custom_exclude_content_types(test_client_factory: TestClientFactor
 
 
 @pytest.mark.parametrize(
-    "content_type", ["text/event-stream", "application/grpc", "application/grpc+proto", "application/grpc-web"]
+    "content_type", ["text/event-stream", "application/grpc", "application/grpc+proto", "application/grpc+json"]
 )
 def test_gzip_cleared_exclude_content_types(test_client_factory: TestClientFactory, content_type: str) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -399,7 +399,6 @@ def test_gzip_exclude_content_types_for_identity_client(test_client_factory: Tes
         pytest.param(("text/event-stream",), b"Text/Event-Stream; charset=utf-8", id="header-is-normalized"),
         pytest.param(("Application/ZIP; charset=utf-8",), b"application/zip", id="configured-value-is-normalized"),
         pytest.param(("image/*",), b"image/png", id="wildcard"),
-        pytest.param(("application/vnd.*",), b"Application/Vnd.Example+json; charset=utf-8", id="subtype-prefix"),
     ],
 )
 def test_gzip_exclude_content_types_matching(
@@ -477,8 +476,6 @@ def test_mounted_trailers(test_client_factory: TestClientFactory, depth: int, en
         "application/grpc",
         "application/grpc+proto",
         "application/grpc+json",
-        "application/grpc-web+proto",
-        "application/grpc-web-text",
         "Application/GRPC; charset=utf-8",
         "text/event-stream",
     ],

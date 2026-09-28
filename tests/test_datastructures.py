@@ -132,6 +132,12 @@ def test_url_from_scope() -> None:
     assert u == "/path/to/somewhere"
     assert repr(u) == "URL('/path/to/somewhere')"
 
+    # Path starting with "//" must not become an authority when Host/server are absent (#3579)
+    u = URL(scope={"path": "//evil.example/x", "query_string": b"a=1", "headers": [], "server": None})
+    assert u == "/%2F/evil.example/x?a=1"
+    assert u.netloc == ""
+    assert u.path == "/%2F/evil.example/x"
+
     u = URL(
         scope={
             "scheme": "https",

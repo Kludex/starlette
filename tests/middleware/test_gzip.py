@@ -476,6 +476,7 @@ def test_mounted_trailers(test_client_factory: TestClientFactory, depth: int, en
         "application/grpc",
         "application/grpc+proto",
         "application/grpc+json",
+        "application/grpc+thrift",
         "Application/GRPC; charset=utf-8",
         "text/event-stream",
     ],

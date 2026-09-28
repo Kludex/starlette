@@ -12,8 +12,6 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 # TODO(v2): We should rename `DEFAULT_EXCLUDED_CONTENT_TYPES` to `DEFAULT_EXCLUDE_CONTENT_TYPES`.
 DEFAULT_EXCLUDED_CONTENT_TYPES = (
     "application/grpc",
-    "application/grpc+json",
-    "application/grpc+proto",
     "application/gzip",
     "application/x-gzip",
     "application/zip",
@@ -116,6 +114,8 @@ class IdentityResponder:
             self.partial_response = message["status"] == 206
             media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
             media_types = {media_type, media_type.partition("/")[0] + "/*"}
+            if media_type.startswith("application/grpc+"):
+                media_types.add("application/grpc")
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
         elif message_type == "http.response.body" and (
             self.content_encoding_set or self.partial_response or self.content_type_is_excluded

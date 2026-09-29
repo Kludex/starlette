@@ -3,6 +3,7 @@ import typing
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
+
 def test_url_with_double_slash_path_without_netloc_stays_path_relative() -> None:
     scope: dict[str, typing.Any] = {
         "type": "http",

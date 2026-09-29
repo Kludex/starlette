@@ -18,6 +18,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 class OpenTelemetryMiddleware:
     """Create OpenTelemetry server spans for incoming HTTP requests.
 
+    This middleware is experimental. Its API and emitted telemetry may change in minor
+    releases without a deprecation period.
+
     Args:
         app: The ASGI application to wrap.
         excluded_urls: Regular expressions matched against the full request URL.

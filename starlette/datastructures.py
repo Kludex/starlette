@@ -59,12 +59,13 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                # Without a netloc the path is the whole URL, so keep it from being parsed as a
+                # scheme or authority (which would make a redirect to it cross-origin).
                 if path.startswith("//"):
-                    # With no netloc to anchor it, a leading "//" would otherwise be
-                    # parsed as an authority by urlsplit() (and by browsers resolving
-                    # a Location header built from this URL), turning a same-origin
-                    # path into what looks like a scheme-relative URL to another host.
                     path = "%2F" + path[1:]
+                elif path and not path.startswith("/"):
+                    # same leading slash urlunsplit() adds when a netloc is present
+                    path = "/" + path
                 url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'

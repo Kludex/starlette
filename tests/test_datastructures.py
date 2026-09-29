@@ -275,41 +275,29 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.query == "a=b"
 
 
-def test_url_from_scope_with_no_origin_and_authority_in_path() -> None:
-    """With neither a Host header nor a server tuple, there is no netloc to anchor
-    the path. A "//"-prefixed path must not be left free to parse as an authority,
-    or a Location header built from it becomes a scheme-relative open redirect."""
-    u = URL(
-        scope={
-            "scheme": "http",
-            "server": None,
-            "path": "//evil.example/x",
-            "query_string": b"a=1",
-            "headers": [],
-        }
-    )
+@pytest.mark.parametrize(
+    "path, expected_url",
+    [
+        pytest.param("//evil.example/x", "%2F/evil.example/x?a=1", id="scheme-relative"),
+        pytest.param("http://evil.example/x", "/http://evil.example/x?a=1", id="absolute"),
+        pytest.param("user:pass@evil.example", "/user:pass@evil.example?a=1", id="userinfo"),
+        pytest.param("@evil.example", "/@evil.example?a=1", id="at-sign"),
+    ],
+)
+def test_url_from_scope_with_no_origin_and_authority_in_path(path: str, expected_url: str) -> None:
+    """With neither a Host header nor a server tuple there is no netloc to anchor the
+    path, so it must never parse as a scheme or an authority."""
+    u = URL(scope={"scheme": "http", "server": None, "path": path, "query_string": b"a=1", "headers": []})
+    assert str(u) == expected_url
+    assert u.scheme == ""
     assert u.netloc == ""
-    assert u.path != "//evil.example/x"
-    assert not str(u).startswith("//")
 
-    # a real Host header or server tuple should still resolve netloc normally,
-    # and the path should round-trip unmangled in that case
-    u_with_host = URL(
-        scope={
-            "scheme": "http",
-            "server": None,
-            "path": "//evil.example/x",
-            "query_string": b"a=1",
-            "headers": [(b"host", b"victim.example")],
-        }
-    )
-    assert u_with_host.netloc == "victim.example"
-    assert u_with_host.path == "//evil.example/x"
 
-    # a plain path with no "//" prefix must be unaffected by the no-origin branch
-    u_plain = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
-    assert u_plain.path == "/path/to/somewhere"
-    assert str(u_plain) == "/path/to/somewhere?abc=123"
+def test_url_from_scope_with_no_origin_keeps_plain_paths() -> None:
+    u = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
+    assert u.path == "/path/to/somewhere"
+    assert str(u) == "/path/to/somewhere?abc=123"
+    assert str(URL(scope={"path": "", "query_string": b"", "headers": []})) == ""
 
 
 def test_headers() -> None:

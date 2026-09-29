@@ -132,6 +132,11 @@ def test_url_from_scope() -> None:
     assert u == "/path/to/somewhere"
     assert repr(u) == "URL('/path/to/somewhere')"
 
+    u = URL(scope={"path": "//evil.example/x", "query_string": b"a=1", "headers": []})
+    assert u.netloc == ""
+    assert u.path == "//evil.example/x"
+    assert u.query == "a=1"
+
     u = URL(
         scope={
             "scheme": "https",

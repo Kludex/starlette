@@ -1400,6 +1400,33 @@ async def test_trailers() -> None:
     ]
 
 
+@pytest.mark.anyio
+async def test_pathsend_trailers() -> None:
+    messages: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
+        await send({"type": "http.response.pathsend", "path": "/file.txt"})
+        await send({"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]})
+
+    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b""}  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    with anyio.fail_after(1):
+        await BaseHTTPMiddleware(app, dispatch=dispatch)({"type": "http"}, receive, send)
+    assert messages == [
+        {"type": "http.response.start", "status": 200, "headers": [], "trailers": True},
+        {"type": "http.response.pathsend", "path": "/file.txt"},
+        {"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]},
+    ]
+
+
 @pytest.mark.parametrize("consume", [True, False])
 def test_replace_trailer_response(test_client_factory: TestClientFactory, consume: bool) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:

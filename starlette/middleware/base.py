@@ -141,13 +141,16 @@ class BaseHTTPMiddleware:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
-                body_complete = message["type"] == "http.response.pathsend" or (
-                    message["type"] == "http.response.body" and not message.get("more_body", False)
-                )
-                trailers_complete = message["type"] == "http.response.trailers" and not message.get(
-                    "more_trailers", False
-                )
-                if (body_complete and not trailers_expected) or trailers_complete:
+                # With trailers declared, the response ends at the final trailers message, not the body.
+                if trailers_expected:
+                    response_complete = message["type"] == "http.response.trailers" and not message.get(
+                        "more_trailers", False
+                    )
+                else:
+                    response_complete = message["type"] == "http.response.pathsend" or (
+                        message["type"] == "http.response.body" and not message.get("more_body", False)
+                    )
+                if response_complete:
                     await response_sent.wait()
 
             async def coro() -> None:
@@ -248,14 +251,10 @@ class _StreamingResponse(Response):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.info is not None:
             await send({"type": "http.response.debug", "info": self.info})
-        await send(
-            {
-                "type": "http.response.start",
-                "status": self.status_code,
-                "headers": self.raw_headers,
-                **({"trailers": True} if self.trailers is not None else {}),
-            }
-        )
+        message: Message = {"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers}
+        if self.trailers is not None:
+            message["trailers"] = True
+        await send(message)
 
         should_close_body = True
         async for chunk in self.body_iterator:

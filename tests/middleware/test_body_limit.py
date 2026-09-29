@@ -10,7 +10,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.body_limit import MAX_BODY_SIZE_SCOPE_KEY, RequestBodyLimitMiddleware
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Mount, Route, Router
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from tests.types import TestClientFactory
@@ -51,6 +51,35 @@ def test_content_length_is_checked_without_reading_body(
     response = client.post("/", content=b"123456")
     assert response.status_code == 413
     assert response.text == "Content Too Large"
+
+
+@pytest.mark.parametrize("handler_key", [HTTPException, 413])
+def test_custom_413_handler_is_preserved_when_content_length_exceeds_limit(
+    test_client_factory: TestClientFactory,
+    handler_key: type[Exception] | int,
+) -> None:
+    async def endpoint(request: Request) -> PlainTextResponse:
+        await request.body()
+        return PlainTextResponse("ok")  # pragma: no cover
+
+    async def handler(request: Request, exc: Exception) -> JSONResponse:
+        assert isinstance(exc, HTTPException)
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+    app = Starlette(
+        routes=[Route("/", endpoint, methods=["POST"])],
+        exception_handlers={handler_key: handler},
+        max_body_size=5,
+    )
+    client = test_client_factory(app)
+
+    fixed = client.post("/", content=b"123456")
+    streamed = client.post("/", content=(chunk for chunk in [b"123", b"456"]))
+
+    for response in (fixed, streamed):
+        assert response.status_code == 413
+        assert response.headers["content-type"] == "application/json"
+        assert response.json() == {"detail": "Content Too Large"}
 
 
 def test_route_override_applies_when_middleware_defers_response_start(test_client_factory: TestClientFactory) -> None:

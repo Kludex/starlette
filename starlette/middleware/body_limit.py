@@ -115,7 +115,12 @@ class RequestBodyLimitResponder:
     async def send_with_limit(self, message: Message) -> None:
         if message["type"] == "http.response.start":
             self.response_started = True
-            if self.content_length is not None and self.content_length > self.max_body_size:
+            # Keep a 413 the app already produced, such as a custom exception handler.
+            if (
+                self.content_length is not None
+                and self.content_length > self.max_body_size
+                and message.get("status") != 413
+            ):
                 response = PlainTextResponse("Content Too Large", status_code=413)
                 await response(self.scope, self.receive, self.send)
                 raise _RequestBodyLimitResponseSent

@@ -293,6 +293,30 @@ def test_url_from_scope_with_no_origin_and_authority_in_path(path: str, expected
     assert u.netloc == ""
 
 
+@pytest.mark.parametrize(
+    "path, expected_path",
+    [
+        pytest.param("//evil.example/x", "//evil.example/x", id="scheme-relative"),
+        pytest.param("http://evil.example/x", "/http://evil.example/x", id="absolute"),
+        pytest.param("user:pass@evil.example", "/user:pass@evil.example", id="userinfo"),
+        pytest.param("@evil.example", "/@evil.example", id="at-sign"),
+    ],
+)
+def test_url_from_scope_with_host_header_and_no_server(path: str, expected_path: str) -> None:
+    """A Host header alone anchors the netloc, so these paths are unaffected by the no-origin handling."""
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": None,
+            "path": path,
+            "query_string": b"a=1",
+            "headers": [(b"host", b"victim.example")],
+        }
+    )
+    assert u.netloc == "victim.example"
+    assert u.path == expected_path
+
+
 def test_url_from_scope_with_no_origin_keeps_plain_paths() -> None:
     u = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
     assert u.path == "/path/to/somewhere"

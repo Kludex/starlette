@@ -5,13 +5,12 @@ import inspect
 import io
 import json
 import math
-import sys
 import warnings
 from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, Sequence
 from concurrent.futures import Future
 from contextlib import AbstractContextManager
 from types import GeneratorType
-from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeGuard, cast
+from typing import TYPE_CHECKING, Any, Literal, Self, TypedDict, TypeGuard, cast
 from urllib.parse import unquote, urljoin
 
 import anyio
@@ -23,11 +22,6 @@ from starlette._utils import is_async_callable
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
-
-if sys.version_info >= (3, 11):  # pragma: no cover
-    from typing import Self
-else:  # pragma: no cover
-    from typing_extensions import Self
 
 if TYPE_CHECKING:
     import httpx2 as httpx

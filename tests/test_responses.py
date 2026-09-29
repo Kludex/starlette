@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
+import re
 import sys
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import anyio
+import httpx2 as httpx
 import pytest
 from python_multipart import MultipartParser
 
@@ -363,6 +366,21 @@ def test_file_response_with_range_header(tmp_path: Path, test_client_factory: Te
     assert response.headers["content-range"] == f"bytes 0-4/{len(content)}"
 
 
+def test_file_response_ignores_weak_if_range(tmp_path: Path, test_client_factory: TestClientFactory) -> None:
+    content = b"file content"
+    path = tmp_path / "hello.txt"
+    path.write_bytes(content)
+    etag = 'W/"a_weak_etag"'
+    app = FileResponse(path=path, headers={"etag": etag})
+    client = test_client_factory(app)
+
+    response = client.get("/", headers={"range": "bytes=0-4", "if-range": etag})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.content == content
+    assert "content-range" not in response.headers
+
+
 @pytest.mark.anyio
 async def test_file_response_with_pathsend(tmpdir: Path) -> None:
     path = tmpdir / "xyz"
@@ -395,9 +413,134 @@ async def test_file_response_with_pathsend(tmpdir: Path) -> None:
     )
 
 
+@pytest.fixture
+def file_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, list[anyio.AsyncFile[bytes]]]:
+    path = tmp_path / "file.bin"
+    path.write_bytes(b"x" * (8 * FileResponse.chunk_size))
+    files: list[anyio.AsyncFile[bytes]] = []
+    open_file = anyio.open_file
+
+    async def track_open_file(path: str | os.PathLike[str], mode: Literal["rb"]) -> anyio.AsyncFile[bytes]:
+        file = await open_file(path, mode=mode)
+        files.append(file)
+        return file
+
+    monkeypatch.setattr(anyio, "open_file", track_open_file)
+    return path, files
+
+
+@pytest.fixture(params=[None, b"bytes=0-", b"bytes=0-131071,196608-524287"])
+def scope(request: pytest.FixtureRequest) -> Scope:
+    return {
+        "type": "http",
+        "method": "GET",
+        "headers": [] if request.param is None else [(b"range", request.param)],
+        "extensions": {"http.response.pathsend": {}} if request.param is not None else {},
+    }
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("spec_version", [None, "2.3"])
+async def test_file_response_stops_on_disconnect(
+    file_path: tuple[Path, list[anyio.AsyncFile[bytes]]], scope: Scope, spec_version: str | None
+) -> None:
+    path, files = file_path
+    if spec_version is not None:
+        scope["asgi"] = {"spec_version": spec_version}
+    disconnected = anyio.Event()
+    received_request = False
+    submitted = 0
+    background_ran = False
+
+    async def receive() -> Message:
+        nonlocal received_request
+        if not received_request:
+            received_request = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        await disconnected.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        nonlocal submitted
+        if message["type"] == "http.response.body":
+            submitted += len(message["body"])
+            if submitted >= FileResponse.chunk_size:
+                disconnected.set()
+                await anyio.sleep_forever()
+
+    async def cleanup() -> None:
+        nonlocal background_ran
+        assert len(files) == 1
+        assert files[0].closed
+        await anyio.sleep(0)
+        background_ran = True
+
+    with anyio.fail_after(5):
+        await FileResponse(path, background=BackgroundTask(cleanup))(scope, receive, send)
+
+    assert disconnected.is_set()
+    assert background_ran
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("spec_version", ["2.3", "2.4"])
+async def test_file_response_closes_on_cancellation(
+    file_path: tuple[Path, list[anyio.AsyncFile[bytes]]], scope: Scope, spec_version: str
+) -> None:
+    path, files = file_path
+    scope["asgi"] = {"spec_version": spec_version}
+
+    async def receive() -> Message:
+        await anyio.sleep_forever()
+        pytest.fail("The disconnect listener should be cancelled")  # pragma: no cover - sleep never returns
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            cancel_scope.cancel()
+            await anyio.sleep_forever()
+
+    async def cleanup() -> None:
+        pytest.fail(
+            "Background tasks should not run after external cancellation"
+        )  # pragma: no cover - failure sentinel
+
+    with anyio.fail_after(5), anyio.CancelScope() as cancel_scope:
+        await FileResponse(path, background=BackgroundTask(cleanup))(scope, receive, send)
+
+    assert cancel_scope.cancelled_caught
+    assert len(files) == 1
+    assert files[0].closed
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("spec_version", ["2.3", "2.4"])
+async def test_file_response_closes_on_send_error(
+    file_path: tuple[Path, list[anyio.AsyncFile[bytes]]], scope: Scope, spec_version: str
+) -> None:
+    path, files = file_path
+    scope["asgi"] = {"spec_version": spec_version}
+    error = OSError("Disconnected")
+
+    async def receive() -> Message:
+        assert spec_version != "2.4"
+        await anyio.sleep_forever()
+        pytest.fail("The disconnect listener should be cancelled")  # pragma: no cover - sleep never returns
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            raise error
+
+    with anyio.fail_after(5), pytest.raises(OSError) as exc:
+        await FileResponse(path)(scope, receive, send)
+
+    assert exc.value is error
+    assert len(files) == 1
+    assert files[0].closed
+
+
 def test_set_cookie(test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
-    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
+    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.UTC)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -470,7 +613,7 @@ def test_set_cookie_samesite_none(test_client_factory: TestClientFactory) -> Non
 @pytest.mark.parametrize(
     "expires",
     [
-        pytest.param(dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.timezone.utc), id="datetime"),
+        pytest.param(dt.datetime(2037, 1, 22, 12, 0, 10, tzinfo=dt.UTC), id="datetime"),
         pytest.param("Thu, 22 Jan 2037 12:00:10 GMT", id="str"),
         pytest.param(10, id="int"),
     ],
@@ -481,7 +624,7 @@ def test_expires_on_set_cookie(
     expires: str,
 ) -> None:
     # Mock time used as a reference for `Expires` by stdlib `SimpleCookie`.
-    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
+    mocked_now = dt.datetime(2037, 1, 22, 12, 0, 0, tzinfo=dt.UTC)
     monkeypatch.setattr(time, "time", lambda: mocked_now.timestamp())
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -743,6 +886,24 @@ def test_file_response_without_range(file_response_client: TestClient) -> None:
     assert response.headers["content-length"] == str(len(README.encode("utf8")))
     assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert response.text == README
+
+
+def test_file_response_ignores_range_for_non_success_status(
+    readme_file: Path, test_client_factory: TestClientFactory
+) -> None:
+    client = test_client_factory(app=FileResponse(str(readme_file), status_code=404))
+    response = client.get("/", headers={"Range": "bytes=0-100"})
+
+    assert response.status_code == 404
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.content == README.encode("utf8")
+
+    head_response = client.head("/", headers={"Range": "bytes=0-100"})
+    assert head_response.status_code == 404
+    assert "content-range" not in head_response.headers
+    assert head_response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert head_response.content == b""
 
 
 def test_file_response_head(file_response_client: TestClient) -> None:
@@ -1018,7 +1179,8 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
     start_message: dict[str, Any] = {}
 
     async def receive() -> Message:
-        raise NotImplementedError("Should not be called!")
+        await anyio.sleep_forever()
+        pytest.fail("The disconnect listener should be cancelled")  # pragma: no cover - sleep never returns
 
     async def send(message: Message) -> None:
         if message["type"] == "http.response.start":
@@ -1026,7 +1188,8 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         elif message["type"] == "http.response.body":  # pragma: no branch
             received_chunks.append(message["body"])
 
-    await app({"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-15,20-35,35-50")]}, receive, send)
+    with anyio.fail_after(5):
+        await app({"type": "http", "method": "get", "headers": [(b"range", b"bytes=0-15,20-35,35-50")]}, receive, send)
     assert start_message["status"] == 206
 
     headers = Headers(raw=start_message["headers"])
@@ -1060,3 +1223,22 @@ async def test_file_response_multi_small_chunk_size(readme_file: Path) -> None:
         b"\r\n",
         f"--{boundary}--".encode(),
     ]
+
+
+@pytest.mark.anyio
+async def test_file_response_multi_range_unexpected_eof(tmp_path: Path) -> None:
+    path = tmp_path / "file.txt"
+    path.write_bytes(b"0123456789")
+    response = FileResponse(path, stat_result=path.stat())
+    path.write_bytes(b"012")
+
+    transport = httpx.ASGITransport(app=response)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        with (
+            anyio.fail_after(1),
+            pytest.raises(
+                RuntimeError,
+                match=re.escape(f"File at path {path} is shorter than expected."),
+            ),
+        ):
+            await client.get("/", headers={"Range": "bytes=0-2,5-7"})

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextvars
-import sys
 from collections.abc import AsyncGenerator, AsyncIterator, Generator
 from contextlib import AsyncExitStack
 from pathlib import Path
@@ -22,9 +21,6 @@ from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
-
-if sys.version_info < (3, 11):  # pragma: no cover
-    from exceptiongroup import ExceptionGroup
 
 
 class CustomMiddleware(BaseHTTPMiddleware):

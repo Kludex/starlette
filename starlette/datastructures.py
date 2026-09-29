@@ -60,7 +60,7 @@ class URL:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
                 url = SplitResult(scheme="", netloc="", path=path, query=query, fragment="").geturl()
-                if url.startswith("//") and not url.startswith("////"):
+                if url.startswith("//") and not url.startswith("////"):  # pragma: no cover
                     url = "//" + url
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'

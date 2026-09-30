@@ -59,8 +59,11 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
-                if path.startswith("//"):
-                    path = f"/%2F{path[2:]}"
+                if path.startswith("//") or (
+                    path.startswith("/") and path[1:2] in "\t\r\n" and path[1:].lstrip("\t\r\n").startswith("/")
+                ):
+                    stripped_tail = path[1:].lstrip("\t\r\n")
+                    path = f"/%2F{stripped_tail[1:]}"
                 elif path and not path.startswith("/"):
                     path = f"/{path}"
                 url = f"{path}?{query}" if query else path

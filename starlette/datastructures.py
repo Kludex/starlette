@@ -450,13 +450,15 @@ class UploadFile:
 
     async def write(self, data: bytes) -> None:
         new_data_len = len(data)
-        if self.size is not None:
-            self.size += new_data_len
-
         if self._will_roll(new_data_len):
-            await run_in_threadpool(self.file.write, data)
+            await run_in_threadpool(self._write, data)
         else:
-            self.file.write(data)
+            self._write(data)
+
+    def _write(self, data: bytes) -> None:
+        self.file.write(data)
+        if self.size is not None and data:
+            self.size = max(self.size, self.file.tell())
 
     async def read(self, size: int = -1) -> bytes:
         if self._in_memory:

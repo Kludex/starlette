@@ -5,10 +5,9 @@ import functools
 import json
 import uuid
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
-from typing import TypedDict
+from typing import Never, TypedDict
 
 import pytest
-from typing_extensions import Never
 
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-import sys
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -356,16 +355,7 @@ def test_query_params(test_client_factory: TestClientFactory, param: str) -> Non
 @pytest.mark.parametrize(
     "domain, ok",
     [
-        pytest.param(
-            "testserver",
-            True,
-            marks=[
-                pytest.mark.xfail(
-                    sys.version_info < (3, 11),
-                    reason="Fails due to domain handling in http.cookiejar module (see #2152)",
-                ),
-            ],
-        ),
+        ("testserver", True),
         ("testserver.local", True),
         ("localhost", False),
         ("example.com", False),

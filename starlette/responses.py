@@ -517,7 +517,8 @@ class FileResponse(Response):
         if len(ranges) == 0:
             raise MalformedRangeHeader("Range header: range must be requested")
 
-        if any(not (0 <= start < file_size) for start, _ in ranges):
+        ranges = [(start, end) for start, end in ranges if 0 <= start < file_size]
+        if not ranges:
             raise RangeNotSatisfiable(file_size)
 
         if any(start >= end for start, end in ranges):
@@ -559,6 +560,8 @@ class FileResponse(Response):
 
             try:
                 start = int(start_str) if start_str else max(file_size - int(end_str), 0)
+                if start_str and end_str and start > int(end_str):
+                    raise MalformedRangeHeader("Range header: start must be less than end")
                 end = int(end_str) + 1 if start_str and end_str and int(end_str) < file_size else file_size
                 ranges.append((start, end))
             except ValueError:

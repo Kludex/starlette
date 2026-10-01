@@ -209,7 +209,8 @@ range unit is supported.
 If the request includes a `Range` header, and the file exists, the response will be a `206 Partial Content` response
 with the requested range of bytes. Unsatisfiable ranges are ignored when at least one requested range is satisfiable.
 If no requested range is satisfiable, the response will be a `416 Range Not Satisfiable` response.
-Malformed range headers receive a `400 Bad Request` response.
+Unparseable range members are ignored. Other malformed headers can receive a `400 Bad Request` response,
+for example when no range can be parsed, the range unit is unsupported, or a range starts after its end.
 
 ## Third party responses
 

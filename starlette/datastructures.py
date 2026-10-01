@@ -59,6 +59,12 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                # Without origin information there is no authority to attach
+                # the path to. A path starting with "//" would be parsed back
+                # as an authority (netloc) by `urlsplit`, so percent-encode
+                # the leading "/" to keep it a path. See #3579.
+                if path.startswith("//"):
+                    path = "/%2F" + path[2:]
                 url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'

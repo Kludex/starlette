@@ -275,6 +275,30 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.query == "a=b"
 
 
+def test_url_from_scope_without_origin_and_authority_like_path() -> None:
+    """A `//`-prefixed path must not become an authority without origin info.
+
+    Regression test for https://github.com/encode/starlette/issues/3579:
+    with neither a `Host` header nor a `server` entry in the scope, a path
+    like `//evil.example/x` used to parse back with `evil.example` as the
+    netloc, so a redirect to `request.url` emitted a scheme-relative
+    `Location` pointing at an attacker-controlled host.
+    """
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": None,
+            "path": "//evil.example/x",
+            "query_string": b"a=1",
+            "headers": [],
+        }
+    )
+    assert u.netloc == ""
+    assert u.path == "/%2Fevil.example/x"
+    assert u.query == "a=1"
+    assert str(u) == "/%2Fevil.example/x?a=1"
+
+
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h

@@ -380,6 +380,63 @@ def test_mutable_headers_from_scope() -> None:
     assert list(h.raw) == [(b"a", b"1"), (b"b", b"2")]
 
 
+@pytest.mark.parametrize(
+    "initial_raw,vary_to_add,expected_vary",
+    [
+        ([], "Cookie", "Cookie"),
+        ([(b"vary", b"Accept-Encoding")], "Cookie", "Accept-Encoding, Cookie"),
+        ([(b"vary", b"Accept-Encoding")], "accept-encoding", "Accept-Encoding"),
+        ([(b"vary", b"Accept-Encoding, Accept-Language")], "Cookie", "Accept-Encoding, Accept-Language, Cookie"),
+        (
+            [(b"vary", b"Accept-Encoding"), (b"vary", b"Accept-Language")],
+            "Cookie",
+            "Accept-Encoding, Accept-Language, Cookie",
+        ),
+        ([(b"vary", b"*")], "Cookie", "*"),
+        ([(b"vary", b"Accept-Encoding")], "*", "*"),
+        ([(b"vary", b"Accept-Encoding, , Cookie")], "Origin", "Accept-Encoding, Cookie, Origin"),
+        (
+            [(b"vary", b"Accept-Encoding"), (b"vary", b"Cookie")],
+            "cookie",
+            "Accept-Encoding, Cookie",
+        ),
+        ([(b"vary", b"Accept-Encoding")], ", Cookie, ", "Accept-Encoding, Cookie"),
+        ([], "Cookie, Cookie", "Cookie"),
+        ([], "Cookie, *", "*"),
+        (
+            [(b"vary", b"Cookie"), (b"vary", b"Cookie")],
+            "Origin",
+            "Cookie, Origin",
+        ),
+        (
+            [(b"vary", b"Cookie"), (b"vary", b"COOKIE")],
+            "Origin",
+            "Cookie, Origin",
+        ),
+        ([(b"vary", b"Cookie, Cookie")], "Cookie", "Cookie"),
+        (
+            [(b"vary", b"Cookie"), (b"vary", b"cookie")],
+            "Cookie",
+            "Cookie",
+        ),
+    ],
+)
+def test_mutable_headers_add_vary_header(
+    initial_raw: list[tuple[bytes, bytes]], vary_to_add: str, expected_vary: str
+) -> None:
+    h = MutableHeaders(raw=list(initial_raw))
+    h.add_vary_header(vary_to_add)
+    assert h.get("vary") == expected_vary
+    assert h.getlist("vary") == [expected_vary]
+
+
+def test_mutable_headers_add_vary_header_empty() -> None:
+    h = MutableHeaders()
+    h.add_vary_header("")
+    assert h.get("vary") is None
+    assert h.getlist("vary") == []
+
+
 def test_url_blank_params() -> None:
     q = QueryParams("a=123&abc&def&b=456")
     assert "a" in q

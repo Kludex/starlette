@@ -71,6 +71,23 @@ def test_redirect_response(test_client_factory: TestClientFactory) -> None:
     assert response.url == "http://testserver/"
 
 
+def test_redirect_response_to_request_url_without_origin() -> None:
+    """A redirect to `request.url` must stay same-origin when the scope has no host (#3579)."""
+    scope: Scope = {
+        "type": "http",
+        "scheme": "http",
+        "path": "//evil.example/x",
+        "query_string": b"a=1",
+        "headers": [],
+        "server": None,
+    }
+    url = Request(scope).url
+    assert url.netloc == ""
+    assert url.path == "/%2Fevil.example/x"
+    response = RedirectResponse(url)
+    assert response.headers["location"] == "/%2Fevil.example/x?a=1"
+
+
 def test_quoting_redirect_response(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         if scope["path"] == "/I ♥ Starlette/":

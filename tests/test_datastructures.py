@@ -275,6 +275,23 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.query == "a=b"
 
 
+def test_url_from_scope_with_authority_in_path_and_no_origin() -> None:
+    """A '//'-prefixed path must not become the authority when the scope has no host (#3579)."""
+    u = URL(
+        scope={
+            "scheme": "http",
+            "path": "//evil.example/x",
+            "query_string": b"a=1",
+            "headers": [],
+        }
+    )
+    assert u.scheme == ""
+    assert u.netloc == ""
+    assert u.path == "/%2Fevil.example/x"
+    assert u.query == "a=1"
+    assert str(u) == "/%2Fevil.example/x?a=1"
+
+
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h

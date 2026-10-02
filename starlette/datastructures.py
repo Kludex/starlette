@@ -56,13 +56,15 @@ class URL:
                 netloc = None
 
             query = query_string.decode()
-            if netloc is not None:
+            if netloc:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                if path.startswith("//"):
+                    path = f"//{path}"
                 url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
-            url = URL("").replace(**components).components.geturl()
+            url = str(URL("").replace(**components))
 
         self._url = url
 
@@ -138,6 +140,11 @@ class URL:
             kwargs["netloc"] = netloc
 
         components = self.components._replace(**kwargs)
+        if not components.netloc and components.path.startswith("//"):
+            if components.scheme:
+                extra = components._replace(scheme="", path="").geturl()
+                return self.__class__(f"{components.scheme}://{components.path}{extra}")
+            return self.__class__(f"//{components.geturl()}")
         return self.__class__(components.geturl())
 
     def include_query_params(self, **kwargs: Any) -> URL:

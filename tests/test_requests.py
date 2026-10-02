@@ -9,7 +9,7 @@ import pytest
 
 from starlette.datastructures import URL, Address, State
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import JSONResponse, PlainTextResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
@@ -669,3 +669,26 @@ def test_request_url_starlette_context(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     client.get("/home")
     assert url_for == URL("http://testserver/home")
+
+
+def test_request_url_with_no_host_and_double_slash_path() -> None:
+    scope: Scope = {
+        "type": "http",
+        "scheme": "http",
+        "path": "//evil.example/x",
+        "query_string": b"a=1",
+        "headers": [],
+        "server": None,
+    }
+    request = Request(scope)
+    assert request.url.netloc == ""
+    assert request.url.path == "//evil.example/x"
+    assert request.url.query == "a=1"
+    assert str(request.url) == "////evil.example/x?a=1"
+    assert request.url.replace(query="b=2").netloc == ""
+    assert request.url.replace(query="b=2").path == "//evil.example/x"
+    assert str(request.url.replace(query="b=2")) == "////evil.example/x?b=2"
+
+    response = RedirectResponse(request.url)
+    assert not response.headers["location"].startswith("//evil.example")
+    assert response.headers["location"] == "////evil.example/x?a=1"

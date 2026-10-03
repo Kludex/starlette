@@ -29,6 +29,24 @@ def test_request_url(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"method": "GET", "url": "https://example.org:123/"}
 
 
+def test_request_url_with_query_or_fragment_delimiter_in_path(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        url = request.url
+        data = {"url": str(url), "path": url.path, "query": url.query, "fragment": url.fragment}
+        response = JSONResponse(data)
+        await response(scope, receive, send)
+
+    client = test_client_factory(app)
+    response = client.get("/files/a%3Fb%23c?x=1")
+    assert response.json() == {
+        "url": "http://testserver/files/a%3Fb%23c?x=1",
+        "path": "/files/a%3Fb%23c",
+        "query": "x=1",
+        "fragment": "",
+    }
+
+
 def test_request_query_params(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)

@@ -275,6 +275,27 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.query == "a=b"
 
 
+@pytest.mark.parametrize(
+    "path, expected_path",
+    [
+        pytest.param("/files/a?b", "/files/a%3Fb", id="question-mark"),
+        pytest.param("/files/a#b", "/files/a%23b", id="hash"),
+        pytest.param("/files/a#b?c=1/d", "/files/a%23b%3Fc=1/d", id="hash-and-question-mark"),
+    ],
+)
+@pytest.mark.parametrize("with_host_header", [True, False], ids=["host-header", "no-authority"])
+def test_url_from_scope_with_query_or_fragment_delimiter_in_path(
+    path: str, expected_path: str, with_host_header: bool
+) -> None:
+    """A path must not bleed into the query string or the fragment."""
+    headers = [(b"host", b"example.com")] if with_host_header else []
+    u = URL(scope={"scheme": "http", "path": path, "query_string": b"x=1", "headers": headers})
+    assert u.path == expected_path
+    assert u.query == "x=1"
+    assert u.fragment == ""
+    assert u == (f"http://example.com{expected_path}?x=1" if with_host_header else f"{expected_path}?x=1")
+
+
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h

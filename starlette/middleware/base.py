@@ -110,8 +110,6 @@ class BaseHTTPMiddleware:
         exception_already_raised = False
 
         async def call_next(request: Request) -> Response:
-            trailers_expected = False
-
             async def receive_or_disconnect() -> Message:
                 if response_sent.is_set():
                     return {"type": "http.disconnect"}
@@ -132,25 +130,15 @@ class BaseHTTPMiddleware:
                 return message
 
             async def send_no_error(message: Message) -> None:
-                nonlocal trailers_expected
-                if message["type"] == "http.response.start":
-                    trailers_expected = message.get("trailers", False)
                 try:
                     await send_stream.send(message)
                 except anyio.BrokenResourceError:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
-                # With trailers declared, the response ends at the final trailers message, not the body.
-                if trailers_expected:
-                    response_complete = message["type"] == "http.response.trailers" and not message.get(
-                        "more_trailers", False
-                    )
-                else:
-                    response_complete = message["type"] == "http.response.pathsend" or (
-                        message["type"] == "http.response.body" and not message.get("more_body", False)
-                    )
-                if response_complete:
+                if message["type"] == "http.response.pathsend" or (
+                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                ):
                     await response_sent.wait()
 
             async def coro() -> None:
@@ -199,19 +187,7 @@ class BaseHTTPMiddleware:
                     if not message.get("more_body", False):
                         break
 
-            async def trailer_stream() -> AsyncGenerator[Message, None]:
-                async for trailer in recv_stream:
-                    assert trailer["type"] == "http.response.trailers", f"Unexpected message: {trailer}"
-                    yield trailer
-                    if not trailer.get("more_trailers", False):
-                        break
-
-            response = _StreamingResponse(
-                status_code=message["status"],
-                content=body_stream(),
-                info=info,
-                trailers=trailer_stream() if trailers_expected else None,
-            )
+            response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
             response.raw_headers = message["headers"]
             return response
 
@@ -237,11 +213,8 @@ class _StreamingResponse(Response):
         headers: Mapping[str, str] | None = None,
         media_type: str | None = None,
         info: Mapping[str, Any] | None = None,
-        *,
-        trailers: AsyncIterable[Message] | None = None,
     ) -> None:
         self.info = info
-        self.trailers = trailers
         self.body_iterator = content
         self.status_code = status_code
         self.media_type = media_type
@@ -251,10 +224,13 @@ class _StreamingResponse(Response):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.info is not None:
             await send({"type": "http.response.debug", "info": self.info})
-        message: Message = {"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers}
-        if self.trailers is not None:
-            message["trailers"] = True
-        await send(message)
+        await send(
+            {
+                "type": "http.response.start",
+                "status": self.status_code,
+                "headers": self.raw_headers,
+            }
+        )
 
         should_close_body = True
         async for chunk in self.body_iterator:
@@ -267,10 +243,6 @@ class _StreamingResponse(Response):
 
         if should_close_body:
             await send({"type": "http.response.body", "body": b"", "more_body": False})
-
-        if self.trailers is not None:
-            async for message in self.trailers:
-                await send(message)
 
         if self.background:
             await self.background()

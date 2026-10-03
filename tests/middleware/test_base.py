@@ -4,7 +4,7 @@ import contextvars
 from collections.abc import AsyncGenerator, AsyncIterator, Generator
 from contextlib import AsyncExitStack
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import anyio
 import pytest
@@ -1362,94 +1362,3 @@ async def test_background_task_runs_after_response_sent_with_middleware() -> Non
         "http.response.body",
         "background-done",
     ]
-
-
-@pytest.mark.anyio
-async def test_trailers() -> None:
-    messages: list[Message] = []
-
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
-        await send({"type": "http.response.body", "body": b"hello"})
-        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"one")], "more_trailers": True})
-        await send({"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]})
-        # The final trailers are only acknowledged once the whole response has been sent.
-        assert await receive() == {"type": "http.disconnect"}
-
-    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        return await call_next(request)
-
-    async def receive() -> Message:
-        return {"type": "http.request", "body": b""}  # pragma: no cover
-
-    async def send(message: Message) -> None:
-        messages.append(message)
-
-    with anyio.fail_after(1):
-        await BaseHTTPMiddleware(app, dispatch=dispatch)({"type": "http"}, receive, send)
-    assert messages == [
-        {"type": "http.response.start", "status": 200, "headers": [], "trailers": True},
-        {"type": "http.response.body", "body": b"hello", "more_body": True},
-        {"type": "http.response.body", "body": b"", "more_body": False},
-        {"type": "http.response.trailers", "headers": [(b"x-item", b"one")], "more_trailers": True},
-        {"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]},
-    ]
-
-
-@pytest.mark.anyio
-async def test_pathsend_trailers() -> None:
-    messages: list[Message] = []
-
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
-        await send({"type": "http.response.pathsend", "path": "/file.txt"})
-        await send({"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]})
-
-    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        return await call_next(request)
-
-    async def receive() -> Message:
-        return {"type": "http.request", "body": b""}  # pragma: no cover
-
-    async def send(message: Message) -> None:
-        messages.append(message)
-
-    with anyio.fail_after(1):
-        await BaseHTTPMiddleware(app, dispatch=dispatch)({"type": "http"}, receive, send)
-    assert messages == [
-        {"type": "http.response.start", "status": 200, "headers": [], "trailers": True},
-        {"type": "http.response.pathsend", "path": "/file.txt"},
-        {"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]},
-    ]
-
-
-@pytest.mark.parametrize("consume", [True, False])
-def test_replace_trailer_response(test_client_factory: TestClientFactory, consume: bool) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
-        await send({"type": "http.response.body", "body": b"original"})
-        await send({"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]})
-
-    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        response = await call_next(request)
-        if consume:
-            async for _ in cast(StreamingResponse, response).body_iterator:
-                pass
-        return PlainTextResponse("replacement")
-
-    response = test_client_factory(BaseHTTPMiddleware(app, dispatch=dispatch)).get("/")
-    assert response.text == "replacement"
-    assert "http.response.trailers" not in response.extensions
-
-
-def test_trailer_error_through_middleware(test_client_factory: TestClientFactory) -> None:
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
-        await send({"type": "http.response.body", "body": b"hello"})
-        raise ValueError("trailer production failed")
-
-    async def dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        return await call_next(request)
-
-    with pytest.raises(ValueError, match="trailer production failed"):
-        test_client_factory(BaseHTTPMiddleware(app, dispatch=dispatch)).get("/")

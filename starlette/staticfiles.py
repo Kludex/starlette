@@ -5,7 +5,8 @@ import importlib.util
 import os
 import stat
 from email.utils import parsedate
-from typing import Union
+from threading import Lock
+from typing import BinaryIO, Union
 
 import anyio
 import anyio.to_thread
@@ -53,6 +54,8 @@ class StaticFiles:
         self.html = html
         self.config_checked = False
         self.follow_symlink = follow_symlink
+        self._directory_anchors: dict[str, tuple[str, os.stat_result]] = {}
+        self._directory_anchor_lock = Lock()
         if check_dir and directory is not None and not os.path.isdir(directory):
             raise RuntimeError(f"Directory '{directory}' does not exist")
 
@@ -120,7 +123,7 @@ class StaticFiles:
             raise HTTPException(status_code=405)
 
         try:
-            full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, path)
+            _, stat_result = await anyio.to_thread.run_sync(self.lookup_path, path)
         except PermissionError:
             raise HTTPException(status_code=401)
         except OSError as exc:
@@ -135,27 +138,171 @@ class StaticFiles:
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
-            return self.file_response(full_path, stat_result, scope)
+            response = await self._open_file_response(path, scope)
+            if response is not None:
+                return response
 
         elif stat_result and stat.S_ISDIR(stat_result.st_mode) and self.html:
             # We're in HTML mode, and have got a directory URL.
             # Check if we have 'index.html' file to serve.
             index_path = os.path.join(path, "index.html")
-            full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, index_path)
+            _, stat_result = await anyio.to_thread.run_sync(self.lookup_path, index_path)
             if stat_result is not None and stat.S_ISREG(stat_result.st_mode):
                 if not scope["path"].endswith("/"):
                     # Directory URLs should redirect to always end in "/".
                     url = URL(scope=scope)
                     url = url.replace(path=url.path + "/")
                     return RedirectResponse(url=url)
-                return self.file_response(full_path, stat_result, scope)
+                response = await self._open_file_response(index_path, scope)
+                if response is not None:
+                    return response
 
         if self.html:
             # Check for '404.html' if we're in HTML mode.
-            full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, "404.html")
+            _, stat_result = await anyio.to_thread.run_sync(self.lookup_path, "404.html")
             if stat_result and stat.S_ISREG(stat_result.st_mode):
-                return FileResponse(full_path, stat_result=stat_result, status_code=404)
+                response = await self._open_file_response("404.html", scope, status_code=404)
+                if response is not None:
+                    return response
         raise HTTPException(status_code=404)
+
+    async def _open_file_response(self, path: str, scope: Scope, status_code: int = 200) -> Response | None:
+        try:
+            opened = await anyio.to_thread.run_sync(self._open_path, path)
+        except PermissionError:
+            raise HTTPException(status_code=401)
+        except OSError as exc:
+            if exc.errno == errno.ENAMETOOLONG:
+                return None
+            raise
+
+        if opened is None:
+            return None
+
+        full_path, stat_result, file = opened
+        try:
+            if status_code == 200:
+                response = self.file_response(full_path, stat_result, scope)
+            else:
+                response = FileResponse(full_path, stat_result=stat_result, status_code=status_code)
+        except BaseException:
+            file.close()
+            raise
+
+        if isinstance(response, FileResponse):
+            response._file = file
+        else:
+            file.close()
+        return response
+
+    def _open_path(self, path: str) -> tuple[str, os.stat_result, BinaryIO] | None:
+        if path.startswith(("/", "\\")):
+            return None
+
+        for directory in self.all_directories:
+            file: BinaryIO
+            if self.follow_symlink:
+                full_path = os.path.abspath(os.path.join(directory, path))
+                directory_path = os.path.abspath(directory)
+                if os.path.commonpath([full_path, directory_path]) != str(directory_path):
+                    continue
+                try:
+                    file = open(full_path, "rb")
+                except (FileNotFoundError, IsADirectoryError, NotADirectoryError):
+                    continue
+            else:
+                try:
+                    directory_path, directory_stat = self._get_directory_anchor(directory)
+                except (FileNotFoundError, NotADirectoryError):
+                    continue
+                full_path = os.path.abspath(os.path.join(directory_path, path))
+                if os.path.commonpath([full_path, directory_path]) != str(directory_path):
+                    continue
+                try:
+                    file = self._open_path_without_symlinks(directory_path, path, directory_stat)
+                except OSError as exc:
+                    if exc.errno in (errno.ENOENT, errno.ENOTDIR, errno.EISDIR, errno.ELOOP):
+                        continue
+                    raise
+
+            try:
+                stat_result = os.fstat(file.fileno())
+            except BaseException:
+                file.close()
+                raise
+            if stat.S_ISREG(stat_result.st_mode):
+                return full_path, stat_result, file
+            file.close()
+        return None
+
+    @staticmethod
+    def _open_path_without_symlinks(
+        directory: PathLike, path: str, directory_stat: os.stat_result | None = None
+    ) -> BinaryIO:
+        nofollow = getattr(os, "O_NOFOLLOW", 0)
+        directory_flag = getattr(os, "O_DIRECTORY", 0)
+        close_on_exec = getattr(os, "O_CLOEXEC", 0)
+        supports_dir_fd = os.open in os.supports_dir_fd
+
+        if not nofollow or not directory_flag or not supports_dir_fd:
+            full_path = os.path.join(directory, path)
+            if directory_stat is not None and not os.path.samestat(directory_stat, os.stat(directory)):
+                raise OSError(errno.ELOOP, "Static files directory was replaced")
+            file = open(full_path, "rb")
+            try:
+                resolved_path = os.path.realpath(full_path)
+                directory_path = os.path.realpath(directory)
+                current_directory_stat = os.stat(directory)
+                opened_stat = os.fstat(file.fileno())
+                resolved_stat = os.stat(resolved_path)
+            except BaseException:
+                file.close()
+                raise
+            if (
+                (directory_stat is not None and not os.path.samestat(directory_stat, current_directory_stat))
+                or os.path.commonpath([resolved_path, directory_path]) != str(directory_path)
+                or not os.path.samestat(opened_stat, resolved_stat)
+            ):
+                file.close()
+                raise OSError(errno.ELOOP, "Path changed or contains a symbolic link")
+            return file
+
+        normalized_path = os.path.normpath(path)
+        parts = [part for part in normalized_path.split(os.sep) if part not in ("", ".")]
+        if not parts or any(part == os.pardir for part in parts):
+            raise FileNotFoundError(path)
+
+        directory_fd = os.open(directory, os.O_RDONLY | directory_flag | nofollow | close_on_exec)
+        file_fd: int | None = None
+        try:
+            if directory_stat is not None and not os.path.samestat(directory_stat, os.fstat(directory_fd)):
+                raise OSError(errno.ELOOP, "Static files directory was replaced")
+            for part in parts[:-1]:
+                next_fd = os.open(
+                    part,
+                    os.O_RDONLY | directory_flag | nofollow | close_on_exec,
+                    dir_fd=directory_fd,
+                )
+                os.close(directory_fd)
+                directory_fd = next_fd
+            file_fd = os.open(parts[-1], os.O_RDONLY | nofollow | close_on_exec, dir_fd=directory_fd)
+            file = os.fdopen(file_fd, "rb")
+            file_fd = None
+            return file
+        finally:
+            os.close(directory_fd)
+            if file_fd is not None:
+                os.close(file_fd)
+
+    def _get_directory_anchor(self, directory: PathLike) -> tuple[str, os.stat_result]:
+        directory_key = os.path.abspath(os.fspath(directory))
+        with self._directory_anchor_lock:
+            anchor = self._directory_anchors.get(directory_key)
+            if anchor is None:
+                directory_path = os.path.realpath(directory_key)
+                anchor = directory_path, os.stat(directory_path)
+                self._directory_anchors[directory_key] = anchor
+            return anchor
 
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
         # Reject absolute paths so they cannot escape the served directory.
@@ -167,8 +314,11 @@ class StaticFiles:
                 full_path = os.path.abspath(joined_path)
                 directory = os.path.abspath(directory)
             else:
-                full_path = os.path.realpath(joined_path)
-                directory = os.path.realpath(directory)
+                try:
+                    directory, _ = self._get_directory_anchor(directory)
+                except (FileNotFoundError, NotADirectoryError):
+                    continue
+                full_path = os.path.realpath(os.path.join(directory, path))
             if os.path.commonpath([full_path, directory]) != str(directory):
                 # Don't allow misbehaving clients to break out of the static files directory.
                 continue

@@ -18,7 +18,7 @@ from starlette.formparsers import FormParser, MultiPartException, MultiPartParse
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
@@ -363,6 +363,61 @@ def test_multipart_request_large_file_rollover_in_background_thread(
     # Ensure the app thread was not the same as the rollover one and that a rollover thread exists
     assert app_thread_ident not in ThreadTrackingSpooledTemporaryFile.rollover_threads
     assert len(ThreadTrackingSpooledTemporaryFile.rollover_threads) == 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("chunk_mode", ["64KiB", "mixed", "adjacent"])
+async def test_multipart_spooled_file_from_chunks(chunk_mode: str) -> None:
+    write_sizes: list[int] = []
+
+    class RecordingSpooledTemporaryFile(SpooledTemporaryFile[bytes]):
+        _rolled: bool
+
+        def write(self, data: Any) -> int:
+            if self._rolled:
+                write_sizes.append(len(data))
+            return super().write(data)
+
+    boundary = b"starlette-test-boundary"
+    content = b"x" * (3 * 1024 * 1024)
+    header = b"--" + boundary + b'\r\nContent-Disposition: form-data; name="file"; filename="file.bin"\r\n\r\n'
+    body = header + content + b"\r\n--" + boundary + b"--\r\n"
+    if chunk_mode == "64KiB":
+        chunks = tuple(body[offset : offset + 64 * 1024] for offset in range(0, len(body), 64 * 1024))
+    else:
+        first_chunk_size = len(header) + 1024 * 1024 + len(boundary) + 16
+        second_chunk_size = first_chunk_size + (64 * 1024 if chunk_mode == "mixed" else 900 * 1024)
+        if chunk_mode == "mixed":
+            chunks = (body[:first_chunk_size], body[first_chunk_size:second_chunk_size], body[second_chunk_size:])
+        else:
+            third_chunk_size = second_chunk_size + 900 * 1024
+            chunks = (
+                body[:first_chunk_size],
+                body[first_chunk_size:second_chunk_size],
+                body[second_chunk_size:third_chunk_size],
+                body[third_chunk_size:],
+            )
+    chunk_index = 0
+
+    async def receive() -> Message:
+        nonlocal chunk_index
+        chunk = chunks[chunk_index]
+        chunk_index += 1
+        return {"type": "http.request", "body": chunk, "more_body": chunk_index < len(chunks)}
+
+    scope: Scope = {
+        "type": "http",
+        "headers": [(b"content-type", b"multipart/form-data; boundary=" + boundary)],
+    }
+    request = Request(scope, receive)
+    with mock.patch("starlette.formparsers.SpooledTemporaryFile", RecordingSpooledTemporaryFile):
+        async with request.form() as form:
+            upload = form["file"]
+            assert isinstance(upload, UploadFile)
+            assert await upload.read() == content
+
+    if chunk_mode == "adjacent":
+        assert max(write_sizes) <= 1024 * 1024
 
 
 def test_multipart_request_with_charset_for_filename(tmpdir: Path, test_client_factory: TestClientFactory) -> None:

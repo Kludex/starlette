@@ -276,7 +276,10 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
 
 
 def test_url_from_scope_no_origin_with_double_slash_path() -> None:
-    """When scope has neither Host header nor server, a // path must not bleed into netloc."""
+    """When scope has neither Host header nor server, a // path must not bleed into netloc
+    and must be emitted as a same-origin reference rather than an authority."""
+    from starlette.responses import RedirectResponse
+
     u = URL(
         scope={
             "type": "http",
@@ -289,8 +292,38 @@ def test_url_from_scope_no_origin_with_double_slash_path() -> None:
     )
     assert u.netloc == ""
     assert u.hostname is None
-    assert u.path == "//evil.example/x"
+    assert u.path == "/%2Fevil.example/x"
+    assert str(u) == "/%2Fevil.example/x?a=1"
     assert u.query == "a=1"
+    assert RedirectResponse(u).headers["location"] == "/%2Fevil.example/x?a=1"
+
+    u_backslash = URL(
+        scope={
+            "type": "http",
+            "scheme": "http",
+            "path": "/\\evil.example/x",
+            "query_string": b"",
+            "headers": [],
+            "server": None,
+        }
+    )
+    assert u_backslash.netloc == ""
+    assert u_backslash.path == "/%2Fevil.example/x"
+    assert RedirectResponse(u_backslash).headers["location"] == "/%2Fevil.example/x"
+
+    u_triple = URL(
+        scope={
+            "type": "http",
+            "scheme": "http",
+            "path": "///evil.example/x",
+            "query_string": b"",
+            "headers": [],
+            "server": None,
+        }
+    )
+    assert u_triple.netloc == ""
+    assert u_triple.path == "/%2F%2Fevil.example/x"
+    assert RedirectResponse(u_triple).headers["location"] == "/%2F%2Fevil.example/x"
 
 
 def test_headers() -> None:

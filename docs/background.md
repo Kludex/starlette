@@ -42,7 +42,7 @@ app = Starlette(routes=routes)
 
 Used to add multiple background tasks to a response.
 
-Signature: `BackgroundTasks(tasks=[])`
+Signature: `BackgroundTasks(tasks=None)`
 
 ```python
 from starlette.applications import Starlette

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar, overload
 
 from starlette.datastructures import State, URLPath
 from starlette.middleware import Middleware, _MiddlewareFactory
@@ -15,6 +15,7 @@ from starlette.types import ASGIApp, ExceptionHandler, Lifespan, Receive, Scope,
 
 AppType = TypeVar("AppType", bound="Starlette")
 P = ParamSpec("P")
+_E = TypeVar("_E", bound=Exception)
 
 
 class Starlette:
@@ -106,11 +107,25 @@ class Starlette:
             raise RuntimeError("Cannot add middleware after an application has started")
         self.user_middleware.insert(0, Middleware(middleware_class, *args, **kwargs))
 
+    @overload
+    def add_exception_handler(
+        self,
+        exc_class_or_status_code: type[_E],
+        handler: ExceptionHandler[_E],
+    ) -> None: ...
+
+    @overload
+    def add_exception_handler(
+        self,
+        exc_class_or_status_code: int,
+        handler: ExceptionHandler[Exception],
+    ) -> None: ...
+
     def add_exception_handler(
         self,
         exc_class_or_status_code: int | type[Exception],
-        handler: ExceptionHandler,
-    ) -> None:  # pragma: no cover
+        handler: ExceptionHandler[Any],
+    ) -> None:
         self.exception_handlers[exc_class_or_status_code] = handler
 
     def add_route(

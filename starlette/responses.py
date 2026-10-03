@@ -23,6 +23,7 @@ from starlette._utils import create_collapsing_task_group
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
+from starlette.middleware.background import _run_background
 from starlette.requests import ClientDisconnect
 from starlette.types import Message, Receive, Scope, Send
 
@@ -169,8 +170,7 @@ class Response:
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         await send({"type": "http.response.body", "body": self.body})
 
-        if self.background is not None:
-            await self.background()
+        await _run_background(scope, self.background)
 
 
 class HTMLResponse(Response):
@@ -261,8 +261,7 @@ class StreamingResponse(Response):
         if scope["type"] == "websocket":
             send = self._wrap_websocket_denial_send(send)
             await self.stream_response(send)
-            if self.background is not None:
-                await self.background()
+            await _run_background(scope, self.background)
             return
 
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
@@ -282,8 +281,7 @@ class StreamingResponse(Response):
                 task_group.start_soon(wrap, partial(self.stream_response, send))
                 await wrap(partial(self.listen_for_disconnect, receive))
 
-        if self.background is not None:
-            await self.background()
+        await _run_background(scope, self.background)
 
 
 class MalformedRangeHeader(Exception):
@@ -406,8 +404,7 @@ class FileResponse(Response):
                         task_group.cancel_scope.cancel()
                         break
 
-        if self.background is not None:
-            await self.background()
+        await _run_background(scope, self.background)
 
     # TODO: Remove this wrapper once minimum AnyIO includes https://github.com/agronholm/anyio/pull/1314.
     @asynccontextmanager

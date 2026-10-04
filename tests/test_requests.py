@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Iterator
 from typing import Any
+from unittest.mock import AsyncMock
 
 import anyio
 import pytest
@@ -591,8 +592,10 @@ async def test_request_send_early_hints() -> None:
 
 @pytest.mark.anyio
 async def test_request_send_early_hints_without_extension() -> None:
-    request = Request({"type": "http"})
+    send = AsyncMock()
+    request = Request({"type": "http"}, send=send)
     await request.send_early_hints("</style.css>; rel=preload; as=style")
+    send.assert_not_awaited()
 
 
 @pytest.mark.anyio

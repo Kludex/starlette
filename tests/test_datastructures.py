@@ -71,6 +71,31 @@ def test_url() -> None:
     assert url.replace(username="u") == URL("//u@/path?a=1")
 
 
+@pytest.mark.parametrize(
+    "hostname",
+    ["::1", "2001:db8::1", "fe80::1%eth0", "::ffff:192.0.2.1"],
+)
+def test_url_replace_ipv6_hostname(hostname: str) -> None:
+    url = URL("https://example.org:8443/path")
+    new = url.replace(hostname=hostname)
+
+    assert new == f"https://[{hostname}]:8443/path"
+    assert new.hostname == hostname
+    assert new.port == 8443
+
+
+def test_url_replace_ipv6_hostname_round_trip() -> None:
+    url = URL("https://[fe::2]:12345/path")
+    assert url.replace(hostname=url.hostname) == url
+
+
+def test_url_replace_hostname_compatibility() -> None:
+    url = URL("https://example.org:8443/path")
+    assert url.replace(hostname="[::1]") == "https://[::1]:8443/path"
+    assert url.replace(hostname="[::1]:8080", port=None) == "https://[::1]:8080/path"
+    assert url.replace(hostname="example.org:8080", port=None) == "https://example.org:8080/path"
+
+
 def test_url_query_params() -> None:
     u = URL("https://example.org/path/?page=3")
     assert u.query == "page=3"

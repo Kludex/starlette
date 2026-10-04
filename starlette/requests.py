@@ -346,3 +346,8 @@ class Request(HTTPConnection[StateT]):
                 for value in self.headers.getlist(name):
                     raw_headers.append((name.encode("latin-1"), value.encode("latin-1")))
             await self._send({"type": "http.response.push", "path": path, "headers": raw_headers})
+
+    async def send_early_hints(self, link: str, /, *additional_links: str) -> None:
+        if "http.response.early_hint" in self.scope.get("extensions", {}):
+            raw_links = [value.encode("latin-1") for value in (link, *additional_links)]
+            await self._send({"type": "http.response.early_hint", "links": raw_links})

@@ -1212,6 +1212,46 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
 
 
 @pytest.mark.anyio
+async def test_early_hints_events() -> None:
+    events: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive, send)
+        await request.send_early_hints("</endpoint.css>; rel=preload; as=style")
+        await PlainTextResponse("hello")(scope, receive, send)
+
+    async def send_early_hints(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        await request.send_early_hints("</middleware.css>; rel=preload; as=style")
+        return await call_next(request)
+
+    middleware = BaseHTTPMiddleware(app, dispatch=send_early_hints)
+    scope: Scope = {"type": "http", "extensions": {"http.response.early_hint": {}}}
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    await middleware(scope, receive, send)
+
+    assert events[:2] == [
+        {
+            "type": "http.response.early_hint",
+            "links": [b"</middleware.css>; rel=preload; as=style"],
+        },
+        {
+            "type": "http.response.early_hint",
+            "links": [b"</endpoint.css>; rel=preload; as=style"],
+        },
+    ]
+    assert events[2]["type"] == "http.response.start"
+    assert events[-1]["type"] == "http.response.body"
+    assert events[-1].get("more_body", False) is False
+    assert b"".join(event.get("body", b"") for event in events[3:]) == b"hello"
+
+
+@pytest.mark.anyio
 async def test_asgi_pathsend_events(tmpdir: Path) -> None:
     path = tmpdir / "example.txt"
     with path.open("w") as file:

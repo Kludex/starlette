@@ -217,6 +217,40 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("encoding", ["gzip", "identity"])
+async def test_gzip_passes_through_early_hints(encoding: str) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive, send)
+        await request.send_early_hints("</style.css>; rel=preload; as=style")
+        await PlainTextResponse("hello")(scope, receive, send)
+
+    events: list[Message] = []
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    scope: Scope = {
+        "type": "http",
+        "headers": [(b"accept-encoding", encoding.encode())],
+        "extensions": {"http.response.early_hint": {}},
+    }
+    await GZipMiddleware(app, minimum_size=0)(scope, receive, send)
+
+    assert events[0] == {
+        "type": "http.response.early_hint",
+        "links": [b"</style.css>; rel=preload; as=style"],
+    }
+    assert events[1]["type"] == "http.response.start"
+    body = events[2]["body"]
+    if encoding == "gzip":
+        body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
+    assert body == b"hello"
+
+
+@pytest.mark.anyio
 async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     path = tmpdir / "example.txt"
     with path.open("w") as file:
@@ -310,7 +344,15 @@ def test_gzip_streaming_response_emits_output_per_chunk(test_client_factory: Tes
 
 @pytest.mark.parametrize(
     "content_type",
-    [b"application/zip", b"audio/mpeg", b"font/woff2", b"image/png", b"video/mp4"],
+    [
+        b"application/grpc",
+        b"application/grpc+proto",
+        b"application/zip",
+        b"audio/mpeg",
+        b"font/woff2",
+        b"image/png",
+        b"video/mp4",
+    ],
 )
 def test_gzip_default_exclude_content_types(content_type: bytes, test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -357,9 +399,12 @@ def test_gzip_custom_exclude_content_types(test_client_factory: TestClientFactor
     assert "Vary" not in response.headers
 
 
-def test_gzip_cleared_exclude_content_types(test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize("content_type", ["text/event-stream", "application/grpc+proto"])
+def test_gzip_cleared_exclude_content_types(test_client_factory: TestClientFactory, content_type: str) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/event-stream")]})
+        await send(
+            {"type": "http.response.start", "status": 200, "headers": [(b"content-type", content_type.encode())]}
+        )
         await send({"type": "http.response.body", "body": b"x" * 4000})
 
     middleware = GZipMiddleware(app, exclude_content_types=())
@@ -424,3 +469,35 @@ def test_gzip_responder_normalizes_content_types(test_client_factory: TestClient
     assert response.status_code == 200
     assert response.content == b"x" * 4000
     assert "Content-Encoding" not in response.headers
+
+
+@pytest.mark.parametrize("encoding", ["gzip", "identity"])
+@pytest.mark.parametrize("more_body", [True, False])
+def test_gzip_trailers(test_client_factory: TestClientFactory, encoding: str, more_body: bool) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [], "trailers": True})
+        await send({"type": "http.response.body", "body": b"x" * 4000, "more_body": more_body})
+        if more_body:
+            await send({"type": "http.response.body", "body": b""})
+        await send({"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]})
+
+    client = test_client_factory(GZipMiddleware(app))
+    response = client.get("/", headers={"accept-encoding": encoding})
+    assert response.content == b"x" * 4000
+    assert response.headers.get("content-encoding") == (encoding if encoding == "gzip" else None)
+    assert "content-length" not in response.headers
+    assert response.extensions["http.response.trailers"] == [(b"grpc-status", b"0")]
+
+
+def test_gzip_excluded_content_type_trailers(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        headers = [(b"content-type", b"application/grpc")]
+        await send({"type": "http.response.start", "status": 200, "headers": headers, "trailers": True})
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+        await send({"type": "http.response.trailers", "headers": [(b"grpc-status", b"0")]})
+
+    client = test_client_factory(GZipMiddleware(app))
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.content == b"x" * 4000
+    assert "content-encoding" not in response.headers
+    assert response.extensions["http.response.trailers"] == [(b"grpc-status", b"0")]

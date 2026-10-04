@@ -69,7 +69,7 @@ with open("example.txt", "rb") as f1:
         response = client.post("/form", files=files)
 ```
 
-For more information you can check the `httpx2` [documentation](https://www.python-httpx.org/advanced/).
+For more information you can check the `httpx2` [documentation](https://pydantic.dev/docs/httpx2/advanced/clients/).
 
 By default the `TestClient` will raise any exceptions that occur in the
 application. Occasionally you might want to test the content of 500 error
@@ -315,4 +315,4 @@ async def test_app() -> None:
     For synchronous tests, create and close resources in [lifespan](lifespan.md#lifespan-state)
     and use [`TestClient` as a context manager](lifespan.md#running-lifespan-in-tests).
 
-[httpx2.AsyncClient]: https://www.python-httpx.org/advanced/#calling-into-python-web-apps
+[httpx2.AsyncClient]: https://pydantic.dev/docs/httpx2/advanced/transports/#asgi-transport

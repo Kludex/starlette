@@ -172,6 +172,7 @@ class IdentityResponder:
         elif message_type in ("http.response.early_hint", "http.response.trailers"):
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
+            # Don't apply GZip to pathsend responses
             await self.send(self.initial_message)
             await self.send(message)
 

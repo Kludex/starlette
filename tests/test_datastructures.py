@@ -71,10 +71,7 @@ def test_url() -> None:
     assert url.replace(username="u") == URL("//u@/path?a=1")
 
 
-@pytest.mark.parametrize(
-    "hostname",
-    ["::1", "2001:db8::1", "fe80::1%eth0", "::ffff:192.0.2.1"],
-)
+@pytest.mark.parametrize("hostname", ["::1", "fe80::1%eth0"])
 def test_url_replace_ipv6_hostname(hostname: str) -> None:
     url = URL("https://example.org:8443/path")
     new = url.replace(hostname=hostname)

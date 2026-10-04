@@ -183,6 +183,19 @@ def test_url_from_scope() -> None:
     assert u.port == 80
 
 
+def test_url_from_scope_with_double_slash_path() -> None:
+    # A path starting with "//" must not be parsed as an authority when the
+    # scope carries no origin information (no Host header, no server entry).
+    # See https://github.com/Kludex/starlette/issues/3579
+    u = URL(scope={"path": "//evil.example/x", "query_string": b"a=1", "headers": []})
+    assert u.netloc == ""
+    assert u == "/%2Fevil.example/x?a=1"
+
+    u = URL(scope={"path": "//evil.example/x", "query_string": b"", "headers": []})
+    assert u.netloc == ""
+    assert u == "/%2Fevil.example/x"
+
+
 @pytest.mark.parametrize(
     "host",
     [

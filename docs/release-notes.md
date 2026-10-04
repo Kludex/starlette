@@ -2,6 +2,47 @@
 toc_depth: 2
 ---
 
+## 1.7.0 (September 23, 2026)
+
+This release adds experimental OpenTelemetry tracing and requires AnyIO 4.
+
+!!! warning "OpenTelemetryMiddleware is experimental"
+    Its API and emitted telemetry may change in minor releases without a deprecation period
+    [#3574](https://github.com/Kludex/starlette/pull/3574).
+
+#### Added
+
+* Add experimental `OpenTelemetryMiddleware` for HTTP server spans, with URL exclusions and custom tracer providers [#3438](https://github.com/Kludex/starlette/pull/3438), [#3463](https://github.com/Kludex/starlette/pull/3463), and [#3520](https://github.com/Kludex/starlette/pull/3520).
+* Expose the matched route through `scope["route"]` [#3438](https://github.com/Kludex/starlette/pull/3438).
+* Support the `QUERY` HTTP method in `HTTPEndpoint`, CORS, and OpenAPI 3.2 schema generation [#3489](https://github.com/Kludex/starlette/pull/3489).
+* Capture HTTP response trailers in `TestClient` and expose them through `response.extensions["http.response.trailers"]` [#3563](https://github.com/Kludex/starlette/pull/3563).
+* Support partitioned cookies in `SessionMiddleware` [#3510](https://github.com/Kludex/starlette/pull/3510).
+* Add `partitioned` to `Response.delete_cookie()` on Python 3.14 and later [#3376](https://github.com/Kludex/starlette/pull/3376).
+* Support IPv6 hosts in `TrustedHostMiddleware` and `TestClient` [#3471](https://github.com/Kludex/starlette/pull/3471).
+* Support Python 3.15 [#3508](https://github.com/Kludex/starlette/pull/3508).
+
+#### Changed
+
+* Require `anyio>=4.0.0,<5`, dropping support for AnyIO 3 [#3512](https://github.com/Kludex/starlette/pull/3512).
+* Raise `WebSocketDisconnected`, a `RuntimeError` subclass, for disconnected WebSocket operations [#2767](https://github.com/Kludex/starlette/pull/2767).
+* Accept `Collection[str]` in `CORSMiddleware` configuration annotations, including sets and frozensets [#3518](https://github.com/Kludex/starlette/pull/3518).
+
+#### Fixed
+
+* Run background tasks only after the response is sent when using `BaseHTTPMiddleware` [#3476](https://github.com/Kludex/starlette/pull/3476).
+* Return `400` for invalid multipart parser input [#3492](https://github.com/Kludex/starlette/pull/3492).
+* Include `Vary: Origin` on all normal CORS responses and vary preflight responses by all request headers that affect them [#3516](https://github.com/Kludex/starlette/pull/3516) and [#3517](https://github.com/Kludex/starlette/pull/3517).
+* Handle malformed `Host` headers and IPv6 authorities consistently across URL construction, host routing, and redirect middleware [#3472](https://github.com/Kludex/starlette/pull/3472).
+* Ignore `Range` headers when `FileResponse` has a status other than `200`, preserving its status and full body [#3568](https://github.com/Kludex/starlette/pull/3568).
+* Handle standalone `If-None-Match: *` in `StaticFiles` [#3201](https://github.com/Kludex/starlette/pull/3201).
+* Reject WebSocket requests to `StaticFiles` without raising an assertion error [#3532](https://github.com/Kludex/starlette/pull/3532).
+* Persist session mutations made with `popitem()` and `|=` [#3436](https://github.com/Kludex/starlette/pull/3436).
+* Handle empty and absent payloads in `WebSocketEndpoint.decode()` [#3372](https://github.com/Kludex/starlette/pull/3372).
+* Implement `identity` on `SimpleUser` and `UnauthenticatedUser` [#3271](https://github.com/Kludex/starlette/pull/3271).
+* Allow `HTTPException` to use non-standard status codes without an explicit `detail` [#3545](https://github.com/Kludex/starlette/pull/3545).
+* Avoid deprecated AnyIO imports in `TestClient` and add explicit imports in `WSGIMiddleware` for AnyIO 4.15 compatibility [#3498](https://github.com/Kludex/starlette/pull/3498) and [#3501](https://github.com/Kludex/starlette/pull/3501).
+* Offload debug traceback rendering to a worker thread in `ServerErrorMiddleware` [#2858](https://github.com/Kludex/starlette/pull/2858).
+
 ## 1.6.0 (August 8, 2026)
 
 #### Added

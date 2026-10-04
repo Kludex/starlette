@@ -166,7 +166,7 @@ class ServerErrorMiddleware:
             request = Request(scope)
             if self.debug:
                 # In debug mode, return traceback responses.
-                response = self.debug_response(request, exc)
+                response = await run_in_threadpool(self.debug_response, request, exc)
             elif self.handler is None:
                 # Use our default 500 error handler.
                 response = self.error_response(request, exc)

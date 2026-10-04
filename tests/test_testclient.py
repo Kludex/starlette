@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-import sys
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -20,7 +19,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Route
 from starlette.testclient import ASGIInstance, TestClient
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from tests.types import TestClientFactory
 
@@ -356,16 +355,7 @@ def test_query_params(test_client_factory: TestClientFactory, param: str) -> Non
 @pytest.mark.parametrize(
     "domain, ok",
     [
-        pytest.param(
-            "testserver",
-            True,
-            marks=[
-                pytest.mark.xfail(
-                    sys.version_info < (3, 11),
-                    reason="Fails due to domain handling in http.cookiejar module (see #2152)",
-                ),
-            ],
-        ),
+        ("testserver", True),
         ("testserver.local", True),
         ("localhost", False),
         ("example.com", False),
@@ -450,6 +440,26 @@ def test_raw_path_with_querystring(test_client_factory: TestClientFactory) -> No
     assert response.content == b"/hello-world"
 
 
+@pytest.mark.parametrize(
+    ("base_url", "server", "host"),
+    [
+        ("http://[::1]", ["::1", 80], "[::1]"),
+        ("http://[::1]:8000", ["::1", 8000], "[::1]:8000"),
+        ("http://[::1]:0", ["::1", 0], "[::1]:0"),
+    ],
+)
+def test_ipv6_base_url(
+    test_client_factory: TestClientFactory, base_url: str, server: list[str | int], host: str
+) -> None:
+    def homepage(request: Request) -> JSONResponse:
+        return JSONResponse({"server": request.scope["server"], "host": request.headers["host"]})
+
+    app = Starlette(routes=[Route("/", endpoint=homepage)])
+    client = test_client_factory(app, base_url=base_url)
+    response = client.get("/")
+    assert response.json() == {"server": server, "host": host}
+
+
 def test_websocket_raw_path_without_params(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)
@@ -470,3 +480,93 @@ def test_timeout_deprecation() -> None:
     ):
         client = TestClient(mock_service)
         client.get("/", timeout=1)
+
+
+@pytest.mark.parametrize(
+    "messages, error",
+    [
+        ([], "TestClient did not receive any response"),
+        ([{"type": "http.response.trailers"}], "without declaring trailers"),
+        (
+            [{"type": "http.response.start", "status": 200, "trailers": True}, {"type": "http.response.trailers"}],
+            "before body completed",
+        ),
+        (
+            [
+                {"type": "http.response.start", "status": 200, "trailers": True},
+                {"type": "http.response.body"},
+                {"type": "http.response.body"},
+            ],
+            "after body completed",
+        ),
+        (
+            [
+                {"type": "http.response.start", "status": 200, "trailers": True},
+                {"type": "http.response.body"},
+                {"type": "http.response.trailers"},
+                {"type": "http.response.trailers"},
+            ],
+            "after response completed",
+        ),
+    ],
+)
+def test_invalid_trailer_sequence(test_client_factory: TestClientFactory, messages: list[Message], error: str) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        for message in messages:
+            await send(message)
+
+    with pytest.raises(AssertionError, match=error):
+        test_client_factory(app).get("/")
+
+
+@pytest.mark.parametrize("empty", [True, False])
+def test_capture_trailers(test_client_factory: TestClientFactory, empty: bool) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        assert "http.response.trailers" in scope["extensions"]
+        await send({"type": "http.response.start", "status": 200, "trailers": True})
+        await send({"type": "http.response.body", "body": b"hello"})
+        await anyio.lowlevel.checkpoint()
+        headers = [] if empty else [(b"x-item", b"one")]
+        await send({"type": "http.response.trailers", "headers": headers, "more_trailers": True})
+        headers = [] if empty else [(b"x-item", b"two")]
+        await send({"type": "http.response.trailers", "headers": headers})
+
+    response = test_client_factory(app).get("/", headers={"te": "trailers"})
+    assert response.content == b"hello"
+    assert response.extensions["http.response.trailers"] == (
+        [] if empty else [(b"x-item", b"one"), (b"x-item", b"two")]
+    )
+    assert "x-item" not in response.headers
+
+
+@pytest.mark.parametrize("partial", [True, False])
+def test_incomplete_trailers(test_client_factory: TestClientFactory, partial: bool) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "trailers": True})
+        await send({"type": "http.response.body", "body": b"hello"})
+        if partial:
+            await send({"type": "http.response.trailers", "headers": [(b"x-item", b"partial")], "more_trailers": True})
+
+    response = test_client_factory(app).get("/")
+    assert response.content == b"hello"
+    assert response.extensions["http.response.trailers"] == ([(b"x-item", b"partial")] if partial else [])
+
+
+@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+def test_trailer_error_respects_raise_server_exceptions(
+    test_client_factory: TestClientFactory, raise_server_exceptions: bool
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "trailers": True})
+        await send({"type": "http.response.body", "body": b"hello"})
+        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"partial")], "more_trailers": True})
+        raise ValueError("trailer production failed")
+
+    client = test_client_factory(app, raise_server_exceptions=raise_server_exceptions)
+    if raise_server_exceptions:
+        with pytest.raises(ValueError, match="trailer production failed"):
+            client.get("/")
+    else:
+        response = client.get("/")
+        assert response.content == b"hello"
+        assert response.extensions["http.response.trailers"] == [(b"x-item", b"partial")]

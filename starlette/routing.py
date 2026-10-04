@@ -14,7 +14,7 @@ from re import Pattern
 from typing import Any, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
-from starlette._utils import get_route_path, is_async_callable
+from starlette._utils import get_route_path, is_async_callable, parse_host_header
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
@@ -154,7 +154,9 @@ def compile_path(
 
     if is_host:
         # Align with `Host.matches()` behavior, which ignores port.
-        hostname = path[idx:].split(":")[0]
+        hostname = path[idx:]
+        if not hostname.endswith("]"):
+            hostname = hostname.rsplit(":", 1)[0]
         path_regex += re.escape(hostname) + "$"
     else:
         path_regex += re.escape(path[idx:]) + "$"
@@ -478,7 +480,11 @@ class Host(BaseRoute):
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
         if scope["type"] in ("http", "websocket"):  # pragma:no branch
             headers = Headers(scope=scope)
-            host = headers.get("host", "").split(":")[0]
+            parsed_host = parse_host_header(headers.get("host"))
+            if parsed_host is None:
+                return Match.NONE, {}
+            host = parsed_host.host
+
             match = self.host_regex.match(host)
             if match:
                 matched_params = match.groupdict()
@@ -686,6 +692,7 @@ class Router:
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
             if match == Match.FULL:
+                scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
@@ -697,6 +704,7 @@ class Router:
             #  Handle partial matches. These are cases where an endpoint is
             # able to handle the request, but is not a preferred option.
             # We use this in particular to deal with "405 Method Not Allowed".
+            scope["route"] = partial
             scope.update(partial_scope)
             await partial.handle(scope, receive, send)
             return

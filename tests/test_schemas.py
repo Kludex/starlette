@@ -7,7 +7,7 @@ from starlette.schemas import SchemaGenerator
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
-schemas = SchemaGenerator({"openapi": "3.0.0", "info": {"title": "Example API", "version": "1.0"}})
+schemas = SchemaGenerator({"openapi": "3.2.0", "info": {"title": "Example API", "version": "1.0"}})
 
 
 def ws(session: WebSocket) -> None:
@@ -48,6 +48,17 @@ def create_user(request: Request) -> None:
     pass  # pragma: no cover
 
 
+def query_users(request: Request) -> None:
+    """
+    responses:
+      200:
+        description: Users matching a query.
+        examples:
+          [{"username": "tom"}]
+    """
+    pass  # pragma: no cover
+
+
 class OrganisationsEndpoint(HTTPEndpoint):
     def get(self, request: Request) -> None:
         """
@@ -66,6 +77,16 @@ class OrganisationsEndpoint(HTTPEndpoint):
             description: An organisation.
             examples:
               {"name": "Foo Corp."}
+        """
+        pass  # pragma: no cover
+
+    def query(self, request: Request) -> None:
+        """
+        responses:
+          200:
+            description: Organisations matching a query.
+            examples:
+              [{"name": "Foo Corp."}]
         """
         pass  # pragma: no cover
 
@@ -119,6 +140,7 @@ app = Starlette(
         Route("/users/{id:int}", endpoint=get_user, methods=["GET"]),
         Route("/users", endpoint=list_users, methods=["GET", "HEAD"]),
         Route("/users", endpoint=create_user, methods=["POST"]),
+        Route("/users", endpoint=query_users, methods=["QUERY"]),
         Route("/orgs", endpoint=OrganisationsEndpoint),
         Route("/regular-docstring-and-schema", endpoint=regular_docstring_and_schema),
         Route("/regular-docstring", endpoint=regular_docstring),
@@ -133,7 +155,7 @@ app = Starlette(
 def test_schema_generation() -> None:
     schema = schemas.get_schema(routes=app.routes)
     assert schema == {
-        "openapi": "3.0.0",
+        "openapi": "3.2.0",
         "info": {"title": "Example API", "version": "1.0"},
         "paths": {
             "/orgs": {
@@ -150,6 +172,14 @@ def test_schema_generation() -> None:
                         200: {
                             "description": "An organisation.",
                             "examples": {"name": "Foo Corp."},
+                        }
+                    }
+                },
+                "query": {
+                    "responses": {
+                        200: {
+                            "description": "Organisations matching a query.",
+                            "examples": [{"name": "Foo Corp."}],
                         }
                     }
                 },
@@ -173,6 +203,14 @@ def test_schema_generation() -> None:
                     }
                 },
                 "post": {"responses": {200: {"description": "A user.", "examples": {"username": "tom"}}}},
+                "query": {
+                    "responses": {
+                        200: {
+                            "description": "Users matching a query.",
+                            "examples": [{"username": "tom"}],
+                        }
+                    }
+                },
             },
             "/users/{id}": {
                 "get": {
@@ -188,11 +226,19 @@ def test_schema_generation() -> None:
     }
 
 
+def test_query_schema_requires_openapi_3_2() -> None:
+    schemas = SchemaGenerator({"openapi": "3.1.2", "info": {"title": "Example API", "version": "1.0"}})
+    schema = schemas.get_schema(routes=app.routes)
+
+    assert "query" not in schema["paths"]["/users"]
+    assert "query" not in schema["paths"]["/orgs"]
+
+
 EXPECTED_SCHEMA = """
 info:
   title: Example API
   version: '1.0'
-openapi: 3.0.0
+openapi: 3.2.0
 paths:
   /orgs:
     get:
@@ -208,6 +254,12 @@ paths:
           description: An organisation.
           examples:
             name: Foo Corp.
+    query:
+      responses:
+        200:
+          description: Organisations matching a query.
+          examples:
+          - name: Foo Corp.
   /regular-docstring-and-schema:
     get:
       responses:
@@ -237,6 +289,12 @@ paths:
           description: A user.
           examples:
             username: tom
+    query:
+      responses:
+        200:
+          description: Users matching a query.
+          examples:
+          - username: tom
   /users/{id}:
     get:
       responses:

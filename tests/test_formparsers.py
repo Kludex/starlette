@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 import os
 import threading
 from collections.abc import AsyncGenerator, Generator
@@ -14,7 +15,7 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.datastructures import Headers, UploadFile
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser, _user_safe_decode
+from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -613,14 +614,55 @@ async def test_urlencoded_limits_stop_parsing_within_a_single_chunk() -> None:
     assert sum(len(data) for _, data in parser.messages) <= 1024
 
 
-def test_user_safe_decode_helper() -> None:
-    result = _user_safe_decode(b"\xc4\x99\xc5\xbc\xc4\x87", "utf-8")
-    assert result == "ężć"
+@pytest.mark.parametrize(
+    "charset,value,expected",
+    [
+        ("utf-8", b"\xc4\x99\xc5\xbc\xc4\x87", "ężć"),
+        ("utf-8", b"\xe9", "é"),
+        ("invalid-charset", b"\xe9", "é"),
+    ],
+)
+def test_multipart_request_decodes_charset(
+    charset: str, value: bytes, expected: str, test_client_factory: TestClientFactory
+) -> None:
+    content = b'--boundary\r\nContent-Disposition: form-data; name="value"\r\n\r\n' + value + b"\r\n--boundary--\r\n"
+    client = test_client_factory(app)
+    response = client.post(
+        "/",
+        content=content,
+        headers={"Content-Type": f"multipart/form-data; charset={charset}; boundary=boundary"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"value": expected}
 
 
-def test_user_safe_decode_ignores_wrong_charset() -> None:
-    result = _user_safe_decode(b"abc", "latin-8")
-    assert result == "abc"
+def test_multipart_request_resolves_charset_once(test_client_factory: TestClientFactory) -> None:
+    charset = "starlette-test-invalid-charset"
+    codec_searches: list[str] = []
+
+    def search_codec(encoding: str) -> codecs.CodecInfo | None:
+        codec_searches.append(encoding)
+        return None
+
+    content = (
+        b'--boundary\r\nContent-Disposition: form-data; name="one"\r\n\r\none\r\n'
+        b'--boundary\r\nContent-Disposition: form-data; name="two"\r\n\r\ntwo\r\n'
+        b"--boundary--\r\n"
+    )
+    codecs.register(search_codec)
+    try:
+        client = test_client_factory(app)
+        response = client.post(
+            "/",
+            content=content,
+            headers={"Content-Type": f"multipart/form-data; charset={charset}; boundary=boundary"},
+        )
+    finally:
+        codecs.unregister(search_codec)
+
+    assert response.status_code == 200
+    assert response.json() == {"one": "one", "two": "two"}
+    assert len(codec_searches) == 1
 
 
 @pytest.mark.parametrize(
@@ -649,6 +691,57 @@ def test_missing_boundary_parameter(
         )
         assert res.status_code == 400
         assert res.text == "Missing boundary in multipart."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
+def test_multipart_boundary_exceeds_limit(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    boundary = "X" * 257
+    with expectation:
+        response = client.post(
+            "/",
+            content=f"--{boundary}\r\n\r\n--{boundary}--\r\n".encode(),
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        assert response.status_code == 400
+        assert response.text == "Invalid multipart data."
+
+
+@pytest.mark.parametrize(
+    "app,expectation",
+    [
+        (app, pytest.raises(MultiPartException)),
+        (Starlette(routes=[Mount("/", app=app)]), does_not_raise()),
+    ],
+)
+def test_multipart_headers_exceed_limit(
+    app: ASGIApp,
+    expectation: AbstractContextManager[Exception],
+    test_client_factory: TestClientFactory,
+) -> None:
+    client = test_client_factory(app)
+    extra_headers = b"".join(f"X-Extra-{index}: value\r\n".encode() for index in range(8))
+    with expectation:
+        response = client.post(
+            "/",
+            content=(
+                b"--boundary\r\n"
+                b'Content-Disposition: form-data; name="field"\r\n' + extra_headers + b"\r\nvalue\r\n--boundary--\r\n"
+            ),
+            headers={"Content-Type": "multipart/form-data; boundary=boundary"},
+        )
+        assert response.status_code == 400
+        assert response.text == "Invalid multipart data."
 
 
 @pytest.mark.parametrize(

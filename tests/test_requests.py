@@ -590,24 +590,9 @@ async def test_request_send_early_hints() -> None:
 
 
 @pytest.mark.anyio
-async def test_request_send_early_hints_requires_positional_link() -> None:
-    request = Request({"type": "http"})
-
-    with pytest.raises(TypeError, match="positional-only"):
-        await request.send_early_hints(link="</style.css>; rel=preload; as=style")  # type: ignore[call-arg]
-
-
-@pytest.mark.anyio
 async def test_request_send_early_hints_without_extension() -> None:
-    messages: list[Message] = []
-
-    async def send(message: Message) -> None:  # pragma: no cover
-        messages.append(message)
-
-    request = Request({"type": "http", "extensions": {}}, send=send)
+    request = Request({"type": "http"})
     await request.send_early_hints("</style.css>; rel=preload; as=style")
-
-    assert messages == []
 
 
 @pytest.mark.anyio

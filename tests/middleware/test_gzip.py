@@ -217,16 +217,12 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
 
 
 @pytest.mark.anyio
-async def test_gzip_passes_through_early_hints() -> None:
-    early_hint: Message = {
-        "type": "http.response.early_hint",
-        "links": [b"</style.css>; rel=preload; as=style"],
-    }
-
+@pytest.mark.parametrize("encoding", ["gzip", "identity"])
+async def test_gzip_passes_through_early_hints(encoding: str) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send(early_hint)
-        await send({"type": "http.response.start", "status": 200, "headers": []})
-        await send({"type": "http.response.body", "body": b"content"})
+        request = Request(scope, receive, send)
+        await request.send_early_hints("</style.css>; rel=preload; as=style")
+        await PlainTextResponse("hello")(scope, receive, send)
 
     events: list[Message] = []
 
@@ -234,21 +230,24 @@ async def test_gzip_passes_through_early_hints() -> None:
         events.append(message)
 
     async def receive() -> Message:
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     scope: Scope = {
         "type": "http",
-        "headers": [(b"accept-encoding", b"gzip")],
+        "headers": [(b"accept-encoding", encoding.encode())],
         "extensions": {"http.response.early_hint": {}},
     }
-    await GZipMiddleware(app)(scope, receive, send)
+    await GZipMiddleware(app, minimum_size=0)(scope, receive, send)
 
-    assert events[0] == early_hint
-    assert [event["type"] for event in events] == [
-        "http.response.early_hint",
-        "http.response.start",
-        "http.response.body",
-    ]
+    assert events[0] == {
+        "type": "http.response.early_hint",
+        "links": [b"</style.css>; rel=preload; as=style"],
+    }
+    assert events[1]["type"] == "http.response.start"
+    body = events[2]["body"]
+    if encoding == "gzip":
+        body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
+    assert body == b"hello"
 
 
 @pytest.mark.anyio

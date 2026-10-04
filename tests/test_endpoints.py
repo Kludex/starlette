@@ -73,7 +73,7 @@ async def test_http_endpoint_supports_early_hints() -> None:
     messages: list[Message] = []
 
     async def receive() -> Message:
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     async def send(message: Message) -> None:
         messages.append(message)
@@ -85,7 +85,7 @@ async def test_http_endpoint_supports_early_hints() -> None:
         "links": [b"</style.css>; rel=preload; as=style"],
     }
     assert messages[1]["type"] == "http.response.start"
-    assert messages[2]["type"] == "http.response.body"
+    assert messages[2]["body"] == b"Hello, world!"
 
 
 def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: TestClientFactory) -> None:

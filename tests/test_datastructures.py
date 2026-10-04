@@ -498,6 +498,35 @@ def test_formdata() -> None:
     assert FormData({"a": "123", "b": "789"}) != {"a": "123", "b": "789"}
 
 
+def test_formdata_equality_with_multiple_uploads() -> None:
+    with io.BytesIO(b"a") as stream_a, io.BytesIO(b"b") as stream_b:
+        file_a = UploadFile(stream_a, filename="a.txt")
+        file_b = UploadFile(stream_b, filename="b.txt")
+        form = FormData([("files", file_a), ("files", file_b)])
+
+        assert form == form
+        assert form == FormData(form)
+        assert form == FormData([("files", file_b), ("files", file_a)])
+
+
+def test_formdata_equality_with_mixed_values() -> None:
+    with io.BytesIO(b"data") as stream:
+        upload = UploadFile(stream, filename="file.txt")
+        form = FormData([("field", upload), ("field", "text")])
+
+        assert form == FormData(form)
+        assert form == FormData([("field", "text"), ("field", upload)])
+        assert form != FormData([("field", upload), ("field", upload)])
+
+
+def test_formdata_equality_preserves_upload_identity() -> None:
+    with io.BytesIO(b"data") as stream_a, io.BytesIO(b"data") as stream_b:
+        file_a = UploadFile(stream_a, filename="file.txt")
+        file_b = UploadFile(stream_b, filename="file.txt")
+
+        assert FormData([("files", file_a)]) != FormData([("files", file_b)])
+
+
 @pytest.mark.anyio
 async def test_upload_file_repr() -> None:
     stream = io.BytesIO(b"data")
@@ -510,6 +539,30 @@ async def test_upload_file_repr_headers() -> None:
     stream = io.BytesIO(b"data")
     file = UploadFile(filename="file", file=stream, headers=Headers({"foo": "bar"}))
     assert repr(file) == "UploadFile(filename='file', size=None, headers=Headers({'foo': 'bar'}))"
+
+
+@pytest.mark.parametrize(
+    ("left_items", "right_items", "expected"),
+    [
+        ([], [], True),
+        ([("a", "1"), ("a", "1")], [("a", "1"), ("a", "2")], False),
+        ([("a", "1")], [("a", "1"), ("a", "1")], False),
+        ([("a", [1]), ("a", [2])], [("a", [2]), ("a", [1])], True),
+        ([("a", [1])], [("a", [1]), ("a", [1])], False),
+        ([("a", [1]), ("a", [1])], [("a", [1]), ("a", [2])], False),
+        ([("a", "1")], [("a", [1])], False),
+        ([("a", [1])], [("b", [1])], False),
+    ],
+)
+def test_multidict_equality_preserves_entries(
+    left_items: list[tuple[str, object]], right_items: list[tuple[str, object]], expected: bool
+) -> None:
+    left = MultiDict(left_items)
+    right = MultiDict(right_items)
+
+    assert (left == right) is expected
+    assert left.multi_items() == left_items
+    assert right.multi_items() == right_items
 
 
 def test_multidict() -> None:

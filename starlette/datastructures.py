@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
@@ -311,7 +312,12 @@ class ImmutableMultiDict(Mapping[_KeyType, _CovariantValueType]):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
             return False
-        return sorted(self._list) == sorted(other._list)
+        try:
+            return Counter(self._list) == Counter(other._list)
+        except TypeError:
+            return len(self._list) == len(other._list) and all(
+                self._list.count(item) == other._list.count(item) for item in self._list
+            )
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__

@@ -641,8 +641,7 @@ def test_multipart_request_resolves_charset_once(test_client_factory: TestClient
     codec_searches: list[str] = []
 
     def search_codec(encoding: str) -> codecs.CodecInfo | None:
-        if encoding == charset.replace("-", "_"):
-            codec_searches.append(encoding)
+        codec_searches.append(encoding)
         return None
 
     content = (

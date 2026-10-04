@@ -35,7 +35,9 @@ class URL:
             scheme = scope.get("scheme", "http")
             server = scope.get("server", None)
             # `scope["path"]` is percent-decoded, so a literal "?" or "#" in it would
-            # otherwise start the query string or the fragment of the URL.
+            # otherwise start the query string or the fragment of the URL. A literal "%"
+            # is left as it is: it cannot be escaped here without double-encoding the
+            # path on servers that pass it through raw.
             path = scope["path"].replace("?", "%3F").replace("#", "%23")
             query_string = scope.get("query_string", b"")
 

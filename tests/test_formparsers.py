@@ -1079,7 +1079,13 @@ def test_multipart_closes_tempfile_on_oserror(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "chunks", [[b"first=one&second=two"], [b"first=one&sec", b"ond=two"], [b"first=one&second=two", b""]]
+    "chunks",
+    [
+        [b"first=one&second=two"],
+        [b"first=one&sec", b"ond=two"],
+        [b"first=one&second=two", b""],
+        [b"first=one", b"", b"&second=two"],
+    ],
 )
 async def test_urlencoded_parser_finalizes_without_empty_stream_chunk(chunks: list[bytes]) -> None:
     async def stream() -> AsyncGenerator[bytes, None]:

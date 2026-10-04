@@ -1,7 +1,6 @@
 import re
 
 import pytest
-from httpx2 import ASGITransport, AsyncClient
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -290,9 +289,8 @@ def test_vary_cookie_on_access(test_client_factory: TestClientFactory) -> None:
     assert "cookie" not in response.headers.get("vary", "").lower()
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize("session_data", [{"a": "1"}, {"a": "1", "b": "2"}])
-async def test_vary_cookie_on_session_pop(session_data: dict[str, str]) -> None:
+def test_vary_cookie_on_session_pop(test_client_factory: TestClientFactory, session_data: dict[str, str]) -> None:
     async def pop_session(request: Request) -> JSONResponse:
         return JSONResponse({"value": request.scope["session"].pop("a")})
 
@@ -303,14 +301,14 @@ async def test_vary_cookie_on_session_pop(session_data: dict[str, str]) -> None:
         ],
         middleware=[Middleware(SessionMiddleware, secret_key="example")],
     )
-    async with AsyncClient(transport=ASGITransport(app), base_url="http://testserver") as client:
-        response = await client.post("/update_session", json=session_data)
-        assert response.json() == {"session": session_data}
+    client = test_client_factory(app)
+    response = client.post("/update_session", json=session_data)
+    assert response.json() == {"session": session_data}
 
-        response = await client.post("/pop_session")
-        assert response.json() == {"value": "1"}
-        assert "set-cookie" in response.headers
-        assert "cookie" in response.headers.get("vary", "").lower()
+    response = client.post("/pop_session")
+    assert response.json() == {"value": "1"}
+    assert "set-cookie" in response.headers
+    assert "cookie" in response.headers.get("vary", "").lower()
 
 
 def test_session_tracks_modification() -> None:

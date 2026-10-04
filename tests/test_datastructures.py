@@ -43,6 +43,8 @@ def test_url() -> None:
     assert new.hostname == "example.com"
 
     ipv6_url = URL("https://[fe::2]:12345")
+    assert ipv6_url.replace(hostname=ipv6_url.hostname) == ipv6_url
+
     new = ipv6_url.replace(port=8080)
     assert new == "https://[fe::2]:8080"
 
@@ -79,11 +81,6 @@ def test_url_replace_ipv6_hostname(hostname: str) -> None:
     assert new == f"https://[{hostname}]:8443/path"
     assert new.hostname == hostname
     assert new.port == 8443
-
-
-def test_url_replace_ipv6_hostname_round_trip() -> None:
-    url = URL("https://[fe::2]:12345/path")
-    assert url.replace(hostname=url.hostname) == url
 
 
 def test_url_replace_hostname_compatibility() -> None:

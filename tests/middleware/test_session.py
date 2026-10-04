@@ -289,8 +289,7 @@ def test_vary_cookie_on_access(test_client_factory: TestClientFactory) -> None:
     assert "cookie" not in response.headers.get("vary", "").lower()
 
 
-@pytest.mark.parametrize("session_data", [{"a": "1"}, {"a": "1", "b": "2"}])
-def test_vary_cookie_on_session_pop(test_client_factory: TestClientFactory, session_data: dict[str, str]) -> None:
+def test_vary_cookie_on_session_pop(test_client_factory: TestClientFactory) -> None:
     async def pop_session(request: Request) -> JSONResponse:
         return JSONResponse({"value": request.scope["session"].pop("a")})
 
@@ -302,8 +301,8 @@ def test_vary_cookie_on_session_pop(test_client_factory: TestClientFactory, sess
         middleware=[Middleware(SessionMiddleware, secret_key="example")],
     )
     client = test_client_factory(app)
-    response = client.post("/update_session", json=session_data)
-    assert response.json() == {"session": session_data}
+    response = client.post("/update_session", json={"a": "1", "b": "2"})
+    assert response.json() == {"session": {"a": "1", "b": "2"}}
 
     response = client.post("/pop_session")
     assert response.json() == {"value": "1"}

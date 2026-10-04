@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 import os
 import threading
 from collections.abc import AsyncGenerator, Generator
@@ -633,6 +634,36 @@ def test_multipart_request_decodes_charset(
     )
     assert response.status_code == 200
     assert response.json() == {"value": expected}
+
+
+def test_multipart_request_resolves_charset_once(test_client_factory: TestClientFactory) -> None:
+    charset = "starlette-test-invalid-charset"
+    codec_searches: list[str] = []
+
+    def search_codec(encoding: str) -> codecs.CodecInfo | None:
+        if encoding == charset.replace("-", "_"):
+            codec_searches.append(encoding)
+        return None
+
+    content = (
+        b'--boundary\r\nContent-Disposition: form-data; name="one"\r\n\r\none\r\n'
+        b'--boundary\r\nContent-Disposition: form-data; name="two"\r\n\r\ntwo\r\n'
+        b"--boundary--\r\n"
+    )
+    codecs.register(search_codec)
+    try:
+        client = test_client_factory(app)
+        response = client.post(
+            "/",
+            content=content,
+            headers={"Content-Type": f"multipart/form-data; charset={charset}; boundary=boundary"},
+        )
+    finally:
+        codecs.unregister(search_codec)
+
+    assert response.status_code == 200
+    assert response.json() == {"one": "one", "two": "two"}
+    assert codec_searches == [charset.replace("-", "_")]
 
 
 @pytest.mark.parametrize(

@@ -4,8 +4,7 @@ the incoming request, rather than accessing the ASGI scope and receive channel d
 
 ### Request
 
-Create a request with `Request(scope)`. You can also pass the optional
-`receive` and `send` callables.
+Signature: `Request(scope, receive=empty_receive, send=empty_send)`
 
 ```python
 from starlette.requests import Request

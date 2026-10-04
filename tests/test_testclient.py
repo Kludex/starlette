@@ -3,9 +3,9 @@ from __future__ import annotations
 import inspect
 import itertools
 import threading
-from asyncio import Task, current_task as asyncio_current_task
-from collections.abc import AsyncGenerator, Callable
-from concurrent.futures import Future
+from asyncio import CancelledError as AsyncioCancelledError, Task, current_task as asyncio_current_task
+from collections.abc import AsyncGenerator, Callable, Generator
+from concurrent.futures import CancelledError, Future
 from contextlib import asynccontextmanager, nullcontext
 from typing import Any
 
@@ -333,9 +333,14 @@ def test_closing_streaming_response_stops_application(test_client_factory: TestC
 
 
 @pytest.mark.parametrize("lifespan", [True, False])
+@pytest.mark.parametrize("close_iterator", [True, False])
 @pytest.mark.parametrize(("fail", "raise_server_exceptions"), [(False, True), (True, True), (True, False)])
 def test_closing_completed_response_waits_for_background_task(
-    test_client_factory: TestClientFactory, lifespan: bool, fail: bool, raise_server_exceptions: bool
+    test_client_factory: TestClientFactory,
+    lifespan: bool,
+    close_iterator: bool,
+    fail: bool,
+    raise_server_exceptions: bool,
 ) -> None:
     started = threading.Event()
     completed = threading.Event()
@@ -362,7 +367,55 @@ def test_closing_completed_response_waits_for_background_task(
                 chunks = response.iter_raw()
                 assert next(chunks) == b"hello"
                 assert started.wait(timeout=10)
+                if close_iterator:
+                    assert isinstance(chunks, Generator)
+                    chunks.close()
         assert completed.is_set()
+
+
+@pytest.mark.parametrize("lifespan", [True, False])
+@pytest.mark.parametrize("fail", [True, False])
+def test_interrupted_completed_response_cancels_background_task(
+    test_client_factory: TestClientFactory, monkeypatch: pytest.MonkeyPatch, lifespan: bool, fail: bool
+) -> None:
+    started = threading.Event()
+    finished = threading.Event()
+    background_timeout: anyio.CancelScope
+    original_call = BlockingPortal.call
+
+    async def background() -> None:
+        nonlocal background_timeout
+        with anyio.move_on_after(10) as background_timeout:
+            try:
+                started.set()
+                await anyio.sleep_forever()
+            except anyio.get_cancelled_exc_class():
+                if fail:
+                    raise RuntimeError("cleanup failure")
+                raise
+            finally:
+                finished.set()
+
+    async def homepage(request: Request) -> Response:
+        return Response(b"hello", background=BackgroundTask(background))
+
+    def call(portal: BlockingPortal, func: Callable[..., Any], *args: Any) -> Any:
+        result = original_call(portal, func, *args)
+        if result == b"hello":
+            patch.undo()
+            assert started.wait(timeout=10)
+            raise KeyboardInterrupt
+        return result
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage), Route("/ready", mock_service_endpoint)]))
+    with client if lifespan else nullcontext():
+        with monkeypatch.context() as patch:
+            patch.setattr(BlockingPortal, "call", call)
+            with pytest.raises(KeyboardInterrupt):
+                client.get("/")
+        assert finished.is_set()
+        assert not background_timeout.cancel_called
+        assert client.get("/ready").json() == {"mock": "example"}
 
 
 def test_closing_response_after_final_chunk_handoff(
@@ -433,6 +486,27 @@ def test_streaming_response_late_server_exception(
     with client, expected:
         with client.stream("GET", "/") as response:
             assert response.read() == b"body"
+
+
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+@pytest.mark.parametrize("response_started", [True, False])
+@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+def test_cancelled_application_respects_raise_server_exceptions(
+    test_client_factory: TestClientFactory, response_started: bool, raise_server_exceptions: bool
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        if response_started:
+            await Response(b"hello")(scope, receive, send)
+        raise AsyncioCancelledError
+
+    client = test_client_factory(app, raise_server_exceptions=raise_server_exceptions)
+    if raise_server_exceptions:
+        with pytest.raises(CancelledError):
+            client.get("/")
+    else:
+        response = client.get("/")
+        assert response.status_code == (200 if response_started else 500)
+        assert response.content == (b"hello" if response_started else b"")
 
 
 def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClientFactory) -> None:

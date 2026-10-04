@@ -4,6 +4,7 @@ import contextlib
 import inspect
 import json
 import math
+import sys
 import threading
 import warnings
 from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, Sequence
@@ -206,7 +207,10 @@ class _TestClientResponseStream(httpx.SyncByteStream):
         return self._body
 
     def close(self) -> None:
-        self._exit_stack.close()
+        exc_info = sys.exc_info()
+        if exc_info[0] is GeneratorExit:
+            exc_info = (None, None, None)
+        self._exit_stack.__exit__(*exc_info)
 
 
 class _TestClientTransport(httpx.BaseTransport):
@@ -382,19 +386,19 @@ class _TestClientTransport(httpx.BaseTransport):
                 if request.method != "HEAD" and body:
                     yield body
 
-        def cancel_if_incomplete() -> None:
-            if not response_complete.is_set():
+        def cancel_if_needed(exc_type: type[BaseException] | None) -> None:
+            if exc_type is not None or not response_complete.is_set():
                 cancel_scope.cancel()
 
         def close_app(exc_type: type[BaseException] | None = None, *_: Any) -> None:
             try:
                 if app_task is None or not app_task.done():
-                    portal.call(cancel_if_incomplete)
+                    portal.call(cancel_if_needed, exc_type)
             finally:
                 app_complete.wait()
-            if exc_type is None and app_task is not None:
+            if exc_type is None and app_task is not None and self.raise_server_exceptions:
                 exception = app_task.exception()
-                if exception is not None and self.raise_server_exceptions:
+                if exception is not None:
                     raise exception
 
         stack = contextlib.ExitStack()

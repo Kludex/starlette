@@ -115,7 +115,8 @@ class Session(dict[str, typing.Any]):
         super().clear()
 
     def pop(self, key: str, *args: typing.Any) -> typing.Any:
-        self.modified = self.modified or key in self
+        if key in self:
+            self.mark_modified()
         return super().pop(key, *args)
 
     def popitem(self) -> tuple[str, typing.Any]:

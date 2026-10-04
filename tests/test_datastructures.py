@@ -43,6 +43,8 @@ def test_url() -> None:
     assert new.hostname == "example.com"
 
     ipv6_url = URL("https://[fe::2]:12345")
+    assert ipv6_url.replace(hostname=ipv6_url.hostname) == ipv6_url
+
     new = ipv6_url.replace(port=8080)
     assert new == "https://[fe::2]:8080"
 
@@ -53,6 +55,11 @@ def test_url() -> None:
     ipv6_url = URL("https://[fe::2]")
     new = ipv6_url.replace(port=123)
     assert new == "https://[fe::2]:123"
+
+    url = URL("https://example.org:8443/path")
+    assert url.replace(hostname="[::1]") == "https://[::1]:8443/path"
+    assert url.replace(hostname="[::1]:8080", port=None) == "https://[::1]:8080/path"
+    assert url.replace(hostname="example.org:8080", port=None) == "https://example.org:8080/path"
 
     url = URL("http://u:p@host/")
     assert url.replace(hostname="bar") == URL("http://u:p@bar/")

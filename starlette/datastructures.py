@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
 from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
@@ -125,6 +126,13 @@ class URL:
 
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
+            elif ":" in hostname and not hostname.startswith("["):
+                try:
+                    ipaddress.IPv6Address(hostname)
+                except ValueError:
+                    pass
+                else:
+                    hostname = f"[{hostname}]"
 
             netloc = hostname
             if port is not None:

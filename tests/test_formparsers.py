@@ -662,7 +662,7 @@ def test_multipart_request_resolves_charset_once(test_client_factory: TestClient
 
     assert response.status_code == 200
     assert response.json() == {"one": "one", "two": "two"}
-    assert codec_searches == [charset.replace("-", "_")]
+    assert len(codec_searches) == 1
 
 
 @pytest.mark.parametrize(

@@ -169,7 +169,7 @@ class IdentityResponder:
             message["body"] = await self.apply_compression(body, more_body=more_body)
 
             await self.send(message)
-        elif message_type == "http.response.trailers":
+        elif message_type in ("http.response.early_hint", "http.response.trailers"):
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
             # Don't apply GZip to pathsend responses

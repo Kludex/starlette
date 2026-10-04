@@ -217,6 +217,40 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("encoding", ["gzip", "identity"])
+async def test_gzip_passes_through_early_hints(encoding: str) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive, send)
+        await request.send_early_hints("</style.css>; rel=preload; as=style")
+        await PlainTextResponse("hello")(scope, receive, send)
+
+    events: list[Message] = []
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    scope: Scope = {
+        "type": "http",
+        "headers": [(b"accept-encoding", encoding.encode())],
+        "extensions": {"http.response.early_hint": {}},
+    }
+    await GZipMiddleware(app, minimum_size=0)(scope, receive, send)
+
+    assert events[0] == {
+        "type": "http.response.early_hint",
+        "links": [b"</style.css>; rel=preload; as=style"],
+    }
+    assert events[1]["type"] == "http.response.start"
+    body = events[2]["body"]
+    if encoding == "gzip":
+        body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
+    assert body == b"hello"
+
+
+@pytest.mark.anyio
 async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     path = tmpdir / "example.txt"
     with path.open("w") as file:

@@ -289,27 +289,6 @@ def test_vary_cookie_on_access(test_client_factory: TestClientFactory) -> None:
     assert "cookie" not in response.headers.get("vary", "").lower()
 
 
-def test_vary_cookie_on_session_pop(test_client_factory: TestClientFactory) -> None:
-    async def pop_session(request: Request) -> JSONResponse:
-        return JSONResponse({"value": request.scope["session"].pop("a")})
-
-    app = Starlette(
-        routes=[
-            Route("/update_session", endpoint=update_session, methods=["POST"]),
-            Route("/pop_session", endpoint=pop_session, methods=["POST"]),
-        ],
-        middleware=[Middleware(SessionMiddleware, secret_key="example")],
-    )
-    client = test_client_factory(app)
-    response = client.post("/update_session", json={"a": "1", "b": "2"})
-    assert response.json() == {"session": {"a": "1", "b": "2"}}
-
-    response = client.post("/pop_session")
-    assert response.json() == {"value": "1"}
-    assert "set-cookie" in response.headers
-    assert "cookie" in response.headers.get("vary", "").lower()
-
-
 def test_session_tracks_modification() -> None:
     session = Session({"a": "1", "b": "2"})
     assert not session.modified

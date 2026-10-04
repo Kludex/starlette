@@ -85,6 +85,7 @@ async def test_http_endpoint_supports_early_hints() -> None:
         "links": [b"</style.css>; rel=preload; as=style"],
     }
     assert messages[1]["type"] == "http.response.start"
+    assert messages[2]["type"] == "http.response.body"
     assert messages[2]["body"] == b"Hello, world!"
 
 

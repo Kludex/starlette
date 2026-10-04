@@ -1246,6 +1246,8 @@ async def test_early_hints_events() -> None:
         },
     ]
     assert events[2]["type"] == "http.response.start"
+    assert events[-1]["type"] == "http.response.body"
+    assert events[-1].get("more_body", False) is False
     assert b"".join(event.get("body", b"") for event in events[3:]) == b"hello"
 
 

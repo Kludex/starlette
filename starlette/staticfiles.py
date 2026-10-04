@@ -15,6 +15,7 @@ from starlette.datastructures import URL, Headers
 from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
+from starlette.websockets import WebSocketClose
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -88,6 +89,11 @@ class StaticFiles:
         """
         The ASGI entry point.
         """
+        if scope["type"] == "websocket":
+            websocket_close = WebSocketClose()
+            await websocket_close(scope, receive, send)
+            return
+
         assert scope["type"] == "http"
 
         if not self.config_checked:
@@ -152,6 +158,9 @@ class StaticFiles:
         raise HTTPException(status_code=404)
 
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        # Reject absolute paths so they cannot escape the served directory.
+        if path.startswith(("/", "\\")):
+            return "", None
         for directory in self.all_directories:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:
@@ -205,9 +214,11 @@ class StaticFiles:
         "Not Modified" response could be returned instead.
         """
         if if_none_match := request_headers.get("if-none-match"):
+            if if_none_match.strip() == "*":
+                return True
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
-            return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
+            return etag in [tag.strip().removeprefix("W/") for tag in if_none_match.split(",")]
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])

@@ -7,6 +7,8 @@ from typing import ParamSpec, TypeVar
 
 import anyio.to_thread
 
+from starlette.exceptions import StarletteDeprecationWarning
+
 P = ParamSpec("P")
 T = TypeVar("T")
 
@@ -14,7 +16,7 @@ T = TypeVar("T")
 async def run_until_first_complete(*args: tuple[Callable, dict]) -> None:  # type: ignore[type-arg]
     warnings.warn(
         "run_until_first_complete is deprecated and will be removed in a future version.",
-        DeprecationWarning,
+        StarletteDeprecationWarning,
     )
 
     async with anyio.create_task_group() as task_group:

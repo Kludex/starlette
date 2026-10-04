@@ -13,7 +13,7 @@ from starlette.endpoints import HTTPEndpoint
 
 class App(HTTPEndpoint):
     async def get(self, request):
-        return PlainTextResponse(f"Hello, world!")
+        return PlainTextResponse("Hello, world!")
 ```
 
 If you're using a Starlette application instance to handle routing, you can
@@ -29,8 +29,10 @@ from starlette.routing import Route
 
 class Homepage(HTTPEndpoint):
     async def get(self, request):
-        return PlainTextResponse(f"Hello, world!")
+        return PlainTextResponse("Hello, world!")
 
+    async def query(self, request):
+        return PlainTextResponse("Hello, query!")
 
 class User(HTTPEndpoint):
     async def get(self, request):

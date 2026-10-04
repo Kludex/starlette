@@ -58,7 +58,7 @@ def test_request_headers(test_client_factory: TestClientFactory) -> None:
         "headers": {
             "host": "example.org",
             "user-agent": "testclient",
-            "accept-encoding": "gzip, deflate",
+            "accept-encoding": "gzip, deflate, zstd",
             "accept": "*/*",
             "connection": "keep-alive",
         }
@@ -268,8 +268,8 @@ def test_request_disconnect(
 
 def test_request_is_disconnected(test_client_factory: TestClientFactory) -> None:
     """
-    If a client disconnect occurs after reading request body
-    then request will be set disconnected properly.
+    After the response is sent, the receive stream is drained, so a subsequent
+    `is_disconnected()` call reports the request as disconnected.
     """
     disconnected_after_response = None
 
@@ -437,7 +437,7 @@ def test_cookies_edge_cases(
             "abc=def; unnamed; django_language=en",
             {"": "unnamed", "abc": "def", "django_language": "en"},
         ),
-        # Even a double quote may be an unamed value.
+        # Even a double quote may be an unnamed value.
         ('a=b; "; c=d', {"a": "b", "": '"', "c": "d"}),
         # Spaces in names and values, and an equals sign in values.
         ("a b c=d e = f; gh=i", {"a b c": "d e = f", "gh": "i"}),

@@ -120,6 +120,9 @@ The `ExceptionMiddleware` implementation defaults to returning plain-text HTTP r
 
 * `HTTPException(status_code, detail=None, headers=None)`
 
+When `detail` is not provided, it defaults to the standard phrase for the status code. If no standard phrase exists,
+it defaults to an empty string.
+
 You should only raise `HTTPException` inside routing or endpoints.
 Middleware classes should instead just return appropriate responses directly.
 
@@ -144,6 +147,6 @@ app = Starlette(routes=[WebSocketRoute("/ws", websocket_endpoint)])
 
 You can use the `WebSocketException` class to raise errors inside of WebSocket endpoints.
 
-* `WebSocketException(code=1008, reason=None)`
+* `WebSocketException(code, reason=None)`
 
 You can set any code valid as defined [in the specification](https://tools.ietf.org/html/rfc6455#section-7.4.1).

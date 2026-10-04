@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import http
+import http.client
 from collections.abc import Mapping
 
 
 class HTTPException(Exception):
     def __init__(self, status_code: int, detail: str | None = None, headers: Mapping[str, str] | None = None) -> None:
         if detail is None:
-            detail = http.HTTPStatus(status_code).phrase
+            detail = http.client.responses.get(status_code, "")
         self.status_code = status_code
         self.detail = detail
         self.headers = headers
@@ -31,3 +31,13 @@ class WebSocketException(Exception):
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
         return f"{class_name}(code={self.code!r}, reason={self.reason!r})"
+
+
+class StarletteDeprecationWarning(UserWarning):
+    """A custom deprecation warning for Starlette.
+
+    Unlike the built-in DeprecationWarning, this inherits from UserWarning to ensure it is visible by default, helping
+    users discover deprecated features without needing to enable warnings explicitly.
+
+    Reference: https://sethmlarson.dev/deprecations-via-warnings-dont-work-for-python-libraries
+    """

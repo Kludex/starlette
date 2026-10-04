@@ -2,6 +2,166 @@
 toc_depth: 2
 ---
 
+## 1.7.0 (September 23, 2026)
+
+This release adds experimental OpenTelemetry tracing and requires AnyIO 4.
+
+!!! warning "OpenTelemetryMiddleware is experimental"
+    Its API and emitted telemetry may change in minor releases without a deprecation period
+    [#3574](https://github.com/Kludex/starlette/pull/3574).
+
+#### Added
+
+* Add experimental `OpenTelemetryMiddleware` for HTTP server spans, with URL exclusions and custom tracer providers [#3438](https://github.com/Kludex/starlette/pull/3438), [#3463](https://github.com/Kludex/starlette/pull/3463), and [#3520](https://github.com/Kludex/starlette/pull/3520).
+* Expose the matched route through `scope["route"]` [#3438](https://github.com/Kludex/starlette/pull/3438).
+* Support the `QUERY` HTTP method in `HTTPEndpoint`, CORS, and OpenAPI 3.2 schema generation [#3489](https://github.com/Kludex/starlette/pull/3489).
+* Capture HTTP response trailers in `TestClient` and expose them through `response.extensions["http.response.trailers"]` [#3563](https://github.com/Kludex/starlette/pull/3563).
+* Support partitioned cookies in `SessionMiddleware` [#3510](https://github.com/Kludex/starlette/pull/3510).
+* Add `partitioned` to `Response.delete_cookie()` on Python 3.14 and later [#3376](https://github.com/Kludex/starlette/pull/3376).
+* Support IPv6 hosts in `TrustedHostMiddleware` and `TestClient` [#3471](https://github.com/Kludex/starlette/pull/3471).
+* Support Python 3.15 [#3508](https://github.com/Kludex/starlette/pull/3508).
+
+#### Changed
+
+* Require `anyio>=4.0.0,<5`, dropping support for AnyIO 3 [#3512](https://github.com/Kludex/starlette/pull/3512).
+* Raise `WebSocketDisconnected`, a `RuntimeError` subclass, for disconnected WebSocket operations [#2767](https://github.com/Kludex/starlette/pull/2767).
+* Accept `Collection[str]` in `CORSMiddleware` configuration annotations, including sets and frozensets [#3518](https://github.com/Kludex/starlette/pull/3518).
+
+#### Fixed
+
+* Run background tasks only after the response is sent when using `BaseHTTPMiddleware` [#3476](https://github.com/Kludex/starlette/pull/3476).
+* Return `400` for invalid multipart parser input [#3492](https://github.com/Kludex/starlette/pull/3492).
+* Include `Vary: Origin` on all normal CORS responses and vary preflight responses by all request headers that affect them [#3516](https://github.com/Kludex/starlette/pull/3516) and [#3517](https://github.com/Kludex/starlette/pull/3517).
+* Handle malformed `Host` headers and IPv6 authorities consistently across URL construction, host routing, and redirect middleware [#3472](https://github.com/Kludex/starlette/pull/3472).
+* Ignore `Range` headers when `FileResponse` has a status other than `200`, preserving its status and full body [#3568](https://github.com/Kludex/starlette/pull/3568).
+* Handle standalone `If-None-Match: *` in `StaticFiles` [#3201](https://github.com/Kludex/starlette/pull/3201).
+* Reject WebSocket requests to `StaticFiles` without raising an assertion error [#3532](https://github.com/Kludex/starlette/pull/3532).
+* Persist session mutations made with `popitem()` and `|=` [#3436](https://github.com/Kludex/starlette/pull/3436).
+* Handle empty and absent payloads in `WebSocketEndpoint.decode()` [#3372](https://github.com/Kludex/starlette/pull/3372).
+* Implement `identity` on `SimpleUser` and `UnauthenticatedUser` [#3271](https://github.com/Kludex/starlette/pull/3271).
+* Allow `HTTPException` to use non-standard status codes without an explicit `detail` [#3545](https://github.com/Kludex/starlette/pull/3545).
+* Avoid deprecated AnyIO imports in `TestClient` and add explicit imports in `WSGIMiddleware` for AnyIO 4.15 compatibility [#3498](https://github.com/Kludex/starlette/pull/3498) and [#3501](https://github.com/Kludex/starlette/pull/3501).
+* Offload debug traceback rendering to a worker thread in `ServerErrorMiddleware` [#2858](https://github.com/Kludex/starlette/pull/2858).
+
+## 1.6.0 (August 8, 2026)
+
+#### Added
+
+* Add `max_body_size` to `Starlette` and route classes [#3431](https://github.com/encode/starlette/pull/3431).
+* Expose `http.response.debug` information via response extensions [#3130](https://github.com/encode/starlette/pull/3130).
+
+## 1.5.1 (August 8, 2026)
+
+#### Fixed
+
+* Reject inverted single-byte ranges in `FileResponse` [#3389](https://github.com/encode/starlette/pull/3389).
+* Limit `FileResponse` to 100 ranges [#3430](https://github.com/encode/starlette/pull/3430).
+
+## 1.5.0 (August 8, 2026)
+
+#### Added
+
+* Add `exclude_content_types` parameter to `GZipMiddleware` [#3418](https://github.com/encode/starlette/pull/3418).
+
+#### Changed
+
+* Expand default excluded content types in `GZipMiddleware` [#3421](https://github.com/encode/starlette/pull/3421).
+
+#### Fixed
+
+* Flush GZip output for each streamed chunk [#3419](https://github.com/encode/starlette/pull/3419).
+* Skip compression of partial responses in `GZipMiddleware` [#3420](https://github.com/encode/starlette/pull/3420).
+
+## 1.4.1 (August 5, 2026)
+
+#### Fixed
+
+* Default `thread_minimum_size` to 128 KiB in `GZipResponder`, keeping it usable without the new keyword argument [#3415](https://github.com/encode/starlette/pull/3415).
+
+## 1.4.0 (August 5, 2026)
+
+#### Added
+
+* Offload large GZip compression to a worker thread, keeping the event loop responsive. `GZipMiddleware` accepts a new `thread_minimum_size` parameter (default 128 KiB) controlling the minimum body chunk size compressed in a thread [#3410](https://github.com/encode/starlette/pull/3410).
+
+#### Changed
+
+* Use `zlib.compressobj` instead of `GzipFile` in `GZipMiddleware`, reducing memory usage during compression [#3411](https://github.com/encode/starlette/pull/3411).
+* Lazily allocate `GZipMiddleware` compression resources, avoiding compressor allocation for responses that are never compressed [#3407](https://github.com/encode/starlette/pull/3407).
+
+## 1.3.1 (June 12, 2026)
+
+#### Fixed
+
+* Enforce `max_fields` and `max_part_size` in `FormParser` [#3329](https://github.com/encode/starlette/pull/3329).
+* Enforce `FormParser` limits in parser callbacks [#3331](https://github.com/encode/starlette/pull/3331).
+
+## 1.3.0 (June 11, 2026)
+
+#### Added
+
+* Add `httpx2` to the `full` extra [#3323](https://github.com/encode/starlette/pull/3323).
+* Annotate the `URLPath` `protocol` parameter with `Literal` [#3285](https://github.com/encode/starlette/pull/3285).
+
+#### Fixed
+
+* Build `request.url` from structured components [#3326](https://github.com/encode/starlette/pull/3326).
+* Clamp oversized suffix ranges in `FileResponse` [#3307](https://github.com/encode/starlette/pull/3307).
+* Catch `OSError` alongside `MultiPartException` when closing temp files [#3191](https://github.com/encode/starlette/pull/3191).
+* Avoid collapsing exception groups raised from user code [#2830](https://github.com/encode/starlette/pull/2830).
+* Use `removeprefix` to strip the weak `ETag` indicator in `is_not_modified` [#3193](https://github.com/encode/starlette/pull/3193).
+* Fix `IndexError` in `URL.replace()` on a URL with no authority [#3317](https://github.com/encode/starlette/pull/3317).
+* Adjust `testclient` typing and warnings [#3322](https://github.com/encode/starlette/pull/3322).
+
+## 1.2.1 (May 31, 2026)
+
+#### Fixed
+
+* Use `httpx2` for type checking in the `testclient` module [#3304](https://github.com/encode/starlette/pull/3304).
+* Add assert error for `requires()` when the request parameter is not a `Request` type [#3298](https://github.com/encode/starlette/pull/3298).
+
+## 1.2.0 (May 28, 2026)
+
+#### Added
+
+* Support httpx2 in the test client [#3291](https://github.com/encode/starlette/pull/3291).
+
+## 1.1.0 (May 23, 2026)
+
+#### Added
+
+* Use `"application/octet-stream"` as the `FileResponse` media type fallback [#3283](https://github.com/encode/starlette/pull/3283).
+
+#### Fixed
+
+* Only dispatch standard HTTP verbs in `HTTPEndpoint` [#3286](https://github.com/encode/starlette/pull/3286).
+* Reject absolute paths in `StaticFiles.lookup_path` [#3287](https://github.com/encode/starlette/pull/3287).
+
+## 1.0.1 (May 21, 2026)
+
+#### Fixed
+
+* Ignore malformed `Host` header when constructing `request.url` [#3279](https://github.com/encode/starlette/pull/3279).
+
+## 1.0.0 (March 22, 2026)
+
+Starlette 1.0 is here!
+
+After nearly eight years since its creation, Starlette has reached its first stable release.
+Thank you to everyone who tested the release candidate and reported issues.
+
+You can read more on the [blog post](https://marcelotryle.com/blog/2026/03/22/starlette-10-is-here/).
+
+#### Added
+
+* Track session access and modification in `SessionMiddleware` [#3166](https://github.com/encode/starlette/pull/3166).
+
+#### Fixed
+
+* Handle websocket denial responses in `StreamingResponse` and `FileResponse` [#3189](https://github.com/encode/starlette/pull/3189).
+* Use `bytearray` for field accumulation in `FormParser` [#3179](https://github.com/encode/starlette/pull/3179).
+* Move `parser.finalize()` inside try/except in `MultiPartParser.parse()` [#3153](https://github.com/encode/starlette/pull/3153).
+
 ## 1.0.0rc1 (February 23, 2026)
 
 We're ready! I'm thrilled to announce the first release candidate for Starlette 1.0.

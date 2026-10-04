@@ -22,7 +22,7 @@ class HTTPEndpoint:
         self.send = send
         self._allowed_methods = [
             method
-            for method in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            for method in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY")
             if getattr(self, method.lower(), None) is not None
         ]
 
@@ -33,7 +33,11 @@ class HTTPEndpoint:
         request = Request(self.scope, receive=self.receive)
         handler_name = "get" if request.method == "HEAD" and not hasattr(self, "head") else request.method.lower()
 
-        handler: Callable[[Request], Any] = getattr(self, handler_name, self.method_not_allowed)
+        handler: Callable[[Request], Any]
+        if request.method in self._allowed_methods or (request.method == "HEAD" and "GET" in self._allowed_methods):
+            handler = getattr(self, handler_name)
+        else:
+            handler = self.method_not_allowed
         is_async = is_async_callable(handler)
         if is_async:
             response = await handler(request)
@@ -86,13 +90,13 @@ class WebSocketEndpoint:
 
     async def decode(self, websocket: WebSocket, message: Message) -> Any:
         if self.encoding == "text":
-            if "text" not in message:
+            if message.get("text") is None:
                 await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 raise RuntimeError("Expected text websocket messages, but got bytes")
             return message["text"]
 
         elif self.encoding == "bytes":
-            if "bytes" not in message:
+            if message.get("bytes") is None:
                 await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 raise RuntimeError("Expected bytes websocket messages, but got text")
             return message["bytes"]
@@ -110,7 +114,7 @@ class WebSocketEndpoint:
                 raise RuntimeError("Malformed JSON data received.")
 
         assert self.encoding is None, f"Unsupported 'encoding' attribute {self.encoding}"
-        return message["text"] if message.get("text") else message["bytes"]
+        return message["text"] if message.get("text") is not None else message["bytes"]
 
     async def on_connect(self, websocket: WebSocket) -> None:
         """Override to handle an incoming websocket connection"""

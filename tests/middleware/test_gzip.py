@@ -567,7 +567,13 @@ async def test_gzip_forwards_response_start_before_pathsend_when_not_compressed(
     async def receive() -> Message:
         raise NotImplementedError
 
-    scope: Scope = {"type": "http", "method": "GET", "path": "/", "headers": [(b"accept-encoding", b"gzip")]}
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"accept-encoding", b"gzip")],
+        "extensions": {"http.response.pathsend": {}},
+    }
 
     await GZipMiddleware(app)(scope, receive, send)
 

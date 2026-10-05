@@ -282,6 +282,37 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.query == "a=b"
 
 
+def test_url_from_scope_without_origin_double_slash_path() -> None:
+    """A // or scheme-prefixed path must not bleed into netloc when scope has no Host header and no server."""
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": None,
+            "path": "//evil.example/x",
+            "query_string": b"a=1",
+            "headers": [],
+        }
+    )
+    assert u.netloc == ""
+    assert u.path == "/evil.example/x"
+    assert u.query == "a=1"
+    assert str(u) == "/evil.example/x?a=1"
+
+    u2 = URL(
+        scope={
+            "scheme": "http",
+            "server": None,
+            "path": "http://evil.example/x",
+            "query_string": b"a=b",
+            "headers": [],
+        }
+    )
+    assert u2.netloc == ""
+    assert u2.path == "/http://evil.example/x"
+    assert u2.query == "a=b"
+    assert str(u2) == "/http://evil.example/x?a=b"
+
+
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h

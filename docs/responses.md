@@ -175,7 +175,33 @@ async def app(scope, receive, send):
     await response(scope, receive, send)
 ```
 
-Have in mind that <a href="https://docs.python.org/3/glossary.html#term-file-like-object" target="_blank">file-like</a> objects (like those created by `open()`) are normal iterators. So, you can return them directly in a `StreamingResponse`.
+Binary <a href="https://docs.python.org/3/glossary.html#term-file-like-object" target="_blank">file-like</a> objects
+(like those created by `open(path, "rb")`) are iterators and can be passed to `StreamingResponse`.
+File iteration reads lines, so a binary file without newline bytes may be read as one large chunk.
+`StreamingResponse` does not close a file object passed to it; the caller is responsible for closing it.
+
+To stream a file in fixed-size chunks, use asynchronous file reads and keep the file's context manager
+open until the response has finished sending:
+
+```python
+import anyio
+
+from starlette.responses import StreamingResponse
+
+
+async def app(scope, receive, send):
+    assert scope["type"] == "http"
+    async with await anyio.open_file("video.mp4", "rb") as file:
+        async def chunks():
+            while chunk := await file.read(64 * 1024):
+                yield chunk
+
+        response = StreamingResponse(chunks(), media_type="video/mp4")
+        await response(scope, receive, send)
+```
+
+For serving a file from disk, consider `FileResponse` instead. It handles opening and closing the file,
+sets file metadata headers, and supports HTTP range requests.
 
 ### FileResponse
 

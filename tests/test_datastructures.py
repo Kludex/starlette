@@ -141,6 +141,20 @@ def test_url_from_scope() -> None:
 
     u = URL(
         scope={
+            "type": "http",
+            "scheme": "http",
+            "path": "//evil.example/x",
+            "query_string": b"a=1",
+            "headers": [],
+            "server": None,
+        }
+    )
+    assert u.netloc == ""
+    assert str(u) == "/%2Fevil.example/x?a=1"
+    assert not str(u).startswith("//")
+
+    u = URL(
+        scope={
             "scheme": "https",
             "server": ("example.org", 123),
             "path": "/path/to/somewhere",

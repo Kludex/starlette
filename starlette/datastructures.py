@@ -60,6 +60,11 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                # A path of "//host/..." with no origin is a scheme-relative URL.
+                # urlsplit would put the host in netloc. Encode one slash so the
+                # path stays a path.
+                if path.startswith("//"):
+                    path = "/%2F" + path[2:]
                 url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'

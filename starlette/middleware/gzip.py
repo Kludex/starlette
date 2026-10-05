@@ -120,6 +120,8 @@ class IdentityResponder:
             # When compression is already impossible, the headers need no body data to
             # be decided, so send them immediately. Otherwise a streaming response holds
             # the response start, and its status code, until the first body chunk.
+            # Sending the start commits the response: a failure before the first body
+            # can no longer be replaced by an error response.
             if self.content_encoding_set or self.partial_response or self.content_type_is_excluded:
                 self.started = True
                 await self.send(self.initial_message)

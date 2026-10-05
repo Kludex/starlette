@@ -285,6 +285,8 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
 @pytest.mark.parametrize(
     "path, expected_path",
     [
+        pytest.param("", "", id="empty"),
+        pytest.param("/foo", "/foo", id="standard"),
         pytest.param("@google.com", "/@google.com", id="at-sign"),
         pytest.param("user:pass@google.com", "/user:pass@google.com", id="userinfo"),
         pytest.param("//google.com/x", "/%2Fgoogle.com/x", id="scheme-relative"),

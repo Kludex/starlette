@@ -30,6 +30,21 @@ def test_request_url(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"method": "GET", "url": "https://example.org:123/"}
 
 
+def test_request_url_no_origin_double_slash_path() -> None:
+    scope: Scope = {
+        "type": "http",
+        "scheme": "http",
+        "path": "//evil.example/x",
+        "query_string": b"a=1",
+        "headers": [],
+        "server": None,
+    }
+    request = Request(scope)
+    assert request.url.netloc == ""
+    assert request.url.hostname is None
+    assert str(request.url) == "/%2Fevil.example/x?a=1"
+
+
 def test_request_query_params(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)

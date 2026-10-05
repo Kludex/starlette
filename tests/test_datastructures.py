@@ -282,6 +282,32 @@ def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, wi
     assert u.query == "a=b"
 
 
+@pytest.mark.parametrize(
+    "path, expected_path",
+    [
+        pytest.param("@google.com", "/@google.com", id="at-sign"),
+        pytest.param("user:pass@google.com", "/user:pass@google.com", id="userinfo"),
+        pytest.param("//google.com/x", "/%2Fgoogle.com/x", id="scheme-relative"),
+        pytest.param("http://google.com/x", "/http://google.com/x", id="absolute"),
+    ],
+)
+def test_url_from_scope_with_authority_in_path_no_origin(path: str, expected_path: str) -> None:
+    """A path must not bleed into the authority when no origin metadata is present."""
+    u = URL(
+        scope={
+            "scheme": "http",
+            "server": None,
+            "path": path,
+            "query_string": b"a=b",
+            "headers": [],
+        }
+    )
+    assert u.hostname is None
+    assert u.netloc == ""
+    assert u.path == expected_path
+    assert u.query == "a=b"
+
+
 def test_headers() -> None:
     h = Headers(raw=[(b"a", b"123"), (b"a", b"456"), (b"b", b"789")])
     assert "a" in h

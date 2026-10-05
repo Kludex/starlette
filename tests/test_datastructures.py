@@ -190,6 +190,28 @@ def test_url_from_scope() -> None:
     assert u.port == 80
 
 
+def test_url_from_scope_double_slash_path_without_host() -> None:
+    """A path starting with // must not become the authority when the scope has no host."""
+    u = URL(
+        scope={
+            "type": "http",
+            "scheme": "http",
+            "path": "//evil.example/x",
+            "query_string": b"a=1",
+            "headers": [],
+            "server": None,
+        }
+    )
+    assert u.netloc == ""
+    assert u.path == "//evil.example/x"
+    assert u.query == "a=1"
+    assert str(u) == "http:////evil.example/x?a=1"
+
+    # Ordinary paths without an origin stay path-only.
+    plain = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
+    assert str(plain) == "/path/to/somewhere?abc=123"
+
+
 @pytest.mark.parametrize(
     "host",
     [

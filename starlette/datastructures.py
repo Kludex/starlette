@@ -59,6 +59,12 @@ class URL:
             query = query_string.decode()
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
+            elif path.startswith("//"):
+                # No origin was provided, but a path of "//..." is an
+                # authority if it is used as the whole URL. Build the URL
+                # with an explicit empty netloc so the path stays a path
+                # and round-trips through urlsplit. See #3579.
+                url = SplitResult(scheme=scheme, netloc="", path=path, query=query, fragment="").geturl()
             else:
                 url = f"{path}?{query}" if query else path
         elif components:

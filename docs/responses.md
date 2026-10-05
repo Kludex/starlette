@@ -4,7 +4,7 @@ appropriate ASGI messages on the `send` channel.
 
 ### Response
 
-Signature: `Response(content, status_code=200, headers=None, media_type=None, background=None)`
+Signature: `Response(content=None, status_code=200, headers=None, media_type=None, background=None)`
 
 * `content` - A string or bytestring.
 * `status_code` - An integer HTTP status code.

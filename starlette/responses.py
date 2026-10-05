@@ -70,7 +70,7 @@ class Response:
             and populate_content_length
             and not (self.status_code < 200 or self.status_code in (204, 304))
         ):
-            content_length = str(len(body))
+            content_length = str(body.nbytes if isinstance(body, memoryview) else len(body))
             raw_headers.append((b"content-length", content_length.encode("latin-1")))
 
         content_type = self.media_type

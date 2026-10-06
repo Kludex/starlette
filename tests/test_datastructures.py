@@ -130,6 +130,15 @@ def test_csv() -> None:
     assert str(csv) == "'localhost', '127.0.0.1', '0.0.0.0'"
 
 
+def test_url_from_scope_without_origin_and_double_slash_path() -> None:
+    u = URL(scope={"path": "//evil.example/x", "query_string": b"a=1", "headers": []})
+    assert u.netloc == ""
+    assert u.hostname is None
+    assert u.path == "//evil.example/x"
+    assert u.query == "a=1"
+    assert str(u) == "/.//evil.example/x?a=1"
+
+
 def test_url_from_scope() -> None:
     u = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
     assert u == "/path/to/somewhere?abc=123"

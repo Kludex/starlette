@@ -152,6 +152,17 @@ class URL:
             kwargs["netloc"] = netloc
 
         components = self.components._replace(**kwargs)
+        if not components.scheme and not components.netloc and components.path.startswith("//"):
+            # `geturl()` would turn a leading "//" into an authority, so keep the "/." prefix
+            # used in `__init__` and keep the components consistent with the path.
+            url = f"/.{components.path}"
+            if components.query:
+                url += f"?{components.query}"
+            if components.fragment:
+                url += f"#{components.fragment}"
+            result = self.__class__(url)
+            result._components = components
+            return result
         return self.__class__(components.geturl())
 
     def include_query_params(self, **kwargs: Any) -> URL:

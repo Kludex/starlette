@@ -139,6 +139,20 @@ def test_url_from_scope_without_origin_and_double_slash_path() -> None:
     assert str(u) == "/.//evil.example/x?a=1"
 
 
+def test_url_without_origin_and_double_slash_path_keeps_guard_when_modified() -> None:
+    u = URL(scope={"path": "//evil.example/x", "query_string": b"a=1", "headers": []})
+    for modified in (
+        u.replace(query="a=2"),
+        u.include_query_params(b="2"),
+        u.replace_query_params(b="2"),
+        u.remove_query_params("a"),
+    ):
+        assert modified.netloc == ""
+        assert modified.path == "//evil.example/x"
+        assert str(modified).startswith("/.//evil.example/x")
+        assert URL(str(modified)).netloc == ""
+
+
 def test_url_from_scope() -> None:
     u = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
     assert u == "/path/to/somewhere?abc=123"

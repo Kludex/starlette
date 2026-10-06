@@ -14,8 +14,9 @@ class HTTPSRedirectMiddleware:
                 await PlainTextResponse("Invalid host header", status_code=400)(scope, receive, send)
                 return
             redirect_scheme = {"http": "https", "ws": "wss"}[url.scheme]
-            netloc = url.hostname if url.port in (80, 443) else url.netloc
-            url = url.replace(scheme=redirect_scheme, netloc=netloc)
+            url = url.replace(scheme=redirect_scheme)
+            if url.port in (80, 443):
+                url = url.replace(port=None)
             response = RedirectResponse(url, status_code=307)
             await response(scope, receive, send)
         else:

@@ -91,7 +91,8 @@ def test_staticfiles_with_package(test_client_factory: TestClientFactory) -> Non
     assert response.text == "123\n"
 
 
-def test_staticfiles_post(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
+@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+def test_staticfiles_method_not_allowed(tmpdir: Path, test_client_factory: TestClientFactory, method: str) -> None:
     path = os.path.join(tmpdir, "example.txt")
     with open(path, "w") as file:
         file.write("<file content>")
@@ -100,8 +101,9 @@ def test_staticfiles_post(tmpdir: Path, test_client_factory: TestClientFactory) 
     app = Starlette(routes=routes)
     client = test_client_factory(app)
 
-    response = client.post("/example.txt")
+    response = client.request(method, "/example.txt")
     assert response.status_code == 405
+    assert response.headers["allow"] == "GET, HEAD"
     assert response.text == "Method Not Allowed"
 
 

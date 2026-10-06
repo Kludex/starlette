@@ -217,6 +217,49 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("headers", "status"),
+    [
+        ([(b"content-type", b"text/event-stream")], 200),
+        ([(b"content-encoding", b"br")], 200),
+        ([], 206),
+    ],
+)
+async def test_gzip_forwards_start_immediately_for_uncompressed_responses(
+    headers: list[tuple[bytes, bytes]], status: int
+) -> None:
+    events: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": status,
+                "headers": headers,
+            }
+        )
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"accept-encoding", b"gzip")],
+    }
+
+    await GZipMiddleware(app)(scope, receive, send)
+
+    assert len(events) == 1
+    assert events[0]["type"] == "http.response.start"
+    assert events[0]["status"] == status
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize("encoding", ["gzip", "identity"])
 async def test_gzip_passes_through_early_hints(encoding: str) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:

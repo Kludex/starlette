@@ -294,8 +294,9 @@ def test_url_from_scope_without_origin_and_scheme_relative_path() -> None:
         }
     )
     assert u.netloc == ""
-    assert u.path == "//evil.example/x"
+    assert u.path == "/%2Fevil.example/x"
     assert u.query == "a=1"
+    assert str(u) == "/%2Fevil.example/x?a=1"
 
 
 def test_headers() -> None:

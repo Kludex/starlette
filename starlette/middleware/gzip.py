@@ -173,7 +173,9 @@ class IdentityResponder:
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
             # Don't apply GZip to pathsend responses
-            await self.send(self.initial_message)
+            if not self.started:
+                self.started = True
+                await self.send(self.initial_message)
             await self.send(message)
 
     async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:

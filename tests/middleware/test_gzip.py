@@ -229,6 +229,7 @@ async def test_gzip_forwards_start_immediately_for_uncompressed_responses(
     headers: list[tuple[bytes, bytes]], status: int
 ) -> None:
     events: list[Message] = []
+    observed_during_app: list[Message] = []
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send(
@@ -238,6 +239,7 @@ async def test_gzip_forwards_start_immediately_for_uncompressed_responses(
                 "headers": headers,
             }
         )
+        observed_during_app.extend(events)
 
     async def send(message: Message) -> None:
         events.append(message)
@@ -254,9 +256,45 @@ async def test_gzip_forwards_start_immediately_for_uncompressed_responses(
 
     await GZipMiddleware(app)(scope, receive, send)
 
+    assert len(observed_during_app) == 1
+    assert observed_during_app[0]["type"] == "http.response.start"
+    assert observed_during_app[0]["status"] == status
     assert len(events) == 1
     assert events[0]["type"] == "http.response.start"
     assert events[0]["status"] == status
+
+
+@pytest.mark.anyio
+async def test_gzip_pathsend_does_not_duplicate_start_when_excluded() -> None:
+    events: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [(b"content-type", b"image/png")],
+            }
+        )
+        await send({"type": "http.response.pathsend", "path": "/path/to/file.png"})
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"accept-encoding", b"gzip")],
+        "extensions": {"http.response.pathsend": {}},
+    }
+
+    await GZipMiddleware(app)(scope, receive, send)
+
+    assert [event["type"] for event in events] == ["http.response.start", "http.response.pathsend"]
 
 
 @pytest.mark.anyio

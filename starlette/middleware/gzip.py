@@ -106,8 +106,6 @@ class IdentityResponder:
     async def send_with_compression(self, message: Message) -> None:
         message_type = message["type"]
         if message_type == "http.response.start":
-            # Don't send the initial message until we've determined how to
-            # modify the outgoing headers correctly.
             self.initial_message = message
             headers = Headers(raw=self.initial_message["headers"])
             self.content_encoding_set = "content-encoding" in headers
@@ -117,12 +115,15 @@ class IdentityResponder:
             if media_type.startswith("application/grpc+"):
                 media_types.add("application/grpc")
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
+
+            # If the response cannot be compressed, send the initial message immediately
+            # without waiting for the first body chunk.
+            if self.content_encoding_set or self.partial_response or self.content_type_is_excluded:
+                self.started = True
+                await self.send(self.initial_message)
         elif message_type == "http.response.body" and (
             self.content_encoding_set or self.partial_response or self.content_type_is_excluded
         ):
-            if not self.started:
-                self.started = True
-                await self.send(self.initial_message)
             await self.send(message)
         elif message_type == "http.response.body" and not self.started:
             self.started = True

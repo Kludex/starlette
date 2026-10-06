@@ -251,6 +251,45 @@ async def test_gzip_passes_through_early_hints(encoding: str) -> None:
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    "status,headers",
+    [
+        (200, [(b"content-type", b"text/event-stream")]),
+        (200, [(b"content-encoding", b"br")]),
+        (206, [(b"content-type", b"text/plain")]),
+    ],
+)
+async def test_gzip_forwards_response_start_immediately_when_cannot_compress(
+    status: int, headers: list[tuple[bytes, bytes]]
+) -> None:
+    started_event_sent = False
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        nonlocal started_event_sent
+        await send({"type": "http.response.start", "status": status, "headers": headers})
+        # At this point, before any body chunk is sent, http.response.start must already be forwarded
+        assert started_event_sent is True
+        await send({"type": "http.response.body", "body": b"chunk", "more_body": False})
+
+    async def send(message: Message) -> None:
+        nonlocal started_event_sent
+        if message["type"] == "http.response.start":
+            started_event_sent = True
+
+    async def receive() -> Message:
+        return {"type": "http.request"}
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"accept-encoding", b"gzip")],
+    }
+    await GZipMiddleware(app)(scope, receive, send)
+    assert started_event_sent is True
+
+
+@pytest.mark.anyio
 async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
     path = tmpdir / "example.txt"
     with path.open("w") as file:

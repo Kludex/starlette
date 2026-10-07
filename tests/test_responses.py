@@ -748,11 +748,21 @@ def test_streaming_response_known_size(test_client_factory: TestClientFactory) -
     assert response.headers["content-length"] == "10"
 
 
-def test_response_memoryview(test_client_factory: TestClientFactory) -> None:
-    app = Response(content=memoryview(b"\xc0"))
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param(memoryview(b"\xc0"), id="bytes"),
+        pytest.param(memoryview(b"01234567").cast("I"), id="typed"),
+        pytest.param(memoryview(b"01234567").cast("B", shape=[2, 4]), id="multidimensional"),
+        pytest.param(memoryview(b"01234567").cast("Q", shape=[]), id="scalar"),
+    ],
+)
+def test_response_memoryview(test_client_factory: TestClientFactory, content: memoryview) -> None:
+    app = Response(content=content)
     client: TestClient = test_client_factory(app)
     response = client.get("/")
-    assert response.content == b"\xc0"
+    assert response.content == content.tobytes()
+    assert response.headers["content-length"] == str(content.nbytes)
 
 
 def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -> None:

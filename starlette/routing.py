@@ -163,7 +163,9 @@ def compile_path(
 
     path_format += path[idx:]
 
-    return re.compile(path_regex), path_format, param_convertors
+    # Host names are case-insensitive. See RFC 9110, section 4.2.3.
+    flags = re.IGNORECASE if is_host else 0
+    return re.compile(path_regex, flags), path_format, param_convertors
 
 
 class BaseRoute:
@@ -483,7 +485,9 @@ class Host(BaseRoute):
             parsed_host = parse_host_header(headers.get("host"))
             if parsed_host is None:
                 return Match.NONE, {}
-            host = parsed_host.host
+            # Match against the lowercased host so that captured host params are
+            # canonical, as they were when only lowercase hosts could match.
+            host = parsed_host.host.lower()
 
             match = self.host_regex.match(host)
             if match:

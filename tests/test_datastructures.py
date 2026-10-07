@@ -146,11 +146,13 @@ def test_url_without_origin_and_double_slash_path_keeps_guard_when_modified() ->
         u.include_query_params(b="2"),
         u.replace_query_params(b="2"),
         u.remove_query_params("a"),
+        u.replace(fragment="section"),
     ):
         assert modified.netloc == ""
         assert modified.path == "//evil.example/x"
         assert str(modified).startswith("/.//evil.example/x")
         assert URL(str(modified)).netloc == ""
+    assert str(u.replace(fragment="section")) == "/.//evil.example/x?a=1#section"
 
 
 def test_url_from_scope() -> None:

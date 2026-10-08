@@ -73,6 +73,61 @@ def test_default_float_convertor(test_client_factory: TestClientFactory, param: 
     assert response.status_code == status_code
 
 
+# 2026-10-08: Generated float paths must resolve to the original finite value.
+@pytest.mark.parametrize(
+    "value",
+    [
+        0.0,
+        -0.0,
+        1.0,
+        100.0,
+        25.5,
+        1e-21,
+        1e-100,
+        5e-324,
+        1.2345678901234567e-10,
+        0.00012345678901234567,
+        1.7976931348623157e308,
+    ],
+)
+def test_float_convertor_url_roundtrip(test_client_factory: TestClientFactory, value: float) -> None:
+    def endpoint(request: Request) -> JSONResponse:
+        return JSONResponse({"value": request.path_params["value"]})
+
+    app = Router(routes=[Route("/{value:float}", endpoint=endpoint, name="float")])
+    client = test_client_factory(app)
+
+    path = app.url_path_for("float", value=value)
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert response.json() == {"value": value}
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_path"),
+    [
+        (0.0, "/0"),
+        (-0.0, "/0"),
+        (1.0, "/1"),
+        (100.0, "/100"),
+        (25.5, "/25.5"),
+        (1e21, "/1000000000000000000000"),
+        (1e-21, "/0.000000000000000000001"),
+    ],
+)
+def test_float_convertor_url_format(value: float, expected_path: str) -> None:
+    route = Route("/{value:float}", endpoint=JSONResponse({}), name="float")
+    assert route.url_path_for("float", value=value) == expected_path
+
+
+@pytest.mark.parametrize("value", [-1.0, float("nan"), float("inf"), float("-inf")])
+def test_float_convertor_rejects_invalid_url_values(value: float) -> None:
+    route = Route("/{value:float}", endpoint=JSONResponse({}), name="float")
+    with pytest.raises(AssertionError):
+        route.url_path_for("float", value=value)
+
+
 @pytest.mark.parametrize(
     "param, status_code",
     [

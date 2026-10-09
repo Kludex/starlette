@@ -61,9 +61,11 @@ class URL:
 
             query = query_string.decode()
             if netloc is not None:
-                url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
+                components_obj = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="")
             else:
-                url = SplitResult(scheme="", netloc="", path=path, query=query, fragment="").geturl()
+                components_obj = SplitResult(scheme="", netloc="", path=path, query=query, fragment="")
+            url = components_obj.geturl()
+            self._components = components_obj
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
             url = URL("").replace(**components).components.geturl()

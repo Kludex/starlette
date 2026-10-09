@@ -117,12 +117,17 @@ class IdentityResponder:
             if media_type.startswith("application/grpc+"):
                 media_types.add("application/grpc")
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
+            # When compression is already impossible, the headers need no body data to
+            # be decided, so send them immediately. Otherwise a streaming response holds
+            # the response start, and its status code, until the first body chunk.
+            # Sending the start commits the response: a failure before the first body
+            # can no longer be replaced by an error response.
+            if self.content_encoding_set or self.partial_response or self.content_type_is_excluded:
+                self.started = True
+                await self.send(self.initial_message)
         elif message_type == "http.response.body" and (
             self.content_encoding_set or self.partial_response or self.content_type_is_excluded
         ):
-            if not self.started:
-                self.started = True
-                await self.send(self.initial_message)
             await self.send(message)
         elif message_type == "http.response.body" and not self.started:
             self.started = True
@@ -173,7 +178,8 @@ class IdentityResponder:
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
             # Don't apply GZip to pathsend responses
-            await self.send(self.initial_message)
+            if not self.started:
+                await self.send(self.initial_message)
             await self.send(message)
 
     async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:

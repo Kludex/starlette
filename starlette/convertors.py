@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from decimal import Decimal
 from typing import Any, ClassVar, Generic, TypeVar
 
 T = TypeVar("T")
@@ -63,7 +64,11 @@ class FloatConvertor(Convertor[float]):
         assert value >= 0.0, "Negative floats are not supported"
         assert not math.isnan(value), "NaN values are not supported"
         assert not math.isinf(value), "Infinite values are not supported"
-        return ("%0.20f" % value).rstrip("0").rstrip(".")
+        # 2026-10-08: Preserve tiny values and precision without exponent notation in route paths.
+        if value == 0.0:
+            return "0"
+        value_str = format(Decimal(str(value)), "f")
+        return value_str.rstrip("0").rstrip(".") if "." in value_str else value_str
 
 
 class UUIDConvertor(Convertor[uuid.UUID]):

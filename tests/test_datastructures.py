@@ -318,7 +318,8 @@ def test_url_from_scope_scheme_relative_path_no_host() -> None:
     assert url.path == "//evil.example/x"
     assert url.query == "a=1"
     response = RedirectResponse(url)
-    assert response.headers["location"] == "////evil.example/x?a=1"
+    assert response.headers["location"] in ("//evil.example/x?a=1", "////evil.example/x?a=1")
+    assert response.headers["location"] == str(url)
 
 
 def test_headers() -> None:

@@ -16,6 +16,7 @@ from starlette.datastructures import (
     QueryParams,
     UploadFile,
 )
+from starlette.types import Scope
 
 
 def test_url() -> None:
@@ -264,22 +265,60 @@ def test_url_from_scope_with_ipvfuture() -> None:
         pytest.param("http://google.com/x", "/http://google.com/x", id="absolute"),
     ],
 )
-@pytest.mark.parametrize("with_host_header", [True, False], ids=["host-header", "server-fallback"])
-def test_url_from_scope_with_authority_in_path(path: str, expected_path: str, with_host_header: bool) -> None:
+@pytest.mark.parametrize(
+    ("headers", "server", "expected_hostname", "expected_netloc"),
+    [
+        ([(b"host", b"localhost")], ("localhost", 80), "localhost", "localhost"),
+        ([], ("localhost", 80), "localhost", "localhost"),
+        ([], None, None, ""),
+    ],
+    ids=["host-header", "server-fallback", "no-origin"],
+)
+def test_url_from_scope_with_authority_in_path(
+    path: str,
+    expected_path: str,
+    headers: list[tuple[bytes, bytes]],
+    server: tuple[str, int] | None,
+    expected_hostname: str | None,
+    expected_netloc: str,
+) -> None:
     """A path must not bleed into the authority."""
-    headers = [(b"host", b"localhost")] if with_host_header else []
     u = URL(
         scope={
             "scheme": "http",
-            "server": ("localhost", 80),
+            "server": server,
             "path": path,
             "query_string": b"a=b",
             "headers": headers,
         }
     )
-    assert u.hostname == "localhost"
+    assert u.hostname == expected_hostname
+    assert u.netloc == expected_netloc
     assert u.path == expected_path
     assert u.query == "a=b"
+
+
+def test_url_from_scope_scheme_relative_path_no_host() -> None:
+    """A scheme-relative path with no host or server must not become an authority."""
+    from starlette.requests import Request
+    from starlette.responses import RedirectResponse
+
+    scope: Scope = {
+        "type": "http",
+        "scheme": "http",
+        "path": "//evil.example/x",
+        "query_string": b"a=1",
+        "headers": [],
+        "server": None,
+    }
+    request = Request(scope)
+    url = request.url
+    assert url.hostname is None
+    assert url.netloc == ""
+    assert url.path == "//evil.example/x"
+    assert url.query == "a=1"
+    response = RedirectResponse(url)
+    assert response.headers["location"] == "////evil.example/x?a=1"
 
 
 def test_headers() -> None:

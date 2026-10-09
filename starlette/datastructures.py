@@ -61,6 +61,12 @@ class URL:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
                 url = f"{path}?{query}" if query else path
+                if path.startswith("//"):
+                    # Without an origin, a leading "//" would be parsed as an authority.
+                    # Serialize it with a "/." prefix, as the URL Standard does, so that
+                    # it stays a path.
+                    self._components = SplitResult(scheme="", netloc="", path=path, query=query, fragment="")
+                    url = f"/.{url}"
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
             url = URL("").replace(**components).components.geturl()
@@ -146,6 +152,17 @@ class URL:
             kwargs["netloc"] = netloc
 
         components = self.components._replace(**kwargs)
+        if not components.scheme and not components.netloc and components.path.startswith("//"):
+            # `geturl()` would turn a leading "//" into an authority, so keep the "/." prefix
+            # used in `__init__` and keep the components consistent with the path.
+            url = f"/.{components.path}"
+            if components.query:
+                url += f"?{components.query}"
+            if components.fragment:
+                url += f"#{components.fragment}"
+            result = self.__class__(url)
+            result._components = components
+            return result
         return self.__class__(components.geturl())
 
     def include_query_params(self, **kwargs: Any) -> URL:

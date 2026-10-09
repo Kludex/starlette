@@ -23,7 +23,6 @@ from starlette._utils import create_collapsing_task_group
 from starlette.background import BackgroundTask
 from starlette.concurrency import iterate_in_threadpool
 from starlette.datastructures import URL, Headers, MutableHeaders
-from starlette.requests import ClientDisconnect
 from starlette.types import Message, Receive, Scope, Send
 
 
@@ -268,10 +267,7 @@ class StreamingResponse(Response):
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
         if spec_version >= (2, 4):
-            try:
-                await self.stream_response(send)
-            except OSError:
-                raise ClientDisconnect()
+            await self.stream_response(send)
         else:
             async with create_collapsing_task_group() as task_group:
 

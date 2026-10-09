@@ -19,7 +19,7 @@ from python_multipart import MultipartParser
 from starlette import status
 from starlette.background import BackgroundTask
 from starlette.datastructures import Headers
-from starlette.requests import ClientDisconnect, Request
+from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.testclient import TestClient
 from starlette.types import Message, Receive, Scope, Send
@@ -798,6 +798,11 @@ async def test_streaming_response_on_client_disconnects() -> None:
     chunks = bytearray()
     streamed = False
 
+    class ServerDisconnectError(OSError):
+        pass
+
+    error = ServerDisconnectError("Disconnected")
+
     async def receive_disconnect() -> Message:
         raise NotImplementedError
 
@@ -808,7 +813,7 @@ async def test_streaming_response_on_client_disconnects() -> None:
                 chunks.extend(message.get("body", b""))
                 streamed = True
             else:
-                raise OSError
+                raise error
 
     async def stream_indefinitely() -> AsyncGenerator[bytes, None]:
         while True:
@@ -819,8 +824,10 @@ async def test_streaming_response_on_client_disconnects() -> None:
     response = StreamingResponse(content=stream)
 
     with anyio.move_on_after(1) as cancel_scope:
-        with pytest.raises(ClientDisconnect):
+        with pytest.raises(ServerDisconnectError) as exc:
             await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive_disconnect, send)
+    # The server's OSError subclass must propagate unchanged, per ASGI HTTP spec 2.4.
+    assert exc.value is error
     assert not cancel_scope.cancel_called, "Content streaming should stop itself."
     assert chunks == b"chunk"
     await stream.aclose()

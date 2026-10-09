@@ -1,14 +1,16 @@
+from collections.abc import AsyncIterator
 from typing import Any
 
+import anyio
 import pytest
 
 from starlette.applications import Starlette
 from starlette.background import BackgroundTask
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
-from starlette.types import Receive, Scope, Send
+from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
@@ -103,3 +105,95 @@ def test_background_task(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.status_code == 204
     assert accessed_error_handler
+
+
+def spec_2_4_scope() -> Scope:
+    return {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "query_string": b"",
+        "asgi": {"spec_version": "2.4"},
+    }
+
+
+class ServerDisconnectError(OSError):
+    pass
+
+
+@pytest.mark.anyio
+async def test_client_disconnect_while_sending_error_response() -> None:
+    error = RuntimeError("Something went wrong")
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        raise error
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        # Simulate an ASGI spec 2.4 server whose client has already disconnected.
+        raise ServerDisconnectError("Disconnected")
+
+    with pytest.raises(RuntimeError) as exc:
+        await ServerErrorMiddleware(app)(spec_2_4_scope(), receive, send)
+
+    # The application's error must not be replaced by the server's disconnect error.
+    assert exc.value is error
+
+
+@pytest.mark.anyio
+async def test_client_disconnect_stops_streaming_error_response() -> None:
+    error = RuntimeError("Something went wrong")
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        raise error
+
+    async def stream_forever() -> AsyncIterator[bytes]:
+        while True:
+            yield b"chunk"
+
+    def error_500(request: Request, exc: Exception) -> StreamingResponse:
+        return StreamingResponse(stream_forever(), status_code=500)
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        # Simulate an ASGI spec 2.4 server whose client disconnected mid-response.
+        if message["type"] == "http.response.body":
+            raise ServerDisconnectError("Disconnected")
+
+    # Streaming responses rely on send() raising to stop under ASGI spec 2.4.
+    with anyio.fail_after(5), pytest.raises(RuntimeError) as exc:
+        await ServerErrorMiddleware(app, handler=error_500)(spec_2_4_scope(), receive, send)
+
+    assert exc.value is error
+
+
+@pytest.mark.anyio
+async def test_error_response_os_error_is_not_suppressed() -> None:
+    response_error = OSError("Disk failure")
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        raise RuntimeError("Something went wrong")
+
+    async def failing_stream() -> AsyncIterator[bytes]:
+        raise response_error
+        yield b""  # pragma: no cover
+
+    def error_500(request: Request, exc: Exception) -> StreamingResponse:
+        return StreamingResponse(failing_stream(), status_code=500)
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        pass
+
+    # Only the server's disconnect error is suppressed, not errors from the error response itself.
+    with pytest.raises(OSError) as exc:
+        await ServerErrorMiddleware(app, handler=error_500)(spec_2_4_scope(), receive, send)
+
+    assert exc.value is response_error

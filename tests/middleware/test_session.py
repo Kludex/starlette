@@ -223,6 +223,24 @@ def test_session_cookie(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"session": {}}
 
 
+def test_session_cookie_max_age_zero(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", max_age=0)],
+    )
+    client: TestClient = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert response.json() == {"session": {"some": "data"}}
+
+    # check cookie max-age is explicitly 0
+    set_cookie = response.headers["set-cookie"]
+    assert "; Max-Age=0;" in set_cookie
+
+
 def test_domain_cookie(test_client_factory: TestClientFactory) -> None:
     app = Starlette(
         routes=[

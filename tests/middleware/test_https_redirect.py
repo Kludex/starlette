@@ -64,6 +64,16 @@ def test_https_redirect_middleware(test_client_factory: TestClientFactory) -> No
     assert response.headers["location"] == "https://[::1]/"
 
 
+@pytest.mark.parametrize("port", [80, 443])
+def test_https_redirect_middleware_ipv6_default_port(test_client_factory: TestClientFactory, port: int) -> None:
+    app = HTTPSRedirectMiddleware(PlainTextResponse("OK"))
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"host": f"[::1]:{port}"}, follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://[::1]/"
+
+
 @pytest.mark.parametrize("host", ["testserver:65536", "[:::]"])
 def test_https_redirect_middleware_without_server(test_client_factory: TestClientFactory, host: str) -> None:
     middleware = HTTPSRedirectMiddleware(PlainTextResponse("OK"))

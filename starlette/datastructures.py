@@ -60,6 +60,12 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                if path:
+                    if not path.startswith("/"):
+                        path = "/" + path
+                    num_slashes = len(path) - len(path.lstrip("/"))
+                    if num_slashes > 1:
+                        path = "/" + "%2F" * (num_slashes - 1) + path[num_slashes:]
                 url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'

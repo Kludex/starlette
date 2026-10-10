@@ -117,12 +117,12 @@ class IdentityResponder:
             if media_type.startswith("application/grpc+"):
                 media_types.add("application/grpc")
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
+            if self.content_encoding_set or self.partial_response or self.content_type_is_excluded:
+                self.started = True
+                await self.send(self.initial_message)
         elif message_type == "http.response.body" and (
             self.content_encoding_set or self.partial_response or self.content_type_is_excluded
         ):
-            if not self.started:
-                self.started = True
-                await self.send(self.initial_message)
             await self.send(message)
         elif message_type == "http.response.body" and not self.started:
             self.started = True
@@ -173,7 +173,9 @@ class IdentityResponder:
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
             # Don't apply GZip to pathsend responses
-            await self.send(self.initial_message)
+            if not self.started:
+                self.started = True
+                await self.send(self.initial_message)
             await self.send(message)
 
     async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:

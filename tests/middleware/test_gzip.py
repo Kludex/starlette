@@ -251,7 +251,8 @@ async def test_gzip_passes_through_early_hints(encoding: str) -> None:
 
 
 @pytest.mark.anyio
-async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
+@pytest.mark.parametrize("media_type", [None, "image/png"])
+async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path, media_type: str | None) -> None:
     path = tmpdir / "example.txt"
     with path.open("w") as file:
         file.write("<file content>")
@@ -260,7 +261,7 @@ async def test_gzip_ignored_for_pathsend_responses(tmpdir: Path) -> None:
 
     async def endpoint_with_pathsend(request: Request) -> FileResponse:
         _ = await request.body()
-        return FileResponse(path)
+        return FileResponse(path, media_type=media_type)
 
     app = Starlette(
         routes=[Route("/", endpoint=endpoint_with_pathsend)],
@@ -501,3 +502,41 @@ def test_gzip_excluded_content_type_trailers(test_client_factory: TestClientFact
     assert response.content == b"x" * 4000
     assert "content-encoding" not in response.headers
     assert response.extensions["http.response.trailers"] == [(b"grpc-status", b"0")]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("headers", "status"),
+    [
+        ([(b"content-type", b"text/event-stream")], 200),
+        ([(b"content-encoding", b"gzip")], 200),
+        ([], 206),
+    ],
+)
+async def test_gzip_forwards_start_immediately_when_compression_disabled(
+    headers: list[tuple[bytes, bytes]], status: int
+) -> None:
+    events: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await receive()
+        await send({"type": "http.response.start", "status": status, "headers": headers})
+        assert len(events) == 1
+        assert events[0]["type"] == "http.response.start"
+        await send({"type": "http.response.body", "body": b"chunk"})
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    async def receive() -> Message:
+        return {"type": "http.request"}
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"accept-encoding", b"gzip")],
+    }
+
+    await GZipMiddleware(app)(scope, receive, send)
+    assert len(events) == 2

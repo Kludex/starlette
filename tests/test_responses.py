@@ -759,7 +759,19 @@ def test_streaming_response_known_size(test_client_factory: TestClientFactory) -
 )
 def test_response_memoryview(test_client_factory: TestClientFactory, content: memoryview) -> None:
     app = Response(content=content)
-    client: TestClient = test_client_factory(app)
+    assert isinstance(app.body, memoryview)
+    assert app.body.obj is content.obj
+
+    async def checked_app(scope: Scope, receive: Receive, send: Send) -> None:
+        async def checked_send(message: Message) -> None:
+            if message["type"] == "http.response.body":
+                # Servers count the body with len(), before writing its bytes.
+                assert len(message["body"]) == content.nbytes
+            await send(message)
+
+        await app(scope, receive, checked_send)
+
+    client: TestClient = test_client_factory(checked_app)
     response = client.get("/")
     assert response.content == content.tobytes()
     assert response.headers["content-length"] == str(content.nbytes)

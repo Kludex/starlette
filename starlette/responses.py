@@ -50,7 +50,9 @@ class Response:
         if content is None:
             return b""
         if isinstance(content, memoryview):
-            return content.cast("B")
+            if content.c_contiguous:
+                return content.cast("B")
+            return content.tobytes()
         if isinstance(content, bytes):
             return content
         return content.encode(self.charset)  # type: ignore

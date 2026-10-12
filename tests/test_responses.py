@@ -755,12 +755,19 @@ def test_streaming_response_known_size(test_client_factory: TestClientFactory) -
         pytest.param(memoryview(b"01234567").cast("I"), id="typed"),
         pytest.param(memoryview(b"01234567").cast("B", shape=[2, 4]), id="multidimensional"),
         pytest.param(memoryview(b"01234567").cast("Q", shape=[]), id="scalar"),
+        pytest.param(memoryview(b"01234567")[::2], id="strided"),
+        pytest.param(memoryview(b"01234567")[::-1], id="reversed"),
+        pytest.param(memoryview(b"0123456789abcdef").cast("I")[::2], id="typed-strided"),
     ],
 )
 def test_response_memoryview(test_client_factory: TestClientFactory, content: memoryview) -> None:
     app = Response(content=content)
-    assert isinstance(app.body, memoryview)
-    assert app.body.obj is content.obj
+    if content.c_contiguous:
+        assert isinstance(app.body, memoryview)
+        assert app.body.obj is content.obj
+    else:
+        assert isinstance(app.body, bytes)
+        assert app.body == content.tobytes()
 
     async def checked_app(scope: Scope, receive: Receive, send: Send) -> None:
         async def checked_send(message: Message) -> None:

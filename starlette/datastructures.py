@@ -694,7 +694,11 @@ class State:
             raise AttributeError(message.format(self.__class__.__name__, key))
 
     def __delattr__(self, key: Any) -> None:
-        del self._state[key]
+        try:
+            del self._state[key]
+        except KeyError:
+            message = "'{}' object has no attribute '{}'"
+            raise AttributeError(message.format(self.__class__.__name__, key))
 
     def __getitem__(self, key: str) -> Any:
         return self._state[key]

@@ -303,6 +303,9 @@ def test_request_state_object() -> None:
     with pytest.raises(AttributeError):
         s.new
 
+    with pytest.raises(AttributeError, match="'State' object has no attribute 'new'"):
+        del s.new
+
     # Test dictionary-style methods
     # Test __setitem__
     s["dict_key"] = "dict_value"

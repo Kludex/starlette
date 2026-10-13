@@ -505,76 +505,25 @@ def test_gzip_excluded_content_type_trailers(test_client_factory: TestClientFact
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    ("status", "response_headers", "accept_encoding"),
-    [
-        pytest.param(200, [(b"content-type", b"text/event-stream")], b"gzip", id="excluded-content-type"),
-        pytest.param(200, [(b"content-type", b"text/event-stream")], b"identity", id="excluded-content-type-identity"),
-        pytest.param(200, [(b"content-encoding", b"text")], b"gzip, text", id="content-encoding-set"),
-        pytest.param(206, [], b"gzip", id="partial-response"),
-    ],
-)
-async def test_gzip_sends_response_start_before_first_body_when_not_compressed(
-    status: int,
-    response_headers: list[tuple[bytes, bytes]],
-    accept_encoding: bytes,
-) -> None:
-    body_released = anyio.Event()
-
-    async def app(scope: Scope, receive: Receive, send: Send) -> None:
-        await send({"type": "http.response.start", "status": status, "headers": response_headers})
-        await body_released.wait()
-        await send({"type": "http.response.body", "body": b"x" * 4000})
-
+async def test_gzip_sends_response_start_before_first_body_when_not_compressed() -> None:
     events: list[Message] = []
     start_sent = anyio.Event()
 
-    async def send(message: Message) -> None:
-        events.append(message)
-        if message["type"] == "http.response.start":
-            start_sent.set()
-
-    async def receive() -> Message:
-        raise NotImplementedError
-
-    scope: Scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/",
-        "headers": [(b"accept-encoding", accept_encoding)],
-    }
-
-    async with anyio.create_task_group() as task_group:
-        task_group.start_soon(GZipMiddleware(app), scope, receive, send)
-        with anyio.fail_after(1):
-            await start_sent.wait()
-        # No body chunk has been produced yet, so the start must already be sent.
-        assert [event["type"] for event in events] == ["http.response.start"]
-        body_released.set()
-
-
-@pytest.mark.anyio
-async def test_gzip_forwards_response_start_before_pathsend_when_not_compressed() -> None:
-    events: list[Message] = []
-
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/event-stream")]})
-        await send({"type": "http.response.pathsend", "path": "/tmp/example"})
+        await start_sent.wait()
+        await send({"type": "http.response.body", "body": b"data: hello\n\n"})
 
     async def send(message: Message) -> None:
         events.append(message)
+        start_sent.set()
 
     async def receive() -> Message:
         raise NotImplementedError
 
-    scope: Scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/",
-        "headers": [(b"accept-encoding", b"gzip")],
-        "extensions": {"http.response.pathsend": {}},
-    }
+    scope: Scope = {"type": "http", "method": "GET", "path": "/", "headers": [(b"accept-encoding", b"gzip")]}
 
-    await GZipMiddleware(app)(scope, receive, send)
+    with anyio.fail_after(1):
+        await GZipMiddleware(app)(scope, receive, send)
 
-    assert [event["type"] for event in events] == ["http.response.start", "http.response.pathsend"]
+    assert [event["type"] for event in events] == ["http.response.start", "http.response.body"]

@@ -14,7 +14,7 @@ This release drops Python 3.10 support and adds HTTP 103 Early Hints.
 
 * Require Python 3.11 or later, dropping support for Python 3.10 [#3592](https://github.com/Kludex/starlette/pull/3592).
 * Exclude native gRPC media types (`application/grpc` and `application/grpc+...`) from `GZipMiddleware` compression by default [#3565](https://github.com/Kludex/starlette/pull/3565).
-* Send `http.response.start` immediately in `GZipMiddleware` when the response will not be compressed, instead of waiting for the first body chunk [#3631](https://github.com/Kludex/starlette/pull/3631).
+* Send `http.response.start` immediately in `GZipMiddleware` for responses with an existing `Content-Encoding`, status `206`, or an excluded content type, instead of waiting for the first body chunk [#3631](https://github.com/Kludex/starlette/pull/3631).
 * Resolve the multipart charset once per request instead of once per field [#3618](https://github.com/Kludex/starlette/pull/3618).
 
 #### Fixed

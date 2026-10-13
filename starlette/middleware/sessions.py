@@ -72,7 +72,7 @@ class SessionMiddleware:
                         session_cookie=self.session_cookie,
                         data=data.decode("utf-8"),
                         path=self.path,
-                        max_age=f"Max-Age={self.max_age}; " if self.max_age else "",
+                        max_age=f"Max-Age={self.max_age}; " if self.max_age is not None else "",
                         security_flags=self.security_flags,
                     )
                     headers.append("Set-Cookie", header_value)

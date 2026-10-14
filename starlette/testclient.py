@@ -149,7 +149,7 @@ class WebSocketTestSession:
             while True:
                 message = self.receive()
                 assert message["type"] == "websocket.http.response.body"
-                body.append(message["body"])
+                body.append(message.get("body", b""))
                 if not message.get("more_body", False):
                     break
             raise WebSocketDenialResponse(status_code=status_code, headers=headers, content=b"".join(body))

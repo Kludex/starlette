@@ -323,6 +323,20 @@ def test_send_denial_response(test_client_factory: TestClientFactory) -> None:
     assert exc.value.content == b"foo"
 
 
+def test_send_denial_response_without_body(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await receive()
+        await send({"type": "websocket.http.response.start", "status": 403, "headers": []})
+        await send({"type": "websocket.http.response.body"})
+
+    client = test_client_factory(app)
+    with pytest.raises(WebSocketDenialResponse) as exc:
+        with client.websocket_connect("/"):
+            pass  # pragma: no cover
+    assert exc.value.status_code == 403
+    assert exc.value.content == b""
+
+
 def test_send_denial_response_with_streaming_response(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         websocket = WebSocket(scope, receive=receive, send=send)

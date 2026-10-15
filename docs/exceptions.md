@@ -16,8 +16,8 @@ HTML_500_PAGE = ...
 async def not_found(request: Request, exc: HTTPException):
     return HTMLResponse(content=HTML_404_PAGE, status_code=exc.status_code)
 
-async def server_error(request: Request, exc: HTTPException):
-    return HTMLResponse(content=HTML_500_PAGE, status_code=exc.status_code)
+async def server_error(request: Request, exc: Exception):
+    return HTMLResponse(content=HTML_500_PAGE, status_code=500)
 
 
 exception_handlers = {
@@ -86,13 +86,13 @@ should bubble through the entire middleware stack as exceptions. Any error
 logging middleware should ensure that it re-raises the exception all the
 way up to the server.
 
-In practical terms, the error handled used is `exception_handler[500]` or `exception_handler[Exception]`.
+In practical terms, the error handler used is `exception_handler[500]` or `exception_handler[Exception]`.
 Both keys `500` and `Exception` can be used. See below:
 
 ```python
-async def handle_error(request: Request, exc: HTTPException):
+async def handle_error(request: Request, exc: Exception):
     # Perform some logic
-    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    return JSONResponse({"detail": "Internal Server Error"}, status_code=500)
 
 exception_handlers = {
     Exception: handle_error  # or "500: handle_error"

@@ -86,7 +86,7 @@ should bubble through the entire middleware stack as exceptions. Any error
 logging middleware should ensure that it re-raises the exception all the
 way up to the server.
 
-In practical terms, the error handler used is `exception_handler[500]` or `exception_handler[Exception]`.
+In practical terms, the error handler used is `exception_handlers[500]` or `exception_handlers[Exception]`.
 Both keys `500` and `Exception` can be used. See below:
 
 ```python

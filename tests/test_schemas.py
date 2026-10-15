@@ -310,3 +310,17 @@ def test_schema_endpoint(test_client_factory: TestClientFactory) -> None:
     response = client.get("/schema")
     assert response.headers["Content-Type"] == "application/vnd.oai.openapi"
     assert response.text.strip() == EXPECTED_SCHEMA.strip()
+
+
+def test_schema_generation_does_not_mutate_base_schema() -> None:
+    base_schema = {
+        "openapi": "3.2.0",
+        "info": {"title": "Example API", "version": "1.0"},
+        "paths": {"/users": {"get": {"responses": {200: {"description": "A user."}}}}},
+    }
+    schemas = SchemaGenerator(base_schema)
+
+    schema = schemas.get_schema(routes=app.routes)
+
+    assert schema["paths"]["/users"]["post"]["responses"][200]["description"] == "A user."
+    assert base_schema["paths"] == {"/users": {"get": {"responses": {200: {"description": "A user."}}}}}

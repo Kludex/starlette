@@ -686,17 +686,18 @@ class Router:
             return
 
         partial = None
+        full, partial_match = Match.FULL, Match.PARTIAL
 
         for route in self.routes:
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
-            if match == Match.FULL:
+            if match is full:
                 scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
-            elif match == Match.PARTIAL and partial is None:
+            elif match is partial_match and partial is None:
                 partial = route
                 partial_scope = child_scope
 

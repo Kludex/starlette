@@ -94,3 +94,15 @@ def test_default_uuid_convertor(test_client_factory: TestClientFactory, param: s
     client = test_client_factory(app)
     response = client.get(f"/{param}")
     assert response.status_code == status_code
+
+
+@pytest.mark.parametrize("value", [0.0, -0.0, 0.1, 1e-21, 5e-324, 1e20, 1e308])
+def test_float_convertor_url_roundtrip(test_client_factory: TestClientFactory, value: float) -> None:
+    def endpoint(request: Request) -> JSONResponse:
+        return JSONResponse({"value": request.path_params["value"]})
+
+    app = Router(routes=[Route("/{value:float}", endpoint=endpoint, name="float")])
+    path = app.url_path_for("float", value=value)
+    response = test_client_factory(app).get(path)
+    assert response.status_code == 200
+    assert response.json()["value"] == value

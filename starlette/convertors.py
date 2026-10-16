@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from decimal import Decimal
 from typing import Any, ClassVar, Generic, TypeVar
 
 T = TypeVar("T")
@@ -63,7 +64,8 @@ class FloatConvertor(Convertor[float]):
         assert value >= 0.0, "Negative floats are not supported"
         assert not math.isnan(value), "NaN values are not supported"
         assert not math.isinf(value), "Infinite values are not supported"
-        return ("%0.20f" % value).rstrip("0").rstrip(".")
+        text = format(Decimal(str(abs(value))), "f")
+        return text.rstrip("0").rstrip(".") if "." in text else text
 
 
 class UUIDConvertor(Convertor[uuid.UUID]):

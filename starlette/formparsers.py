@@ -123,12 +123,8 @@ class FormParser:
 
         items: list[tuple[str, str | UploadFile]] = []
 
-        # Feed the parser with data from the request.
-        async for chunk in self.stream:
-            if chunk:
-                parser.write(chunk)
-            else:
-                parser.finalize()
+        def collect_messages() -> None:
+            nonlocal field_name, field_value
             messages = list(self.messages)
             self.messages.clear()
             for message_type, message_bytes in messages:
@@ -143,6 +139,15 @@ class FormParser:
                     name = unquote_plus(field_name.decode("latin-1"))
                     value = unquote_plus(field_value.decode("latin-1"))
                     items.append((name, value))
+
+        # The stream may finish without yielding an empty sentinel. Finalize after
+        # exhaustion so the parser emits the final field even then.
+        async for chunk in self.stream:
+            if chunk:
+                parser.write(chunk)
+            collect_messages()
+        parser.finalize()
+        collect_messages()
 
         return FormData(items)
 

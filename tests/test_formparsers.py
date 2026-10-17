@@ -1105,3 +1105,23 @@ def test_multipart_closes_tempfile_on_oserror(
         client.post("/", content=content, headers=headers)
 
     assert close_called
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "chunks",
+    [
+        [b"first=one&second=two"],
+        [b"first=one&sec", b"ond=two"],
+        [b"first=one&second=two", b""],
+        [b"first=one", b"", b"&second=two"],
+    ],
+)
+async def test_urlencoded_parser_finalizes_without_empty_stream_chunk(chunks: list[bytes]) -> None:
+    async def stream() -> AsyncGenerator[bytes, None]:
+        for chunk in chunks:
+            yield chunk
+
+    parser = FormParser(Headers({"content-type": "application/x-www-form-urlencoded"}), stream())
+    data = await parser.parse()
+    assert data.multi_items() == [("first", "one"), ("second", "two")]

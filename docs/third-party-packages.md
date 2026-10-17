@@ -161,6 +161,14 @@ to quickly generate fully customizable admin interface for your models. You can 
 
 Serverless ASGI adapter for GCP Cloud Functions.
 
+### adminsite
+
+<a href="https://github.com/nimaxin/adminsite" target="_blank">GitHub</a> |
+<a href="https://nimaxin.github.io/adminsite/" target="_blank">Documentation</a>
+
+An admin panel for SQLAlchemy 2.0 models. It is one ASGI app that you mount into Starlette, FastAPI or
+Litestar, with search, filters, actions, permissions down to single rows and an audit log.
+
 ## Starlette Bridge
 
 <a href="https://github.com/tarsil/starlette-bridge" target="_blank">GitHub</a> |

@@ -279,6 +279,7 @@ def test_url_path_for() -> None:
 def test_url_path_for_with_double_slash_path() -> None:
     router = Router([Route("/{path:path}", endpoint=homepage, name="catchall")])
     assert router.url_path_for("catchall", path="/example.org/a") == "/%2Fexample.org/a"
+    assert router.url_path_for("catchall", path="\\example.org/a") == "/%5Cexample.org/a"
 
 
 def test_url_for() -> None:

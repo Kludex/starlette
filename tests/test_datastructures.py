@@ -196,6 +196,9 @@ def test_url_from_scope_with_delimiters_in_path() -> None:
     assert u.path == "/a%3Fb%23c"
     assert u.query == "d=e"
 
+    u = URL(scope={"path": "/\\example.org/a", "query_string": b"", "headers": []})
+    assert u == "/%5Cexample.org/a"
+
 
 def test_url_from_scope_with_double_slash_path_and_no_host() -> None:
     u = URL(scope={"path": "//example.org/a", "query_string": b"", "headers": []})

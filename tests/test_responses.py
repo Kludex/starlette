@@ -763,6 +763,66 @@ def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("size", [0, 10, 2 * 64 * 1024 + 10])
+async def test_streaming_response_async_file_chunks(tmp_path: Path, size: int) -> None:
+    path = tmp_path / "video.mp4"
+    content = b"\x00" * size
+    path.write_bytes(content)
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    async with await anyio.open_file(path, "rb") as file:
+
+        async def chunks() -> AsyncIterator[bytes]:
+            while chunk := await file.read(64 * 1024):
+                yield chunk
+
+        response = StreamingResponse(chunks(), media_type="video/mp4")
+        await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+
+    assert file.closed
+    bodies = [message for message in sent if message["type"] == "http.response.body"]
+    assert b"".join(message["body"] for message in bodies) == content
+    assert [len(message["body"]) for message in bodies] == [
+        len(content[start : start + 64 * 1024]) for start in range(0, size, 64 * 1024)
+    ] + [0]
+    assert bodies[-1]["more_body"] is False
+
+
+@pytest.mark.anyio
+async def test_streaming_response_async_file_closes_on_disconnect(tmp_path: Path) -> None:
+    path = tmp_path / "video.mp4"
+    path.write_bytes(b"\x00" * (2 * 64 * 1024))
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            raise OSError("client disconnected")
+
+    with pytest.raises(ClientDisconnect):
+        async with await anyio.open_file(path, "rb") as file:
+
+            async def chunks() -> AsyncGenerator[bytes, None]:
+                yield await file.read(64 * 1024)
+
+            stream = chunks()
+            try:
+                response = StreamingResponse(stream, media_type="video/mp4")
+                await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+            finally:
+                await stream.aclose()
+
+    assert file.closed
+
+
+@pytest.mark.anyio
 async def test_streaming_response_stops_if_receiving_http_disconnect() -> None:
     streamed = 0
 

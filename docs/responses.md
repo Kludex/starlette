@@ -4,12 +4,13 @@ appropriate ASGI messages on the `send` channel.
 
 ### Response
 
-Signature: `Response(content, status_code=200, headers=None, media_type=None)`
+Signature: `Response(content=None, status_code=200, headers=None, media_type=None, background=None)`
 
 * `content` - A string or bytestring.
 * `status_code` - An integer HTTP status code.
 * `headers` - A dictionary of strings.
 * `media_type` - A string giving the media type. eg. "text/html"
+* `background` - A `BackgroundTask` or `BackgroundTasks` to run after the response is sent.
 
 Starlette will automatically include a Content-Length header. It will also
 include a Content-Type header, based on the media_type and appending a charset

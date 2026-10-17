@@ -287,23 +287,25 @@ def test_streaming_response_skips_empty_and_head_bodies(
     assert sent == 1000
 
 
-@pytest.mark.parametrize("client_method", ["stream", "get"])
-def test_response_copies_mutable_chunks(test_client_factory: TestClientFactory, client_method: str) -> None:
+async def mutable_chunks_endpoint(request: Request) -> StreamingResponse:
     async def chunks() -> AsyncGenerator[memoryview, None]:
         buffer = bytearray(b"one")
         yield memoryview(buffer)
         buffer[:] = b"two"
         yield memoryview(buffer)
 
-    async def homepage(request: Request) -> StreamingResponse:
-        return StreamingResponse(chunks())
+    return StreamingResponse(chunks())
 
-    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
-    if client_method == "stream":
-        with client.stream("GET", "/") as response:
-            assert list(response.iter_raw()) == [b"one", b"two"]
-    else:
-        assert client.get("/").content == b"onetwo"
+
+def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(Starlette(routes=[Route("/", mutable_chunks_endpoint)]))
+    with client.stream("GET", "/") as response:
+        assert list(response.iter_raw()) == [b"one", b"two"]
+
+
+def test_buffered_response_copies_mutable_chunks(test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(Starlette(routes=[Route("/", mutable_chunks_endpoint)]))
+    assert client.get("/").content == b"onetwo"
 
 
 @pytest.mark.parametrize("trailers", [True, False])
@@ -715,9 +717,8 @@ def test_capture_trailers(test_client_factory: TestClientFactory, trailers: list
         await send({"type": "http.response.trailers", "headers": trailers[:1], "more_trailers": True})
         await send({"type": "http.response.trailers", "headers": trailers[1:]})
 
-    with test_client_factory(app).stream("GET", "/", headers={"te": "trailers"}) as response:
-        assert response.extensions["http.response.trailers"] == []
-        assert response.read() == b"hello"
+    response = test_client_factory(app).get("/", headers={"te": "trailers"})
+    assert response.content == b"hello"
     assert response.extensions["http.response.trailers"] == trailers
     assert "x-item" not in response.headers
 

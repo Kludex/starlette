@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import AsyncGenerator, Iterator, Mapping
+from contextlib import aclosing
 from http import cookies as http_cookies
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
 
@@ -254,8 +255,9 @@ class Request(HTTPConnection[StateT]):
     async def body(self) -> bytes:
         if not hasattr(self, "_body"):
             chunks: list[bytes] = []
-            async for chunk in self.stream():
-                chunks.append(chunk)
+            async with aclosing(self.stream()) as stream:
+                async for chunk in stream:
+                    chunks.append(chunk)
             self._body = b"".join(chunks)
         return self._body
 
@@ -281,27 +283,29 @@ class Request(HTTPConnection[StateT]):
             content_type, _ = parse_options_header(content_type_header)
             if content_type == b"multipart/form-data":
                 try:
-                    multipart_parser = MultiPartParser(
-                        self.headers,
-                        self.stream(),
-                        max_files=max_files,
-                        max_fields=max_fields,
-                        max_part_size=max_part_size,
-                    )
-                    self._form = await multipart_parser.parse()
+                    async with aclosing(self.stream()) as stream:
+                        multipart_parser = MultiPartParser(
+                            self.headers,
+                            stream,
+                            max_files=max_files,
+                            max_fields=max_fields,
+                            max_part_size=max_part_size,
+                        )
+                        self._form = await multipart_parser.parse()
                 except MultiPartException as exc:
                     if "app" in self.scope:
                         raise HTTPException(status_code=400, detail=exc.message)
                     raise exc
             elif content_type == b"application/x-www-form-urlencoded":
                 try:
-                    form_parser = FormParser(
-                        self.headers,
-                        self.stream(),
-                        max_fields=max_fields,
-                        max_part_size=max_part_size,
-                    )
-                    self._form = await form_parser.parse()
+                    async with aclosing(self.stream()) as stream:
+                        form_parser = FormParser(
+                            self.headers,
+                            stream,
+                            max_fields=max_fields,
+                            max_part_size=max_part_size,
+                        )
+                        self._form = await form_parser.parse()
                 except MultiPartException as exc:
                     if "app" in self.scope:
                         raise HTTPException(status_code=400, detail=exc.message)

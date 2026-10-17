@@ -755,6 +755,22 @@ def test_response_memoryview(test_client_factory: TestClientFactory) -> None:
     assert response.content == b"\xc0"
 
 
+def test_response_typed_memoryview(test_client_factory: TestClientFactory) -> None:
+    app = Response(content=memoryview(b"01234567").cast("I"))
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert response.content == b"01234567"
+    assert response.headers["content-length"] == "8"
+
+
+def test_response_non_contiguous_memoryview(test_client_factory: TestClientFactory) -> None:
+    app = Response(content=memoryview(b"01234567")[::2])
+    client: TestClient = test_client_factory(app)
+    response = client.get("/")
+    assert response.content == b"0246"
+    assert response.headers["content-length"] == "4"
+
+
 def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -> None:
     app = StreamingResponse(content=iter([memoryview(b"\xc0"), memoryview(b"\xf5")]))
     client: TestClient = test_client_factory(app)

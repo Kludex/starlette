@@ -276,6 +276,12 @@ def test_url_path_for() -> None:
         app.url_path_for("user", username="")
 
 
+def test_url_path_for_with_double_slash_path() -> None:
+    router = Router([Route("/{path:path}", endpoint=homepage, name="catchall")])
+    assert router.url_path_for("catchall", path="/example.org/a") == "/%2Fexample.org/a"
+    assert router.url_path_for("catchall", path="\\example.org/a") == "/%5Cexample.org/a"
+
+
 def test_url_for() -> None:
     assert app.url_path_for("homepage").make_absolute_url(base_url="https://example.org") == "https://example.org/"
     assert (

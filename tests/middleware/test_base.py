@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import contextvars
-from collections.abc import AsyncGenerator, AsyncIterator, Generator
-from contextlib import AsyncExitStack
+from collections.abc import AsyncGenerator, Generator
+from contextlib import AsyncExitStack, aclosing
 from pathlib import Path
 from typing import Any
 
@@ -773,9 +773,10 @@ def test_read_request_stream_in_dispatch_after_app_calls_body(
 async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None:
     async def endpoint(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
-        async for chunk in request.stream():  # pragma: no branch
-            assert chunk == b"2"
-            break
+        async with aclosing(request.stream()) as stream:
+            async for chunk in stream:  # pragma: no branch
+                assert chunk == b"2"
+                break
         await Response()(scope, receive, send)
 
     class ConsumingMiddleware(BaseHTTPMiddleware):
@@ -786,13 +787,14 @@ async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None
         ) -> Response:
             expected = b"1"
             response: Response | None = None
-            async for chunk in request.stream():  # pragma: no branch
-                assert chunk == expected
-                if expected == b"1":
-                    response = await call_next(request)
-                    expected = b"3"
-                else:
-                    break
+            async with aclosing(request.stream()) as stream:
+                async for chunk in stream:  # pragma: no branch
+                    assert chunk == expected
+                    if expected == b"1":
+                        response = await call_next(request)
+                        expected = b"3"
+                    else:
+                        break
             assert response is not None
             return response
 
@@ -1103,7 +1105,7 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
         "path": "/",
     }
 
-    async def receive() -> AsyncIterator[Message]:
+    async def receive() -> AsyncGenerator[Message, None]:
         yield {"type": "http.disconnect"}
 
     sent: list[Message] = []
@@ -1111,7 +1113,8 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await app(scope, receive().__anext__, send)
+    async with aclosing(receive()) as rcv:
+        await app(scope, rcv.__anext__, send)
 
     assert ordered_events == [
         "1:STARTED",
@@ -1185,7 +1188,7 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
         "path": "/",
     }
 
-    async def receive() -> AsyncIterator[Message]:
+    async def receive() -> AsyncGenerator[Message, None]:
         # the key here is that we only ever send 1 htt.disconnect message
         if send_body:
             yield {"type": "http.request", "body": b"hello", "more_body": True}
@@ -1198,7 +1201,8 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await app(scope, receive().__anext__, send)
+    async with aclosing(receive()) as rcv:
+        await app(scope, rcv.__anext__, send)
 
     assert sent == [
         {

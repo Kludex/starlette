@@ -190,6 +190,22 @@ def test_url_from_scope() -> None:
     assert u.port == 80
 
 
+def test_url_from_scope_with_delimiters_in_path() -> None:
+    u = URL(scope={"path": "/a?b#c", "query_string": b"d=e", "headers": [(b"host", b"example.org")]})
+    assert u == "http://example.org/a%3Fb%23c?d=e"
+    assert u.path == "/a%3Fb%23c"
+    assert u.query == "d=e"
+
+    u = URL(scope={"path": "/\\example.org/a", "query_string": b"", "headers": []})
+    assert u == "/%5Cexample.org/a"
+
+
+def test_url_from_scope_with_double_slash_path_and_no_host() -> None:
+    u = URL(scope={"path": "//example.org/a", "query_string": b"", "headers": []})
+    assert u == "/%2Fexample.org/a"
+    assert u.netloc == ""
+
+
 @pytest.mark.parametrize(
     "host",
     [

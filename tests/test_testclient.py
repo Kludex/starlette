@@ -271,14 +271,20 @@ def test_streaming_response_applies_backpressure(test_client_factory: TestClient
 def test_streaming_response_skips_empty_and_head_bodies(
     test_client_factory: TestClientFactory, method: str, body: bytes
 ) -> None:
+    sent = 0
+
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        nonlocal sent
         await send({"type": "http.response.start", "status": 200, "headers": []})
-        for _ in range(3):
+        for _ in range(1000):
             await send({"type": "http.response.body", "body": body, "more_body": True})
+            sent += 1
         await send({"type": "http.response.body", "body": b""})
 
     with test_client_factory(app).stream(method, "/") as response:
+        assert sent == 0
         assert response.read() == b""
+    assert sent == 1000
 
 
 @pytest.mark.parametrize("client_method", ["stream", "get"])

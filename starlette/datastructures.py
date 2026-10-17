@@ -61,7 +61,7 @@ class URL:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
                 if path.startswith("//"):
-                    # Without a host, browsers would read the first path segment as one.
+                    # Without a host, a leading `//` would be parsed as the authority.
                     path = "/%2F" + path[2:]
                 url = f"{path}?{query}" if query else path
         elif components:
@@ -192,7 +192,7 @@ class URLPath(str):
     def __new__(cls, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> URLPath:
         assert protocol in ("http", "websocket", "")
         if path.startswith("//"):
-            # Browsers would read the first path segment as a host.
+            # A leading `//` would be parsed as the authority.
             path = "/%2F" + path[2:]
         return str.__new__(cls, path)
 

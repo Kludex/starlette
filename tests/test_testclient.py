@@ -4,7 +4,7 @@ import itertools
 import threading
 from asyncio import Task, current_task as asyncio_current_task
 from collections.abc import AsyncGenerator, Generator
-from contextlib import asynccontextmanager, nullcontext
+from contextlib import AbstractContextManager, asynccontextmanager, nullcontext
 from typing import Any
 
 import anyio
@@ -321,9 +321,12 @@ def test_closing_unfinished_response_cancels_application(
         assert next(chunks) == b"hello"
 
 
-@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+@pytest.mark.parametrize(
+    ("raise_server_exceptions", "expected"),
+    [(True, pytest.raises(RuntimeError, match="background failure")), (False, nullcontext())],
+)
 def test_closing_completed_response_waits_for_background_task(
-    test_client_factory: TestClientFactory, raise_server_exceptions: bool
+    test_client_factory: TestClientFactory, raise_server_exceptions: bool, expected: AbstractContextManager[Any]
 ) -> None:
     completed = threading.Event()
 
@@ -338,7 +341,6 @@ def test_closing_completed_response_waits_for_background_task(
     client = test_client_factory(
         Starlette(routes=[Route("/", homepage)]), raise_server_exceptions=raise_server_exceptions
     )
-    expected = pytest.raises(RuntimeError, match="background failure") if raise_server_exceptions else nullcontext()
     with expected:
         with client.stream("GET", "/") as response:
             chunks = response.iter_raw()
@@ -394,9 +396,12 @@ def test_error_while_streaming_cancels_background_task(test_client_factory: Test
     assert cancelled.is_set()
 
 
-@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+@pytest.mark.parametrize(
+    ("raise_server_exceptions", "expected"),
+    [(True, pytest.raises(RuntimeError, match="late failure")), (False, nullcontext())],
+)
 def test_streaming_response_late_server_exception(
-    test_client_factory: TestClientFactory, raise_server_exceptions: bool
+    test_client_factory: TestClientFactory, raise_server_exceptions: bool, expected: AbstractContextManager[Any]
 ) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": []})
@@ -405,7 +410,6 @@ def test_streaming_response_late_server_exception(
         raise RuntimeError("late failure")
 
     client = test_client_factory(app, raise_server_exceptions=raise_server_exceptions)
-    expected = pytest.raises(RuntimeError, match="late failure") if raise_server_exceptions else nullcontext()
     with expected:
         with client.stream("GET", "/") as response:
             assert response.read() == b"body"

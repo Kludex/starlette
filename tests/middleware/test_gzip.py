@@ -4,6 +4,7 @@ import hashlib
 import zlib
 from pathlib import Path
 
+import anyio
 import pytest
 
 from starlette.applications import Starlette
@@ -501,3 +502,28 @@ def test_gzip_excluded_content_type_trailers(test_client_factory: TestClientFact
     assert response.content == b"x" * 4000
     assert "content-encoding" not in response.headers
     assert response.extensions["http.response.trailers"] == [(b"grpc-status", b"0")]
+
+
+@pytest.mark.anyio
+async def test_gzip_sends_response_start_before_first_body_when_not_compressed() -> None:
+    events: list[Message] = []
+    start_sent = anyio.Event()
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/event-stream")]})
+        await start_sent.wait()
+        await send({"type": "http.response.body", "body": b"data: hello\n\n"})
+
+    async def send(message: Message) -> None:
+        events.append(message)
+        start_sent.set()
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    scope: Scope = {"type": "http", "method": "GET", "path": "/", "headers": [(b"accept-encoding", b"gzip")]}
+
+    with anyio.fail_after(1):
+        await GZipMiddleware(app)(scope, receive, send)
+
+    assert [event["type"] for event in events] == ["http.response.start", "http.response.body"]

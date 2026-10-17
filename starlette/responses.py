@@ -50,9 +50,7 @@ class Response:
         if content is None:
             return b""
         if isinstance(content, memoryview):
-            if content.c_contiguous:
-                return content.cast("B")
-            return content.tobytes()
+            return content.cast("B") if content.c_contiguous else content.tobytes()
         if isinstance(content, bytes):
             return content
         return content.encode(self.charset)  # type: ignore
@@ -74,7 +72,7 @@ class Response:
             and populate_content_length
             and not (self.status_code < 200 or self.status_code in (204, 304))
         ):
-            content_length = str(body.nbytes if isinstance(body, memoryview) else len(body))
+            content_length = str(len(body))
             raw_headers.append((b"content-length", content_length.encode("latin-1")))
 
         content_type = self.media_type

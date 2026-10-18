@@ -5,10 +5,9 @@ import functools
 import json
 import uuid
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
-from typing import TypedDict
+from typing import Never, TypedDict
 
 import pytest
-from typing_extensions import Never
 
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
@@ -275,6 +274,12 @@ def test_url_path_for() -> None:
         app.url_path_for("user", username="tom/christie")
     with pytest.raises(AssertionError):
         app.url_path_for("user", username="")
+
+
+def test_url_path_for_with_double_slash_path() -> None:
+    router = Router([Route("/{path:path}", endpoint=homepage, name="catchall")])
+    assert router.url_path_for("catchall", path="/example.org/a") == "/%2Fexample.org/a"
+    assert router.url_path_for("catchall", path="\\example.org/a") == "/%5Cexample.org/a"
 
 
 def test_url_for() -> None:

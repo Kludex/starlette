@@ -21,9 +21,6 @@ else:  # pragma: no cover
 
     from typing_extensions import TypeIs
 
-if sys.version_info < (3, 11):  # pragma: no cover
-    from exceptiongroup import BaseExceptionGroup
-
 
 T = TypeVar("T")
 AwaitableCallable = Callable[..., Awaitable[T]]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
+from contextlib import aclosing
 from typing import Any, TypeVar
 
 import anyio
@@ -25,11 +26,10 @@ class _CachedRequest(Request):
     empty body so that downstream things don't hang forever.
     """
 
-    def __init__(self, scope: Scope, receive: Receive):
-        super().__init__(scope, receive)
+    def __init__(self, scope: Scope, receive: Receive, send: Send):
+        super().__init__(scope, receive, send)
         self._wrapped_rcv_disconnected = False
         self._wrapped_rcv_consumed = False
-        self._wrapped_rc_stream = self.stream()
 
     async def wrapped_receive(self) -> Message:
         # wrapped_rcv state 1: disconnected
@@ -80,8 +80,8 @@ class _CachedRequest(Request):
         else:
             # body() was never called and stream() wasn't consumed
             try:
-                stream = self.stream()
-                chunk = await stream.__anext__()
+                async with aclosing(self.stream()) as stream:
+                    chunk = await stream.__anext__()
                 self._wrapped_rcv_consumed = self._stream_consumed
                 return {
                     "type": "http.request",
@@ -103,7 +103,7 @@ class BaseHTTPMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request = _CachedRequest(scope, receive)
+        request = _CachedRequest(scope, receive, send)
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
         app_exc: Exception | None = None
@@ -153,10 +153,16 @@ class BaseHTTPMiddleware:
             task_group.start_soon(coro)
 
             try:
-                message = await recv_stream.receive()
-                info = message.get("info", None)
-                if message["type"] == "http.response.debug" and info is not None:
+                info = None
+                while True:
                     message = await recv_stream.receive()
+                    if message["type"] == "http.response.debug":
+                        info = message["info"]
+                        continue
+                    elif message["type"] == "http.response.early_hint":
+                        await send(message)
+                        continue
+                    break
             except anyio.EndOfStream:
                 if app_exc is not None:
                     nonlocal exception_already_raised

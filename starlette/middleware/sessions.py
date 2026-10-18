@@ -72,7 +72,7 @@ class SessionMiddleware:
                         session_cookie=self.session_cookie,
                         data=data.decode("utf-8"),
                         path=self.path,
-                        max_age=f"Max-Age={self.max_age}; " if self.max_age else "",
+                        max_age=f"Max-Age={self.max_age}; " if self.max_age is not None else "",
                         security_flags=self.security_flags,
                     )
                     headers.append("Set-Cookie", header_value)
@@ -115,7 +115,8 @@ class Session(dict[str, typing.Any]):
         super().clear()
 
     def pop(self, key: str, *args: typing.Any) -> typing.Any:
-        self.modified = self.modified or key in self
+        if key in self:
+            self.mark_modified()
         return super().pop(key, *args)
 
     def popitem(self) -> tuple[str, typing.Any]:

@@ -2,13 +2,16 @@
 toc_depth: 2
 ---
 
-## 1.8.1 (October 18, 2026)
+## 1.9.0 (October 18, 2026)
+
+#### Changed
+
+* Stream `TestClient` response bodies, so `client.stream()` returns before the application finishes. Closing an unfinished streamed response now cancels the application [#3491](https://github.com/Kludex/starlette/pull/3491).
 
 #### Fixed
 
 * Percent-encode `?`, `#`, `\` and a leading `//` in the request path when building `request.url`, and `\` and a leading `//` in `url_path_for` [#3671](https://github.com/Kludex/starlette/pull/3671).
 * Use the byte length for `Content-Length` when the response body is a typed or multidimensional `memoryview` [#3622](https://github.com/Kludex/starlette/pull/3622).
-* Stream `TestClient` response bodies, so `client.stream()` returns before the application finishes [#3491](https://github.com/Kludex/starlette/pull/3491).
 * Include `HEAD` in the `Allow` header of `HTTPEndpoint` 405 responses when `GET` is defined [#3585](https://github.com/Kludex/starlette/pull/3585).
 * Match host names case-insensitively in `Host` routing and `TrustedHostMiddleware` [#3542](https://github.com/Kludex/starlette/pull/3542).
 * Preserve every existing `Vary` header in `MutableHeaders.add_vary_header()`, used by `GZipMiddleware` and `SessionMiddleware` [#3675](https://github.com/Kludex/starlette/pull/3675).

@@ -1,3 +1,5 @@
+English | [简体中文](https://github.com/Kludex/starlette/blob/main/README.zh-CN.md)
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Kludex/starlette/main/docs/img/starlette_dark.svg" width="420px">

@@ -1245,30 +1245,12 @@ def test_paths_with_root_path(test_client_factory: TestClientFactory) -> None:
     }
 
 
-@pytest.mark.parametrize(
-    ("route_host", "request_host"),
-    [
-        ("example.org", "EXAMPLE.org"),
-        ("EXAMPLE.org", "example.org"),
-    ],
-)
-def test_host_routing_is_case_insensitive(
-    test_client_factory: TestClientFactory, route_host: str, request_host: str
-) -> None:
-    router = Router(routes=[Host(route_host, app=PlainTextResponse("hello"))])
-
-    client = test_client_factory(router)
-    response = client.get("/", headers={"host": request_host})
-    assert response.status_code == 200
-    assert response.text == "hello"
-
-
-def test_host_routing_params_are_lowercased(test_client_factory: TestClientFactory) -> None:
+def test_host_routing_is_case_insensitive(test_client_factory: TestClientFactory) -> None:
     async def endpoint(request: Request) -> PlainTextResponse:
         return PlainTextResponse(request.path_params["subdomain"])
 
-    router = Router(routes=[Host("{subdomain}.example.org", app=Router(routes=[Route("/", endpoint)]))])
+    router = Router(routes=[Host("{subdomain}.Example.org", app=Router(routes=[Route("/", endpoint)]))])
 
-    response = test_client_factory(router).get("/", headers={"host": "Sub.Example.Org"})
+    response = test_client_factory(router).get("/", headers={"host": "Sub.example.ORG"})
     assert response.status_code == 200
     assert response.text == "sub"

@@ -96,11 +96,14 @@ class GZipResponder:
         await responder(scope, receive, send)
 
     async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
-        if self._compressor is None:
-            self._compressor = GZipCompressor(self.compresslevel)
         if len(body) >= self.thread_minimum_size:
             # Compressing large chunks inline would block the event loop.
-            return await anyio.to_thread.run_sync(self._compressor, body, more_body, limiter=capacity_limiter())
+            return await anyio.to_thread.run_sync(self._compress_body, body, more_body, limiter=capacity_limiter())
+        return self._compress_body(body, more_body)
+
+    def _compress_body(self, body: bytes, more_body: bool) -> bytes:
+        if self._compressor is None:
+            self._compressor = GZipCompressor(self.compresslevel)
         return self._compressor(body, more_body)
 
 

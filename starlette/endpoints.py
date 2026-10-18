@@ -24,6 +24,7 @@ class HTTPEndpoint:
             method
             for method in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY")
             if getattr(self, method.lower(), None) is not None
+            or (method == "HEAD" and getattr(self, "get", None) is not None)
         ]
 
     def __await__(self) -> Generator[Any, None, None]:
@@ -34,7 +35,7 @@ class HTTPEndpoint:
         handler_name = "get" if request.method == "HEAD" and not hasattr(self, "head") else request.method.lower()
 
         handler: Callable[[Request], Any]
-        if request.method in self._allowed_methods or (request.method == "HEAD" and "GET" in self._allowed_methods):
+        if request.method in self._allowed_methods:
             handler = getattr(self, handler_name)
         else:
             handler = self.method_not_allowed

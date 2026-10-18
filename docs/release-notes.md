@@ -2,6 +2,33 @@
 toc_depth: 2
 ---
 
+## 1.8.0 (October 13, 2026)
+
+This release drops Python 3.10 support and adds HTTP 103 Early Hints.
+
+#### Added
+
+* Add `Request.send_early_hints()` for HTTP 103 Early Hints through the ASGI `http.response.early_hint` extension [#3435](https://github.com/Kludex/starlette/pull/3435).
+
+#### Changed
+
+* Require Python 3.11 or later, dropping support for Python 3.10 [#3592](https://github.com/Kludex/starlette/pull/3592).
+* Exclude native gRPC media types (`application/grpc` and `application/grpc+...`) from `GZipMiddleware` compression by default [#3565](https://github.com/Kludex/starlette/pull/3565).
+* Send `http.response.start` immediately in `GZipMiddleware` for responses with an existing `Content-Encoding`, status `206`, or an excluded content type, instead of waiting for the first body chunk [#3631](https://github.com/Kludex/starlette/pull/3631).
+* Resolve the multipart charset once per request instead of once per field [#3618](https://github.com/Kludex/starlette/pull/3618).
+
+#### Fixed
+
+* Preserve response trailers through `GZipMiddleware` [#3565](https://github.com/Kludex/starlette/pull/3565).
+* Stop `FileResponse` transfers when the client disconnects [#3523](https://github.com/Kludex/starlette/pull/3523).
+* Stop multipart range responses when the file ends before a range is complete, instead of looping forever [#3583](https://github.com/Kludex/starlette/pull/3583).
+* Ignore `Range` when `If-Range` contains a weak ETag [#3567](https://github.com/Kludex/starlette/pull/3567).
+* Include `Allow: GET, HEAD` in `StaticFiles` `405` responses [#3640](https://github.com/Kludex/starlette/pull/3640).
+* Close `Request.stream()` generators deterministically, avoiding "Exception ignored" errors with stacked `BaseHTTPMiddleware` [#3628](https://github.com/Kludex/starlette/pull/3628).
+* Add `Vary: Cookie` when `Session.pop()` removes an existing key [#3186](https://github.com/Kludex/starlette/pull/3186).
+* Emit `Max-Age=0` on the session cookie when `SessionMiddleware` uses `max_age=0` [#3651](https://github.com/Kludex/starlette/pull/3651).
+* Bracket IPv6 hostnames in `URL.replace()` [#3617](https://github.com/Kludex/starlette/pull/3617).
+
 ## 1.7.0 (September 23, 2026)
 
 This release adds experimental OpenTelemetry tracing and requires AnyIO 4.

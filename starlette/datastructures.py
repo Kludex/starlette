@@ -35,7 +35,7 @@ class URL:
             assert not components, 'Cannot set both "scope" and "**components".'
             scheme = scope.get("scheme", "http")
             server = scope.get("server", None)
-            path = scope["path"]
+            path = scope["path"].replace("?", "%3F").replace("#", "%23").replace("\\", "%5C")
             query_string = scope.get("query_string", b"")
 
             host_header = None
@@ -60,6 +60,9 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                if path.startswith("//"):
+                    # Without a host, a leading `//` would be parsed as the authority.
+                    path = "/%2F" + path[2:]
                 url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
@@ -188,6 +191,10 @@ class URLPath(str):
 
     def __new__(cls, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> URLPath:
         assert protocol in ("http", "websocket", "")
+        path = path.replace("\\", "%5C")
+        if path.startswith("//"):
+            # A leading `//` would be parsed as the authority.
+            path = "/%2F" + path[2:]
         return str.__new__(cls, path)
 
     def __init__(self, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> None:

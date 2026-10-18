@@ -25,7 +25,6 @@ class TrustedHostMiddleware:
             if pattern.startswith("*") and pattern != "*":
                 assert pattern.startswith("*."), ENFORCE_DOMAIN_WILDCARD
         self.app = app
-        # Host names are case-insensitive. See RFC 9110, section 4.2.3.
         self.allowed_hosts = [pattern.lower() for pattern in allowed_hosts]
         self.allow_any = "*" in allowed_hosts
         self.www_redirect = www_redirect

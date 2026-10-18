@@ -147,20 +147,17 @@ class BaseHTTPMiddleware:
 
             task_group.start_soon(coro)
 
-            try:
-                message = await recv_stream.receive()
-                info = message.get("info", None)
-                if message["type"] == "http.response.debug" and info is not None:
-                    message = await recv_stream.receive()
-            except anyio.EndOfStream:
+            # `anext` with a default keeps `anyio.EndOfStream` out of the re-raised exception's context.
+            message = await anext(recv_stream, None)
+            info = None if message is None else message.get("info", None)
+            if message is not None and message["type"] == "http.response.debug" and info is not None:
+                message = await anext(recv_stream, None)
+
+            if message is None:
                 if app_exc is not None:
                     nonlocal exception_already_raised
                     exception_already_raised = True
-                    # Prevent `anyio.EndOfStream` from replacing the app exception's visible context.
-                    cause = app_exc.__cause__
-                    if cause is None and not app_exc.__suppress_context__:
-                        cause = app_exc.__context__
-                    raise app_exc from cause
+                    raise app_exc
                 raise RuntimeError("No response returned.")
 
             assert message["type"] == "http.response.start"

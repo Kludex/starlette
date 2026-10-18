@@ -388,6 +388,9 @@ class _TestClientTransport(httpx.BaseTransport):
                 cancel_scope.cancel()
 
         def close_app(exc_type: type[BaseException] | None, *_: Any) -> None:
+            if app_task is None:  # pragma: no cover - only if a signal interrupts start_task_soon()
+                portal.call(cancel_scope.cancel)
+                return
             if not app_task.done():
                 portal.call(cancel_if_incomplete)
             wait_futures([app_task])
@@ -407,8 +410,9 @@ class _TestClientTransport(httpx.BaseTransport):
             stack.callback(body_tx.close)
             stack.callback(body_rx.close)
             cancel_scope = portal.call(anyio.CancelScope)
-            app_task = portal.start_task_soon(run_app)
+            app_task: Future[None] | None = None
             stack.push(close_app)
+            app_task = portal.start_task_soon(run_app)
             portal.call(response_available.wait)
 
             if not response_started:

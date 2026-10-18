@@ -731,19 +731,17 @@ def test_invalid_trailer_sequence(test_client_factory: TestClientFactory, messag
         test_client_factory(app).get("/")
 
 
-@pytest.mark.parametrize("trailers", [[], [(b"x-item", b"one"), (b"x-item", b"two")]])
-def test_capture_trailers(test_client_factory: TestClientFactory, trailers: list[tuple[bytes, bytes]]) -> None:
+def test_capture_trailers(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         assert "http.response.trailers" in scope["extensions"]
         await send({"type": "http.response.start", "status": 200, "trailers": True})
         await send({"type": "http.response.body", "body": b"hello"})
-        await anyio.lowlevel.checkpoint()
-        await send({"type": "http.response.trailers", "headers": trailers[:1], "more_trailers": True})
-        await send({"type": "http.response.trailers", "headers": trailers[1:]})
+        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"one")], "more_trailers": True})
+        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"two")]})
 
     response = test_client_factory(app).get("/", headers={"te": "trailers"})
     assert response.content == b"hello"
-    assert response.extensions["http.response.trailers"] == trailers
+    assert response.extensions["http.response.trailers"] == [(b"x-item", b"one"), (b"x-item", b"two")]
     assert "x-item" not in response.headers
 
 

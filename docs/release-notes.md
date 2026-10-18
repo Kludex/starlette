@@ -6,7 +6,7 @@ toc_depth: 2
 
 #### Fixed
 
-* Percent-encode `?`, `#`, `\` and a leading `//` in the path when building URLs from the request scope and in `url_path_for` [#3671](https://github.com/Kludex/starlette/pull/3671).
+* Percent-encode `?`, `#`, `\` and a leading `//` in the request path when building `request.url`, and `\` and a leading `//` in `url_path_for` [#3671](https://github.com/Kludex/starlette/pull/3671).
 * Use the byte length for `Content-Length` when the response body is a typed or multidimensional `memoryview` [#3622](https://github.com/Kludex/starlette/pull/3622).
 * Stream `TestClient` response bodies, so `client.stream()` returns before the application finishes [#3491](https://github.com/Kludex/starlette/pull/3491).
 * Include `HEAD` in the `Allow` header of `HTTPEndpoint` 405 responses when `GET` is defined [#3585](https://github.com/Kludex/starlette/pull/3585).

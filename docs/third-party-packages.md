@@ -14,7 +14,7 @@ Analytics, request logging and monitoring for REST APIs built with Starlette (an
 
 ### Authlib
 
-<a href="https://github.com/lepture/Authlib" target="_blank">GitHub</a> |
+<a href="https://github.com/authlib/authlib" target="_blank">GitHub</a> |
 <a href="https://docs.authlib.org/en/latest/" target="_blank">Documentation</a>
 
 The ultimate Python library in building OAuth and OpenID Connect clients and servers. Check out how to integrate with [Starlette](https://docs.authlib.org/en/stable/oauth2/client/web/starlette.html).
@@ -26,24 +26,11 @@ The ultimate Python library in building OAuth and OpenID Connect clients and ser
 ChannelBox is a lightweight solution for WebSocket broadcasting in ASGI applications.
 It allows sending messages to named WebSocket channel groups and integrates with Starlette and FastAPI.
 
-### Imia
-
-<a href="https://github.com/alex-oleshkevich/imia" target="_blank">GitHub</a>
-
-An authentication framework for Starlette with pluggable authenticators and login/logout flow.
-
 ### Mangum
 
-<a href="https://github.com/erm/mangum" target="_blank">GitHub</a>
+<a href="https://github.com/Kludex/mangum" target="_blank">GitHub</a>
 
 Serverless ASGI adapter for AWS Lambda & API Gateway.
-
-### Nejma
-
-<a href="https://github.com/taoufik07/nejma" target="_blank">GitHub</a>
-
-Manage and send messages to groups of channels using websockets.
-Checkout <a href="https://github.com/taoufik07/nejma-chat" target="_blank">nejma-chat</a>, a simple chat application built using `nejma` and `starlette`.
 
 ### Scout APM
 
@@ -86,13 +73,6 @@ Can be used with logging so logs automatically use request headers such as x-req
 
 A Starlette middleware that allows **brotli**, **gzip** and **deflate** compression algorithm with a minimal requirements.
 
-### Starlette OAuth2 API
-
-<a href="https://gitlab.com/jorgecarleitao/starlette-oauth2-api" target="_blank">GitLab</a>
-
-A starlette middleware to add authentication and authorization through JWTs.
-It relies solely on an auth provider to issue access and/or id tokens to clients.
-
 ### Starlette Prometheus
 
 <a href="https://github.com/perdy/starlette-prometheus" target="_blank">GitHub</a>
@@ -101,7 +81,7 @@ A plugin for providing an endpoint that exposes [Prometheus](https://prometheus.
 
 ### Starlette WTF
 
-<a href="https://github.com/muicss/starlette-wtf" target="_blank">GitHub</a>
+<a href="https://github.com/amorey/starlette-wtf" target="_blank">GitHub</a>
 
 A simple tool for integrating Starlette and WTForms. It is modeled on the excellent Flask-WTF library.
 
@@ -129,14 +109,6 @@ of [webargs](https://github.com/marshmallow-code/webargs).
 
 Allows you to parse querystring, JSON, form, headers, and cookies using
 type annotations.
-
-### DecoRouter
-
-<a href="https://github.com/MrPigss/DecoRouter" target="_blank">GitHub</a>
-
-FastAPI style routing for Starlette.
-
-Allows you to use decorators to generate routing tables.
 
 ### Starception
 
@@ -183,7 +155,7 @@ while maintaining the integrity of the newly `lifespan` events of `Starlette`.
 
 ### FastAPI
 
-<a href="https://github.com/tiangolo/fastapi" target="_blank">GitHub</a> |
+<a href="https://github.com/fastapi/fastapi" target="_blank">GitHub</a> |
 <a href="https://fastapi.tiangolo.com/" target="_blank">Documentation</a>
 
 High performance, easy to learn, fast to code, ready for production web API framework.
@@ -198,45 +170,17 @@ Flama is a **data-science oriented framework** to rapidly build modern and robus
 
 Flama comes with an intuitive CLI, and provides an easy-to-learn philosophy to speed up the building of **highly performant** GraphQL, REST, and ML APIs. Besides, it comprises an ideal solution for the development of asynchronous and **production-ready** services, offering **automatic deployment** for ML models.
 
-### Greppo
-
-<a href="https://github.com/greppo-io/greppo" target="_blank">GitHub</a> |
-<a href="https://docs.greppo.io/" target="_blank">Documentation</a>
-
-A Python framework for building geospatial dashboards and web-applications.
-
-Greppo is an open-source Python framework that makes it easy to build geospatial dashboards and web-applications. It provides a toolkit to quickly integrate data, algorithms, visualizations and UI for interactivity. It provides APIs to the update the variables in the backend, recompute the logic, and reflect the changes in the frontend (data mutation hook).
-
 ### Responder
 
-<a href="https://github.com/taoufik07/responder" target="_blank">GitHub</a> |
+<a href="https://github.com/kennethreitz/responder" target="_blank">GitHub</a> |
 <a href="https://responder.kennethreitz.org/" target="_blank">Documentation</a>
 
 Async web service framework. Some Features: flask-style route expression,
 yaml support, OpenAPI schema generation, background tasks, graphql.
 
-### Starlette-apps
-
-Roll your own framework with a simple app system, like [Django-GDAPS](https://gdaps.readthedocs.io/en/latest/) or [CakePHP](https://cakephp.org/).
-
-<a href="https://github.com/yourlabs/starlette-apps" target="_blank">GitHub</a>
-
-### Dark Star
-
-A simple framework to help minimise the code needed to get HTML to the browser. Changes your file paths into Starlette routes and puts your view code right next to your template. Includes support for [htmx](https://htmx.org) to help enhance your frontend.
-
-<a href="https://lllama.github.io/dark-star" target="_blank">Docs</a>
-<a href="https://github.com/lllama/dark-star" target="_blank">GitHub</a>
-
-### Xpresso
-
-A flexible and extendable web framework built on top of Starlette, Pydantic and [di](https://github.com/adriangb/di).
-
-<a href="https://github.com/adriangb/xpresso" target="_blank">GitHub</a>
-
 ### Ellar
 
-<a href="https://github.com/eadwinCode/ellar" target="_blank">GitHub</a> |
+<a href="https://github.com/python-ellar/ellar" target="_blank">GitHub</a> |
 <a href="https://python-ellar.github.io/ellar/" target="_blank">Documentation</a>
 
 Ellar is an ASGI web framework for building fast, efficient and scalable RESTAPIs and server-side applications. It offers a high level of abstraction in building server-side applications and combines elements of OOP (Object Oriented Programming), and FP (Functional Programming) - Inspired by Nestjs.
@@ -254,12 +198,6 @@ An extension to integrate Swagger/OpenAPI document easily for Starlette project 
 Provides translations, localization, and timezone support via Babel integration.
 
 <a href="https://github.com/alex-oleshkevich/starlette_babel" target="_blank">GitHub</a>
-
-### Starlette-StaticResources
-
-<a href="https://github.com/DavidVentura/starlette-static-resources" target="_blank">GitHub</a>
-
-Allows mounting [package resources](https://docs.python.org/3/library/importlib.resources.html#module-importlib.resources) for static data, similar to [StaticFiles](staticfiles.md).
 
 ### Sentry
 

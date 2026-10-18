@@ -35,6 +35,30 @@ def test_gzip_responses(test_client_factory: TestClientFactory) -> None:
     assert int(response.headers["Content-Length"]) < 4000
 
 
+def test_gzip_preserves_multiple_existing_vary_headers(test_client_factory: TestClientFactory) -> None:
+    # `Vary` may be sent as several header fields. Adding `Accept-Encoding` must
+    # not discard the fields the application already set.
+    def homepage(request: Request) -> PlainTextResponse:
+        response = PlainTextResponse("x" * 4000, status_code=200, headers={"Vary": "Accept-Language"})
+        response.headers.append("Vary", "Cookie")
+        return response
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert {value.strip() for value in response.headers["Vary"].split(",")} == {
+        "Accept-Language",
+        "Cookie",
+        "Accept-Encoding",
+    }
+
+
 def test_gzip_not_in_accept_encoding(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("x" * 4000, status_code=200)

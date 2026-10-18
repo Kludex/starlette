@@ -341,6 +341,28 @@ def test_mutable_headers() -> None:
     assert h.raw == [(b"b", b"4")]
 
 
+def test_mutable_headers_add_vary_header() -> None:
+    h = MutableHeaders()
+    h.add_vary_header("Accept-Encoding")
+    assert h["vary"] == "Accept-Encoding"
+
+
+def test_mutable_headers_add_vary_header_keeps_existing() -> None:
+    h = MutableHeaders({"vary": "Accept-Language"})
+    h.add_vary_header("Accept-Encoding")
+    assert h["vary"] == "Accept-Language, Accept-Encoding"
+
+
+def test_mutable_headers_add_vary_header_keeps_multiple_existing() -> None:
+    # `Vary` may legitimately be sent as more than one header field, in which
+    # case the values are the union of the fields.
+    h = MutableHeaders({"vary": "Accept-Language"})
+    h.append("vary", "Cookie")
+    h.add_vary_header("Accept-Encoding")
+    assert h["vary"] == "Accept-Language, Cookie, Accept-Encoding"
+    assert h.getlist("vary") == ["Accept-Language, Cookie, Accept-Encoding"]
+
+
 def test_mutable_headers_merge() -> None:
     h = MutableHeaders()
     h = h | MutableHeaders({"a": "1"})

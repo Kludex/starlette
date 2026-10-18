@@ -25,7 +25,7 @@ class TrustedHostMiddleware:
             if pattern.startswith("*") and pattern != "*":
                 assert pattern.startswith("*."), ENFORCE_DOMAIN_WILDCARD
         self.app = app
-        self.allowed_hosts = list(allowed_hosts)
+        self.allowed_hosts = [pattern.lower() for pattern in allowed_hosts]
         self.allow_any = "*" in allowed_hosts
         self.www_redirect = www_redirect
 
@@ -42,7 +42,7 @@ class TrustedHostMiddleware:
         if parsed_host is None:
             await PlainTextResponse("Invalid host header", status_code=400)(scope, receive, send)
             return
-        host = parsed_host.host
+        host = parsed_host.host.lower()
 
         is_valid_host = False
         found_www_redirect = False

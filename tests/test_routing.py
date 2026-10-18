@@ -1243,3 +1243,14 @@ def test_paths_with_root_path(test_client_factory: TestClientFactory) -> None:
         "path": "/root/root-queue/path",
         "root_path": "/root",
     }
+
+
+def test_host_routing_is_case_insensitive(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(request.path_params["subdomain"])
+
+    router = Router(routes=[Host("{subdomain}.Example.org", app=Router(routes=[Route("/", endpoint)]))])
+
+    response = test_client_factory(router).get("/", headers={"host": "Sub.example.ORG"})
+    assert response.status_code == 200
+    assert response.text == "sub"

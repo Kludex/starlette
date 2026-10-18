@@ -63,6 +63,7 @@ async def test_file_metadata(
     assert head.content == b""
     assert head.headers.get("content-length") in (None, get.headers["content-length"])
     assert head.headers["vary"] == get.headers["vary"] == "Accept-Encoding"
+    assert head.headers.get("content-encoding") == get.headers.get("content-encoding")
     compressed = "content-encoding" in get.headers
     assert get.headers["etag"] == ("W/" if compressed else "") + plain.headers["etag"]
     assert head.headers["etag"] == get.headers["etag"]
@@ -76,7 +77,7 @@ async def test_not_modified_metadata(
     tmp_path: Path, middleware: type[CompressionMiddleware] | type[GZipMiddleware], encoding: str
 ) -> None:
     (tmp_path / "body.txt").write_bytes(b"x" * 4000)
-    app = middleware(StaticFiles(directory=tmp_path))
+    app = middleware(StaticFiles(directory=tmp_path, check_dir=False))
     async with AsyncClient(transport=ASGITransport(app), base_url="http://test") as client:
         get = await client.get("/body.txt", headers={"accept-encoding": encoding})
         conditional = await client.get(

@@ -92,7 +92,8 @@ async def test_rejected_streaming_response_cleanup(spec_version: str) -> None:
 
     async def stream() -> AsyncGenerator[bytes, None]:
         try:
-            yield b"event"
+            for _ in repeat(None):  # pragma: no branch - The infinite stream terminates only by cancellation.
+                yield b"event"
         finally:
             completed.append(True)
 
@@ -110,9 +111,12 @@ async def test_rejected_streaming_response_cleanup(spec_version: str) -> None:
     assert completed == [True]
 
 
-@pytest.mark.parametrize("vary", ["Origin, accept-encoding", "*"])
-async def test_vary_is_not_duplicated(vary: str) -> None:
-    app = CompressionMiddleware(PlainTextResponse("x" * 4000, headers={"vary": vary}))
+@pytest.mark.parametrize("vary", [["Origin, accept-encoding"], ["*"], ["Origin", "*"], ["Origin", "Accept-Encoding"]])
+async def test_vary_is_not_duplicated(vary: list[str]) -> None:
+    endpoint = PlainTextResponse("x" * 4000)
+    for value in vary:
+        endpoint.headers.append("vary", value)
+    app = CompressionMiddleware(endpoint)
     async with AsyncClient(transport=ASGITransport(app), base_url="http://test") as client:
         response = await client.get("/", headers={"accept-encoding": "gzip"})
-    assert response.headers["vary"] == vary
+    assert response.headers.get_list("vary") == vary

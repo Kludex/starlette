@@ -448,12 +448,13 @@ Disabling all compressors makes the middleware pass through requests.
 The middleware adds `Vary: Accept-Encoding` whenever encoding negotiation can change the response.
 This includes small bodies, already-encoded content, and excluded responses that other encoding preferences would reject.
 It preserves existing `Vary` values.
-For compressed standard responses, it updates `Content-Length`. For compressed streaming responses, it removes that header.
+For compressed standard responses, it updates `Content-Length`. For compressed streaming responses and responses with trailers, it removes that header.
 It weakens strong `ETag` values when compressing a response, so the same strong validator cannot identify
 both compressed and uncompressed bytes. Existing weak validators are preserved.
 
 `HEAD`, `204`, `205`, and `304` responses have no compressed body, even with `minimum_size=0`.
 Eligible `HEAD` and `304` responses retain `Vary: Accept-Encoding` and use the same weak validators as compressed responses.
+`HEAD` responses also advertise the `Content-Encoding` that the matching `GET` would use.
 The middleware omits `Content-Length` when it cannot determine the compressed length without a body.
 
 Streaming responses start compression with the first body chunk, even when it is smaller than `minimum_size`.
@@ -465,7 +466,7 @@ This includes an empty final chunk, which may flush a large buffered response.
 Responses with an existing `Content-Encoding`, status `206`, an excluded content type, or the
 `http.response.pathsend` extension are not compressed. They pass through when their encoding is acceptable.
 These exclusions prevent double encoding, preserve byte ranges, and avoid delaying server-sent events
-or recompressing binary formats.
+or recompressing binary formats. The middleware sends their response start immediately instead of waiting for the first body message.
 
 The middleware forwards ASGI trailers, early hints, debug information, and server push events.
 When compression is selected, it removes `http.response.zerocopysend` from the application's scope.

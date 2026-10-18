@@ -33,18 +33,23 @@ class CompressionStream:
     async def __call__(self, body: bytes, more_body: bool) -> bytes:
         self.total_size += len(body)
         if self.total_size >= self.thread_minimum_size:
-            try:
-                limiter = _capacity_limiter.get()
-            except LookupError:
-                limiter = anyio.CapacityLimiter(40)
-                _capacity_limiter.set(limiter)
-            return await anyio.to_thread.run_sync(self.compress, body, more_body, limiter=limiter)
+            return await anyio.to_thread.run_sync(self.compress, body, more_body, limiter=capacity_limiter())
         return self.compress(body, more_body)
 
     def compress(self, body: bytes, more_body: bool) -> bytes:
         if self.compressor is None:
             self.compressor = self.factory()
         return self.compressor(body, more_body)
+
+
+def capacity_limiter() -> anyio.CapacityLimiter:
+    try:
+        return _capacity_limiter.get()
+    except LookupError:
+        # Keep compression isolated from AnyIO's default worker-thread limiter while matching its concurrency.
+        limiter = anyio.CapacityLimiter(40)
+        _capacity_limiter.set(limiter)
+        return limiter
 
 
 class GZipCompressor:

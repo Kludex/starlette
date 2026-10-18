@@ -26,10 +26,11 @@ async def test_config(gzip: bool | CompressionConfig, zstd: bool | CompressionCo
 @pytest.mark.anyio
 @pytest.mark.parametrize("encoding", ["gzip", "zstd", "br"])
 async def test_compression_levels(encoding: str) -> None:
+    body = "".join(f"{index}:{index * index % 997}," for index in range(1000))
     lengths: list[int] = []
     for level in [-5, 9] if encoding == "zstd" else [0, 9]:
         app = CompressionMiddleware(
-            PlainTextResponse("x" * 4000),
+            PlainTextResponse(body),
             compresslevel=100,
             gzip={"compresslevel": max(0, level)},
             zstd={"compresslevel": level},
@@ -37,7 +38,7 @@ async def test_compression_levels(encoding: str) -> None:
         )
         async with AsyncClient(transport=ASGITransport(app), base_url="http://test") as client:
             response = await client.get("/", headers={"accept-encoding": encoding})
-        assert response.text == "x" * 4000
+        assert response.text == body
         lengths.append(int(response.headers["content-length"]))
     assert lengths[0] > lengths[1]
 

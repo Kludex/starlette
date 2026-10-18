@@ -4,7 +4,6 @@ import sys
 import zlib
 
 import anyio
-import brotli
 import pytest
 from httpx2 import ASGITransport, AsyncClient
 
@@ -53,6 +52,7 @@ async def test_streaming(encoding: str, thread_minimum_size: int) -> None:
         assert response.headers["content-encoding"] == encoding
         assert "content-length" not in response.headers
         if encoding == "br":
+            brotli = pytest.importorskip("brotli")
             brotli_decoder = brotli.Decompressor()
             for message, chunk in zip(events[1:], chunks):
                 assert brotli_decoder.process(message["body"]) == chunk

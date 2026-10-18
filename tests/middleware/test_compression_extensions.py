@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 from pathlib import Path
 
+import anyio
 import pytest
 
 from starlette.middleware.compression import CompressionMiddleware
@@ -78,7 +79,8 @@ async def test_zerocopy_fallback(
             if "http.response.zerocopysend" in scope["extensions"]:
                 await send(zero)
             else:
-                await send({"type": "http.response.body", "body": file.read(), "more_body": True})
+                body = await anyio.to_thread.run_sync(file.read)
+                await send({"type": "http.response.body", "body": body, "more_body": True})
             await send({"type": "http.response.body", "body": b"suffix"})
 
         events = await capture(middleware(app), scope)
@@ -120,5 +122,31 @@ async def test_body_before_start() -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "http.response.body", "body": b"hello"})
 
-    with pytest.raises(AssertionError, match="Response body received before response start"):
+    with pytest.raises(RuntimeError, match="Response body received before response start"):
         await capture(CompressionMiddleware(app), {"type": "http", "headers": []})
+
+
+@pytest.mark.parametrize("middleware", [CompressionMiddleware, GZipMiddleware])
+@pytest.mark.parametrize("content_type", [b"text/event-stream", b"application/grpc+proto"])
+async def test_excluded_response_start_is_not_delayed(
+    middleware: type[CompressionMiddleware] | type[GZipMiddleware], content_type: bytes
+) -> None:
+    events: list[Message] = []
+    start_sent = anyio.Event()
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", content_type)]})
+        await start_sent.wait()
+        await send({"type": "http.response.body", "body": b"x" * 4000})
+
+    async def send(message: Message) -> None:
+        events.append(message)
+        start_sent.set()
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    with anyio.fail_after(1):
+        await middleware(app)({"type": "http", "headers": [(b"accept-encoding", b"gzip")]}, receive, send)
+    assert [event["type"] for event in events] == ["http.response.start", "http.response.body"]
+    assert events[1]["body"] == b"x" * 4000

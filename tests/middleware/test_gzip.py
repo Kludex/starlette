@@ -35,6 +35,23 @@ def test_gzip_responses(test_client_factory: TestClientFactory) -> None:
     assert int(response.headers["Content-Length"]) < 4000
 
 
+def test_gzip_preserves_multiple_vary_headers(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        response = PlainTextResponse("x" * 4000, headers={"Vary": "Accept-Language"})
+        response.headers.append("Vary", "Cookie")
+        return response
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.headers["Vary"] == "Accept-Language, Cookie, Accept-Encoding"
+
+
 def test_gzip_not_in_accept_encoding(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("x" * 4000, status_code=200)

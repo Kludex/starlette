@@ -466,7 +466,7 @@ This includes an empty final chunk, which may flush a large buffered response.
 Responses with an existing `Content-Encoding`, status `206`, an excluded content type, or the
 `http.response.pathsend` extension are not compressed. They pass through when their encoding is acceptable.
 These exclusions prevent double encoding, preserve byte ranges, and avoid delaying server-sent events
-or recompressing binary formats. The middleware sends their response start immediately instead of waiting for the first body message.
+or recompressing binary formats. When the response start alone rules out compression, the middleware forwards it immediately instead of waiting for the first body message.
 
 The middleware forwards ASGI trailers, early hints, debug information, and server push events.
 When compression is selected, it removes `http.response.zerocopysend` from the application's scope.

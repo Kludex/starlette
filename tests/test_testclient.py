@@ -3,8 +3,8 @@ from __future__ import annotations
 import itertools
 import threading
 from asyncio import Task, current_task as asyncio_current_task
-from collections.abc import AsyncGenerator, Generator
-from contextlib import AbstractContextManager, asynccontextmanager, nullcontext
+from collections.abc import AsyncGenerator, Callable, Generator
+from contextlib import AbstractContextManager, asynccontextmanager, closing, nullcontext
 from typing import Any
 
 import anyio
@@ -372,12 +372,38 @@ def test_closing_completed_trailers_waits_for_application(test_client_factory: T
     assert completed.is_set()
 
 
-def test_error_while_streaming_cancels_background_task(test_client_factory: TestClientFactory) -> None:
-    started = threading.Event()
+def test_closing_response_inside_unrelated_except_waits_for_background_task(
+    test_client_factory: TestClientFactory,
+) -> None:
+    completed = threading.Event()
+
+    async def background() -> None:
+        await anyio.sleep(0.1)
+        completed.set()
+
+    async def homepage(request: Request) -> Response:
+        return Response(b"hello", background=BackgroundTask(background))
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    try:
+        raise KeyError("unrelated")
+    except KeyError:
+        with client.stream("GET", "/") as response:
+            chunks = response.iter_raw()
+            assert next(chunks) == b"hello"
+    assert completed.is_set()
+
+
+@pytest.mark.parametrize(
+    "lifecycle",
+    [pytest.param(lambda client: client, id="lifespan"), pytest.param(closing, id="close")],
+)
+def test_closing_client_cancels_unclosed_response(
+    test_client_factory: TestClientFactory, lifecycle: Callable[[TestClient], AbstractContextManager[Any]]
+) -> None:
     cancelled = threading.Event()
 
     async def background() -> None:
-        started.set()
         try:
             with anyio.fail_after(10):
                 await anyio.sleep_forever()
@@ -389,12 +415,10 @@ def test_error_while_streaming_cancels_background_task(test_client_factory: Test
         return Response(b"hello", background=BackgroundTask(background))
 
     client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
-    with pytest.raises(ValueError, match="client failure"):
-        with client.stream("GET", "/") as response:
-            chunks = response.iter_raw()
-            assert next(chunks) == b"hello"
-            assert started.wait(timeout=10)
-            raise ValueError("client failure")
+    with lifecycle(client):
+        response = client.send(client.build_request("GET", "/"), stream=True)
+        chunks = response.iter_raw()
+        assert next(chunks) == b"hello"
     assert cancelled.is_set()
 
 

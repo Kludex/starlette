@@ -4,11 +4,9 @@ import contextlib
 import inspect
 import json
 import math
-import sys
-import threading
 import warnings
 from collections.abc import Awaitable, Callable, Generator, Iterable, Mapping, Sequence
-from concurrent.futures import Future
+from concurrent.futures import Future, wait as wait_futures
 from contextlib import AbstractContextManager
 from types import GeneratorType
 from typing import TYPE_CHECKING, Any, Literal, Self, TypedDict, TypeGuard, cast
@@ -17,7 +15,6 @@ from urllib.parse import unquote, urljoin
 import anyio
 import anyio.abc
 import anyio.from_thread
-import anyio.lowlevel
 from anyio.streams.stapled import StapledObjectStream
 
 from starlette._utils import is_async_callable
@@ -207,10 +204,7 @@ class _TestClientResponseStream(httpx.SyncByteStream):
         return self._body
 
     def close(self) -> None:
-        exc_info = sys.exc_info()
-        if exc_info[0] is GeneratorExit:
-            exc_info = (None, None, None)
-        self._exit_stack.__exit__(*exc_info)
+        self._exit_stack.close()
 
 
 class _TestClientTransport(httpx.BaseTransport):
@@ -230,6 +224,12 @@ class _TestClientTransport(httpx.BaseTransport):
         self.portal_factory = portal_factory
         self.app_state = app_state
         self.client = client
+        self._open_requests: set[Callable[[], None]] = set()
+
+    def close(self) -> None:
+        with contextlib.ExitStack() as stack:
+            while self._open_requests:
+                stack.callback(self._open_requests.pop())
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         scheme = request.url.scheme
@@ -360,14 +360,11 @@ class _TestClientTransport(httpx.BaseTransport):
                 debug_info = message["info"]
 
         async def run_app() -> None:
-            app_complete.clear()
             try:
                 with cancel_scope:
                     async with body_tx:
-                        await anyio.lowlevel.checkpoint()
                         await self.app(scope, receive, send)
             finally:
-                app_complete.set()
                 response_available.set()
 
         async def receive_body() -> bytes:
@@ -381,66 +378,59 @@ class _TestClientTransport(httpx.BaseTransport):
                 try:
                     body = portal.call(receive_body)
                 except anyio.EndOfStream:
-                    close_app()
-                    return
+                    break
                 if request.method != "HEAD" and body:
                     yield body
+            exit_stack.close()
 
-        def cancel_if_needed(exc_type: type[BaseException] | None) -> None:
-            if exc_type is not None or not response_complete.is_set():
+        def cancel_if_incomplete() -> None:
+            if not response_complete.is_set():
                 cancel_scope.cancel()
 
-        def close_app(exc_type: type[BaseException] | None = None, *_: Any) -> None:
-            try:
-                if app_task is None or not app_task.done():
-                    portal.call(cancel_if_needed, exc_type)
-            finally:
-                app_complete.wait()
-            if exc_type is None and app_task is not None and self.raise_server_exceptions:
-                exception = app_task.exception()
-                if exception is not None:
-                    raise exception
+        def close_app(exc_type: type[BaseException] | None, *_: Any) -> None:
+            if not app_task.done():
+                portal.call(cancel_if_incomplete)
+            wait_futures([app_task])
+            self._open_requests.discard(abort)
+            if exc_type is None and self.raise_server_exceptions and (exception := app_task.exception()):
+                raise exception
 
-        stack = contextlib.ExitStack()
-        app_task: Future[None] | None = None
-        try:
+        def abort() -> None:
+            portal.call(cancel_scope.cancel)
+            exit_stack.close()
+
+        with contextlib.ExitStack() as stack:
             portal = stack.enter_context(self.portal_factory())
             response_available = portal.call(anyio.Event)
             response_complete = portal.call(anyio.Event)
             body_tx, body_rx = portal.call(anyio.create_memory_object_stream[tuple[bytes, bool]], 0)
             stack.callback(body_tx.close)
             stack.callback(body_rx.close)
-            # Submission can be interrupted before the portal returns its future.
-            app_complete = threading.Event()
-            app_complete.set()
             cancel_scope = portal.call(anyio.CancelScope)
-            stack.push(close_app)
             app_task = portal.start_task_soon(run_app)
+            stack.push(close_app)
             portal.call(response_available.wait)
 
             if not response_started:
-                close_app()
+                stack.close()
                 if self.raise_server_exceptions:
                     raise AssertionError("TestClient did not receive any response.")
                 raw_kwargs = {"status_code": 500, "headers": [], "stream": httpx.ByteStream(b"")}
             else:
-                raw_kwargs["stream"] = _TestClientResponseStream(iter_body(), stack)
+                exit_stack = stack.pop_all()
+                self._open_requests.add(abort)
+                raw_kwargs["stream"] = _TestClientResponseStream(iter_body(), exit_stack)
 
-            response = httpx.Response(**raw_kwargs, request=request)
-            if trailers_expected:
-                response.extensions["http.response.trailers"] = trailers
-            if debug_info is not None:
-                response.extensions["http.response.debug"] = debug_info
-                if "template" in debug_info:
-                    response.template = debug_info["template"]  # type: ignore[attr-defined]
-                if "context" in debug_info:
-                    response.context = debug_info["context"]  # type: ignore[attr-defined]
-            if not response_started:
-                stack.close()
-            return response
-        except BaseException as exc:
-            stack.__exit__(type(exc), exc, exc.__traceback__)
-            raise
+        response = httpx.Response(**raw_kwargs, request=request)
+        if trailers_expected:
+            response.extensions["http.response.trailers"] = trailers
+        if debug_info is not None:
+            response.extensions["http.response.debug"] = debug_info
+            if "template" in debug_info:
+                response.template = debug_info["template"]  # type: ignore[attr-defined]
+            if "context" in debug_info:
+                response.context = debug_info["context"]  # type: ignore[attr-defined]
+        return response
 
 
 class TestClient(httpx.Client):
@@ -581,6 +571,7 @@ class TestClient(httpx.Client):
             def wait_shutdown() -> None:
                 portal.call(self.wait_shutdown)
 
+            stack.callback(self._transport.close)
             self.exit_stack = stack.pop_all()
 
         return self

@@ -4,7 +4,7 @@ the incoming request, rather than accessing the ASGI scope and receive channel d
 
 ### Request
 
-Signature: `Request(scope, receive=None)`
+Signature: `Request(scope, receive, send)`
 
 ```python
 from starlette.requests import Request
@@ -24,8 +24,8 @@ way as a `scope`.
 
 For instance: `request['path']` will return the ASGI path.
 
-If you don't need to access the request body you can instantiate a request
-without providing an argument to `receive`.
+Pass `receive` to read the request body or check for client disconnects.
+Pass `send` only if you need [server push](server-push.md).
 
 #### Method
 
@@ -137,7 +137,7 @@ multidict, containing both file uploads and text input. File upload items are re
 
 `UploadFile` has the following attributes:
 
-* `filename`: An `str` with the original file name that was uploaded or `None` if its not available (e.g. `myimage.jpg`).
+* `filename`: An `str` with the original file name that was uploaded or `None` if it's not available (e.g. `myimage.jpg`).
 * `content_type`: An `str` with the content type (MIME type / media type) or `None` if it's not available (e.g. `image/jpeg`).
 * `file`: A <a href="https://docs.python.org/3/library/tempfile.html#tempfile.SpooledTemporaryFile" target="_blank">`SpooledTemporaryFile`</a> (a <a href="https://docs.python.org/3/glossary.html#term-file-like-object" target="_blank">file-like</a> object). This is the actual Python file that you can pass directly to other functions or libraries that expect a "file-like" object.
 * `headers`: A `Headers` object. Often this will only be the `Content-Type` header, but if additional headers were included in the multipart field they will be included here. Note that these headers have no relationship with the headers in `Request.headers`.

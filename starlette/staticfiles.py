@@ -15,6 +15,7 @@ from starlette.datastructures import URL, Headers
 from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
+from starlette.websockets import WebSocketClose
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -88,6 +89,11 @@ class StaticFiles:
         """
         The ASGI entry point.
         """
+        if scope["type"] == "websocket":
+            websocket_close = WebSocketClose()
+            await websocket_close(scope, receive, send)
+            return
+
         assert scope["type"] == "http"
 
         if not self.config_checked:
@@ -111,7 +117,7 @@ class StaticFiles:
         Returns an HTTP response, given the incoming path, method and request headers.
         """
         if scope["method"] not in ("GET", "HEAD"):
-            raise HTTPException(status_code=405)
+            raise HTTPException(status_code=405, headers={"Allow": "GET, HEAD"})
 
         try:
             full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, path)
@@ -208,6 +214,8 @@ class StaticFiles:
         "Not Modified" response could be returned instead.
         """
         if if_none_match := request_headers.get("if-none-match"):
+            if if_none_match.strip() == "*":
+                return True
             # The "etag" header is added by FileResponse, so it's always present.
             etag = response_headers["etag"]
             return etag in [tag.strip().removeprefix("W/") for tag in if_none_match.split(",")]

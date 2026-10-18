@@ -53,6 +53,10 @@ Creates an OpenTelemetry server span for every incoming HTTP request. The span f
 OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
 headers, and uses the matched route template for its name and `http.route` attribute.
 
+!!! warning "Experimental API"
+    `OpenTelemetryMiddleware` is experimental. Its API and emitted telemetry may change in minor
+    releases without a deprecation period.
+
 Install the optional API dependency with `pip install opentelemetry-api`, or as part of
 `pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application
 chooses and configures the SDK and exporter. If no tracer provider is configured, the middleware
@@ -91,8 +95,7 @@ trace.set_tracer_provider(tracer_provider)
 app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
 ```
 
-The middleware discovers the global provider at request time. This means you can create the app
-before you configure the provider.
+You can create the app before you configure the global provider.
 
 You can also wrap any ASGI application directly:
 
@@ -221,6 +224,8 @@ Adds signed cookie-based HTTP sessions. Session information is readable but not 
 The session cookie is always set with the `"HttpOnly"` flag, preventing client-side JavaScript from accessing it.
 
 Access or modify the session data using the `request.session` dictionary interface.
+
+Changes to nested values are not tracked automatically. For example, `request.session["cart"].append(item)` does not mark the session as modified. Assign the updated value back to the session, such as `request.session["cart"] = cart`, to ensure the changes are saved.
 
 The following arguments are supported:
 
@@ -543,7 +548,7 @@ The following arguments are supported:
 * `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
 * `compresslevel` - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to `9`. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.
 * `thread_minimum_size` - Compress body chunks at least this large in a worker thread, keeping the event loop responsive. Defaults to `131072` (128 KiB). Chunks below this size compress inline in at most a couple of milliseconds, while the fixed cost of dispatching to a worker thread would dominate.
-* `exclude_content_types` - Content types that are never compressed. A response is excluded when its `Content-Type` media type equals one of these values, or matches a `type/*` entry like `"image/*"` - matching is case-insensitive and ignores parameters like `charset`. Defaults to `DEFAULT_EXCLUDED_CONTENT_TYPES` (importable, to extend rather than replace): `text/event-stream` plus already-compressed formats - zip and gzip archives, common raster image types, `video/*`, `audio/*`, and WOFF fonts. `image/svg+xml` is deliberately not excluded, since SVG is text and compresses well.
+* `exclude_content_types` - Content types that are never compressed. A response is excluded when its `Content-Type` media type equals one of these values, or matches a `type/*` entry like `"image/*"` - matching is case-insensitive and ignores parameters like `charset`. Defaults to `DEFAULT_EXCLUDED_CONTENT_TYPES` (importable, to extend rather than replace): `text/event-stream`, native gRPC (`application/grpc`, which also covers `application/grpc+proto` and other `application/grpc+...` subtypes), plus already-compressed formats - zip and gzip archives, common raster image types, `video/*`, `audio/*`, and WOFF fonts. `image/svg+xml` is deliberately not excluded, since SVG is text and compresses well.
 
 The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being
 encoded twice, partial content responses (status `206`), to keep range semantics

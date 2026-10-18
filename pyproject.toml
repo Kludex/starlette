@@ -9,7 +9,7 @@ description = "The little ASGI library that shines."
 readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE.md"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Tom Christie", email = "tom@tomchristie.com" }
 ]
@@ -23,7 +23,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -54,6 +53,7 @@ dev = [
     # We add starlette[full,zstd,brotli] so `uv sync` considers the extras.
     "starlette[full,zstd,brotli]",
     "httpx2[zstd]>=2.0.0",
+    "blockbuster>=1.5.23",
     "coverage>=7.8.2",
     "importlib-metadata>=9.0.1",
     "mypy>=2.3.1",
@@ -121,7 +121,6 @@ filterwarnings = [
     "error",
     "ignore: run_until_first_complete is deprecated and will be removed in a future version.:starlette.exceptions.StarletteDeprecationWarning",
     "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:starlette.exceptions.StarletteDeprecationWarning",
-    "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
     "ignore: Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
 ]

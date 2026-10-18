@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, assert_type
 
 import pytest
-from typing_extensions import assert_type
 
 from starlette.config import Config, Environ, EnvironError
 from starlette.datastructures import URL, Secret

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import contextvars
-import sys
-from collections.abc import AsyncGenerator, AsyncIterator, Generator
-from contextlib import AsyncExitStack
+from collections.abc import AsyncGenerator, Generator
+from contextlib import AsyncExitStack, aclosing
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +21,6 @@ from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
-
-if sys.version_info < (3, 11):  # pragma: no cover
-    from exceptiongroup import ExceptionGroup
 
 
 class CustomMiddleware(BaseHTTPMiddleware):
@@ -525,9 +521,9 @@ def test_app_receives_http_disconnect_while_sending_if_discarded(
             # before we start returning the body
             await task_group.start(cancel_on_disconnect)
 
-            # A timeout is set for 0.1 second in order to ensure that
+            # A timeout is set for 0.2 second in order to ensure that
             # we never deadlock the test run in an infinite loop
-            with anyio.move_on_after(0.1):
+            with anyio.move_on_after(0.2):
                 while True:
                     await send(
                         {
@@ -777,9 +773,10 @@ def test_read_request_stream_in_dispatch_after_app_calls_body(
 async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None:
     async def endpoint(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive)
-        async for chunk in request.stream():  # pragma: no branch
-            assert chunk == b"2"
-            break
+        async with aclosing(request.stream()) as stream:
+            async for chunk in stream:  # pragma: no branch
+                assert chunk == b"2"
+                break
         await Response()(scope, receive, send)
 
     class ConsumingMiddleware(BaseHTTPMiddleware):
@@ -790,13 +787,14 @@ async def test_read_request_stream_in_dispatch_wrapping_app_calls_body() -> None
         ) -> Response:
             expected = b"1"
             response: Response | None = None
-            async for chunk in request.stream():  # pragma: no branch
-                assert chunk == expected
-                if expected == b"1":
-                    response = await call_next(request)
-                    expected = b"3"
-                else:
-                    break
+            async with aclosing(request.stream()) as stream:
+                async for chunk in stream:  # pragma: no branch
+                    assert chunk == expected
+                    if expected == b"1":
+                        response = await call_next(request)
+                        expected = b"3"
+                    else:
+                        break
             assert response is not None
             return response
 
@@ -1107,7 +1105,7 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
         "path": "/",
     }
 
-    async def receive() -> AsyncIterator[Message]:
+    async def receive() -> AsyncGenerator[Message, None]:
         yield {"type": "http.disconnect"}
 
     sent: list[Message] = []
@@ -1115,7 +1113,8 @@ async def test_multiple_middlewares_stacked_client_disconnected() -> None:
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await app(scope, receive().__anext__, send)
+    async with aclosing(receive()) as rcv:
+        await app(scope, rcv.__anext__, send)
 
     assert ordered_events == [
         "1:STARTED",
@@ -1189,7 +1188,7 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
         "path": "/",
     }
 
-    async def receive() -> AsyncIterator[Message]:
+    async def receive() -> AsyncGenerator[Message, None]:
         # the key here is that we only ever send 1 htt.disconnect message
         if send_body:
             yield {"type": "http.request", "body": b"hello", "more_body": True}
@@ -1202,7 +1201,8 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await app(scope, receive().__anext__, send)
+    async with aclosing(receive()) as rcv:
+        await app(scope, rcv.__anext__, send)
 
     assert sent == [
         {
@@ -1213,6 +1213,46 @@ async def test_poll_for_disconnect_repeated(send_body: bool) -> None:
         {"type": "http.response.body", "body": b"good!", "more_body": True},
         {"type": "http.response.body", "body": b"", "more_body": False},
     ]
+
+
+@pytest.mark.anyio
+async def test_early_hints_events() -> None:
+    events: list[Message] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive, send)
+        await request.send_early_hints("</endpoint.css>; rel=preload; as=style")
+        await PlainTextResponse("hello")(scope, receive, send)
+
+    async def send_early_hints(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        await request.send_early_hints("</middleware.css>; rel=preload; as=style")
+        return await call_next(request)
+
+    middleware = BaseHTTPMiddleware(app, dispatch=send_early_hints)
+    scope: Scope = {"type": "http", "extensions": {"http.response.early_hint": {}}}
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    await middleware(scope, receive, send)
+
+    assert events[:2] == [
+        {
+            "type": "http.response.early_hint",
+            "links": [b"</middleware.css>; rel=preload; as=style"],
+        },
+        {
+            "type": "http.response.early_hint",
+            "links": [b"</endpoint.css>; rel=preload; as=style"],
+        },
+    ]
+    assert events[2]["type"] == "http.response.start"
+    assert events[-1]["type"] == "http.response.body"
+    assert events[-1].get("more_body", False) is False
+    assert b"".join(event.get("body", b"") for event in events[3:]) == b"hello"
 
 
 @pytest.mark.anyio
@@ -1316,3 +1356,53 @@ def test_error_context_propagation(test_client_factory: TestClientFactory) -> No
     assert str(ctx.value) == "Outer exception"
     assert ctx.value.__cause__ is not None
     assert str(ctx.value.__cause__) == "Inner exception"
+
+
+@pytest.mark.anyio
+async def test_background_task_runs_after_response_sent_with_middleware() -> None:
+    events: list[tuple[str, float]] = []
+
+    async def bg() -> None:
+        events.append(("background-done", anyio.current_time()))
+
+    async def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("hello", background=BackgroundTask(bg))
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        routes=[Route("/", homepage)],
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+    )
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [],
+        "query_string": b"",
+        "root_path": "",
+        "scheme": "http",
+        "server": ("testserver", 80),
+        "client": ("testclient", 1),
+        "http_version": "1.1",
+        "asgi": {"spec_version": "2.4"},
+    }
+
+    async def receive() -> Message:  # pragma: no cover
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        events.append((message["type"], anyio.current_time()))
+        await anyio.sleep(0.05)
+
+    await app(scope, receive, send)
+
+    event_names = [name for name, _ in sorted(events, key=lambda e: e[1])]
+    assert event_names == [
+        "http.response.start",
+        "http.response.body",
+        "http.response.body",
+        "background-done",
+    ]

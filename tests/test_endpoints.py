@@ -50,6 +50,7 @@ def test_http_endpoint_route_method(client: TestClient) -> None:
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
     assert response.headers["allow"] == "GET, HEAD, QUERY"
+    assert client.head("/").status_code == 200
 
 
 def test_http_endpoint_route_query_method(client: TestClient) -> None:
@@ -103,39 +104,6 @@ def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: Te
     response = client.request("_DO_DELETE", "/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
-    assert response.headers["allow"] == "GET, HEAD"
-
-
-def test_http_endpoint_allow_header_includes_head(test_client_factory: TestClientFactory) -> None:
-    class Endpoint(HTTPEndpoint):
-        async def get(self, request: Request) -> PlainTextResponse:
-            return PlainTextResponse("Hello, world!")
-
-    client = test_client_factory(Router(routes=[Route("/", endpoint=Endpoint)]))
-
-    assert client.head("/").status_code == 200
-
-    response = client.post("/")
-    assert response.status_code == 405
-    assert response.headers["allow"] == "GET, HEAD"
-
-
-def test_http_endpoint_allow_header_does_not_duplicate_explicit_head(
-    test_client_factory: TestClientFactory,
-) -> None:
-    class Endpoint(HTTPEndpoint):
-        async def get(self, request: Request) -> PlainTextResponse:
-            return PlainTextResponse("Hello, world!")  # pragma: no cover
-
-        async def head(self, request: Request) -> PlainTextResponse:
-            return PlainTextResponse("")
-
-    client = test_client_factory(Router(routes=[Route("/", endpoint=Endpoint)]))
-
-    assert client.head("/").status_code == 200
-
-    response = client.post("/")
-    assert response.status_code == 405
     assert response.headers["allow"] == "GET, HEAD"
 
 

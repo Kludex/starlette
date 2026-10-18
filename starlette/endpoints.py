@@ -13,8 +13,6 @@ from starlette.responses import PlainTextResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 from starlette.websockets import WebSocket
 
-_HTTP_METHODS = ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY")
-
 
 class HTTPEndpoint:
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -22,11 +20,12 @@ class HTTPEndpoint:
         self.scope = scope
         self.receive = receive
         self.send = send
-        handled = {method for method in _HTTP_METHODS if getattr(self, method.lower(), None) is not None}
-        if "GET" in handled:
-            # A `get` handler also serves `HEAD`, the same way `Route` adds `HEAD` alongside `GET`.
-            handled.add("HEAD")
-        self._allowed_methods = [method for method in _HTTP_METHODS if method in handled]
+        self._allowed_methods = [
+            method
+            for method in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY")
+            if getattr(self, method.lower(), None) is not None
+            or (method == "HEAD" and getattr(self, "get", None) is not None)
+        ]
 
     def __await__(self) -> Generator[Any, None, None]:
         return self.dispatch().__await__()

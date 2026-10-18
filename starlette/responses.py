@@ -49,7 +49,9 @@ class Response:
     def render(self, content: Any) -> bytes | memoryview:
         if content is None:
             return b""
-        if isinstance(content, bytes | memoryview):
+        if isinstance(content, memoryview):
+            return content.cast("B") if content.c_contiguous else content.tobytes()
+        if isinstance(content, bytes):
             return content
         return content.encode(self.charset)  # type: ignore
 

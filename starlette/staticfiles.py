@@ -117,7 +117,7 @@ class StaticFiles:
         Returns an HTTP response, given the incoming path, method and request headers.
         """
         if scope["method"] not in ("GET", "HEAD"):
-            raise HTTPException(status_code=405)
+            raise HTTPException(status_code=405, headers={"Allow": "GET, HEAD"})
 
         try:
             full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, path)

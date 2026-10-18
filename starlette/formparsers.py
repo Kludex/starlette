@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
@@ -253,7 +254,10 @@ class MultiPartParser:
         charset = params.get(b"charset", "utf-8")
         if isinstance(charset, bytes):
             charset = charset.decode("latin-1")
-        self._charset = charset
+        try:
+            self._charset = codecs.lookup(charset).name
+        except LookupError:
+            self._charset = "latin-1"
         try:
             boundary = params[b"boundary"]
         except KeyError:

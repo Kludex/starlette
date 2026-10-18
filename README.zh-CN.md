@@ -60,6 +60,8 @@ $ pip install uvicorn
 
 ## 示例
 
+以下代码展示了如何创建一个返回 JSON 响应的最简 Starlette 应用：
+
 ```python title="main.py"
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse

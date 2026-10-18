@@ -1289,7 +1289,7 @@ def test_error_context_propagation(test_client_factory: TestClientFactory) -> No
             Route("/exception-with-context", endpoint=exception_with_context),
             Route("/exception-with-cause", endpoint=exception_with_cause),
         ],
-        middleware=[Middleware(PassthroughMiddleware)],
+        middleware=[Middleware(PassthroughMiddleware), Middleware(PassthroughMiddleware)],
     )
     client = test_client_factory(app)
 
@@ -1299,7 +1299,7 @@ def test_error_context_propagation(test_client_factory: TestClientFactory) -> No
         client.get("/exception-without-context")
     assert str(ctx.value) == "Exception"
     assert ctx.value.__cause__ is None
-    assert ctx.value.__context__ is not None
+    assert isinstance(ctx.value.__context__, anyio.EndOfStream)
     assert ctx.value.__suppress_context__ is True
 
     # For exceptions with context the context is propagated as a cause to avoid

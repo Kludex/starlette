@@ -922,6 +922,15 @@ def test_file_response_ignores_range_for_non_success_status(
     assert head_response.content == b""
 
 
+@pytest.mark.parametrize("http_range", ["bytes=0-100", "bytes=0-10,20-30", "bytes=abc", "bytes=100000-"])
+def test_file_response_ignores_range_for_non_get_methods(file_response_client: TestClient, http_range: str) -> None:
+    response = file_response_client.post("/", headers={"Range": http_range})
+    assert response.status_code == 200
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(README.encode("utf8")))
+    assert response.text == README
+
+
 def test_file_response_head(file_response_client: TestClient) -> None:
     response = file_response_client.head("/")
     assert response.status_code == 200

@@ -370,6 +370,7 @@ class FileResponse(Response):
         if (
             self.status_code != 200
             or http_range is None
+            or (scope_type == "http" and scope["method"].upper() not in ("GET", "HEAD"))
             or (http_if_range is not None and not self._should_use_range(http_if_range))
         ):
             send_file = partial(self._handle_simple, send, send_header_only, send_pathsend)

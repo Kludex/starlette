@@ -269,20 +269,26 @@ class StreamingResponse(Response):
 
         spec_version = tuple(map(int, scope.get("asgi", {}).get("spec_version", "2.0").split(".")))
 
-        if spec_version >= (2, 4):
-            try:
-                await self.stream_response(send)
-            except OSError:
-                raise ClientDisconnect()
-        else:
-            async with create_collapsing_task_group() as task_group:
+        try:
+            if spec_version >= (2, 4):
+                try:
+                    await self.stream_response(send)
+                except OSError:
+                    raise ClientDisconnect()
+            else:
+                async with create_collapsing_task_group() as task_group:
 
-                async def wrap(func: Callable[[], Awaitable[None]]) -> None:
-                    await func()
-                    task_group.cancel_scope.cancel()
+                    async def wrap(func: Callable[[], Awaitable[None]]) -> None:
+                        await func()
+                        task_group.cancel_scope.cancel()
 
-                task_group.start_soon(wrap, partial(self.stream_response, send))
-                await wrap(partial(self.listen_for_disconnect, receive))
+                    task_group.start_soon(wrap, partial(self.stream_response, send))
+                    await wrap(partial(self.listen_for_disconnect, receive))
+        finally:
+            aclose = getattr(self.body_iterator, "aclose", None)
+            if aclose is not None:
+                with anyio.CancelScope(shield=True):
+                    await aclose()
 
         if self.background is not None:
             await self.background()

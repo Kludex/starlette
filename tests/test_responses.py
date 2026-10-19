@@ -843,6 +843,97 @@ async def test_streaming_response_on_client_disconnects() -> None:
 
 
 @pytest.mark.anyio
+async def test_streaming_response_closes_iterator_before_background_on_disconnect() -> None:
+    events: list[str] = []
+    send_blocked = anyio.Event()
+
+    async def receive_disconnect() -> Message:
+        await send_blocked.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            send_blocked.set()
+            await anyio.sleep_forever()
+
+    async def stream_indefinitely() -> AsyncIterator[bytes]:
+        try:
+            while True:
+                yield b"chunk"
+        finally:
+            await anyio.sleep(0)
+            events.append("generator closed")
+
+    def run_background() -> None:
+        events.append("background ran")
+
+    response = StreamingResponse(stream_indefinitely(), background=BackgroundTask(run_background))
+
+    await response({"type": "http", "asgi": {"spec_version": "2.0"}}, receive_disconnect, send)
+
+    assert events == ["generator closed", "background ran"]
+
+
+@pytest.mark.anyio
+async def test_streaming_response_closes_iterator_on_send_error() -> None:
+    events: list[str] = []
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            raise OSError
+
+    async def stream_indefinitely() -> AsyncIterator[bytes]:
+        try:
+            while True:
+                yield b"chunk"
+        finally:
+            await anyio.sleep(0)
+            events.append("generator closed")
+
+    response = StreamingResponse(stream_indefinitely())
+
+    with pytest.raises(ClientDisconnect):
+        await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+
+    assert events == ["generator closed"]
+
+
+@pytest.mark.anyio
+async def test_streaming_response_closes_iterator_on_outer_cancellation() -> None:
+    events: list[str] = []
+    send_blocked = anyio.Event()
+
+    async def receive() -> Message:
+        await anyio.sleep_forever()
+        raise AssertionError  # pragma: no cover
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            send_blocked.set()
+            await anyio.sleep_forever()
+
+    async def stream_indefinitely() -> AsyncIterator[bytes]:
+        try:
+            while True:
+                yield b"chunk"
+        finally:
+            await anyio.sleep(0)
+            events.append("generator closed")
+
+    response = StreamingResponse(stream_indefinitely())
+
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(response, {"type": "http", "asgi": {"spec_version": "2.0"}}, receive, send)
+        await send_blocked.wait()
+        task_group.cancel_scope.cancel()
+
+    assert events == ["generator closed"]
+
+
+@pytest.mark.anyio
 async def test_streaming_response_runs_background_on_websocket_scope() -> None:
     background_called = False
     sent: list[Message] = []

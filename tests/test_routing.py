@@ -9,12 +9,13 @@ from typing import Never, TypedDict
 
 import pytest
 
+from starlette._utils import get_route_path
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.routing import Host, Mount, NoMatchFound, Route, Router, WebSocketRoute
+from starlette.routing import BaseRoute, Host, Match, Mount, NoMatchFound, Route, Router, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -347,6 +348,31 @@ def test_router_405_allow_lists_all_matching_routes_within_application(
     response = client.put("/items")
     assert response.status_code == 405
     assert response.headers["allow"] == "GET, HEAD, POST"
+
+
+def test_router_405_keeps_custom_route_handling(test_client_factory: TestClientFactory) -> None:
+    class CustomPartialRoute(BaseRoute):
+        def __init__(self, path: str) -> None:
+            self.path = path
+
+        def matches(self, scope: Scope) -> tuple[Match, Scope]:
+            if scope["type"] == "http" and get_route_path(scope) == self.path:
+                return Match.PARTIAL, {}
+            return Match.NONE, {}
+
+        async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+            response = PlainTextResponse("Custom route 405", status_code=405, headers={"Allow": "PATCH"})
+            await response(scope, receive, send)
+
+    # The router cannot infer the methods of a custom route, so it must not
+    # take over the response: the first match keeps handling the request.
+    app = Router([CustomPartialRoute("/x"), Route("/x", endpoint=homepage, methods=["GET"])])
+    client = test_client_factory(app)
+    assert client.get("/other").status_code == 404
+    response = client.put("/x")
+    assert response.status_code == 405
+    assert response.headers["allow"] == "PATCH"
+    assert response.text == "Custom route 405"
 
 
 def test_router_add_websocket_route(client: TestClient) -> None:

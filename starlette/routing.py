@@ -715,21 +715,20 @@ class Router:
             scope["route"] = partial
             scope.update(partial_scope)
             if len(partial_routes) > 1:
-                allow = ", ".join(
-                    sorted(
-                        {
-                            method
-                            for partial_route in partial_routes
-                            for method in (getattr(partial_route, "methods", None) or ())
-                        }
-                    )
-                )
-                headers = {"Allow": allow}
-                if "app" in scope:
-                    raise HTTPException(status_code=405, headers=headers)
-                error_response = PlainTextResponse("Method Not Allowed", status_code=405, headers=headers)
-                await error_response(scope, receive, send)
-                return
+                # When several routes match the path, the 405 response must
+                # advertise the methods of all of them (RFC 9110, section
+                # 10.2.1). Only build that response when every match exposes
+                # its methods: a custom route may advertise them differently
+                # and implement its own handling in handle().
+                advertised: list[Any] = [getattr(partial_route, "methods", None) for partial_route in partial_routes]
+                if all(advertised):
+                    allow = ", ".join(sorted({method for methods in advertised for method in methods}))
+                    headers = {"Allow": allow}
+                    if "app" in scope:
+                        raise HTTPException(status_code=405, headers=headers)
+                    error_response = PlainTextResponse("Method Not Allowed", status_code=405, headers=headers)
+                    await error_response(scope, receive, send)
+                    return
             await partial.handle(scope, receive, send)
             return
 

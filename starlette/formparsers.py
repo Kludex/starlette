@@ -140,8 +140,8 @@ class FormParser:
                 elif message_type == FormMessage.FIELD_DATA:
                     field_value.extend(message_bytes)
                 elif message_type == FormMessage.FIELD_END:
-                    name = unquote_plus(field_name.decode("latin-1"))
-                    value = unquote_plus(field_value.decode("latin-1"))
+                    name = unquote_plus(_user_safe_decode(field_name, "utf-8"))
+                    value = unquote_plus(_user_safe_decode(field_value, "utf-8"))
                     items.append((name, value))
 
         return FormData(items)

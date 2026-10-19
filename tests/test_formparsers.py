@@ -454,6 +454,21 @@ def test_urlencoded_percent_encoding_keys(tmpdir: Path, test_client_factory: Tes
     assert response.json() == {"so me": "data"}
 
 
+@pytest.mark.parametrize(
+    "content,expected",
+    [
+        ("käy=välue&encoded=v%C3%A4lue".encode(), {"käy": "välue", "encoded": "välue"}),
+        ("käy=välue".encode("latin-1"), {"käy": "välue"}),
+    ],
+)
+def test_urlencoded_non_ascii_bytes(
+    content: bytes, expected: dict[str, str], test_client_factory: TestClientFactory
+) -> None:
+    client = test_client_factory(app)
+    response = client.post("/", content=content, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert response.json() == expected
+
+
 def test_urlencoded_multi_field_app_reads_body(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app_read_body)
     response = client.post("/", data={"some": "data", "second": "key pair"})

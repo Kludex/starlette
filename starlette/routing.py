@@ -274,7 +274,7 @@ class Route(BaseRoute):
 
     async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.methods and scope["method"] not in self.methods:
-            headers = {"Allow": ", ".join(self.methods)}
+            headers = {"Allow": ", ".join(sorted(self.methods))}
             if "app" in scope:
                 raise HTTPException(status_code=405, headers=headers)
             else:
@@ -687,7 +687,8 @@ class Router:
             await self.lifespan(scope, receive, send)
             return
 
-        partial = None
+        partial_routes: list[BaseRoute] = []
+        partial_scope: Scope = {}
 
         for route in self.routes:
             # Determine if any route matches the incoming scope,
@@ -698,16 +699,37 @@ class Router:
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
-            elif match == Match.PARTIAL and partial is None:
-                partial = route
-                partial_scope = child_scope
+            elif match == Match.PARTIAL:
+                # Keep every partially matching route: when more than one route
+                # matches the path, the 405 response must advertise the methods
+                # of all of them (RFC 9110, section 10.2.1).
+                if not partial_routes:
+                    partial_scope = child_scope
+                partial_routes.append(route)
 
-        if partial is not None:
+        if partial_routes:
             #  Handle partial matches. These are cases where an endpoint is
             # able to handle the request, but is not a preferred option.
             # We use this in particular to deal with "405 Method Not Allowed".
+            partial = partial_routes[0]
             scope["route"] = partial
             scope.update(partial_scope)
+            if len(partial_routes) > 1:
+                allow = ", ".join(
+                    sorted(
+                        {
+                            method
+                            for partial_route in partial_routes
+                            for method in (getattr(partial_route, "methods", None) or ())
+                        }
+                    )
+                )
+                headers = {"Allow": allow}
+                if "app" in scope:
+                    raise HTTPException(status_code=405, headers=headers)
+                error_response = PlainTextResponse("Method Not Allowed", status_code=405, headers=headers)
+                await error_response(scope, receive, send)
+                return
             await partial.handle(scope, receive, send)
             return
 

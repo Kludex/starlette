@@ -190,7 +190,7 @@ def test_router(client: TestClient) -> None:
     response = client.post("/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
-    assert set(response.headers["allow"].split(", ")) == {"HEAD", "GET"}
+    assert response.headers["allow"] == "GET, HEAD"
 
     response = client.get("/foo")
     assert response.status_code == 404
@@ -323,6 +323,30 @@ def test_router_query_method(client: TestClient) -> None:
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
     assert response.headers["allow"] == "QUERY"
+
+
+def test_router_405_allow_lists_all_matching_routes(client: TestClient) -> None:
+    # Both "/func" routes partially match a PUT: the response must advertise
+    # the methods of every matching route (RFC 9110, section 10.2.1).
+    response = client.put("/func")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "GET, HEAD, POST"
+
+
+def test_router_405_allow_lists_all_matching_routes_within_application(
+    test_client_factory: TestClientFactory,
+) -> None:
+    app = Starlette(
+        routes=[
+            Route("/items", endpoint=homepage, methods=["GET"]),
+            Route("/{name}", endpoint=users, methods=["POST"]),
+        ]
+    )
+    client = test_client_factory(app)
+    response = client.put("/items")
+    assert response.status_code == 405
+    assert response.headers["allow"] == "GET, HEAD, POST"
 
 
 def test_router_add_websocket_route(client: TestClient) -> None:

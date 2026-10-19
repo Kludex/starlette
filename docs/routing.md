@@ -101,6 +101,19 @@ Route('/users/{user_id:int}', user, methods=["GET", "POST"])
 
 By default function endpoints will only accept `GET` requests, unless specified.
 
+A request with a method that none of the matching routes handle receives a
+`405 Method Not Allowed` response. The `Allow` header of that response lists the
+methods of every route that matches the path, as required by
+[RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-10.2.1):
+
+```python
+routes = [
+    Route('/users/{user_id:int}', get_user, methods=["GET"]),
+    Route('/users/{user_id:int}', edit_user, methods=["PUT"]),
+]
+# PATCH /users/1 responds 405 with "Allow: GET, HEAD, PUT".
+```
+
 ## Submounting routes
 
 In large applications you might find that you want to break out parts of the

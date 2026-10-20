@@ -119,6 +119,7 @@ class URL:
     def replace(self, **kwargs: Any) -> URL:
         if "username" in kwargs or "password" in kwargs or "hostname" in kwargs or "port" in kwargs:
             hostname = kwargs.pop("hostname", None)
+            port_given = "port" in kwargs
             port = kwargs.pop("port", self.port)
             username = kwargs.pop("username", self.username)
             password = kwargs.pop("password", self.password)
@@ -129,13 +130,25 @@ class URL:
 
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
-            elif ":" in hostname and not hostname.startswith("["):
-                try:
-                    ipaddress.IPv6Address(hostname)
-                except ValueError:
-                    pass
-                else:
-                    hostname = f"[{hostname}]"
+            else:
+                if ":" in hostname and not hostname.startswith("["):
+                    try:
+                        ipaddress.IPv6Address(hostname)
+                    except ValueError:
+                        pass
+                    else:
+                        hostname = f"[{hostname}]"
+
+                # A hostname may carry an embedded port, e.g. "example.org:8080"
+                # or "[::1]:8080". Strip it whenever a port will be appended to
+                # the netloc, so the two are never duplicated; without an
+                # explicit `port`, the embedded one takes effect. An explicit
+                # `port=None` keeps the hostname untouched (existing behavior).
+                host, _, maybe_port = hostname.rpartition(":")
+                if ":" in hostname and maybe_port.isdigit() and (not port_given or port is not None):
+                    hostname = host
+                    if not port_given:
+                        port = int(maybe_port)
 
             netloc = hostname
             if port is not None:

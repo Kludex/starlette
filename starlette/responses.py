@@ -284,11 +284,16 @@ class StreamingResponse(Response):
 
                     task_group.start_soon(wrap, partial(self.stream_response, send))
                     await wrap(partial(self.listen_for_disconnect, receive))
-        finally:
+        except BaseException:
             aclose = getattr(self.body_iterator, "aclose", None)
             if aclose is not None:
                 with anyio.CancelScope(shield=True):
                     await aclose()
+            raise
+        else:
+            aclose = getattr(self.body_iterator, "aclose", None)
+            if aclose is not None:
+                await aclose()
 
         if self.background is not None:
             await self.background()

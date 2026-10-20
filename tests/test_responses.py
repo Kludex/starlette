@@ -902,6 +902,28 @@ async def test_streaming_response_closes_iterator_on_send_error() -> None:
 
 
 @pytest.mark.anyio
+async def test_streaming_response_send_error_with_iterator_without_aclose() -> None:
+    class CustomAsyncIterator:
+        def __aiter__(self) -> AsyncIterator[bytes]:
+            return self
+
+        async def __anext__(self) -> bytes:
+            return b"chunk"
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body":
+            raise OSError
+
+    response = StreamingResponse(CustomAsyncIterator())
+
+    with pytest.raises(ClientDisconnect):
+        await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+
+
+@pytest.mark.anyio
 async def test_streaming_response_closes_iterator_on_outer_cancellation() -> None:
     events: list[str] = []
     send_blocked = anyio.Event()

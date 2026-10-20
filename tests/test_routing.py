@@ -455,6 +455,14 @@ def test_reverse_mount_urls_keeps_escaped_slashes_in_path() -> None:
     assert mounted.url_path_for("static:child", path="a%2Fb") == "/static/a%2Fb"
 
 
+def test_reverse_mount_urls_with_non_str_path() -> None:
+    mounted = Router([Mount("/static", Router([Route("/{path:path}", ok, name="child")]), name="static")])
+
+    # Non-str values are still handed to the convertor instead of being stripped.
+    assert mounted.url_path_for("static:child", path=123) == "/static/123"
+    assert mounted.url_path_for("static:child", path=12.5) == "/static/12.5"
+
+
 def test_mount_url_path_for_leading_slash_round_trip(test_client_factory: TestClientFactory) -> None:
     async def echo_path(request: Request) -> PlainTextResponse:
         return PlainTextResponse(request.path_params["path"])

@@ -146,3 +146,29 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_quoted_values_with_inner_quotes(tmpdir: Path) -> None:
+    path = tmpdir / ".env"
+    path.write_text(
+        "SINGLE_WITH_DOUBLE='say \"hi\"'\n"
+        "DOUBLE_WITH_SINGLE=\"say 'hi'\"\n"
+        'DOUBLE_QUOTED="hello"\n'
+        "SINGLE_QUOTED='hello'\n"
+        'EMPTY_DOUBLE=""\n'
+        "EMPTY_SINGLE=''\n"
+        "UNQUOTED=hello world\n"
+        'MISMATCHED_START="hello\n'
+        'MISMATCHED_END=hello"\n',
+        encoding="utf-8",
+    )
+    config = Config(path)
+    assert config.get("SINGLE_WITH_DOUBLE") == 'say "hi"'
+    assert config.get("DOUBLE_WITH_SINGLE") == "say 'hi'"
+    assert config.get("DOUBLE_QUOTED") == "hello"
+    assert config.get("SINGLE_QUOTED") == "hello"
+    assert config.get("EMPTY_DOUBLE") == ""
+    assert config.get("EMPTY_SINGLE") == ""
+    assert config.get("UNQUOTED") == "hello world"
+    assert config.get("MISMATCHED_START") == '"hello'
+    assert config.get("MISMATCHED_END") == 'hello"'

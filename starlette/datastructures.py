@@ -145,7 +145,12 @@ class URL:
                 # explicit `port`, the embedded one takes effect. An explicit
                 # `port=None` keeps the hostname untouched (existing behavior).
                 host, _, maybe_port = hostname.rpartition(":")
-                if ":" in hostname and maybe_port.isdigit() and (not port_given or port is not None):
+                if (
+                    ":" in hostname
+                    and maybe_port.isascii()
+                    and maybe_port.isdigit()
+                    and (not port_given or port is not None)
+                ):
                     hostname = host
                     if not port_given:
                         port = int(maybe_port)

@@ -68,6 +68,10 @@ def test_url() -> None:
     assert url.replace(hostname="[::1]:8080") == "https://[::1]:8080/path"
     assert url.replace(hostname="[::1]:8080", port=9090) == "https://[::1]:9090/path"
 
+    # A non-ASCII "digit" (e.g. superscript two) after the colon is not a port:
+    # int() cannot parse it, so it must not be treated as an embedded port.
+    assert url.replace(hostname="example.org:²") == "https://example.org:²:8443/path"
+
     url = URL("http://u:p@host/")
     assert url.replace(hostname="bar") == URL("http://u:p@bar/")
 

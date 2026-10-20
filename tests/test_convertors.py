@@ -1,3 +1,4 @@
+import math
 from collections.abc import Iterator
 from datetime import datetime
 from uuid import UUID
@@ -5,7 +6,7 @@ from uuid import UUID
 import pytest
 
 from starlette import convertors
-from starlette.convertors import Convertor, register_url_convertor
+from starlette.convertors import Convertor, FloatConvertor, register_url_convertor
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route, Router
@@ -71,6 +72,25 @@ def test_default_float_convertor(test_client_factory: TestClientFactory, param: 
     client = test_client_factory(app)
     response = client.get(f"/{param}")
     assert response.status_code == status_code
+
+
+@pytest.mark.parametrize(
+    "value, message",
+    [
+        (math.nan, "NaN values are not supported"),
+        (math.inf, "Infinite values are not supported"),
+        (-math.inf, "Infinite values are not supported"),
+        (-1.5, "Negative floats are not supported"),
+    ],
+)
+def test_float_convertor_to_string_rejects_special_values(value: float, message: str) -> None:
+    with pytest.raises(AssertionError, match=message):
+        FloatConvertor().to_string(value)
+
+
+@pytest.mark.parametrize("value, expected", [(0.0, "0"), (1.0, "1"), (25.5, "25.5")])
+def test_float_convertor_to_string(value: float, expected: str) -> None:
+    assert FloatConvertor().to_string(value) == expected
 
 
 @pytest.mark.parametrize(

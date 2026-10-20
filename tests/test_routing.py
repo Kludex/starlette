@@ -422,6 +422,54 @@ def test_reverse_mount_urls() -> None:
         mounted.url_path_for("users")
 
 
+def test_reverse_mount_urls_with_leading_slash_path() -> None:
+    mounted = Router([Mount("/static", Router([Route("/{path:path}", ok, name="child")]), name="static")])
+
+    # A leading slash is stripped, so the path does not become a "%2F" segment.
+    assert mounted.url_path_for("static:child", path="/foo/bar") == "/static/foo/bar"
+    # A path without a leading slash keeps working.
+    assert mounted.url_path_for("static:child", path="foo/bar") == "/static/foo/bar"
+
+    # The "<mount_name>" branch already stripped the leading slash; it is unchanged.
+    mount = Mount("/static", Route("/{path:path}", ok, name="static"), name="static")
+    assert mount.url_path_for("static", path="/foo/bar") == "/static/foo/bar"
+
+    # A "/" path means the mount root, exactly like an empty path.
+    assert mounted.url_path_for("static:child", path="/") == "/static/"
+    assert mounted.url_path_for("static:child", path="") == "/static/"
+
+
+def test_reverse_nested_mount_urls_with_leading_slash_path() -> None:
+    static = Mount("/static", Router([Route("/{path:path}", ok, name="child")]), name="static")
+    mounted = Router([Mount("/api", Router([static]), name="api")])
+
+    assert mounted.url_path_for("api:static:child", path="/foo/bar") == "/api/static/foo/bar"
+    assert mounted.url_path_for("api:static:child", path="foo/bar") == "/api/static/foo/bar"
+
+
+def test_reverse_mount_urls_keeps_escaped_slashes_in_path() -> None:
+    mounted = Router([Mount("/static", Router([Route("/{path:path}", ok, name="child")]), name="static")])
+
+    # An already escaped slash inside the value is passed through, not double encoded.
+    assert mounted.url_path_for("static:child", path="%2Ffoo/bar") == "/static/%2Ffoo/bar"
+    assert mounted.url_path_for("static:child", path="a%2Fb") == "/static/a%2Fb"
+
+
+def test_mount_url_path_for_leading_slash_round_trip(test_client_factory: TestClientFactory) -> None:
+    async def echo_path(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(request.path_params["path"])
+
+    mounted = Router([Mount("/static", Router([Route("/{path:path}", echo_path, name="echo")]), name="static")])
+    client = test_client_factory(mounted)
+
+    url = mounted.url_path_for("static:echo", path="/foo/bar")
+    assert url == "/static/foo/bar"
+
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.text == "foo/bar"
+
+
 def test_mount_at_root(test_client_factory: TestClientFactory) -> None:
     mounted = Router([Mount("/", ok, name="users")])
     client = test_client_factory(mounted)

@@ -70,6 +70,41 @@ def test_gzip_not_in_accept_encoding(test_client_factory: TestClientFactory) -> 
     assert int(response.headers["Content-Length"]) == 4000
 
 
+@pytest.mark.parametrize("accept_encoding", ["gzip", "identity"])
+@pytest.mark.parametrize(
+    ("body", "streaming"),
+    [(b"OK", False), (b"x" * 4000, False), (b"x" * 4000, True)],
+    ids=["small", "large", "streaming"],
+)
+def test_gzip_response_without_headers(
+    test_client_factory: TestClientFactory, accept_encoding: str, body: bytes, streaming: bool
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200})
+        await send({"type": "http.response.body", "body": body, "more_body": streaming})
+        if streaming:
+            await send({"type": "http.response.body", "body": b""})
+
+    client = test_client_factory(GZipMiddleware(app))
+    response = client.get("/", headers={"accept-encoding": accept_encoding})
+
+    assert response.status_code == 200
+    assert response.content == body
+    if len(body) < 500:
+        assert "Vary" not in response.headers
+    else:
+        assert response.headers["Vary"] == "Accept-Encoding"
+    if accept_encoding == "gzip" and len(body) >= 500:
+        assert response.headers["Content-Encoding"] == "gzip"
+        if not streaming:
+            assert 0 < int(response.headers["Content-Length"]) < len(body)
+    else:
+        assert "Content-Encoding" not in response.headers
+        assert "Content-Length" not in response.headers
+    if streaming:
+        assert "Content-Length" not in response.headers
+
+
 def test_gzip_ignored_for_small_responses(
     test_client_factory: TestClientFactory,
 ) -> None:

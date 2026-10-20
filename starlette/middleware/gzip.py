@@ -109,7 +109,7 @@ class IdentityResponder:
             # Don't send the initial message until we've determined how to
             # modify the outgoing headers correctly.
             self.initial_message = message
-            headers = Headers(raw=self.initial_message["headers"])
+            headers = Headers(raw=self.initial_message.setdefault("headers", []))
             self.content_encoding_set = "content-encoding" in headers
             self.partial_response = message["status"] == 206
             media_type = headers.get("content-type", "").partition(";")[0].strip().lower()

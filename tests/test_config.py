@@ -146,3 +146,36 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("", ""),
+        ("hello", "hello"),
+        ("level", "level"),
+        ("'", "'"),
+        ('"', '"'),
+        ("'hello\"", "'hello\""),
+        ("\"hello'", "\"hello'"),
+        ("  hello  ", "hello"),
+        ("''", ""),
+        ('""', ""),
+        ("'hello'", "hello"),
+        ('"hello"', "hello"),
+        ("'say \"hi\"'", 'say "hi"'),
+        ("\"say 'hi'\"", "say 'hi'"),
+        ("'\"hello\"'", '"hello"'),
+        ("\"'hello'\"", "'hello'"),
+        ("''hello''", "'hello'"),
+        ('""hello""', '"hello"'),
+        ("  ' hello '  ", " hello "),
+    ],
+)
+def test_config_preserves_quotes_inside_quoted_values(tmp_path: Path, value: str, expected: str) -> None:
+    path = tmp_path / ".env"
+    path.write_text(f"MESSAGE={value}\n", encoding="utf-8")
+
+    config = Config(path, environ={})
+
+    assert config("MESSAGE") == expected

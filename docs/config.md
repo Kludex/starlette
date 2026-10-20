@@ -32,6 +32,10 @@ SECRET_KEY=43n080musdfjt54t-09sdgr
 ALLOWED_HOSTS=127.0.0.1, localhost
 ```
 
+Values in `.env` files may be surrounded by matching single or double quotes.
+Only the outer pair is removed; quotes inside the value are preserved.
+For example, `MESSAGE='say "hi"'` is read as `say "hi"`.
+
 ## Configuration precedence
 
 The order in which configuration values are read is:

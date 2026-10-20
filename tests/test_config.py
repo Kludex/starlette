@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Any, assert_type
 
@@ -104,7 +105,7 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_missing_env_file_raises(tmpdir: Path) -> None:
     path = os.path.join(tmpdir, ".env")
 
-    with pytest.warns(UserWarning, match=f"Config file '{path}' not found."):
+    with pytest.warns(UserWarning, match=re.escape(f"Config file '{path}' not found.")):
         Config(path)
 
 
@@ -146,3 +147,31 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_quoted_values(tmpdir: Path) -> None:
+    path = tmpdir / ".env"
+    path.write_text(
+        "SINGLE_IN_DOUBLE=\"say 'hi'\"\n"
+        "DOUBLE_IN_SINGLE='say \"hi\"'\n"
+        'DOUBLE_QUOTED="hello world"\n'
+        "SINGLE_QUOTED='hello world'\n"
+        "UNQUOTED=hello world\n"
+        'EMPTY_DOUBLE=""\n'
+        "EMPTY_SINGLE=''\n"
+        'UNMATCHED_START="hello\n'
+        'UNMATCHED_END=hello"\n'
+        "MISMATCHED=\"hello'\n",
+        encoding="utf-8",
+    )
+    config = Config(path)
+    assert config("SINGLE_IN_DOUBLE") == "say 'hi'"
+    assert config("DOUBLE_IN_SINGLE") == 'say "hi"'
+    assert config("DOUBLE_QUOTED") == "hello world"
+    assert config("SINGLE_QUOTED") == "hello world"
+    assert config("UNQUOTED") == "hello world"
+    assert config("EMPTY_DOUBLE") == ""
+    assert config("EMPTY_SINGLE") == ""
+    assert config("UNMATCHED_START") == '"hello'
+    assert config("UNMATCHED_END") == 'hello"'
+    assert config("MISMATCHED") == "\"hello'"

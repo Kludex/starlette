@@ -638,6 +638,7 @@ def test_url_for_with_mount_path_starting_with_slash() -> None:
     )
     assert mount.url_path_for("static:child", path="/foo/bar") == "/static/foo/bar"
     assert mount.url_path_for("static:child", path="foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path=123) == "/static/123"
 
 
 def test_url_for_with_root_path_ending_with_slash(test_client_factory: TestClientFactory) -> None:

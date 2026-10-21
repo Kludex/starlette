@@ -76,6 +76,9 @@ default-groups = ["dev", "docs"]
 required-version = ">=0.8.6"
 exclude-newer = "7 days"
 
+[tool.uv.exclude-newer-package]
+certifi = "2026-10-20T23:59:59Z"
+
 [project.urls]
 Homepage = "https://github.com/Kludex/starlette"
 Documentation = "https://starlette.dev/"

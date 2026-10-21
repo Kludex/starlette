@@ -146,3 +146,32 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_with_quoted_values(tmpdir: Path) -> None:
+    path = tmpdir / ".env"
+    content = (
+        "DOUBLE_INNER_SINGLE=\"say 'hi'\"\n"
+        "SINGLE_INNER_DOUBLE='say \"hi\"'\n"
+        'DOUBLE_QUOTED="hello"\n'
+        "SINGLE_QUOTED='hello'\n"
+        'EMPTY_QUOTED=""\n'
+        "SINGLE_IN_DOUBLE='\"'\n"
+        'DOUBLE_IN_SINGLE="\'"\n'
+        'SPACED_INSIDE="  spaced  "\n'
+        'SPACED_OUTSIDE=  "spaced"  \n'
+        "MISMATCHED_QUOTES=\"hello'\n"
+    )
+    path.write_text(content, encoding="utf-8")
+    config = Config(path)
+
+    assert config.get("DOUBLE_INNER_SINGLE") == "say 'hi'"
+    assert config.get("SINGLE_INNER_DOUBLE") == 'say "hi"'
+    assert config.get("DOUBLE_QUOTED") == "hello"
+    assert config.get("SINGLE_QUOTED") == "hello"
+    assert config.get("EMPTY_QUOTED") == ""
+    assert config.get("SINGLE_IN_DOUBLE") == '"'
+    assert config.get("DOUBLE_IN_SINGLE") == "'"
+    assert config.get("SPACED_INSIDE") == "  spaced  "
+    assert config.get("SPACED_OUTSIDE") == "spaced"
+    assert config.get("MISMATCHED_QUOTES") == "\"hello'"

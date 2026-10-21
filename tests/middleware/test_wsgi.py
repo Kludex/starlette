@@ -162,3 +162,30 @@ def test_build_environ_encoding() -> None:
     environ = build_environ(scope, b"")
     assert environ["SCRIPT_NAME"] == "/中国".encode().decode("latin-1")
     assert environ["PATH_INFO"] == "/小星".encode().decode("latin-1")
+
+
+@pytest.mark.parametrize(
+    "path, root_path, expected_path_info",
+    [
+        ("/application", "/app", "/application"),
+        ("/app/users", "/app", "/users"),
+        ("/app", "/app", ""),
+    ],
+)
+def test_build_environ_root_path(
+    path: str,
+    root_path: str,
+    expected_path_info: str,
+) -> None:
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "GET",
+        "path": path,
+        "root_path": root_path,
+        "query_string": b"",
+        "headers": [],
+    }
+    environ = build_environ(scope, b"")
+    assert environ["SCRIPT_NAME"] == root_path
+    assert environ["PATH_INFO"] == expected_path_info

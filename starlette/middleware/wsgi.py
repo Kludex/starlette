@@ -11,7 +11,7 @@ import anyio.from_thread
 import anyio.to_thread
 from anyio.abc import ObjectReceiveStream, ObjectSendStream
 
-from starlette._utils import create_collapsing_task_group
+from starlette._utils import create_collapsing_task_group, get_route_path
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.types import Receive, Scope, Send
 
@@ -29,9 +29,7 @@ def build_environ(scope: Scope, body: bytes) -> dict[str, Any]:
     """
 
     script_name = scope.get("root_path", "").encode("utf8").decode("latin1")
-    path_info = scope["path"].encode("utf8").decode("latin1")
-    if path_info.startswith(script_name):
-        path_info = path_info[len(script_name) :]
+    path_info = get_route_path(scope).encode("utf8").decode("latin1")
 
     environ = {
         "REQUEST_METHOD": scope["method"],

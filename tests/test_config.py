@@ -101,6 +101,19 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         config.get("BOOL_AS_INT", cast=bool)
 
 
+def test_config_quoted_values(tmpdir: Path) -> None:
+    path = os.path.join(tmpdir, ".env")
+    with open(path, "w") as file:
+        file.write("SAY_HI='say \"hi\"'\n")
+        file.write('ITS_A="it\'s a test"\n')
+        file.write("PLAIN=value\n")
+
+    config = Config(path)
+    assert config("SAY_HI") == 'say "hi"'
+    assert config("ITS_A") == "it's a test"
+    assert config("PLAIN") == "value"
+
+
 def test_missing_env_file_raises(tmpdir: Path) -> None:
     path = os.path.join(tmpdir, ".env")
 

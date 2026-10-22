@@ -146,3 +146,31 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_quoted_values(tmp_path: Path) -> None:
+    path = tmp_path / ".env"
+    path.write_text(
+        "SINGLE_IN_DOUBLE=\"say 'hi'\"\n"
+        "DOUBLE_IN_SINGLE='say \"hi\"'\n"
+        'DOUBLE_QUOTED="hello"\n'
+        "SINGLE_QUOTED='world'\n"
+        'EMPTY_DOUBLE=""\n'
+        "EMPTY_SINGLE=''\n"
+        "UNQUOTED=some_value\n"
+        'UNMATCHED_START="unmatched\n'
+        "UNMATCHED_END=unmatched'\n"
+        "MISMATCHED_QUOTES=\"mismatched'\n",
+        encoding="utf-8",
+    )
+    config = Config(path)
+    assert config("SINGLE_IN_DOUBLE") == "say 'hi'"
+    assert config("DOUBLE_IN_SINGLE") == 'say "hi"'
+    assert config("DOUBLE_QUOTED") == "hello"
+    assert config("SINGLE_QUOTED") == "world"
+    assert config("EMPTY_DOUBLE") == ""
+    assert config("EMPTY_SINGLE") == ""
+    assert config("UNQUOTED") == "some_value"
+    assert config("UNMATCHED_START") == '"unmatched'
+    assert config("UNMATCHED_END") == "unmatched'"
+    assert config("MISMATCHED_QUOTES") == "\"mismatched'"

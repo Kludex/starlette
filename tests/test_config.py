@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Any, assert_type
 
@@ -101,10 +102,27 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         config.get("BOOL_AS_INT", cast=bool)
 
 
+def test_config_read_file_inner_quotes(tmpdir: Path) -> None:
+    path = os.path.join(tmpdir, ".env")
+    with open(path, "w") as file:
+        file.write("SINGLE_WITH_DOUBLE='say \"hi\"'\n")
+        file.write("DOUBLE_WITH_SINGLE=\"say 'hi'\"\n")
+        file.write("PLAIN_SINGLE='hello'\n")
+        file.write('PLAIN_DOUBLE="hello"\n')
+        file.write("UNQUOTED=hello\n")
+
+    config = Config(path)
+    assert config("SINGLE_WITH_DOUBLE") == 'say "hi"'
+    assert config("DOUBLE_WITH_SINGLE") == "say 'hi'"
+    assert config("PLAIN_SINGLE") == "hello"
+    assert config("PLAIN_DOUBLE") == "hello"
+    assert config("UNQUOTED") == "hello"
+
+
 def test_missing_env_file_raises(tmpdir: Path) -> None:
     path = os.path.join(tmpdir, ".env")
 
-    with pytest.warns(UserWarning, match=f"Config file '{path}' not found."):
+    with pytest.warns(UserWarning, match=re.escape(f"Config file '{path}' not found.")):
         Config(path)
 
 

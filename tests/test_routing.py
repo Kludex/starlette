@@ -282,6 +282,13 @@ def test_url_path_for_with_double_slash_path() -> None:
     assert router.url_path_for("catchall", path="\\example.org/a") == "/%5Cexample.org/a"
 
 
+def test_mount_url_path_for_with_leading_slash_path() -> None:
+    mount = Mount("/static", routes=[Route("/{path:path}", endpoint=homepage, name="child")], name="static")
+    assert mount.url_path_for("static", path="/foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path="/foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path="foo/bar") == "/static/foo/bar"
+
+
 def test_url_for() -> None:
     assert app.url_path_for("homepage").make_absolute_url(base_url="https://example.org") == "https://example.org/"
     assert (

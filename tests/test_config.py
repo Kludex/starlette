@@ -146,3 +146,20 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_quoted_values_with_inner_quotes(tmpdir: Path) -> None:
+    # https://github.com/encode/starlette/issues/3687
+    # strip("\"'") strips ALL quote chars from both ends, so a value like
+    # 'say "hi"' would lose its trailing " after the outer ' are removed.
+    path = tmpdir / ".env"
+    path.write_text(
+        'SINGLE=\'say "hi"\'\n'
+        'DOUBLE="it\'s fine"\n'
+        "PLAIN=no_quotes\n",
+        encoding="utf-8",
+    )
+    config = Config(path)
+    assert config.get("SINGLE") == 'say "hi"'
+    assert config.get("DOUBLE") == "it's fine"
+    assert config.get("PLAIN") == "no_quotes"

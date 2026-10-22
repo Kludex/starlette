@@ -107,11 +107,15 @@ def test_config_quoted_values(tmpdir: Path) -> None:
         file.write("SAY_HI='say \"hi\"'\n")
         file.write('ITS_A="it\'s a test"\n')
         file.write("PLAIN=value\n")
+        file.write("MISMATCH='value\"\n")
+        file.write("MISMATCH_2=\"value'\n")
 
     config = Config(path)
     assert config("SAY_HI") == 'say "hi"'
     assert config("ITS_A") == "it's a test"
     assert config("PLAIN") == "value"
+    assert config("MISMATCH") == "'value\""
+    assert config("MISMATCH_2") == "\"value'"
 
 
 def test_missing_env_file_raises(tmpdir: Path) -> None:

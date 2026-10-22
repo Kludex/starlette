@@ -146,3 +146,52 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_quoted_values(tmpdir: Path) -> None:
+    path = tmpdir / ".env"
+    content = (
+        "DOUBLE_WITH_SINGLE=\"say 'hi'\"\n"
+        "SINGLE_WITH_DOUBLE='say \"hi\"'\n"
+        'DOUBLE_QUOTED="hello"\n'
+        "SINGLE_QUOTED='hello'\n"
+        'EMPTY_DOUBLE=""\n'
+        "EMPTY_SINGLE=''\n"
+        "UNQUOTED=hello world\n"
+        'SINGLE_IN_DOUBLE="\'"\n'
+        "DOUBLE_IN_SINGLE='\"'\n"
+        "DOUBLE_QUOTES_IN_SINGLE='\"\"'\n"
+        "SINGLE_QUOTES_IN_DOUBLE=\"''\"\n"
+        "NESTED_DOUBLE_IN_SINGLE='\"hello\"'\n"
+        "NESTED_SINGLE_IN_DOUBLE=\"'hello'\"\n"
+        'SPACED_INSIDE="  spaced  "\n'
+        'SPACED_OUTSIDE=  "spaced"  \n'
+        'UNMATCHED_START="hello\n'
+        "UNMATCHED_END=hello'\n"
+        "MISMATCHED_START_DOUBLE=\"hello'\n"
+        "MISMATCHED_START_SINGLE='hello\"\n"
+        "EMPTY_VALUE=\n"
+    )
+    path.write_text(content, encoding="utf-8")
+    config = Config(path, environ={})
+
+    assert config("DOUBLE_WITH_SINGLE") == "say 'hi'"
+    assert config("SINGLE_WITH_DOUBLE") == 'say "hi"'
+    assert config("DOUBLE_QUOTED") == "hello"
+    assert config("SINGLE_QUOTED") == "hello"
+    assert config("EMPTY_DOUBLE") == ""
+    assert config("EMPTY_SINGLE") == ""
+    assert config("UNQUOTED") == "hello world"
+    assert config("SINGLE_IN_DOUBLE") == "'"
+    assert config("DOUBLE_IN_SINGLE") == '"'
+    assert config("DOUBLE_QUOTES_IN_SINGLE") == '""'
+    assert config("SINGLE_QUOTES_IN_DOUBLE") == "''"
+    assert config("NESTED_DOUBLE_IN_SINGLE") == '"hello"'
+    assert config("NESTED_SINGLE_IN_DOUBLE") == "'hello'"
+    assert config("SPACED_INSIDE") == "  spaced  "
+    assert config("SPACED_OUTSIDE") == "spaced"
+    assert config("UNMATCHED_START") == '"hello'
+    assert config("UNMATCHED_END") == "hello'"
+    assert config("MISMATCHED_START_DOUBLE") == "\"hello'"
+    assert config("MISMATCHED_START_SINGLE") == "'hello\""
+    assert config("EMPTY_VALUE") == ""

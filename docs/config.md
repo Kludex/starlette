@@ -132,6 +132,16 @@ from starlette.config import Config
 config = Config(".env", encoding="latin-1")
 ```
 
+## Quoted values in environment files
+
+Values in `.env` files can be enclosed in matching single (`'`) or double (`"`) quotes. Only the outer matching quotes are stripped; any quotes inside the value are preserved.
+
+```shell title=".env"
+# Inner quotes are preserved:
+MESSAGE='say "hello"'
+# Read as: say "hello"
+```
+
 ## A full example
 
 Structuring large applications can be complex. You need proper separation of

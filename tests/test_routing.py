@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import json
+import pathlib
 import uuid
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
 from typing import Never, TypedDict
@@ -287,6 +288,8 @@ def test_mount_url_path_for_with_leading_slash_path() -> None:
     assert mount.url_path_for("static", path="/foo/bar") == "/static/foo/bar"
     assert mount.url_path_for("static:child", path="/foo/bar") == "/static/foo/bar"
     assert mount.url_path_for("static:child", path="foo/bar") == "/static/foo/bar"
+    # Non-str path values are passed through the child convertor's to_string.
+    assert mount.url_path_for("static:child", path=pathlib.Path("foo/bar")) == "/static/foo/bar"
 
 
 def test_url_for() -> None:

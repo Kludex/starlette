@@ -154,9 +154,7 @@ def test_config_quoted_values_with_inner_quotes(tmpdir: Path) -> None:
     # 'say "hi"' would lose its trailing " after the outer ' are removed.
     path = tmpdir / ".env"
     path.write_text(
-        'SINGLE=\'say "hi"\'\n'
-        'DOUBLE="it\'s fine"\n'
-        "PLAIN=no_quotes\n",
+        'SINGLE=\'say "hi"\'\nDOUBLE="it\'s fine"\nPLAIN=no_quotes\n',
         encoding="utf-8",
     )
     config = Config(path)

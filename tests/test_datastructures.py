@@ -43,6 +43,8 @@ def test_url() -> None:
     assert new.hostname == "example.com"
 
     ipv6_url = URL("https://[fe::2]:12345")
+    assert ipv6_url.replace(hostname=ipv6_url.hostname) == ipv6_url
+
     new = ipv6_url.replace(port=8080)
     assert new == "https://[fe::2]:8080"
 
@@ -53,6 +55,11 @@ def test_url() -> None:
     ipv6_url = URL("https://[fe::2]")
     new = ipv6_url.replace(port=123)
     assert new == "https://[fe::2]:123"
+
+    url = URL("https://example.org:8443/path")
+    assert url.replace(hostname="[::1]") == "https://[::1]:8443/path"
+    assert url.replace(hostname="[::1]:8080", port=None) == "https://[::1]:8080/path"
+    assert url.replace(hostname="example.org:8080", port=None) == "https://example.org:8080/path"
 
     url = URL("http://u:p@host/")
     assert url.replace(hostname="bar") == URL("http://u:p@bar/")
@@ -181,6 +188,22 @@ def test_url_from_scope() -> None:
     )
     assert u == "http://example.com:000080/some/path"
     assert u.port == 80
+
+
+def test_url_from_scope_with_delimiters_in_path() -> None:
+    u = URL(scope={"path": "/a?b#c", "query_string": b"d=e", "headers": [(b"host", b"example.org")]})
+    assert u == "http://example.org/a%3Fb%23c?d=e"
+    assert u.path == "/a%3Fb%23c"
+    assert u.query == "d=e"
+
+    u = URL(scope={"path": "/\\example.org/a", "query_string": b"", "headers": []})
+    assert u == "/%5Cexample.org/a"
+
+
+def test_url_from_scope_with_double_slash_path_and_no_host() -> None:
+    u = URL(scope={"path": "//example.org/a", "query_string": b"", "headers": []})
+    assert u == "/%2Fexample.org/a"
+    assert u.netloc == ""
 
 
 @pytest.mark.parametrize(

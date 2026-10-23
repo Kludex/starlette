@@ -109,6 +109,7 @@ class IdentityResponder:
             # Don't send the initial message until we've determined how to
             # modify the outgoing headers correctly.
             self.initial_message = message
+            message.setdefault("headers", [])
             headers = Headers(raw=self.initial_message["headers"])
             self.content_encoding_set = "content-encoding" in headers
             self.partial_response = message["status"] == 206
@@ -117,12 +118,11 @@ class IdentityResponder:
             if media_type.startswith("application/grpc+"):
                 media_types.add("application/grpc")
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
-        elif message_type == "http.response.body" and (
+            if self.content_encoding_set or self.partial_response or self.content_type_is_excluded:
+                await self.send(self.initial_message)
+        elif message_type in ("http.response.body", "http.response.pathsend") and (
             self.content_encoding_set or self.partial_response or self.content_type_is_excluded
         ):
-            if not self.started:
-                self.started = True
-                await self.send(self.initial_message)
             await self.send(message)
         elif message_type == "http.response.body" and not self.started:
             self.started = True
@@ -169,7 +169,7 @@ class IdentityResponder:
             message["body"] = await self.apply_compression(body, more_body=more_body)
 
             await self.send(message)
-        elif message_type == "http.response.trailers":
+        elif message_type in ("http.response.early_hint", "http.response.trailers"):
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
             # Don't apply GZip to pathsend responses

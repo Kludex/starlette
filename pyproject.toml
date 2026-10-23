@@ -76,6 +76,9 @@ default-groups = ["dev", "docs"]
 required-version = ">=0.8.6"
 exclude-newer = "7 days"
 
+[tool.uv.exclude-newer-package]
+certifi = "2026-10-20T23:59:59Z"
+
 [project.urls]
 Homepage = "https://github.com/Kludex/starlette"
 Documentation = "https://starlette.dev/"
@@ -118,7 +121,6 @@ filterwarnings = [
     "error",
     "ignore: run_until_first_complete is deprecated and will be removed in a future version.:starlette.exceptions.StarletteDeprecationWarning",
     "ignore: starlette.middleware.wsgi is deprecated and will be removed in a future release.*:starlette.exceptions.StarletteDeprecationWarning",
-    "ignore: Async generator 'starlette.requests.Request.stream' was garbage collected before it had been exhausted.*:ResourceWarning",
     "ignore: Use 'content=<...>' to upload raw bytes/text content.:DeprecationWarning",
     "ignore: Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
 ]

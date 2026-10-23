@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import itertools
+import threading
 from asyncio import Task, current_task as asyncio_current_task
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Callable, Generator
+from contextlib import AbstractContextManager, asynccontextmanager, closing, nullcontext
 from typing import Any
 
 import anyio
@@ -13,10 +14,11 @@ import sniffio
 import trio.lowlevel
 
 from starlette.applications import Starlette
+from starlette.background import BackgroundTask
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.routing import Route
 from starlette.testclient import ASGIInstance, TestClient
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -227,6 +229,216 @@ def test_testclient_asgi3(test_client_factory: TestClientFactory) -> None:
     client = test_client_factory(app)
     response = client.get("/")
     assert response.text == "Hello, world!"
+
+
+def test_streaming_response_is_available_before_first_chunk(test_client_factory: TestClientFactory) -> None:
+    release_response = threading.Event()
+
+    async def stream() -> AsyncGenerator[bytes, None]:
+        assert await anyio.to_thread.run_sync(release_response.wait, 10)
+        yield b"hello"
+
+    async def homepage(request: Request) -> StreamingResponse:
+        return StreamingResponse(stream())
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    with client.stream("GET", "/") as response:
+        release_response.set()
+        assert response.read() == b"hello"
+
+
+def test_streaming_response_applies_backpressure(test_client_factory: TestClientFactory) -> None:
+    second_chunk_started = threading.Event()
+
+    async def stream() -> AsyncGenerator[bytes, None]:
+        yield b"one"
+        second_chunk_started.set()
+        yield b"two"
+
+    async def homepage(request: Request) -> StreamingResponse:
+        return StreamingResponse(stream())
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    with client.stream("GET", "/") as response:
+        chunks = response.iter_raw()
+        assert not second_chunk_started.is_set()
+        assert next(chunks) == b"one"
+        assert second_chunk_started.wait(timeout=10)
+        assert list(chunks) == [b"two"]
+
+
+@pytest.mark.parametrize(("method", "body"), [("GET", b""), ("HEAD", b"chunk")])
+def test_streaming_response_skips_empty_and_head_bodies(
+    test_client_factory: TestClientFactory, method: str, body: bytes
+) -> None:
+    sent = 0
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        nonlocal sent
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        for _ in range(1000):
+            await send({"type": "http.response.body", "body": body, "more_body": True})
+            sent += 1
+        await send({"type": "http.response.body", "body": b""})
+
+    with test_client_factory(app).stream(method, "/") as response:
+        assert sent == 0
+        assert response.read() == b""
+    assert sent == 1000
+
+
+async def mutable_chunks_endpoint(request: Request) -> StreamingResponse:
+    async def chunks() -> AsyncGenerator[memoryview, None]:
+        buffer = bytearray(b"one")
+        yield memoryview(buffer)
+        buffer[:] = b"two"
+        yield memoryview(buffer)
+
+    return StreamingResponse(chunks())
+
+
+def test_streaming_response_copies_mutable_chunks(test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(Starlette(routes=[Route("/", mutable_chunks_endpoint)]))
+    with client.stream("GET", "/") as response:
+        assert list(response.iter_raw()) == [b"one", b"two"]
+
+
+def test_buffered_response_copies_mutable_chunks(test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(Starlette(routes=[Route("/", mutable_chunks_endpoint)]))
+    assert client.get("/").content == b"onetwo"
+
+
+@pytest.mark.parametrize("trailers", [True, False])
+def test_closing_unfinished_response_cancels_application(
+    test_client_factory: TestClientFactory, trailers: bool
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "trailers": trailers})
+        await send({"type": "http.response.body", "body": b"hello", "more_body": not trailers})
+        with anyio.fail_after(10):
+            await anyio.sleep_forever()
+
+    with test_client_factory(app).stream("GET", "/") as response:
+        chunks = response.iter_raw()
+        assert next(chunks) == b"hello"
+
+
+@pytest.mark.parametrize(
+    ("raise_server_exceptions", "expected"),
+    [(True, pytest.raises(RuntimeError, match="background failure")), (False, nullcontext())],
+)
+def test_closing_completed_response_waits_for_background_task(
+    test_client_factory: TestClientFactory, raise_server_exceptions: bool, expected: AbstractContextManager[Any]
+) -> None:
+    completed = threading.Event()
+
+    async def background() -> None:
+        await anyio.sleep(0.1)
+        completed.set()
+        raise RuntimeError("background failure")
+
+    async def homepage(request: Request) -> Response:
+        return Response(b"hello", background=BackgroundTask(background))
+
+    client = test_client_factory(
+        Starlette(routes=[Route("/", homepage)]), raise_server_exceptions=raise_server_exceptions
+    )
+    with expected:
+        with client.stream("GET", "/") as response:
+            chunks = response.iter_raw()
+            assert next(chunks) == b"hello"
+            assert isinstance(chunks, Generator)
+            chunks.close()
+    assert completed.is_set()
+
+
+def test_closing_completed_trailers_waits_for_application(test_client_factory: TestClientFactory) -> None:
+    trailers_sent = threading.Event()
+    completed = threading.Event()
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "trailers": True})
+        await send({"type": "http.response.body", "body": b"hello"})
+        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"one")]})
+        trailers_sent.set()
+        await anyio.sleep(0.1)
+        completed.set()
+
+    with test_client_factory(app).stream("GET", "/") as response:
+        chunks = response.iter_raw()
+        assert next(chunks) == b"hello"
+        assert trailers_sent.wait(timeout=10)
+        assert response.extensions["http.response.trailers"] == [(b"x-item", b"one")]
+    assert completed.is_set()
+
+
+def test_closing_response_inside_unrelated_except_waits_for_background_task(
+    test_client_factory: TestClientFactory,
+) -> None:
+    completed = threading.Event()
+
+    async def background() -> None:
+        await anyio.sleep(0.1)
+        completed.set()
+
+    async def homepage(request: Request) -> Response:
+        return Response(b"hello", background=BackgroundTask(background))
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    try:
+        raise KeyError("unrelated")
+    except KeyError:
+        with client.stream("GET", "/") as response:
+            chunks = response.iter_raw()
+            assert next(chunks) == b"hello"
+    assert completed.is_set()
+
+
+@pytest.mark.parametrize(
+    "lifecycle",
+    [pytest.param(lambda client: client, id="lifespan"), pytest.param(closing, id="close")],
+)
+def test_closing_client_cancels_unclosed_response(
+    test_client_factory: TestClientFactory, lifecycle: Callable[[TestClient], AbstractContextManager[Any]]
+) -> None:
+    cancelled = threading.Event()
+
+    async def background() -> None:
+        try:
+            with anyio.fail_after(10):
+                await anyio.sleep_forever()
+        except anyio.get_cancelled_exc_class():
+            cancelled.set()
+            raise
+
+    async def homepage(request: Request) -> Response:
+        return Response(b"hello", background=BackgroundTask(background))
+
+    client = test_client_factory(Starlette(routes=[Route("/", homepage)]))
+    with lifecycle(client):
+        response = client.send(client.build_request("GET", "/"), stream=True)
+        chunks = response.iter_raw()
+        assert next(chunks) == b"hello"
+    assert cancelled.is_set()
+
+
+@pytest.mark.parametrize(
+    ("raise_server_exceptions", "expected"),
+    [(True, pytest.raises(RuntimeError, match="late failure")), (False, nullcontext())],
+)
+def test_streaming_response_late_server_exception(
+    test_client_factory: TestClientFactory, raise_server_exceptions: bool, expected: AbstractContextManager[Any]
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"body"})
+        await anyio.sleep(0)
+        raise RuntimeError("late failure")
+
+    client = test_client_factory(app, raise_server_exceptions=raise_server_exceptions)
+    with expected:
+        with client.stream("GET", "/") as response:
+            assert response.read() == b"body"
 
 
 def test_debug_info_in_response_extensions(test_client_factory: TestClientFactory) -> None:
@@ -519,23 +731,17 @@ def test_invalid_trailer_sequence(test_client_factory: TestClientFactory, messag
         test_client_factory(app).get("/")
 
 
-@pytest.mark.parametrize("empty", [True, False])
-def test_capture_trailers(test_client_factory: TestClientFactory, empty: bool) -> None:
+def test_capture_trailers(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         assert "http.response.trailers" in scope["extensions"]
         await send({"type": "http.response.start", "status": 200, "trailers": True})
         await send({"type": "http.response.body", "body": b"hello"})
-        await anyio.lowlevel.checkpoint()
-        headers = [] if empty else [(b"x-item", b"one")]
-        await send({"type": "http.response.trailers", "headers": headers, "more_trailers": True})
-        headers = [] if empty else [(b"x-item", b"two")]
-        await send({"type": "http.response.trailers", "headers": headers})
+        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"one")], "more_trailers": True})
+        await send({"type": "http.response.trailers", "headers": [(b"x-item", b"two")]})
 
     response = test_client_factory(app).get("/", headers={"te": "trailers"})
     assert response.content == b"hello"
-    assert response.extensions["http.response.trailers"] == (
-        [] if empty else [(b"x-item", b"one"), (b"x-item", b"two")]
-    )
+    assert response.extensions["http.response.trailers"] == [(b"x-item", b"one"), (b"x-item", b"two")]
     assert "x-item" not in response.headers
 
 

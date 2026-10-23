@@ -4,6 +4,7 @@ import hashlib
 import zlib
 from pathlib import Path
 
+import anyio
 import pytest
 
 from starlette.applications import Starlette
@@ -32,6 +33,23 @@ def test_gzip_responses(test_client_factory: TestClientFactory) -> None:
     assert response.headers["Content-Encoding"] == "gzip"
     assert response.headers["Vary"] == "Accept-Encoding"
     assert int(response.headers["Content-Length"]) < 4000
+
+
+def test_gzip_preserves_multiple_vary_headers(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        response = PlainTextResponse("x" * 4000, headers={"Vary": "Accept-Language"})
+        response.headers.append("Vary", "Cookie")
+        return response
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(GZipMiddleware)],
+    )
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.headers["Vary"] == "Accept-Language, Cookie, Accept-Encoding"
 
 
 def test_gzip_not_in_accept_encoding(test_client_factory: TestClientFactory) -> None:
@@ -214,6 +232,40 @@ def test_gzip_ignored_on_server_sent_events(test_client_factory: TestClientFacto
     assert response.text == "x" * 4000
     assert "Content-Encoding" not in response.headers
     assert "Content-Length" not in response.headers
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("encoding", ["gzip", "identity"])
+async def test_gzip_passes_through_early_hints(encoding: str) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive, send)
+        await request.send_early_hints("</style.css>; rel=preload; as=style")
+        await PlainTextResponse("hello")(scope, receive, send)
+
+    events: list[Message] = []
+
+    async def send(message: Message) -> None:
+        events.append(message)
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    scope: Scope = {
+        "type": "http",
+        "headers": [(b"accept-encoding", encoding.encode())],
+        "extensions": {"http.response.early_hint": {}},
+    }
+    await GZipMiddleware(app, minimum_size=0)(scope, receive, send)
+
+    assert events[0] == {
+        "type": "http.response.early_hint",
+        "links": [b"</style.css>; rel=preload; as=style"],
+    }
+    assert events[1]["type"] == "http.response.start"
+    body = events[2]["body"]
+    if encoding == "gzip":
+        body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
+    assert body == b"hello"
 
 
 @pytest.mark.anyio
@@ -467,3 +519,28 @@ def test_gzip_excluded_content_type_trailers(test_client_factory: TestClientFact
     assert response.content == b"x" * 4000
     assert "content-encoding" not in response.headers
     assert response.extensions["http.response.trailers"] == [(b"grpc-status", b"0")]
+
+
+@pytest.mark.anyio
+async def test_gzip_sends_response_start_before_first_body_when_not_compressed() -> None:
+    events: list[Message] = []
+    start_sent = anyio.Event()
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"text/event-stream")]})
+        await start_sent.wait()
+        await send({"type": "http.response.body", "body": b"data: hello\n\n"})
+
+    async def send(message: Message) -> None:
+        events.append(message)
+        start_sent.set()
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    scope: Scope = {"type": "http", "method": "GET", "path": "/", "headers": [(b"accept-encoding", b"gzip")]}
+
+    with anyio.fail_after(1):
+        await GZipMiddleware(app)(scope, receive, send)
+
+    assert [event["type"] for event in events] == ["http.response.start", "http.response.body"]

@@ -163,7 +163,9 @@ def compile_path(
 
     path_format += path[idx:]
 
-    return re.compile(path_regex), path_format, param_convertors
+    # Host names are case-insensitive (RFC 9110, section 4.2.3).
+    flags = re.IGNORECASE if is_host else 0
+    return re.compile(path_regex, flags), path_format, param_convertors
 
 
 class BaseRoute:
@@ -183,7 +185,7 @@ class BaseRoute:
         within a Router, but could be useful for some tooling and minimal apps.
         """
         match, child_scope = self.matches(scope)
-        if match == Match.NONE:
+        if match is Match.NONE:
             if scope["type"] == "http":
                 response = PlainTextResponse("Not Found", status_code=404)
                 await response(scope, receive, send)
@@ -483,7 +485,7 @@ class Host(BaseRoute):
             parsed_host = parse_host_header(headers.get("host"))
             if parsed_host is None:
                 return Match.NONE, {}
-            host = parsed_host.host
+            host = parsed_host.host.lower()
 
             match = self.host_regex.match(host)
             if match:
@@ -691,12 +693,12 @@ class Router:
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
-            if match == Match.FULL:
+            if match is Match.FULL:
                 scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
-            elif match == Match.PARTIAL and partial is None:
+            elif match is Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
 
@@ -719,7 +721,7 @@ class Router:
 
             for route in self.routes:
                 match, child_scope = route.matches(redirect_scope)
-                if match != Match.NONE:
+                if match is not Match.NONE:
                     redirect_url = URL(scope=redirect_scope)
                     response = RedirectResponse(url=str(redirect_url))
                     await response(scope, receive, send)

@@ -611,7 +611,7 @@ async def test_urlencoded_limits_stop_parsing_within_a_single_chunk() -> None:
     with pytest.raises(MultiPartException, match="Field exceeded maximum size"):
         await parser.parse()
     await stream.aclose()
-    assert sum(len(data) for _, data in parser.messages) <= 1024
+    assert len(parser._field_value) <= 1024
 
 
 @pytest.mark.parametrize(

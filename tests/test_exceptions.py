@@ -225,12 +225,6 @@ def test_handlers_annotations() -> None:
 
 
 def test_handled_exception_clears_traceback(test_client_factory: TestClientFactory) -> None:
-    """Shared exception objects must not retain __traceback__ after handling.
-
-    If __traceback__ is not cleared, the traceback frame keeps a reference to
-    the ASGI send closure and its locals, pinning per-request state in memory
-    for the lifetime of the exception object.
-    """
     shared_exc = HTTPException(status_code=401, detail="Unauthorized")
 
     async def raise_shared_exc(request: Request) -> None:

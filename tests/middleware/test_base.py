@@ -1316,3 +1316,24 @@ def test_error_context_propagation(test_client_factory: TestClientFactory) -> No
     assert str(ctx.value) == "Outer exception"
     assert ctx.value.__cause__ is not None
     assert str(ctx.value.__cause__) == "Inner exception"
+
+
+def test_error_context_with_nested_middlewares(test_client_factory: TestClientFactory) -> None:
+    class PassthroughMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+            return await call_next(request)
+
+    def exception_from_none(request: Request) -> None:
+        raise Exception("Exception") from None
+
+    app = Starlette(
+        routes=[Route("/", endpoint=exception_from_none)],
+        middleware=[Middleware(PassthroughMiddleware), Middleware(PassthroughMiddleware)],
+    )
+    client = test_client_factory(app)
+
+    with pytest.raises(Exception) as ctx:
+        client.get("/")
+    assert ctx.value.__cause__ is None
+    assert ctx.value.__suppress_context__ is True
+    assert isinstance(ctx.value.__context__, anyio.EndOfStream)

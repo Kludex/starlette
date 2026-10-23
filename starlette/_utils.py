@@ -89,17 +89,15 @@ async def create_collapsing_task_group() -> AsyncGenerator[anyio.abc.TaskGroup, 
             raise
 
         exc = excs.exceptions[0]
-        cause = exc.__cause__
-        if cause is None and not exc.__suppress_context__:
-            cause = exc.__context__
-            exc.__suppress_context__ = True
+        cause = exc.__cause__ or (None if exc.__suppress_context__ else exc.__context__)
     else:
         return
 
-    if cause is not None:
+    # Raised outside `except` so `exc.__context__` does not point to the group that contains it.
+    try:
         raise exc from cause
-    else:
-        raise exc from None
+    finally:
+        del exc, cause
 
 
 def get_route_path(scope: Scope) -> str:

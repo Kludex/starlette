@@ -14,7 +14,7 @@ from unittest import mock
 import pytest
 
 from starlette.applications import Starlette
-from starlette.datastructures import Headers, UploadFile
+from starlette.datastructures import FormData, Headers, UploadFile
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.formparsers import FormMessage, FormParser, MultiPartException, MultiPartParser
 from starlette.requests import Request
@@ -1111,3 +1111,12 @@ def test_multipart_closes_tempfile_on_oserror(
 def test_form_message_is_deprecated() -> None:
     with pytest.warns(StarletteDeprecationWarning, match="`FormMessage` is deprecated"):
         FormMessage(1)
+
+
+@pytest.mark.anyio
+async def test_urlencoded_stream_without_empty_final_chunk() -> None:
+    async def stream() -> AsyncGenerator[bytes, None]:
+        yield b"first=one&second=two"
+
+    parser = FormParser(Headers({"content-type": "application/x-www-form-urlencoded"}), stream())
+    assert await parser.parse() == FormData([("first", "one"), ("second", "two")])

@@ -125,10 +125,8 @@ class FormParser:
         parser = multipart.QuerystringParser(callbacks)
 
         async for chunk in self.stream:
-            if chunk:
-                parser.write(chunk)
-            else:
-                parser.finalize()
+            parser.write(chunk)
+        parser.finalize()
 
         return FormData(self._items)
 

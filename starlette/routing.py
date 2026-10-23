@@ -693,12 +693,12 @@ class Router:
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
-            if match == Match.FULL:
+            if match is Match.FULL:
                 scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
-            elif match == Match.PARTIAL and partial is None:
+            elif match is Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
 

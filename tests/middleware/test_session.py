@@ -9,6 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
+from starlette.types import Message, Receive, Scope, Send
 from tests.types import TestClientFactory
 
 
@@ -41,6 +42,54 @@ async def clear_session(request: Request) -> JSONResponse:
 
 def no_session_access(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
+
+
+@pytest.mark.parametrize(
+    "response_headers",
+    [None, [], [(b"x-example", b"kept"), (b"vary", b"Accept-Encoding")]],
+    ids=["omitted", "empty", "existing"],
+)
+def test_session_asgi_response_headers(
+    test_client_factory: TestClientFactory, response_headers: list[tuple[bytes, bytes]] | None
+) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope)
+        body = b"OK"
+        if request.url.path == "/set":
+            request.session["value"] = "stored"
+        elif request.url.path == "/read":
+            body = request.session.get("value", "empty").encode()
+        elif request.url.path == "/clear":
+            request.session.clear()
+
+        message: Message = {"type": "http.response.start", "status": 200}
+        if response_headers is not None:
+            message["headers"] = response_headers.copy()
+        await send(message)
+        await send({"type": "http.response.body", "body": body})
+
+    client = test_client_factory(SessionMiddleware(app, secret_key="example"))
+    for path, body, sets_cookie in [
+        ("/", "OK", False),
+        ("/read", "empty", False),
+        ("/set", "OK", True),
+        ("/read", "stored", False),
+        ("/clear", "OK", True),
+        ("/read", "empty", False),
+    ]:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.text == body
+        assert ("set-cookie" in response.headers) is sets_cookie
+        expected_vary = ["Accept-Encoding"] if response_headers else []
+        if path != "/":
+            expected_vary.append("Cookie")
+        assert response.headers.get("vary", "") == ", ".join(expected_vary)
+        if response_headers:
+            assert response.headers["x-example"] == "kept"
+        if path == "/clear":
+            assert "expires=Thu, 01 Jan 1970 00:00:00 GMT" in response.headers["set-cookie"]
+            assert "session" not in client.cookies
 
 
 def test_session(test_client_factory: TestClientFactory) -> None:

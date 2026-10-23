@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
+from operator import itemgetter
 from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
@@ -312,12 +312,7 @@ class ImmutableMultiDict(Mapping[_KeyType, _CovariantValueType]):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
             return False
-        try:
-            return Counter(self._list) == Counter(other._list)
-        except TypeError:
-            return len(self._list) == len(other._list) and all(
-                self._list.count(item) == other._list.count(item) for item in self._list
-            )
+        return sorted(self._list, key=itemgetter(0)) == sorted(other._list, key=itemgetter(0))
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__

@@ -185,7 +185,7 @@ class BaseRoute:
         within a Router, but could be useful for some tooling and minimal apps.
         """
         match, child_scope = self.matches(scope)
-        if match == Match.NONE:
+        if match is Match.NONE:
             if scope["type"] == "http":
                 response = PlainTextResponse("Not Found", status_code=404)
                 await response(scope, receive, send)
@@ -721,7 +721,7 @@ class Router:
 
             for route in self.routes:
                 match, child_scope = route.matches(redirect_scope)
-                if match != Match.NONE:
+                if match is not Match.NONE:
                     redirect_url = URL(scope=redirect_scope)
                     response = RedirectResponse(url=str(redirect_url))
                     await response(scope, receive, send)

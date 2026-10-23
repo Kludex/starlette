@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import codecs
+import sys
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
+from enum import Enum
 from tempfile import SpooledTemporaryFile
 from typing import TYPE_CHECKING
 from urllib.parse import unquote_plus
 
 from starlette.datastructures import FormData, Headers, UploadFile
+from starlette.exceptions import StarletteDeprecationWarning
+
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from warnings import deprecated
+else:  # pragma: no cover
+    from typing_extensions import deprecated
 
 if TYPE_CHECKING:
     import python_multipart as multipart
@@ -26,6 +34,17 @@ else:
     except ModuleNotFoundError:  # pragma: no cover
         multipart = None
         parse_options_header = None
+
+
+@deprecated(
+    "`FormMessage` is deprecated and will be removed in a future version.", category=StarletteDeprecationWarning
+)
+class FormMessage(Enum):
+    FIELD_START = 1
+    FIELD_NAME = 2
+    FIELD_DATA = 3
+    FIELD_END = 4
+    END = 5
 
 
 @dataclass

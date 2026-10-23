@@ -15,7 +15,8 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.datastructures import Headers, UploadFile
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
+from starlette.exceptions import StarletteDeprecationWarning
+from starlette.formparsers import FormMessage, FormParser, MultiPartException, MultiPartParser
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -1105,3 +1106,8 @@ def test_multipart_closes_tempfile_on_oserror(
         client.post("/", content=content, headers=headers)
 
     assert close_called
+
+
+def test_form_message_is_deprecated() -> None:
+    with pytest.warns(StarletteDeprecationWarning, match="`FormMessage` is deprecated"):
+        FormMessage(1)

@@ -221,9 +221,9 @@ Therefore, you can specify the port if you need it for use in `url_for`.
 There are several ways to connect host-based routes to your application
 
 ```python
-site = Router()  # Use eg. `@site.route()` to configure this.
-api = Router()  # Use eg. `@api.route()` to configure this.
-news = Router()  # Use eg. `@news.route()` to configure this.
+site = Router(routes=[...])  # Add your `Route` entries here.
+api = Router(routes=[...])  # Add your `Route` entries here.
+news = Router(routes=[...])  # Add your `Route` entries here.
 
 routes = [
     Host('api.example.org', api, name="site_api")

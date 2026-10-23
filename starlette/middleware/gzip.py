@@ -11,6 +11,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # TODO(v2): We should rename `DEFAULT_EXCLUDED_CONTENT_TYPES` to `DEFAULT_EXCLUDE_CONTENT_TYPES`.
 DEFAULT_EXCLUDED_CONTENT_TYPES = (
+    "application/grpc",
     "application/gzip",
     "application/x-gzip",
     "application/zip",
@@ -108,18 +109,20 @@ class IdentityResponder:
             # Don't send the initial message until we've determined how to
             # modify the outgoing headers correctly.
             self.initial_message = message
+            message.setdefault("headers", [])
             headers = Headers(raw=self.initial_message["headers"])
             self.content_encoding_set = "content-encoding" in headers
             self.partial_response = message["status"] == 206
             media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
             media_types = {media_type, media_type.partition("/")[0] + "/*"}
+            if media_type.startswith("application/grpc+"):
+                media_types.add("application/grpc")
             self.content_type_is_excluded = not media_types.isdisjoint(self.exclude_content_types)
-        elif message_type == "http.response.body" and (
+            if self.content_encoding_set or self.partial_response or self.content_type_is_excluded:
+                await self.send(self.initial_message)
+        elif message_type in ("http.response.body", "http.response.pathsend") and (
             self.content_encoding_set or self.partial_response or self.content_type_is_excluded
         ):
-            if not self.started:
-                self.started = True
-                await self.send(self.initial_message)
             await self.send(message)
         elif message_type == "http.response.body" and not self.started:
             self.started = True
@@ -137,7 +140,10 @@ class IdentityResponder:
                 headers.add_vary_header("Accept-Encoding")
                 if body != message["body"]:
                     headers["Content-Encoding"] = self.content_encoding
-                    headers["Content-Length"] = str(len(body))
+                    if self.initial_message.get("trailers", False):
+                        del headers["Content-Length"]
+                    else:
+                        headers["Content-Length"] = str(len(body))
                     message["body"] = body
 
                 await self.send(self.initial_message)
@@ -162,6 +168,8 @@ class IdentityResponder:
 
             message["body"] = await self.apply_compression(body, more_body=more_body)
 
+            await self.send(message)
+        elif message_type in ("http.response.early_hint", "http.response.trailers"):
             await self.send(message)
         elif message_type == "http.response.pathsend":  # pragma: no branch
             # Don't apply GZip to pathsend responses

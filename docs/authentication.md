@@ -135,7 +135,7 @@ async def dashboard(request):
     ...
 ```
 
-When redirecting users, the page you redirect them to will include URL they originally requested at the `next` query param:
+When redirecting users, the page you redirect them to will include the URL they originally requested at the `next` query param:
 
 ```python
 from starlette.authentication import requires

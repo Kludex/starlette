@@ -14,12 +14,13 @@ from re import Pattern
 from typing import Any, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
-from starlette._utils import get_route_path, is_async_callable
+from starlette._utils import get_route_path, is_async_callable, parse_host_header
 from starlette.concurrency import run_in_threadpool
 from starlette.convertors import CONVERTOR_TYPES, Convertor
 from starlette.datastructures import URL, Headers, URLPath
 from starlette.exceptions import HTTPException, StarletteDeprecationWarning
 from starlette.middleware import Middleware
+from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
@@ -153,14 +154,18 @@ def compile_path(
 
     if is_host:
         # Align with `Host.matches()` behavior, which ignores port.
-        hostname = path[idx:].split(":")[0]
+        hostname = path[idx:]
+        if not hostname.endswith("]"):
+            hostname = hostname.rsplit(":", 1)[0]
         path_regex += re.escape(hostname) + "$"
     else:
         path_regex += re.escape(path[idx:]) + "$"
 
     path_format += path[idx:]
 
-    return re.compile(path_regex), path_format, param_convertors
+    # Host names are case-insensitive (RFC 9110, section 4.2.3).
+    flags = re.IGNORECASE if is_host else 0
+    return re.compile(path_regex, flags), path_format, param_convertors
 
 
 class BaseRoute:
@@ -180,7 +185,7 @@ class BaseRoute:
         within a Router, but could be useful for some tooling and minimal apps.
         """
         match, child_scope = self.matches(scope)
-        if match == Match.NONE:
+        if match is Match.NONE:
             if scope["type"] == "http":
                 response = PlainTextResponse("Not Found", status_code=404)
                 await response(scope, receive, send)
@@ -203,6 +208,7 @@ class Route(BaseRoute):
         name: str | None = None,
         include_in_schema: bool = True,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
     ) -> None:
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
@@ -225,6 +231,8 @@ class Route(BaseRoute):
         if middleware is not None:
             for cls, args, kwargs in reversed(middleware):
                 self.app = cls(self.app, *args, **kwargs)
+        if max_body_size is not None:
+            self.app = RequestBodyLimitMiddleware(self.app, max_body_size=max_body_size)
 
         if methods is None:
             self.methods = None
@@ -365,6 +373,7 @@ class Mount(BaseRoute):
         name: str | None = None,
         *,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
     ) -> None:
         assert path == "" or path.startswith("/"), "Routed paths must start with '/'"
         assert app is not None or routes is not None, "Either 'app=...', or 'routes=' must be specified"
@@ -377,6 +386,8 @@ class Mount(BaseRoute):
         if middleware is not None:
             for cls, args, kwargs in reversed(middleware):
                 self.app = cls(self.app, *args, **kwargs)
+        if max_body_size is not None:
+            self.app = RequestBodyLimitMiddleware(self.app, max_body_size=max_body_size)
         self.name = name
         self.path_regex, self.path_format, self.param_convertors = compile_path(self.path + "/{path:path}")
 
@@ -471,7 +482,11 @@ class Host(BaseRoute):
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
         if scope["type"] in ("http", "websocket"):  # pragma:no branch
             headers = Headers(scope=scope)
-            host = headers.get("host", "").split(":")[0]
+            parsed_host = parse_host_header(headers.get("host"))
+            if parsed_host is None:
+                return Match.NONE, {}
+            host = parsed_host.host.lower()
+
             match = self.host_regex.match(host)
             if match:
                 matched_params = match.groupdict()
@@ -574,6 +589,7 @@ class Router:
         lifespan: Lifespan[Any] | None = None,
         *,
         middleware: Sequence[Middleware] | None = None,
+        max_body_size: int | None = None,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
@@ -602,6 +618,8 @@ class Router:
         if middleware:
             for cls, args, kwargs in reversed(middleware):
                 self.middleware_stack = cls(self.middleware_stack, *args, **kwargs)
+        if max_body_size is not None:
+            self.middleware_stack = RequestBodyLimitMiddleware(self.middleware_stack, max_body_size=max_body_size)
 
     async def not_found(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
@@ -675,11 +693,12 @@ class Router:
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
-            if match == Match.FULL:
+            if match is Match.FULL:
+                scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
-            elif match == Match.PARTIAL and partial is None:
+            elif match is Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
 
@@ -687,6 +706,7 @@ class Router:
             #  Handle partial matches. These are cases where an endpoint is
             # able to handle the request, but is not a preferred option.
             # We use this in particular to deal with "405 Method Not Allowed".
+            scope["route"] = partial
             scope.update(partial_scope)
             await partial.handle(scope, receive, send)
             return
@@ -701,7 +721,7 @@ class Router:
 
             for route in self.routes:
                 match, child_scope = route.matches(redirect_scope)
-                if match != Match.NONE:
+                if match is not Match.NONE:
                     redirect_url = URL(scope=redirect_scope)
                     response = RedirectResponse(url=str(redirect_url))
                     await response(scope, receive, send)

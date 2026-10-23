@@ -24,6 +24,7 @@ class SessionMiddleware:
         same_site: Literal["lax", "strict", "none"] = "lax",
         https_only: bool = False,
         domain: str | None = None,
+        partitioned: bool = False,
     ) -> None:
         self.app = app
         self.signer = itsdangerous.TimestampSigner(str(secret_key))
@@ -35,6 +36,8 @@ class SessionMiddleware:
             self.security_flags += "; secure"
         if domain is not None:
             self.security_flags += f"; domain={domain}"
+        if partitioned:
+            self.security_flags += "; partitioned"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ("http", "websocket"):  # pragma: no cover
@@ -58,6 +61,7 @@ class SessionMiddleware:
         async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
                 session: Session = scope["session"]
+                message.setdefault("headers", [])
                 headers = MutableHeaders(scope=message)
                 if session.accessed:
                     headers.add_vary_header("Cookie")
@@ -69,7 +73,7 @@ class SessionMiddleware:
                         session_cookie=self.session_cookie,
                         data=data.decode("utf-8"),
                         path=self.path,
-                        max_age=f"Max-Age={self.max_age}; " if self.max_age else "",
+                        max_age=f"Max-Age={self.max_age}; " if self.max_age is not None else "",
                         security_flags=self.security_flags,
                     )
                     headers.append("Set-Cookie", header_value)
@@ -112,8 +116,14 @@ class Session(dict[str, typing.Any]):
         super().clear()
 
     def pop(self, key: str, *args: typing.Any) -> typing.Any:
-        self.modified = self.modified or key in self
+        if key in self:
+            self.mark_modified()
         return super().pop(key, *args)
+
+    def popitem(self) -> tuple[str, typing.Any]:
+        item = super().popitem()
+        self.mark_modified()
+        return item
 
     def setdefault(self, key: str, default: typing.Any = None) -> typing.Any:
         if key not in self:
@@ -123,3 +133,7 @@ class Session(dict[str, typing.Any]):
     def update(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         self.mark_modified()
         super().update(*args, **kwargs)
+
+    def __ior__(self, other: typing.Any, /) -> Session:  # type: ignore[override,misc]
+        self.mark_modified()
+        return super().__ior__(other)

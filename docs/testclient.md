@@ -69,11 +69,11 @@ with open("example.txt", "rb") as f1:
         response = client.post("/form", files=files)
 ```
 
-For more information you can check the `httpx2` [documentation](https://www.python-httpx.org/advanced/).
+For more information you can check the `httpx2` [documentation](https://pydantic.dev/docs/httpx2/advanced/clients/).
 
 By default the `TestClient` will raise any exceptions that occur in the
 application. Occasionally you might want to test the content of 500 error
-responses, rather than allowing client to raise the server exception. In this
+responses, rather than allowing the client to raise the server exception. In this
 case you should use `client = TestClient(app, raise_server_exceptions=False)`.
 
 !!! note
@@ -82,6 +82,89 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
     you will need to use the `TestClient` as a context manager. It will
     not be triggered when the `TestClient` is instantiated. You can learn more about it
     [here](lifespan.md#running-lifespan-in-tests).
+
+### HTTP trailers
+
+The `TestClient` supports the ASGI HTTP trailer extension. Read trailing fields from
+`response.extensions["http.response.trailers"]` after the request completes.
+
+```python
+from starlette.testclient import TestClient
+from starlette.types import Receive, Scope, Send
+
+
+async def app(scope: Scope, receive: Receive, send: Send) -> None:
+    await send({
+        "type": "http.response.start", "status": 200,
+        "headers": [(b"trailer", b"x-result")], "trailers": True,
+    })
+    await send({"type": "http.response.body", "body": b"hello"})
+    await send({"type": "http.response.trailers", "headers": [(b"x-result", b"complete")]})
+
+
+def test_trailers() -> None:
+    response = TestClient(app).get("/", headers={"TE": "trailers"})
+    assert response.content == b"hello"
+    assert response.extensions["http.response.trailers"] == [(b"x-result", b"complete")]
+```
+
+The extension contains a list of raw byte pairs. It preserves field order and duplicates
+across multiple trailer messages. Trailers remain separate from `response.headers`.
+Responses that do not declare trailers have no trailer extension on the result.
+
+With `raise_server_exceptions=True`, invalid trailer ordering or returning without final
+trailers raises an assertion error. With `raise_server_exceptions=False`, the result contains
+only the trailers received before the application failed or returned.
+
+The test transport captures ASGI trailers regardless of `TE` negotiation. It does not emulate
+HTTP/2 framing or concurrent request and response streaming. Use a real server and client
+to verify those transport behaviors.
+
+### Debug information
+
+The `TestClient` supports the ASGI [`http.response.debug`](https://asgi.readthedocs.io/en/latest/extensions.html#debug)
+extension. The `info` dictionary sent by the application is available as
+`response.extensions["http.response.debug"]`, which allows custom response classes to
+expose additional debug information to tests.
+
+This is useful when asserting on the response body would mean parsing it back. Consider
+a response class that renders rows into a CSV file. By sending the rows through the
+debug extension, tests can assert on the original data instead of the serialized body:
+
+```python
+import csv
+import io
+
+from starlette.responses import Response
+
+
+class CSVResponse(Response):
+    media_type = "text/csv"
+
+    def __init__(self, rows):
+        self.rows = rows
+        buffer = io.StringIO()
+        csv.writer(buffer).writerows(rows)
+        super().__init__(buffer.getvalue())
+
+    async def __call__(self, scope, receive, send):
+        if "http.response.debug" in scope.get("extensions", {}):
+            await send({"type": "http.response.debug", "info": {"rows": self.rows}})
+        await super().__call__(scope, receive, send)
+
+
+def test_export():
+    client = TestClient(app)
+    response = client.get("/export")
+    rows = response.extensions["http.response.debug"]["rows"]
+    assert rows[0] == ("id", "username", "joined")
+    assert len(rows) == 101
+```
+
+Template responses use the same extension to expose the `.template` and `.context`
+response attributes - see [testing template responses](templates.md#testing-template-responses).
+The `info` dictionary is always available as `response.extensions["http.response.debug"]`,
+even when it carries `template`/`context` keys.
 
 ### Change client address
 
@@ -148,7 +231,7 @@ def test_app():
 The operations on session are standard function calls, not awaitables.
 
 It's important to use the session within a context-managed `with` block. This
-ensure that the background thread on which the ASGI application is properly
+ensures that the background thread on which the ASGI application is properly
 terminated, and that any exceptions that occur within the application are
 always raised by the test client.
 
@@ -226,4 +309,10 @@ async def test_app() -> None:
         assert r.text == "Hello World!"
 ```
 
-[httpx2.AsyncClient]: https://www.python-httpx.org/advanced/#calling-into-python-web-apps
+!!! warning "A pytest event loop fixture does not configure TestClient"
+
+    Defining an `event_loop` fixture does not make `TestClient` use that loop.
+    For synchronous tests, create and close resources in [lifespan](lifespan.md#lifespan-state)
+    and use [`TestClient` as a context manager](lifespan.md#running-lifespan-in-tests).
+
+[httpx2.AsyncClient]: https://pydantic.dev/docs/httpx2/advanced/transports/#asgi-transport

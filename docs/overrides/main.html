@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 
+{% block announce %}
+  <a class="md-banner__link" href="https://pydantic.dev/docs/logfire/integrations/web-frameworks/starlette/?utm_source=starlette-docs&utm_medium=banner">
+    🔥 <strong>Pydantic Logfire</strong> is the recommended way to add observability to your Starlette application.
+    <strong>Learn how to instrument it!</strong>
+  </a>
+{% endblock %}
+
 {% block extrahead %}
 {{ super() }}
 <script>

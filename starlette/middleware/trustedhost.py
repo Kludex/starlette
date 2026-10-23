@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from starlette._utils import parse_host_header
 from starlette.datastructures import URL, Headers
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -24,7 +25,7 @@ class TrustedHostMiddleware:
             if pattern.startswith("*") and pattern != "*":
                 assert pattern.startswith("*."), ENFORCE_DOMAIN_WILDCARD
         self.app = app
-        self.allowed_hosts = list(allowed_hosts)
+        self.allowed_hosts = [pattern.lower() for pattern in allowed_hosts]
         self.allow_any = "*" in allowed_hosts
         self.www_redirect = www_redirect
 
@@ -37,7 +38,12 @@ class TrustedHostMiddleware:
             return
 
         headers = Headers(scope=scope)
-        host = headers.get("host", "").split(":")[0]
+        parsed_host = parse_host_header(headers.get("host"))
+        if parsed_host is None:
+            await PlainTextResponse("Invalid host header", status_code=400)(scope, receive, send)
+            return
+        host = parsed_host.host.lower()
+
         is_valid_host = False
         found_www_redirect = False
         for pattern in self.allowed_hosts:

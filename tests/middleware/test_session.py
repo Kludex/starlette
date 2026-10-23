@@ -1,5 +1,7 @@
 import re
 
+import pytest
+
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import Session, SessionMiddleware
@@ -17,6 +19,18 @@ def view_session(request: Request) -> JSONResponse:
 async def update_session(request: Request) -> JSONResponse:
     data = await request.json()
     request.session.update(data)
+    return JSONResponse({"session": request.session})
+
+
+async def inplace_update_session(request: Request) -> JSONResponse:
+    data = await request.json()
+    session = request.session
+    session |= data
+    return JSONResponse({"session": request.session})
+
+
+async def popitem_session(request: Request) -> JSONResponse:
+    request.session.popitem()
     return JSONResponse({"session": request.session})
 
 
@@ -60,6 +74,33 @@ def test_session(test_client_factory: TestClientFactory) -> None:
 
     response = client.get("/view_session")
     assert response.json() == {"session": {}}
+
+
+@pytest.mark.parametrize("partitioned", [False, True])
+def test_partitioned_session(test_client_factory: TestClientFactory, partitioned: bool) -> None:
+    app = Starlette(
+        routes=[
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/clear_session", endpoint=clear_session, methods=["POST"]),
+        ],
+        middleware=[
+            Middleware(
+                SessionMiddleware,
+                secret_key="example",
+                https_only=True,
+                same_site="none",
+                partitioned=partitioned,
+            )
+        ],
+    )
+    client = test_client_factory(app, base_url="https://testserver")
+    response = client.post("/update_session", json={"some": "data"})
+    attributes = response.headers["set-cookie"].split("; ")
+    assert ("partitioned" in attributes) is partitioned
+
+    response = client.post("/clear_session")
+    attributes = response.headers["set-cookie"].split("; ")
+    assert ("partitioned" in attributes) is partitioned
 
 
 def test_session_expires(test_client_factory: TestClientFactory) -> None:
@@ -182,6 +223,17 @@ def test_session_cookie(test_client_factory: TestClientFactory) -> None:
     assert response.json() == {"session": {}}
 
 
+def test_session_zero_max_age(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(
+        routes=[Route("/update_session", endpoint=update_session, methods=["POST"])],
+        middleware=[Middleware(SessionMiddleware, secret_key="example", max_age=0)],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"some": "data"})
+    assert "; Max-Age=0; " in response.headers["set-cookie"]
+
+
 def test_domain_cookie(test_client_factory: TestClientFactory) -> None:
     app = Starlette(
         routes=[
@@ -270,11 +322,13 @@ def test_session_tracks_modification() -> None:
     session = Session({"a": "1"})
     session.pop("a")
     assert session.modified
+    assert session.accessed
 
     # pop with missing key
     session = Session({"a": "1"})
     session.pop("missing", None)
     assert not session.modified
+    assert not session.accessed
 
     # setdefault with missing key
     session = Session({"a": "1"})
@@ -285,3 +339,37 @@ def test_session_tracks_modification() -> None:
     session = Session({"a": "1"})
     session.setdefault("a", "2")
     assert not session.modified
+
+
+@pytest.mark.parametrize(
+    ("path", "data", "expected"),
+    [
+        ("/inplace_update_session", {"c": "3"}, {"a": "1", "b": "2", "c": "3"}),
+        ("/popitem_session", None, {"a": "1"}),
+    ],
+)
+def test_session_persists_mutations(
+    test_client_factory: TestClientFactory,
+    path: str,
+    data: dict[str, str] | None,
+    expected: dict[str, str],
+) -> None:
+    app = Starlette(
+        routes=[
+            Route("/view_session", endpoint=view_session),
+            Route("/update_session", endpoint=update_session, methods=["POST"]),
+            Route("/inplace_update_session", endpoint=inplace_update_session, methods=["POST"]),
+            Route("/popitem_session", endpoint=popitem_session, methods=["POST"]),
+        ],
+        middleware=[Middleware(SessionMiddleware, secret_key="example")],
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/update_session", json={"a": "1", "b": "2"})
+    assert response.json() == {"session": {"a": "1", "b": "2"}}
+
+    response = client.post(path, json=data)
+    assert response.json() == {"session": expected}
+
+    response = client.get("/view_session")
+    assert response.json() == {"session": expected}

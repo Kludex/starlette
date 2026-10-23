@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
+from contextlib import aclosing
 from typing import Any, TypeVar
 
 import anyio
@@ -25,11 +26,10 @@ class _CachedRequest(Request):
     empty body so that downstream things don't hang forever.
     """
 
-    def __init__(self, scope: Scope, receive: Receive):
-        super().__init__(scope, receive)
+    def __init__(self, scope: Scope, receive: Receive, send: Send):
+        super().__init__(scope, receive, send)
         self._wrapped_rcv_disconnected = False
         self._wrapped_rcv_consumed = False
-        self._wrapped_rc_stream = self.stream()
 
     async def wrapped_receive(self) -> Message:
         # wrapped_rcv state 1: disconnected
@@ -80,8 +80,8 @@ class _CachedRequest(Request):
         else:
             # body() was never called and stream() wasn't consumed
             try:
-                stream = self.stream()
-                chunk = await stream.__anext__()
+                async with aclosing(self.stream()) as stream:
+                    chunk = await stream.__anext__()
                 self._wrapped_rcv_consumed = self._stream_consumed
                 return {
                     "type": "http.request",
@@ -103,7 +103,7 @@ class BaseHTTPMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request = _CachedRequest(scope, receive)
+        request = _CachedRequest(scope, receive, send)
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
         app_exc: Exception | None = None
@@ -136,6 +136,11 @@ class BaseHTTPMiddleware:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
+                if message["type"] == "http.response.pathsend" or (
+                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                ):
+                    await response_sent.wait()
+
             async def coro() -> None:
                 nonlocal app_exc
 
@@ -148,10 +153,16 @@ class BaseHTTPMiddleware:
             task_group.start_soon(coro)
 
             try:
-                message = await recv_stream.receive()
-                info = message.get("info", None)
-                if message["type"] == "http.response.debug" and info is not None:
+                info = None
+                while True:
                     message = await recv_stream.receive()
+                    if message["type"] == "http.response.debug":
+                        info = message["info"]
+                        continue
+                    elif message["type"] == "http.response.early_hint":
+                        await send(message)
+                        continue
+                    break
             except anyio.EndOfStream:
                 if app_exc is not None:
                     nonlocal exception_already_raised
@@ -177,11 +188,10 @@ class BaseHTTPMiddleware:
                         break
 
             response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
-            response.raw_headers = message["headers"]
+            response.raw_headers = message.get("headers", [])
             return response
 
-        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
-        send_stream, recv_stream = streams
+        send_stream, recv_stream = anyio.create_memory_object_stream[Message]()
         with recv_stream, send_stream:
             async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)

@@ -1,10 +1,9 @@
 import sys
-from collections.abc import Iterable
-from typing import Any, Callable
+from collections.abc import Callable, Iterable
+from typing import Any
 
 import pytest
 
-from starlette._utils import collapse_excgroups
 from starlette.middleware.wsgi import WSGIMiddleware, build_environ
 from tests.types import TestClientFactory
 
@@ -86,7 +85,7 @@ def test_wsgi_exception(test_client_factory: TestClientFactory) -> None:
     # The HTTP protocol implementations would catch this error and return 500.
     app = WSGIMiddleware(raise_exception)
     client = test_client_factory(app)
-    with pytest.raises(RuntimeError), collapse_excgroups():
+    with pytest.raises(RuntimeError):
         client.get("/")
 
 
@@ -163,3 +162,25 @@ def test_build_environ_encoding() -> None:
     environ = build_environ(scope, b"")
     assert environ["SCRIPT_NAME"] == "/中国".encode().decode("latin-1")
     assert environ["PATH_INFO"] == "/小星".encode().decode("latin-1")
+
+
+@pytest.mark.parametrize(
+    "root_path, path, path_info",
+    [
+        ("/app", "/application", "/application"),
+        ("/app", "/app/users", "/users"),
+        ("/app/", "/app/users", "users"),
+    ],
+)
+def test_build_environ_root_path(root_path: str, path: str, path_info: str) -> None:
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "GET",
+        "path": path,
+        "root_path": root_path,
+        "query_string": b"",
+        "headers": [],
+    }
+    environ = build_environ(scope, b"")
+    assert environ["PATH_INFO"] == path_info

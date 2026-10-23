@@ -4,7 +4,7 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from starlette._utils import get_route_path, is_async_callable
+from starlette._utils import create_collapsing_task_group, get_route_path, is_async_callable
 from starlette.types import Scope
 
 
@@ -102,3 +102,31 @@ def test_async_mocked_async_function() -> None:
 )
 def test_get_route_path(scope: Scope, expected_result: str) -> None:
     assert get_route_path(scope) == expected_result
+
+
+@pytest.mark.anyio
+async def test_collapsing_task_group_one_exc() -> None:
+    class MyException(Exception):
+        pass
+
+    with pytest.raises(MyException):
+        async with create_collapsing_task_group():
+            raise MyException
+
+
+@pytest.mark.anyio
+async def test_collapsing_task_group_two_exc() -> None:
+    class MyException(Exception):
+        pass
+
+    async def raise_exc() -> None:
+        raise MyException
+
+    with pytest.raises(ExceptionGroup) as exc:
+        async with create_collapsing_task_group() as task_group:
+            task_group.start_soon(raise_exc)
+            raise MyException
+
+    exc1, exc2 = exc.value.exceptions
+    assert isinstance(exc1, MyException)
+    assert isinstance(exc2, MyException)

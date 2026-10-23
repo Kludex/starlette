@@ -99,7 +99,7 @@ exception_handlers = {
 }
 ```
 
-It's important to notice that in case a [`BackgroundTask`](https://www.starlette.io/background/) raises an exception,
+It's important to notice that in case a [`BackgroundTask`](background.md) raises an exception,
 it will be handled by the `handle_error` function, but at that point, the response was already sent. In other words,
 the response created by `handle_error` will be discarded. In case the error happens before the response was sent, then
 it will use the response object - in the above example, the returned `JSONResponse`.
@@ -119,6 +119,9 @@ The `HTTPException` class provides a base class that you can use for any handled
 The `ExceptionMiddleware` implementation defaults to returning plain-text HTTP responses for any `HTTPException`.
 
 * `HTTPException(status_code, detail=None, headers=None)`
+
+When `detail` is not provided, it defaults to the standard phrase for the status code. If no standard phrase exists,
+it defaults to an empty string.
 
 You should only raise `HTTPException` inside routing or endpoints.
 Middleware classes should instead just return appropriate responses directly.
@@ -144,6 +147,6 @@ app = Starlette(routes=[WebSocketRoute("/ws", websocket_endpoint)])
 
 You can use the `WebSocketException` class to raise errors inside of WebSocket endpoints.
 
-* `WebSocketException(code=1008, reason=None)`
+* `WebSocketException(code, reason=None)`
 
 You can set any code valid as defined [in the specification](https://tools.ietf.org/html/rfc6455#section-7.4.1).

@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, assert_type
 
 import pytest
-from typing_extensions import assert_type
 
 from starlette.config import Config, Environ, EnvironError
 from starlette.datastructures import URL, Secret
@@ -18,13 +17,13 @@ def test_config_types() -> None:
     assert_type(config("STR"), str)
     assert_type(config("STR_DEFAULT", default=""), str)
     assert_type(config("STR_CAST", cast=str), str)
-    assert_type(config("STR_NONE", default=None), Optional[str])
-    assert_type(config("STR_CAST_NONE", cast=str, default=None), Optional[str])
+    assert_type(config("STR_NONE", default=None), str | None)
+    assert_type(config("STR_CAST_NONE", cast=str, default=None), str | None)
     assert_type(config("STR_CAST_STR", cast=str, default=""), str)
 
     assert_type(config("BOOL", cast=bool), bool)
     assert_type(config("BOOL_DEFAULT", cast=bool, default=False), bool)
-    assert_type(config("BOOL_NONE", cast=bool, default=None), Optional[bool])
+    assert_type(config("BOOL_NONE", cast=bool, default=None), bool | None)
 
     def cast_to_int(v: Any) -> int:
         return int(v)
@@ -140,3 +139,21 @@ def test_config_with_env_prefix(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(KeyError):
         config.get("ENVIRONMENT")
+
+
+def test_config_with_encoding(tmpdir: Path) -> None:
+    path = tmpdir / ".env"
+    path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
+    config = Config(path, encoding="utf-8")
+    assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_strips_matching_quotes(tmp_path: Path) -> None:
+    path = tmp_path / ".env"
+    path.write_text('SINGLE=\'say "hi"\'\nDOUBLE="it\'s"\nTRAILING="secret\'"\nUNQUOTED=abc\nQUOTE="\n')
+    config = Config(path)
+    assert config.get("SINGLE") == 'say "hi"'
+    assert config.get("DOUBLE") == "it's"
+    assert config.get("TRAILING") == "secret'"
+    assert config.get("UNQUOTED") == "abc"
+    assert config.get("QUOTE") == '"'

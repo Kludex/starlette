@@ -4,8 +4,8 @@ import contextlib
 import functools
 import json
 import uuid
-from collections.abc import AsyncGenerator, AsyncIterator, Generator
-from typing import Callable, TypedDict
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
+from typing import Never, TypedDict
 
 import pytest
 
@@ -79,6 +79,10 @@ def contact(request: Request) -> Response:
     return Response("Hello, POST!", media_type="text/plain")
 
 
+def search(request: Request) -> Response:
+    return Response("Hello, QUERY!", media_type="text/plain")
+
+
 def int_convertor(request: Request) -> JSONResponse:
     number = request.path_params["param"]
     return JSONResponse({"int": number})
@@ -147,6 +151,7 @@ app = Router(
         Mount("/static", app=Response("xxxxx", media_type="image/png")),
         Route("/func", endpoint=func_homepage, methods=["GET"]),
         Route("/func", endpoint=contact, methods=["POST"]),
+        Route("/search", endpoint=search, methods=["QUERY"]),
         Route("/int/{param:int}", endpoint=int_convertor, name="int-convertor"),
         Route("/float/{param:float}", endpoint=float_convertor, name="float-convertor"),
         Route("/path/{param:path}", endpoint=path_convertor, name="path-convertor"),
@@ -271,6 +276,12 @@ def test_url_path_for() -> None:
         app.url_path_for("user", username="")
 
 
+def test_url_path_for_with_double_slash_path() -> None:
+    router = Router([Route("/{path:path}", endpoint=homepage, name="catchall")])
+    assert router.url_path_for("catchall", path="/example.org/a") == "/%2Fexample.org/a"
+    assert router.url_path_for("catchall", path="\\example.org/a") == "/%5Cexample.org/a"
+
+
 def test_url_for() -> None:
     assert app.url_path_for("homepage").make_absolute_url(base_url="https://example.org") == "https://example.org/"
     assert (
@@ -301,6 +312,17 @@ def test_router_duplicate_path(client: TestClient) -> None:
     response = client.post("/func")
     assert response.status_code == 200
     assert response.text == "Hello, POST!"
+
+
+def test_router_query_method(client: TestClient) -> None:
+    response = client.request("QUERY", "/search")
+    assert response.status_code == 200
+    assert response.text == "Hello, QUERY!"
+
+    response = client.get("/search")
+    assert response.status_code == 405
+    assert response.text == "Method Not Allowed"
+    assert response.headers["allow"] == "QUERY"
 
 
 def test_router_add_websocket_route(client: TestClient) -> None:
@@ -475,6 +497,48 @@ def test_host_routing(test_client_factory: TestClientFactory) -> None:
     assert response.status_code == 200
 
 
+@pytest.mark.parametrize(
+    "host",
+    [
+        "api.example.org:evil",
+        "[:::]",
+    ],
+)
+def test_host_routing_rejects_invalid_hosts(test_client_factory: TestClientFactory, host: str) -> None:
+    client = test_client_factory(mixed_hosts_app, base_url="https://api.example.org/")
+    response = client.get("/users", headers={"host": host})
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("host", ["api.example.org:000080", "api.example.org:65536", "api.example.org:100000"])
+def test_host_routing_ignores_port(host: str, test_client_factory: TestClientFactory) -> None:
+    client = test_client_factory(mixed_hosts_app, base_url="https://api.example.org/")
+    response = client.get("/users", headers={"host": host})
+    assert response.status_code == 200
+
+
+def test_host_routing_ip_literals(test_client_factory: TestClientFactory) -> None:
+    app = Router(
+        routes=[
+            Host("[::1]", app=PlainTextResponse("loopback")),
+            Host("[2001:db8::1]", app=PlainTextResponse("documentation")),
+            Host("[v1.foo]", app=PlainTextResponse("future")),
+        ]
+    )
+
+    client = test_client_factory(app, base_url="https://[::1]/")
+    response = client.get("/")
+    assert response.text == "loopback"
+
+    client = test_client_factory(app, base_url="https://[2001:db8::1]/")
+    response = client.get("/")
+    assert response.text == "documentation"
+
+    client = test_client_factory(app)
+    response = client.get("/", headers={"host": "[v1.foo]"})
+    assert response.text == "future"
+
+
 def test_host_reverse_urls() -> None:
     assert mixed_hosts_app.url_path_for("homepage").make_absolute_url("https://whatever") == "https://www.example.org/"
     assert (
@@ -622,117 +686,9 @@ def test_standalone_ws_route_does_not_match(
             pass  # pragma: no cover
 
 
-def test_lifespan_async(test_client_factory: TestClientFactory) -> None:
-    startup_complete = False
-    shutdown_complete = False
-
-    async def hello_world(request: Request) -> PlainTextResponse:
-        return PlainTextResponse("hello, world")
-
-    async def run_startup() -> None:
-        nonlocal startup_complete
-        startup_complete = True
-
-    async def run_shutdown() -> None:
-        nonlocal shutdown_complete
-        shutdown_complete = True
-
-    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
-        app = Router(
-            on_startup=[run_startup],
-            on_shutdown=[run_shutdown],
-            routes=[Route("/", hello_world)],
-        )
-
-    assert not startup_complete
-    assert not shutdown_complete
-    with test_client_factory(app) as client:
-        assert startup_complete
-        assert not shutdown_complete
-        client.get("/")
-    assert startup_complete
-    assert shutdown_complete
-
-
-def test_lifespan_with_on_events(test_client_factory: TestClientFactory) -> None:
-    lifespan_called = False
-    startup_called = False
-    shutdown_called = False
-
+def test_lifespan_state_unsupported(test_client_factory: TestClientFactory) -> None:
     @contextlib.asynccontextmanager
-    async def lifespan(app: Starlette) -> AsyncGenerator[None, None]:
-        nonlocal lifespan_called
-        lifespan_called = True
-        yield
-
-    # We do not expected, neither of run_startup nor run_shutdown to be called
-    # we thus mark them as #pragma: no cover, to fulfill test coverage
-    def run_startup() -> None:  # pragma: no cover
-        nonlocal startup_called
-        startup_called = True
-
-    def run_shutdown() -> None:  # pragma: no cover
-        nonlocal shutdown_called
-        shutdown_called = True
-
-    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
-        with pytest.warns(
-            UserWarning, match="The `lifespan` parameter cannot be used with `on_startup` or `on_shutdown`."
-        ):
-            app = Router(on_startup=[run_startup], on_shutdown=[run_shutdown], lifespan=lifespan)
-
-            assert not lifespan_called
-            assert not startup_called
-            assert not shutdown_called
-
-            # Triggers the lifespan events
-            with test_client_factory(app):
-                ...
-
-            assert lifespan_called
-            assert not startup_called
-            assert not shutdown_called
-
-
-def test_lifespan_sync(test_client_factory: TestClientFactory) -> None:
-    startup_complete = False
-    shutdown_complete = False
-
-    def hello_world(request: Request) -> PlainTextResponse:
-        return PlainTextResponse("hello, world")
-
-    def run_startup() -> None:
-        nonlocal startup_complete
-        startup_complete = True
-
-    def run_shutdown() -> None:
-        nonlocal shutdown_complete
-        shutdown_complete = True
-
-    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
-        app = Router(
-            on_startup=[run_startup],
-            on_shutdown=[run_shutdown],
-            routes=[Route("/", hello_world)],
-        )
-
-    assert not startup_complete
-    assert not shutdown_complete
-    with test_client_factory(app) as client:
-        assert startup_complete
-        assert not shutdown_complete
-        client.get("/")
-    assert startup_complete
-    assert shutdown_complete
-
-
-def test_lifespan_state_unsupported(
-    test_client_factory: TestClientFactory,
-) -> None:
-    @contextlib.asynccontextmanager
-    async def lifespan(
-        app: ASGIApp,
-    ) -> AsyncGenerator[dict[str, str], None]:
+    async def lifespan(app: ASGIApp) -> AsyncGenerator[dict[str, str], None]:
         yield {"foo": "bar"}
 
     app = Router(
@@ -798,11 +754,12 @@ def test_lifespan_state_async_cm(test_client_factory: TestClientFactory) -> None
 
 
 def test_raise_on_startup(test_client_factory: TestClientFactory) -> None:
-    def run_startup() -> None:
+    @contextlib.asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncIterator[Never]:
         raise RuntimeError()
+        yield  # pragma: no cover
 
-    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
-        router = Router(on_startup=[run_startup])
+    router = Router(lifespan=lifespan)
     startup_failed = False
 
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
@@ -821,13 +778,14 @@ def test_raise_on_startup(test_client_factory: TestClientFactory) -> None:
 
 
 def test_raise_on_shutdown(test_client_factory: TestClientFactory) -> None:
-    def run_shutdown() -> None:
-        raise RuntimeError()
+    @contextlib.asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncIterator[None]:
+        yield
+        raise RuntimeError("Shutdown failed")
 
-    with pytest.deprecated_call(match="The on_startup and on_shutdown parameters are deprecated"):
-        app = Router(on_shutdown=[run_shutdown])
+    app = Router(lifespan=lifespan)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Shutdown failed"):
         with test_client_factory(app):
             pass  # pragma: no cover
 
@@ -1196,22 +1154,6 @@ def test_host_named_repr() -> None:
     assert repr(route).startswith("Host(host='example.com', name='app', app=")
 
 
-def test_decorator_deprecations() -> None:
-    router = Router()
-
-    with pytest.deprecated_call():
-        router.route("/")(homepage)
-
-    with pytest.deprecated_call():
-        router.websocket_route("/ws")(websocket_endpoint)
-
-    with pytest.deprecated_call():
-
-        async def startup() -> None: ...  # pragma: no cover
-
-        router.on_event("startup")(startup)
-
-
 async def echo_paths(request: Request, name: str) -> JSONResponse:
     return JSONResponse(
         {
@@ -1301,3 +1243,14 @@ def test_paths_with_root_path(test_client_factory: TestClientFactory) -> None:
         "path": "/root/root-queue/path",
         "root_path": "/root",
     }
+
+
+def test_host_routing_is_case_insensitive(test_client_factory: TestClientFactory) -> None:
+    async def endpoint(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(request.path_params["subdomain"])
+
+    router = Router(routes=[Host("{subdomain}.Example.org", app=Router(routes=[Route("/", endpoint)]))])
+
+    response = test_client_factory(router).get("/", headers={"host": "Sub.example.ORG"})
+    assert response.status_code == 200
+    assert response.text == "sub"

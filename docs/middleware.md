@@ -47,6 +47,97 @@ application would look like this:
 
 The following middleware implementations are available in the Starlette package:
 
+## OpenTelemetry
+
+Creates an OpenTelemetry server span for every incoming HTTP request. The span follows the
+OpenTelemetry HTTP semantic conventions, extracts distributed trace context from the request
+headers, and uses the matched route template for its name and `http.route` attribute.
+
+!!! warning "Experimental API"
+    `OpenTelemetryMiddleware` is experimental. Its API and emitted telemetry may change in minor
+    releases without a deprecation period.
+
+Install the optional API dependency with `pip install opentelemetry-api`, or as part of
+`pip install "starlette[full]"`. Starlette only uses the OpenTelemetry API. Your application
+chooses and configures the SDK and exporter. If no tracer provider is configured, the middleware
+skips tracing.
+
+**Pydantic Logfire** configures a global OpenTelemetry provider. Add the middleware to enable
+Starlette tracing:
+
+```python
+import logfire
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+
+logfire.configure()
+
+app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
+```
+
+The same applies to any standard OpenTelemetry SDK configuration:
+
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+
+tracer_provider = TracerProvider()
+tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+trace.set_tracer_provider(tracer_provider)
+
+app = Starlette(middleware=[Middleware(OpenTelemetryMiddleware)])
+```
+
+You can create the app before you configure the global provider.
+
+You can also wrap any ASGI application directly:
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+
+app = OpenTelemetryMiddleware(Starlette())
+```
+
+Multiple native middleware instances on the same request create only one span.
+
+### Exclude URLs
+
+Pass a comma-separated string or a sequence of regular expressions in `excluded_urls`. If any
+expression matches the full request URL, the middleware does not create a span. This is useful for
+health checks, readiness probes, and other high-volume endpoints that you do not need to trace.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.opentelemetry import OpenTelemetryMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world!")
+
+
+app = Starlette(
+    routes=[Route("/", homepage), Route("/health", homepage)],
+    middleware=[
+        Middleware(
+            OpenTelemetryMiddleware,
+            excluded_urls=r"/health$,/readiness$",
+        )
+    ],
+)
+```
+
 ## CORSMiddleware
 
 Adds appropriate [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to outgoing responses in order to allow cross-origin requests from browsers.
@@ -72,10 +163,11 @@ app = Starlette(routes=routes, middleware=middleware)
 The following arguments are supported:
 
 * `allow_origins` - A list of origins that should be permitted to make cross-origin requests. eg. `['https://example.org', 'https://www.example.org']`. You can use `['*']` to allow any origin.
-* `allow_origin_regex` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. `'https://.*\.example\.org'`.
+* `allow_origin_regex` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. `'https://[a-zA-Z0-9-]+\.example\.org'`. Avoid using `.*` or `.+` as they match URL special characters (`/`, `@`, `#`, `?`) and may result in overly permissive origin matching. Use specific character classes like `[a-zA-Z0-9-]+` instead.
 * `allow_methods` - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to `['GET']`. You can use `['*']` to allow all standard methods.
 * `allow_headers` - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to `[]`. You can use `['*']` to allow all headers. The `Accept`, `Accept-Language`, `Content-Language` and `Content-Type` headers are always allowed for CORS requests.
 * `allow_credentials` - Indicate that cookies should be supported for cross-origin requests. Defaults to `False`. Also, `allow_origins`, `allow_methods` and `allow_headers` cannot be set to `['*']` for credentials to be allowed, all of them must be explicitly specified.
+* `allow_private_network` - Indicates whether to accept cross-origin requests over a private network. Defaults to `False`.
 * `expose_headers` - Indicate any response headers that should be made accessible to the browser. Defaults to `[]`.
 * `max_age` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to `600`.
 
@@ -91,6 +183,14 @@ appropriate CORS headers, and either a 200 or 400 response for informational pur
 
 Any request with an `Origin` header. In this case the middleware will pass the
 request through as normal, but will include appropriate CORS headers on the response.
+
+#### Private Network Access (PNA)
+
+Private Network Access is a browser security feature that restricts websites from public networks from accessing servers on private networks.
+
+When a website attempts to make such a cross-network request, the browser will send a `Access-Control-Request-Private-Network: true` header in the
+pre-flight request. If the `allow_private_network` flag is set to `True`, the middleware will include the `Access-Control-Allow-Private-Network: true`
+header in the response, allowing the request. If set to `False`, the middleware will return a 400 response, blocking the request.
 
 ### CORSMiddleware Global Enforcement
 
@@ -121,7 +221,11 @@ if __name__ == '__main__':
 
 Adds signed cookie-based HTTP sessions. Session information is readable but not modifiable.
 
+The session cookie is always set with the `"HttpOnly"` flag, preventing client-side JavaScript from accessing it.
+
 Access or modify the session data using the `request.session` dictionary interface.
+
+Changes to nested values are not tracked automatically. For example, `request.session["cart"].append(item)` does not mark the session as modified. Assign the updated value back to the session, such as `request.session["cart"] = cart`, to ensure the changes are saved.
 
 The following arguments are supported:
 
@@ -130,8 +234,9 @@ The following arguments are supported:
 * `max_age` - Session expiry time in seconds. Defaults to 2 weeks. If set to `None` then the cookie will last as long as the browser session.
 * `same_site` - SameSite flag prevents the browser from sending session cookie along with cross-site requests. Defaults to `'lax'`.
 * `path` - The path set for the session cookie. Defaults to `'/'`.
-* `https_only` - Indicate that Secure flag should be set (can be used with HTTPS only). Defaults to `False`.
+* `https_only` - Indicate that the `"Secure"` flag should be set (can be used with HTTPS only). Defaults to `False`. Set this to `True` in production to ensure the session cookie is only sent over HTTPS.
 * `domain` - Domain of the cookie used to share cookie between subdomains or cross-domains. The browser defaults the domain to the same host that set the cookie, excluding subdomains ([reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#domain_attribute)).
+* `partitioned` - Set the `Partitioned` flag when you write or clear the session cookie. Defaults to `False`. Set `https_only=True` when you enable it. For cross-site embeds, also set `same_site="none"`. This gives your embedded app a separate session for each top-level site ([reference](https://developer.mozilla.org/en-US/docs/Web/Privacy/Guides/Third-party_cookies/Partitioned_cookies)).
 
 
 ```python
@@ -191,11 +296,42 @@ app = Starlette(routes=routes, middleware=middleware)
 The following arguments are supported:
 
 * `allowed_hosts` - A list of domain names that should be allowed as hostnames. Wildcard
-domains such as `*.example.com` are supported for matching subdomains. To allow any
-hostname either use `allowed_hosts=["*"]` or omit the middleware.
+domains such as `*.example.com` are supported for matching subdomains. Use bracketed
+notation for IPv6 addresses, such as `allowed_hosts=["[::1]"]`. To allow any hostname,
+use `allowed_hosts=["*"]` or omit the middleware.
 * `www_redirect` - If set to True, requests to non-www versions of the allowed hosts will be redirected to their www counterparts. Defaults to `True`.
 
 If an incoming request does not validate correctly then a 400 response will be sent.
+
+## RequestBodyLimitMiddleware
+
+Limits the total size of incoming HTTP request bodies. The limit applies to the
+raw body bytes, including multipart file data and multipart encoding overhead.
+Requests that exceed the limit receive a `413 Content Too Large` response.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.body_limit import RequestBodyLimitMiddleware
+
+
+routes = ...
+
+middleware = [
+    Middleware(RequestBodyLimitMiddleware, max_body_size=10 * 1024 * 1024)
+]
+
+app = Starlette(routes=routes, middleware=middleware)
+```
+
+The following argument is supported:
+
+* `max_body_size` - The non-negative maximum request body size in bytes.
+
+The middleware uses `Content-Length` to reject an oversized body before reading
+it when possible, and always counts the body bytes received from the ASGI server.
+This also supports requests without `Content-Length` and prevents an understated
+header from bypassing the limit.
 
 ## GZipMiddleware
 
@@ -203,13 +339,12 @@ Handles GZip responses for any request that includes `"gzip"` in the `Accept-Enc
 
 The middleware will handle both standard and streaming responses.
 
-??? info "Buffer on streaming responses"
-    On streaming responses, the middleware will buffer the response before compressing it.
+??? info "Compression of streaming responses"
+    On streaming responses, the middleware compresses and emits output for every chunk the application sends,
+    so chunks reach the client as they are produced instead of waiting for the compressor's buffer to fill.
 
-    The idea is that we don't want to compress every small chunk of data, as it would be inefficient.
-    Instead, we buffer the response until it reaches a certain size, and then compress it.
-
-    This may cause a delay in the response, as the middleware waits for the buffer to fill up before compressing it.
+    This favors timely delivery over compression ratio: many small chunks compress less effectively than a few
+    large ones. Batch the chunks you yield if you want to maximize compression.
 
 ```python
 from starlette.applications import Starlette
@@ -230,9 +365,14 @@ The following arguments are supported:
 
 * `minimum_size` - Do not GZip responses that are smaller than this minimum size in bytes. Defaults to `500`.
 * `compresslevel` - Used during GZip compression. It is an integer ranging from 1 to 9. Defaults to `9`. Lower value results in faster compression but larger file sizes, while higher value results in slower compression but smaller file sizes.
+* `thread_minimum_size` - Compress body chunks at least this large in a worker thread, keeping the event loop responsive. Defaults to `131072` (128 KiB). Chunks below this size compress inline in at most a couple of milliseconds, while the fixed cost of dispatching to a worker thread would dominate.
+* `exclude_content_types` - Content types that are never compressed. A response is excluded when its `Content-Type` media type equals one of these values, or matches a `type/*` entry like `"image/*"` - matching is case-insensitive and ignores parameters like `charset`. Defaults to `DEFAULT_EXCLUDED_CONTENT_TYPES` (importable, to extend rather than replace): `text/event-stream`, native gRPC (`application/grpc`, which also covers `application/grpc+proto` and other `application/grpc+...` subtypes), plus already-compressed formats - zip and gzip archives, common raster image types, `video/*`, `audio/*`, and WOFF fonts. `image/svg+xml` is deliberately not excluded, since SVG is text and compresses well.
 
-The middleware won't GZip responses that already have either a `Content-Encoding` set, to prevent them from
-being encoded twice, or a `Content-Type` set to `text/event-stream`, to avoid compressing server-sent events.
+The middleware won't GZip responses that already have a `Content-Encoding` set, to prevent them from being
+encoded twice, partial content responses (status `206`), to keep range semantics
+intact, or responses with a `Content-Type` in `exclude_content_types` - by default `text/event-stream`, to
+avoid compressing server-sent events, and already-compressed formats, where compression wastes CPU for no
+gain.
 
 ## BaseHTTPMiddleware
 

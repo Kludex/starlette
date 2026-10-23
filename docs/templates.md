@@ -1,13 +1,14 @@
 Starlette is not _strictly_ coupled to any particular templating engine, but
 Jinja2 provides an excellent choice.
 
-### Jinja2Templates
-
-Signature: `Jinja2Templates(directory, context_processors=None, **env_options)`
-
-* `directory` - A string, [os.Pathlike][pathlike] or a list of strings or [os.Pathlike][pathlike] denoting a directory path.
-* `context_processors` - A list of functions that return a dictionary to add to the template context.
-* `**env_options` - Additional keyword arguments to pass to the Jinja2 environment.
+??? abstract "API Reference"
+    ::: starlette.templating.Jinja2Templates
+        options:
+            parameter_headings: false
+            show_root_heading: true
+            heading_level: 3
+            filters:
+                - "__init__"
 
 Starlette provides a simple way to get `jinja2` configured. This is probably
 what you want to use by default.
@@ -73,6 +74,16 @@ templates = Jinja2Templates(env=env)
 ```
 
 
+## Autoescape
+
+When using the `directory` argument, Starlette enables autoescape by default for
+`.html`, `.htm`, and `.xml` templates using [`jinja2.select_autoescape()`](https://jinja.palletsprojects.com/en/stable/api/#jinja2.select_autoescape).
+
+This protects against Cross-Site Scripting (XSS) vulnerabilities by escaping
+user-provided content before rendering it in the template. For example, if a user
+submits `<script>alert('XSS')</script>` as their name, it will be rendered as
+`&lt;script&gt;alert('XSS')&lt;/script&gt;` instead of being executed as JavaScript.
+
 ## Context processors
 
 A context processor is a function that returns a dictionary to be merged into a template context.
@@ -124,20 +135,6 @@ def test_homepage():
     assert response.status_code == 200
     assert response.template.name == 'index.html'
     assert "request" in response.context
-```
-
-## Customizing Jinja2 Environment
-
-`Jinja2Templates` accepts all options supported by Jinja2 `Environment`.
-This will allow more control over the `Environment` instance created by Starlette.
-
-For the list of options available to `Environment` you can check Jinja2 documentation [here](https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment)
-
-```python
-from starlette.templating import Jinja2Templates
-
-
-templates = Jinja2Templates(directory='templates', autoescape=False, auto_reload=True)
 ```
 
 ## Asynchronous template rendering

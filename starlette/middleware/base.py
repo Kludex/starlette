@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Mapping, MutableMapping
-from typing import Any, Callable, TypeVar, Union
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
+from contextlib import aclosing
+from typing import Any, TypeVar
 
 import anyio
 
-from starlette._utils import collapse_excgroups
+from starlette._utils import create_collapsing_task_group
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
 DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
-BodyStreamGenerator = AsyncGenerator[Union[bytes, MutableMapping[str, Any]], None]
-AsyncContentStream = AsyncIterable[Union[str, bytes, memoryview, MutableMapping[str, Any]]]
+BodyStreamGenerator = AsyncGenerator[bytes | MutableMapping[str, Any], None]
+AsyncContentStream = AsyncIterable[str | bytes | memoryview | MutableMapping[str, Any]]
 T = TypeVar("T")
 
 
@@ -25,11 +26,10 @@ class _CachedRequest(Request):
     empty body so that downstream things don't hang forever.
     """
 
-    def __init__(self, scope: Scope, receive: Receive):
-        super().__init__(scope, receive)
+    def __init__(self, scope: Scope, receive: Receive, send: Send):
+        super().__init__(scope, receive, send)
         self._wrapped_rcv_disconnected = False
         self._wrapped_rcv_consumed = False
-        self._wrapped_rc_stream = self.stream()
 
     async def wrapped_receive(self) -> Message:
         # wrapped_rcv state 1: disconnected
@@ -80,8 +80,8 @@ class _CachedRequest(Request):
         else:
             # body() was never called and stream() wasn't consumed
             try:
-                stream = self.stream()
-                chunk = await stream.__anext__()
+                async with aclosing(self.stream()) as stream:
+                    chunk = await stream.__anext__()
                 self._wrapped_rcv_consumed = self._stream_consumed
                 return {
                     "type": "http.request",
@@ -103,7 +103,7 @@ class BaseHTTPMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request = _CachedRequest(scope, receive)
+        request = _CachedRequest(scope, receive, send)
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
         app_exc: Exception | None = None
@@ -136,6 +136,11 @@ class BaseHTTPMiddleware:
                     # recv_stream has been closed, i.e. response_sent has been set.
                     return
 
+                if message["type"] == "http.response.pathsend" or (
+                    message["type"] == "http.response.body" and not message.get("more_body", False)
+                ):
+                    await response_sent.wait()
+
             async def coro() -> None:
                 nonlocal app_exc
 
@@ -148,15 +153,30 @@ class BaseHTTPMiddleware:
             task_group.start_soon(coro)
 
             try:
-                message = await recv_stream.receive()
-                info = message.get("info", None)
-                if message["type"] == "http.response.debug" and info is not None:
+                info = None
+                while True:
                     message = await recv_stream.receive()
+                    if message["type"] == "http.response.debug":
+                        info = message["info"]
+                        continue
+                    elif message["type"] == "http.response.early_hint":
+                        await send(message)
+                        continue
+                    break
             except anyio.EndOfStream:
                 if app_exc is not None:
                     nonlocal exception_already_raised
                     exception_already_raised = True
-                    raise app_exc
+                    # Prevent `anyio.EndOfStream` from polluting app exception context.
+                    # If both cause and context are None then the context is suppressed
+                    # and `anyio.EndOfStream` is not present in the exception traceback.
+                    # If exception cause is not None then it is propagated with
+                    # reraising here.
+                    # If exception has no cause but has context set then the context is
+                    # propagated as a cause with the reraise. This is necessary in order
+                    # to prevent `anyio.EndOfStream` from polluting the exception
+                    # context.
+                    raise app_exc from app_exc.__cause__ or app_exc.__context__
                 raise RuntimeError("No response returned.")
 
             assert message["type"] == "http.response.start"
@@ -177,10 +197,9 @@ class BaseHTTPMiddleware:
             response.raw_headers = message["headers"]
             return response
 
-        streams: anyio.create_memory_object_stream[Message] = anyio.create_memory_object_stream()
-        send_stream, recv_stream = streams
-        with recv_stream, send_stream, collapse_excgroups():
-            async with anyio.create_task_group() as task_group:
+        send_stream, recv_stream = anyio.create_memory_object_stream[Message]()
+        with recv_stream, send_stream:
+            async with create_collapsing_task_group() as task_group:
                 response = await self.dispatch_func(request, call_next)
                 await response(scope, wrapped_receive, send)
                 response_sent.set()

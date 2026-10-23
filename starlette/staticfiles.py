@@ -15,6 +15,7 @@ from starlette.datastructures import URL, Headers
 from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.types import Receive, Scope, Send
+from starlette.websockets import WebSocketClose
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -88,6 +89,11 @@ class StaticFiles:
         """
         The ASGI entry point.
         """
+        if scope["type"] == "websocket":
+            websocket_close = WebSocketClose()
+            await websocket_close(scope, receive, send)
+            return
+
         assert scope["type"] == "http"
 
         if not self.config_checked:
@@ -111,7 +117,7 @@ class StaticFiles:
         Returns an HTTP response, given the incoming path, method and request headers.
         """
         if scope["method"] not in ("GET", "HEAD"):
-            raise HTTPException(status_code=405)
+            raise HTTPException(status_code=405, headers={"Allow": "GET, HEAD"})
 
         try:
             full_path, stat_result = await anyio.to_thread.run_sync(self.lookup_path, path)
@@ -123,6 +129,9 @@ class StaticFiles:
                 raise HTTPException(status_code=404)
 
             raise exc
+        except ValueError:
+            # Null bytes or other invalid characters in the path.
+            raise HTTPException(status_code=404)
 
         if stat_result and stat.S_ISREG(stat_result.st_mode):
             # We have a static file to serve.
@@ -149,6 +158,9 @@ class StaticFiles:
         raise HTTPException(status_code=404)
 
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        # Reject absolute paths so they cannot escape the served directory.
+        if path.startswith(("/", "\\")):
+            return "", None
         for directory in self.all_directories:
             joined_path = os.path.join(directory, path)
             if self.follow_symlink:
@@ -201,13 +213,12 @@ class StaticFiles:
         Given the request and response headers, return `True` if an HTTP
         "Not Modified" response could be returned instead.
         """
-        try:
-            if_none_match = request_headers["if-none-match"]
-            etag = response_headers["etag"]
-            if etag in [tag.strip(" W/") for tag in if_none_match.split(",")]:
+        if if_none_match := request_headers.get("if-none-match"):
+            if if_none_match.strip() == "*":
                 return True
-        except KeyError:
-            pass
+            # The "etag" header is added by FileResponse, so it's always present.
+            etag = response_headers["etag"]
+            return etag in [tag.strip().removeprefix("W/") for tag in if_none_match.split(",")]
 
         try:
             if_modified_since = parsedate(request_headers["if-modified-since"])

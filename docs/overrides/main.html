@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block announce %}
+  <a class="md-banner__link" href="https://pydantic.dev/docs/logfire/integrations/web-frameworks/starlette/?utm_source=starlette-docs&utm_medium=banner">
+    🔥 <strong>Pydantic Logfire</strong> is the recommended way to add observability to your Starlette application.
+    <strong>Learn how to instrument it!</strong>
+  </a>
+{% endblock %}
+
+{% block extrahead %}
+{{ super() }}
+<script>
+  // Redirect starlette.io to starlette.dev
+  if (window.location.hostname === 'www.starlette.io' || window.location.hostname === 'starlette.io') {
+    const newUrl = window.location.href.replace(/^https?:\/\/(www\.)?starlette\.io/, 'https://starlette.dev');
+    window.location.replace(newUrl);
+  }
+</script>
+{% endblock %}

@@ -15,7 +15,8 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.datastructures import Headers, UploadFile
-from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
+from starlette.exceptions import StarletteDeprecationWarning
+from starlette.formparsers import FormMessage, FormParser, MultiPartException, MultiPartParser
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount
@@ -611,7 +612,7 @@ async def test_urlencoded_limits_stop_parsing_within_a_single_chunk() -> None:
     with pytest.raises(MultiPartException, match="Field exceeded maximum size"):
         await parser.parse()
     await stream.aclose()
-    assert sum(len(data) for _, data in parser.messages) <= 1024
+    assert len(parser._field_value) <= 1024
 
 
 @pytest.mark.parametrize(
@@ -1105,6 +1106,11 @@ def test_multipart_closes_tempfile_on_oserror(
         client.post("/", content=content, headers=headers)
 
     assert close_called
+
+
+def test_form_message_is_deprecated() -> None:
+    with pytest.warns(StarletteDeprecationWarning, match="`FormMessage` is deprecated"):
+        FormMessage(1)
 
 
 @pytest.mark.anyio

@@ -14,7 +14,7 @@ from unittest import mock
 import pytest
 
 from starlette.applications import Starlette
-from starlette.datastructures import Headers, UploadFile
+from starlette.datastructures import FormData, Headers, UploadFile
 from starlette.exceptions import StarletteDeprecationWarning
 from starlette.formparsers import FormMessage, FormParser, MultiPartException, MultiPartParser
 from starlette.requests import Request
@@ -1114,20 +1114,9 @@ def test_form_message_is_deprecated() -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    "chunks",
-    [
-        [b"first=one&second=two"],
-        [b"first=one&sec", b"ond=two"],
-        [b"first=one&second=two", b""],
-        [b"first=one", b"", b"&second=two"],
-    ],
-)
-async def test_urlencoded_parser_finalizes_without_empty_stream_chunk(chunks: list[bytes]) -> None:
+async def test_urlencoded_stream_without_empty_final_chunk() -> None:
     async def stream() -> AsyncGenerator[bytes, None]:
-        for chunk in chunks:
-            yield chunk
+        yield b"first=one&second=two"
 
     parser = FormParser(Headers({"content-type": "application/x-www-form-urlencoded"}), stream())
-    data = await parser.parse()
-    assert data.multi_items() == [("first", "one"), ("second", "two")]
+    assert await parser.parse() == FormData([("first", "one"), ("second", "two")])

@@ -37,7 +37,9 @@ else:
 
 
 @deprecated(
-    "`FormMessage` is deprecated and will be removed in a future version.", category=StarletteDeprecationWarning
+    "`FormMessage` is deprecated and will be removed in a future version.",
+    category=StarletteDeprecationWarning,
+    stacklevel=2,
 )
 class FormMessage(Enum):
     FIELD_START = 1

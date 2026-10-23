@@ -66,6 +66,11 @@ def test_url() -> None:
     assert url.replace(hostname="[::1]:8080", port=9090) == "https://[::1]:9090/path"
     # A non-numeric suffix is not a port; the hostname is left untouched.
     assert url.replace(hostname="example.org:abc", port=9090) == "https://example.org:abc:9090/path"
+    # A non-ASCII digit like "٢" (Arabic-Indic two) is not a port either;
+    # isdigit() would accept it while a port must be ASCII digits.
+    assert url.replace(hostname="example.org:٢", port=9090) == "https://example.org:٢:9090/path"
+    # A superscript digit is also rejected by the ASCII check.
+    assert url.replace(hostname="example.org:²", port=9090) == "https://example.org:²:9090/path"
 
     url = URL("http://u:p@host/")
     assert url.replace(hostname="bar") == URL("http://u:p@bar/")

@@ -136,7 +136,7 @@ class URL:
                 except ValueError:
                     if port is not None and (not hostname.startswith("[") or "]:" in hostname):
                         hostname, _, embedded_port = hostname.rpartition(":")
-                        if embedded_port.isdigit():
+                        if embedded_port.isascii() and embedded_port.isdigit():
                             if not explicit_port:
                                 port = int(embedded_port)
                         else:

@@ -122,31 +122,22 @@ class FormParser:
 
         items: list[tuple[str, str | UploadFile]] = []
 
-        def collect_messages() -> None:
-            nonlocal field_name, field_value
-            messages = list(self.messages)
-            self.messages.clear()
-            for message_type, message_bytes in messages:
-                if message_type == FormMessage.FIELD_START:
-                    field_name = bytearray()
-                    field_value = bytearray()
-                elif message_type == FormMessage.FIELD_NAME:
-                    field_name.extend(message_bytes)
-                elif message_type == FormMessage.FIELD_DATA:
-                    field_value.extend(message_bytes)
-                elif message_type == FormMessage.FIELD_END:
-                    name = unquote_plus(field_name.decode("latin-1"))
-                    value = unquote_plus(field_value.decode("latin-1"))
-                    items.append((name, value))
-
-        # The stream may finish without yielding an empty sentinel. Finalize after
-        # exhaustion so the parser emits the final field even then.
         async for chunk in self.stream:
-            if chunk:
-                parser.write(chunk)
-            collect_messages()
+            parser.write(chunk)
         parser.finalize()
-        collect_messages()
+
+        for message_type, message_bytes in self.messages:
+            if message_type == FormMessage.FIELD_START:
+                field_name = bytearray()
+                field_value = bytearray()
+            elif message_type == FormMessage.FIELD_NAME:
+                field_name.extend(message_bytes)
+            elif message_type == FormMessage.FIELD_DATA:
+                field_value.extend(message_bytes)
+            elif message_type == FormMessage.FIELD_END:
+                name = unquote_plus(field_name.decode("latin-1"))
+                value = unquote_plus(field_value.decode("latin-1"))
+                items.append((name, value))
 
         return FormData(items)
 

@@ -162,3 +162,17 @@ def test_build_environ_encoding() -> None:
     environ = build_environ(scope, b"")
     assert environ["SCRIPT_NAME"] == "/中国".encode().decode("latin-1")
     assert environ["PATH_INFO"] == "/小星".encode().decode("latin-1")
+
+
+def test_build_environ_root_path_is_not_a_segment_prefix() -> None:
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "GET",
+        "path": "/application",
+        "root_path": "/app",
+        "query_string": b"",
+        "headers": [],
+    }
+    environ = build_environ(scope, b"")
+    assert environ["PATH_INFO"] == "/application"

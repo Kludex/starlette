@@ -287,9 +287,11 @@ def test_mount_url_path_for_with_leading_slash_path() -> None:
     mount = Mount("/static", routes=[Route("/{path:path}", endpoint=homepage, name="child")], name="static")
     assert mount.url_path_for("static", path="/foo/bar") == "/static/foo/bar"
     assert mount.url_path_for("static:child", path="/foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path="//foo/bar") == "/static/foo/bar"
     assert mount.url_path_for("static:child", path="foo/bar") == "/static/foo/bar"
     # Non-str path values are passed through the child convertor's to_string.
-    assert mount.url_path_for("static:child", path=pathlib.Path("foo/bar")) == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path=pathlib.PurePosixPath("foo/bar")) == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path=42) == "/static/42"
 
 
 def test_url_for() -> None:

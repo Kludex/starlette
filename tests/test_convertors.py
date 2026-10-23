@@ -8,7 +8,7 @@ from starlette import convertors
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.routing import Route, Router
+from starlette.routing import Mount, Route, Router
 from tests.types import TestClientFactory
 
 
@@ -57,6 +57,13 @@ def test_datetime_convertor(test_client_factory: TestClientFactory, app: Router)
     assert (
         app.url_path_for("datetime-convertor", param=datetime(1996, 1, 22, 23, 0, 0)) == "/datetime/1996-01-22T23:00:00"
     )
+
+
+@pytest.mark.parametrize("mount_name", ["mounted", None])
+def test_mount_datetime_convertor(app: Router, mount_name: str | None) -> None:
+    mount = Mount("/prefix", routes=[Route("/{path:datetime}", endpoint=app, name="child")], name=mount_name)
+    route_name = "child" if mount_name is None else f"{mount_name}:child"
+    assert mount.url_path_for(route_name, path=datetime(1996, 1, 22, 23, 0, 0)) == "/prefix/1996-01-22T23:00:00"
 
 
 @pytest.mark.parametrize("param, status_code", [("1.0", 200), ("1-0", 404)])

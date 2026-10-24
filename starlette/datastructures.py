@@ -119,24 +119,44 @@ class URL:
 
     def replace(self, **kwargs: Any) -> URL:
         if "username" in kwargs or "password" in kwargs or "hostname" in kwargs or "port" in kwargs:
+            has_explicit_port = "port" in kwargs
+            explicit_port = kwargs.pop("port", self.port)
             hostname = kwargs.pop("hostname", None)
-            port = kwargs.pop("port", self.port)
             username = kwargs.pop("username", self.username)
             password = kwargs.pop("password", self.password)
 
+            embedded_port = None
             if hostname is None:
                 netloc = self.netloc
                 _, _, hostname = netloc.rpartition("@")
 
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
-            elif ":" in hostname and not hostname.startswith("["):
-                try:
-                    ipaddress.IPv6Address(hostname)
-                except ValueError:
-                    pass
-                else:
-                    hostname = f"[{hostname}]"
+            else:
+                if hostname.startswith("[") and "]:" in hostname:
+                    host, _, port_str = hostname.rpartition(":")
+                    try:
+                        embedded_port = int(port_str)
+                    except ValueError:
+                        pass
+                    hostname = host
+                elif not hostname.startswith("[") and ":" in hostname:
+                    try:
+                        ipaddress.IPv6Address(hostname)
+                    except ValueError:
+                        host, _, port_str = hostname.rpartition(":")
+                        try:
+                            embedded_port = int(port_str)
+                        except ValueError:
+                            pass
+                        hostname = host
+                    else:
+                        hostname = f"[{hostname}]"
+
+            if has_explicit_port:
+                port = embedded_port if explicit_port is None and embedded_port is not None else explicit_port
+            else:
+                port = embedded_port if embedded_port is not None else explicit_port
 
             netloc = hostname
             if port is not None:

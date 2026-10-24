@@ -120,6 +120,7 @@ class URL:
     def replace(self, **kwargs: Any) -> URL:
         if "username" in kwargs or "password" in kwargs or "hostname" in kwargs or "port" in kwargs:
             hostname = kwargs.pop("hostname", None)
+            port_in_kwargs = "port" in kwargs
             port = kwargs.pop("port", self.port)
             username = kwargs.pop("username", self.username)
             password = kwargs.pop("password", self.password)
@@ -130,13 +131,37 @@ class URL:
 
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
-            elif ":" in hostname and not hostname.startswith("["):
-                try:
-                    ipaddress.IPv6Address(hostname)
-                except ValueError:
-                    pass
-                else:
-                    hostname = f"[{hostname}]"
+            else:
+                extracted_port: int | None = None
+                if hostname.startswith("["):
+                    if "]" in hostname:
+                        idx = hostname.index("]")
+                        host_part = hostname[: idx + 1]
+                        rest = hostname[idx + 1 :]
+                        if rest.startswith(":"):
+                            try:
+                                extracted_port = int(rest[1:])
+                            except ValueError:
+                                pass
+                        hostname = host_part
+                elif ":" in hostname:
+                    try:
+                        ipaddress.IPv6Address(hostname)
+                    except ValueError:
+                        parts = hostname.rsplit(":", 1)
+                        try:
+                            extracted_port = int(parts[1])
+                            hostname = parts[0]
+                        except ValueError:
+                            pass
+                    else:
+                        hostname = f"[{hostname}]"
+
+                if extracted_port is not None:
+                    if port_in_kwargs and port is None:
+                        port = extracted_port
+                    elif not port_in_kwargs:
+                        port = extracted_port
 
             netloc = hostname
             if port is not None:

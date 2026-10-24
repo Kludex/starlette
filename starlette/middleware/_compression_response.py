@@ -29,6 +29,7 @@ class CompressionResponder:
         encoding: str | None = "identity",
         compress: Callable[[bytes, bool], Awaitable[bytes]] | None = None,
         accepts: Callable[[str], bool] | None = None,
+        vary: tuple[str, ...] = ("Accept-Encoding",),
     ) -> None:
         self.app = app
         self.minimum_size = minimum_size
@@ -36,6 +37,7 @@ class CompressionResponder:
         self.encoding = encoding
         self.compress = compress
         self.accepts = accepts
+        self.vary = vary
         self.initial_message: Message | None = None
         self.pending: list[Message] = []
         self.started = False
@@ -103,7 +105,14 @@ class CompressionResponder:
 
     def prepare(self, initial_message: Message, message: Message | None) -> CompressionPlan:
         return prepare_response(
-            initial_message, message, self.scope, self.eligible, self.encoding, self.minimum_size, self.accepts
+            initial_message,
+            message,
+            self.scope,
+            self.eligible,
+            self.encoding,
+            self.minimum_size,
+            self.accepts,
+            self.vary,
         )
 
     async def start(self, initial_message: Message, plan: CompressionPlan) -> None:

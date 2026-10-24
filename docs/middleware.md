@@ -417,6 +417,7 @@ app = Starlette(
 | `thread_minimum_size` | `131072` | Move compression to worker threads once a response's total input reaches this number of bytes. Must be non-negative. |
 | `exclude_content_types` | `DEFAULT_EXCLUDED_CONTENT_TYPES` | Use the same media type exclusions and wildcard matching as [`GZipMiddleware`](#gzipmiddleware). |
 | `extra_compressors` | `None` | Map additional content encoding names to compressor factories. |
+| `dictionaries` | `()` | Dictionary contents for [dictionary compression](#dictionary-compression). Requests that hold one of them and accept `dcz` are compressed against it. Requires Zstandard. |
 
 Zstandard accepts negative levels for faster compression and positive levels up to the implementation's maximum.
 Invalid levels raise `ValueError` when you construct the middleware.
@@ -428,7 +429,7 @@ the middleware's global level, to keep the cost of compressing dynamic responses
 
 The middleware reads the client's `Accept-Encoding` header. A quality weight such as `gzip;q=0.5`
 expresses a preference; a weight of `0` excludes that encoding. The middleware chooses the highest
-accepted weight. At equal weights, custom encodings take priority in dictionary order, followed by
+accepted weight. At equal weights, dictionary compression takes priority, then custom encodings in dictionary order, followed by
 Zstandard, Brotli, and gzip. It also supports wildcard entries and an explicit preference for `identity`, which means no encoding.
 
 When the header is missing or empty, the middleware does not apply compression.
@@ -471,6 +472,63 @@ or recompressing binary formats. When the response start alone rules out compres
 The middleware forwards ASGI trailers, early hints, debug information, and server push events.
 When compression is selected, it removes `http.response.zerocopysend` from the application's scope.
 Applications must then send ordinary body messages, because zero-copy file bytes cannot be mixed into a compressed stream.
+
+### Dictionary compression
+
+Compression Dictionary Transport ([RFC 9842](https://www.rfc-editor.org/rfc/rfc9842)) compresses a response against bytes the client already holds.
+Bytes shared between the dictionary and the response cost almost nothing on the wire, so a new release of an asset
+can be delivered as a small delta against the previous one, and repetitive API responses shrink far below plain Zstandard.
+
+Pass the dictionary contents with `dictionaries`. The client learns about a dictionary from a `Use-As-Dictionary`
+header on the response that serves it, so serve the dictionary from a route and set that header yourself:
+
+```python
+from __future__ import annotations
+
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.compression import CompressionMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse, Response
+from starlette.routing import Route
+
+DICTIONARY = b'{"id": 0, "name": "", "email": "", "roles": ["admin", "member"], "active": true}'
+
+
+async def dictionary(request: Request) -> Response:
+    return Response(
+        DICTIONARY,
+        media_type="application/octet-stream",
+        headers={"Use-As-Dictionary": 'match="/api/*"', "Cache-Control": "max-age=31536000"},
+    )
+
+
+async def user(request: Request) -> PlainTextResponse:
+    return PlainTextResponse('{"id": 7, "name": "Ada", "email": "ada@example.com", "roles": ["admin"], "active": true}')
+
+
+app = Starlette(
+    routes=[Route("/dictionary", dictionary), Route("/api/user", user)],
+    middleware=[Middleware(CompressionMiddleware, dictionaries=[DICTIONARY])],
+)
+```
+
+A browser stores the dictionary for the response's cache lifetime. Requests whose URL matches the `match` pattern
+then carry `Available-Dictionary` with the SHA-256 hash of the stored bytes, and `dcz` in `Accept-Encoding`.
+When the hash matches one of the configured dictionaries, the middleware compresses the response with Zstandard against it
+and sets `Content-Encoding: dcz`. The body starts with a 40-byte header holding the dictionary hash, so the client can
+verify it decodes against the right bytes. Requests without a known dictionary are served with the other encodings as usual.
+
+In practice the dictionary is the previous version of a static asset, or a file trained on representative responses
+with `zstd --train`. Only same-origin requests over HTTPS use dictionaries; the `match` pattern is a URL pattern relative to the dictionary's URL.
+
+!!! warning "Caches must key on `Available-Dictionary`"
+    The middleware adds `Vary: Accept-Encoding, Available-Dictionary` whenever dictionaries are configured.
+    A cache or CDN that normalizes `Vary` will serve a `dcz` body to a client that cannot decode it.
+
+Dictionary compression requires a Zstandard implementation, and raises `RuntimeError` without one.
+Only the Zstandard encoding `dcz` is supported. The Brotli variant `dcb` is not, because the `brotli` package does not expose dictionary support.
+It uses the `zstd` compression level. Enabling it does not depend on `zstd`, so `zstd=False` with `dictionaries` serves `dcz` only.
 
 ### Custom compressors
 

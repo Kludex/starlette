@@ -1,6 +1,18 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import re
+
+
+def available_dictionary(value: str | None) -> bytes | None:
+    value = (value or "").strip()
+    if len(value) < 2 or value[0] != ":" or value[-1] != ":":
+        return None
+    try:
+        return base64.b64decode(value[1:-1], validate=True)
+    except binascii.Error:
+        return None
 
 
 class AcceptEncoding:

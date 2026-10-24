@@ -35,6 +35,7 @@ def prepare_response(
     encoding: str | None,
     minimum_size: int,
     accepts: Callable[[str], bool] | None,
+    vary: tuple[str, ...] = ("Accept-Encoding",),
 ) -> CompressionPlan:
     status = initial_message["status"]
     if status < 200 or status in (204, 205):
@@ -49,9 +50,11 @@ def prepare_response(
         eligible = eligible and message["type"] == "http.response.body"
         large_enough = len(message.get("body", b"")) >= minimum_size or message.get("more_body", False)
     if accepts is not None or (eligible and (large_enough or metadata_only)):
-        vary = {value.strip().lower() for value in ",".join(headers.getlist("vary")).split(",")}
-        if not vary.intersection({"*", "accept-encoding"}):
-            headers.add_vary_header("Accept-Encoding")
+        existing = {value.strip().lower() for value in ",".join(headers.getlist("vary")).split(",")}
+        if "*" not in existing:
+            for name in vary:
+                if name.lower() not in existing:
+                    headers.add_vary_header(name)
 
     if existing_encoding is not None:
         accepted = accepts is None or all(accepts(coding.strip().lower()) for coding in existing_encoding.split(","))

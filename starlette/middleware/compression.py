@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 
 from starlette.datastructures import Headers
 from starlette.middleware._compression import (
@@ -12,7 +13,7 @@ from starlette.middleware._compression import (
     gzip_factory,
     zstd_factory,
 )
-from starlette.middleware._compression_negotiation import AcceptEncoding
+from starlette.middleware._compression_negotiation import AcceptEncoding, available_dictionary
 from starlette.middleware._compression_response import CompressionResponder
 from starlette.middleware.gzip import (
     DEFAULT_EXCLUDED_CONTENT_TYPES as DEFAULT_EXCLUDED_CONTENT_TYPES,
@@ -33,6 +34,7 @@ class CompressionMiddleware:
         zstd: bool | CompressionConfig | None = None,
         brotli: bool | CompressionConfig | None = None,
         extra_compressors: Mapping[str, Callable[[], Compressor]] | None = None,
+        dictionaries: Iterable[bytes] = (),
     ) -> None:
         if minimum_size < 0:
             raise ValueError("minimum_size must be non-negative.")
@@ -47,20 +49,24 @@ class CompressionMiddleware:
             encoding = encoding.lower()
             if (
                 not re.fullmatch(r"[!#$%&'*+.^_`|~0-9a-z-]+", encoding)
-                or encoding in {"*", "identity", "gzip", "zstd", "br"}
+                or encoding in {"*", "identity", "gzip", "zstd", "br", "dcz"}
                 or encoding in self.compressors
             ):
                 raise ValueError(f"Invalid or reserved compression encoding: {encoding!r}.")
             self.compressors[encoding] = factory
-        if zstd is not False:
-            level = zstd.get("compresslevel", compresslevel) if isinstance(zstd, dict) else compresslevel
-            try:
+        self.dictionaries: dict[bytes, Callable[[], Compressor]] = {}
+        dictionaries = tuple(dictionaries)
+        level = zstd.get("compresslevel", compresslevel) if isinstance(zstd, dict) else compresslevel
+        try:
+            if zstd is not False:
                 self.compressors["zstd"] = zstd_factory(level)
-            except ImportError:
-                if zstd is not None:
-                    raise RuntimeError(
-                        "Zstandard compression requires Python 3.14 or 'pip install starlette[zstd]'."
-                    ) from None
+            for dictionary in dictionaries:
+                self.dictionaries[hashlib.sha256(dictionary).digest()] = zstd_factory(level, dictionary)
+        except ImportError:
+            if zstd is not None or dictionaries:
+                raise RuntimeError(
+                    "Zstandard compression requires Python 3.14 or 'pip install starlette[zstd]'."
+                ) from None
         if brotli is not False:
             level = brotli.get("compresslevel", compresslevel) if isinstance(brotli, dict) else compresslevel
             try:
@@ -73,15 +79,23 @@ class CompressionMiddleware:
             self.compressors["gzip"] = gzip_factory(level)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or not self.compressors:
+        if scope["type"] != "http" or not (self.compressors or self.dictionaries):
             await self.app(scope, receive, send)
             return
 
-        headers = Headers(scope=scope).getlist("accept-encoding")
-        accepted = AcceptEncoding(",".join(headers) if headers else None)
-        encoding = accepted.select(tuple(self.compressors))
+        headers = Headers(scope=scope)
+        accept_encoding = headers.getlist("accept-encoding")
+        accepted = AcceptEncoding(",".join(accept_encoding) if accept_encoding else None)
+        compressors = self.compressors
+        vary: tuple[str, ...] = ("Accept-Encoding",)
+        if self.dictionaries:
+            vary = ("Accept-Encoding", "Available-Dictionary")
+            digest = available_dictionary(headers.get("available-dictionary"))
+            if digest in self.dictionaries:
+                compressors = {"dcz": self.dictionaries[digest], **compressors}
+        encoding = accepted.select(tuple(compressors))
         compress = (
-            CompressionStream(self.compressors[encoding], self.thread_minimum_size)
+            CompressionStream(compressors[encoding], self.thread_minimum_size)
             if encoding is not None and encoding != "identity"
             else None
         )
@@ -92,5 +106,6 @@ class CompressionMiddleware:
             encoding=encoding,
             compress=compress,
             accepts=accepted.accepts,
+            vary=vary,
         )
         await responder(scope, receive, send)

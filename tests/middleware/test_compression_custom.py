@@ -96,7 +96,7 @@ async def test_lazy_factory(size: int) -> None:
                 await client.get("/", headers={"accept-encoding": "custom"})
 
 
-@pytest.mark.parametrize("encoding", ["", "*", "identity", "GZIP", "zstd", "br", "bad token", "a;b", "a\r\nb"])
+@pytest.mark.parametrize("encoding", ["", "*", "identity", "GZIP", "zstd", "br", "dcz", "bad token", "a;b", "a\r\nb"])
 def test_invalid_custom_encoding(encoding: str) -> None:
     def factory() -> Compressor:
         raise AssertionError(

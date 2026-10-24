@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import sys
 import zlib
 from collections.abc import Callable
@@ -61,27 +62,37 @@ class GZipCompressor:
         return self.compressor.compress(body) + self.compressor.flush(mode)
 
 
-def zstd_factory(compresslevel: int) -> Callable[[], Compressor]:
+def zstd_factory(compresslevel: int, dictionary: bytes | None = None) -> Callable[[], Compressor]:
     if sys.version_info >= (3, 14):  # pragma: no cover - Depends on the Python version.
-        from compression.zstd import CompressionParameter, ZstdCompressor
+        from compression.zstd import CompressionParameter, ZstdCompressor, ZstdDict
     else:  # pragma: no cover - Depends on the Python version.
-        from backports.zstd import CompressionParameter, ZstdCompressor
+        from backports.zstd import CompressionParameter, ZstdCompressor, ZstdDict
 
     lower, upper = CompressionParameter.compression_level.bounds()
     if not lower <= compresslevel <= upper:
         raise ValueError(f"Zstandard compresslevel must be between {lower} and {upper}.")
+    options: dict[int, int] = {
+        CompressionParameter.compression_level: compresslevel,
+        # HTTP decoders need not support windows larger than 8 MiB (RFC 9659).
+        CompressionParameter.window_log: 23,
+    }
+    zstd_dict = None if dictionary is None else ZstdDict(dictionary, is_raw=True).as_prefix
+    # A "dcz" body starts with a Zstandard skippable frame holding the dictionary's SHA-256 (RFC 9842).
+    dcz_header = (
+        b"" if dictionary is None else b"\x5e\x2a\x4d\x18\x20\x00\x00\x00" + hashlib.sha256(dictionary).digest()
+    )
 
     def create() -> Compressor:
-        compressor = ZstdCompressor(
-            options={
-                CompressionParameter.compression_level: compresslevel,
-                # HTTP decoders need not support windows larger than 8 MiB (RFC 9659).
-                CompressionParameter.window_log: 23,
-            }
-        )
+        compressor = ZstdCompressor(options=options, zstd_dict=zstd_dict)
+        header = dcz_header
 
         def compress(body: bytes, more_body: bool) -> bytes:
-            return compressor.compress(body, ZstdCompressor.FLUSH_BLOCK if more_body else ZstdCompressor.FLUSH_FRAME)
+            nonlocal header
+            output = header + compressor.compress(
+                body, ZstdCompressor.FLUSH_BLOCK if more_body else ZstdCompressor.FLUSH_FRAME
+            )
+            header = b""
+            return output
 
         return compress
 

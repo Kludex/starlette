@@ -2,7 +2,7 @@
 toc_depth: 2
 ---
 
-## 1.9.1 (October 24, 2026)
+## 1.10.0 (October 24, 2026)
 
 #### Changed
 

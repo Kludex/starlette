@@ -76,6 +76,8 @@ async def test_missing_zstd(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.text == "x" * 4000
     with pytest.raises(RuntimeError, match=r"pip install starlette\[zstd\]"):
         CompressionMiddleware(PlainTextResponse(""), zstd=True)
+    with pytest.raises(RuntimeError, match=r"pip install starlette\[zstd\]"):
+        CompressionMiddleware(PlainTextResponse(""), dictionaries=[b"dictionary"])
 
 
 @pytest.mark.anyio

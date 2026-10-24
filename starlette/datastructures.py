@@ -134,26 +134,16 @@ class URL:
             else:
                 extracted_port: int | None = None
                 if hostname.startswith("["):
-                    if "]" in hostname:
-                        idx = hostname.index("]")
-                        host_part = hostname[: idx + 1]
-                        rest = hostname[idx + 1 :]
-                        if rest.startswith(":"):
-                            try:
-                                extracted_port = int(rest[1:])
-                            except ValueError:
-                                pass
-                        hostname = host_part
+                    if "]:" in hostname:
+                        host_part, _, port_str = hostname.partition("]:")
+                        hostname = f"{host_part}]"
+                        extracted_port = int(port_str)
                 elif ":" in hostname:
                     try:
                         ipaddress.IPv6Address(hostname)
                     except ValueError:
-                        parts = hostname.rsplit(":", 1)
-                        try:
-                            extracted_port = int(parts[1])
-                            hostname = parts[0]
-                        except ValueError:
-                            pass
+                        hostname, _, port_str = hostname.rpartition(":")
+                        extracted_port = int(port_str)
                     else:
                         hostname = f"[{hostname}]"
 

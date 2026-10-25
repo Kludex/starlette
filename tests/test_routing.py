@@ -282,6 +282,15 @@ def test_url_path_for_with_double_slash_path() -> None:
     assert router.url_path_for("catchall", path="\\example.org/a") == "/%5Cexample.org/a"
 
 
+@pytest.mark.parametrize("mount_name", ["mounted", None])
+@pytest.mark.parametrize("path", ["/foo", "foo/bar"])
+def test_mount_url_path_for_with_string_convertor_rejects_slashes(mount_name: str | None, path: str) -> None:
+    mount = Mount("/prefix", routes=[Route("/{path}", endpoint=homepage, name="child")], name=mount_name)
+    route_name = "child" if mount_name is None else f"{mount_name}:child"
+    with pytest.raises(AssertionError, match="May not contain path separators"):
+        mount.url_path_for(route_name, path=path)
+
+
 def test_url_path_for_with_placeholder_like_value() -> None:
     route = Route("/{category}/{id}", endpoint=homepage, name="route")
     assert route.url_path_for("route", category="{id}", id="42") == "/{id}/42"

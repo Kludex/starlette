@@ -507,6 +507,28 @@ def test_cors_vary_header_is_properly_set_when_allow_origins_is_not_wildcard(
     assert response.headers["vary"] == "Accept-Encoding, Origin"
 
 
+def test_cors_vary_header_does_not_duplicate_existing_origin(
+    test_client_factory: TestClientFactory,
+) -> None:
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("Homepage", status_code=200, headers={"Vary": "Origin, Accept-Encoding"})
+
+    app = Starlette(
+        routes=[Route("/", endpoint=homepage)],
+        middleware=[Middleware(CORSMiddleware, allow_origins=["https://example.org"])],
+    )
+    client = test_client_factory(app)
+
+    response = client.get("/", headers={"Origin": "https://example.org"})
+    assert response.status_code == 200
+    assert response.headers["vary"] == "Origin, Accept-Encoding"
+
+    # Also check when Origin is not allowed
+    response = client.get("/", headers={"Origin": "https://disallowed.example"})
+    assert response.status_code == 200
+    assert response.headers["vary"] == "Origin, Accept-Encoding"
+
+
 def test_cors_allowed_origin_does_not_leak_between_requests(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> PlainTextResponse:
         return PlainTextResponse("Homepage", status_code=200)

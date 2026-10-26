@@ -86,9 +86,9 @@ class BaseSchemaGenerator:
             else:
                 path = self._remove_converter(route.path)
                 for method in ["get", "post", "put", "patch", "delete", "options", "query"]:
-                    if not hasattr(route.endpoint, method):
+                    if not hasattr(endpoint, method):
                         continue
-                    func = getattr(route.endpoint, method)
+                    func = getattr(endpoint, method)
                     endpoints_info.append(EndpointInfo(path, method.lower(), func))
 
         return endpoints_info

@@ -237,20 +237,21 @@ def test_query_schema_requires_openapi_3_2() -> None:
 
 
 def test_schema_includes_partial_endpoints() -> None:
-    schema = schemas.get_schema(routes=[Route("/users", endpoint=functools.partial(list_users), methods=["GET"])])
+    schema = schemas.get_schema(
+        routes=[
+            Route("/users", endpoint=list_users, methods=["GET"]),
+            Route("/orgs", endpoint=OrganisationsEndpoint),
+        ]
+    )
+    partial_schema = schemas.get_schema(
+        routes=[
+            Route("/users", endpoint=functools.partial(list_users), methods=["GET"]),
+            Route("/orgs", endpoint=functools.partial(OrganisationsEndpoint)),
+        ]
+    )
 
-    assert schema["paths"] == {
-        "/users": {
-            "get": {
-                "responses": {
-                    200: {
-                        "description": "A list of users.",
-                        "examples": [{"username": "tom"}, {"username": "lucy"}],
-                    }
-                }
-            }
-        }
-    }
+    assert set(schema["paths"]) == {"/users", "/orgs"}
+    assert partial_schema["paths"] == schema["paths"]
 
 
 EXPECTED_SCHEMA = """

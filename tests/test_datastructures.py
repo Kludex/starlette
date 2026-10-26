@@ -60,6 +60,23 @@ def test_url() -> None:
     assert url.replace(hostname="[::1]") == "https://[::1]:8443/path"
     assert url.replace(hostname="[::1]:8080", port=None) == "https://[::1]:8080/path"
     assert url.replace(hostname="example.org:8080", port=None) == "https://example.org:8080/path"
+    # Replacing hostname with an embedded port should not double the port or conflict with self.port
+    new = url.replace(hostname="example.org:8080")
+    assert new == "https://example.org:8080/path"
+    assert new.hostname == "example.org"
+    assert new.port == 8080
+    new = url.replace(hostname="example.org:8080", port=9090)
+    assert new == "https://example.org:9090/path"
+    assert new.hostname == "example.org"
+    assert new.port == 9090
+    new = url.replace(hostname="[::1]:8080")
+    assert new == "https://[::1]:8080/path"
+    assert new.hostname == "::1"
+    assert new.port == 8080
+    new = url.replace(hostname="[::1]:8080", port=9090)
+    assert new == "https://[::1]:9090/path"
+    assert new.hostname == "::1"
+    assert new.port == 9090
 
     url = URL("http://u:p@host/")
     assert url.replace(hostname="bar") == URL("http://u:p@bar/")

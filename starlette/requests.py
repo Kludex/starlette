@@ -203,6 +203,14 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
         url_path = url_path_provider.url_path_for(name, **path_params)
         return url_path.make_absolute_url(base_url=self.base_url)
 
+    def path_for(self, name: str, /, **path_params: Any) -> str:
+        url_path_provider: Router | Starlette | None = self.scope.get("router") or self.scope.get("app")
+        if url_path_provider is None:
+            raise RuntimeError("The `path_for` method can only be used inside a Starlette application or with a router.")
+        root_path = self.scope.get("root_path", "")
+        url_path = url_path_provider.url_path_for(name, **path_params)
+        return url_path.make_relative_url(root_path=root_path)
+
 
 async def empty_receive() -> NoReturn:
     raise RuntimeError("Receive channel has not been made available")

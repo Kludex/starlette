@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import datetime as dt
 import os
 import re
@@ -776,6 +777,47 @@ def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -
     client: TestClient = test_client_factory(app)
     response = client.get("/")
     assert response.content == b"\xc0\xf5"
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        pytest.param(memoryview(b"01234567"), b"01234567", id="bytes"),
+        pytest.param(memoryview(b"01234567").cast("I"), b"01234567", id="typed"),
+        pytest.param(memoryview(b"01234567").cast("B", shape=[2, 4]), b"01234567", id="multidimensional"),
+        pytest.param(memoryview(b"01234567").cast("Q", shape=[]), b"01234567", id="scalar"),
+        pytest.param(memoryview(b"01234567")[::2], b"0246", id="strided"),
+        pytest.param(memoryview(b"01234567")[::-1], b"76543210", id="reversed"),
+        pytest.param(memoryview(b"01234567").cast("H")[::2], b"0145", id="typed-strided"),
+        pytest.param(memoryview(b""), b"", id="empty"),
+        pytest.param(memoryview(((ctypes.c_ubyte * 2) * 0)()), b"", id="empty-outer-dimension"),
+        pytest.param(memoryview(((ctypes.c_ubyte * 0) * 2)()), b"", id="empty-inner-dimension"),
+    ],
+)
+def test_streaming_response_memoryview_formats(
+    test_client_factory: TestClientFactory, content: memoryview, expected: bytes
+) -> None:
+    chunks: list[bytes | memoryview] = []
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        async def capture_send(message: Message) -> None:
+            if message["type"] == "http.response.body" and message["more_body"]:
+                chunks.append(message["body"])
+            await send(message)
+
+        await StreamingResponse(iter([content]))(scope, receive, capture_send)
+
+    client = test_client_factory(app)
+    response = client.get("/")
+    assert response.content == expected
+    assert len(chunks) == 1
+    chunk = chunks[0]
+    # ASGI servers use len() for framing and require contiguous byte buffers.
+    assert len(chunk) == len(expected)
+    assert b"".join([chunk]) == expected
+    if content.c_contiguous and content.nbytes:
+        assert isinstance(chunk, memoryview)
+        assert chunk.obj is content.obj
 
 
 @pytest.mark.anyio

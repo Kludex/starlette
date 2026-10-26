@@ -77,6 +77,12 @@ def test_url() -> None:
     assert new == "https://[::1]:9090/path"
     assert new.hostname == "::1"
     assert new.port == 9090
+    new = url.replace(hostname="example.org:000080")
+    assert new == "https://example.org:000080/path"
+    assert new.hostname == "example.org"
+    assert new.port == 80
+    assert url.replace(hostname="example.org:invalid") == "https://example.org:invalid:8443/path"
+    assert url.replace(hostname="[::1]:invalid") == "https://[::1]:invalid:8443/path"
 
     url = URL("http://u:p@host/")
     assert url.replace(hostname="bar") == URL("http://u:p@bar/")

@@ -151,7 +151,7 @@ class URL:
 
                 if embedded_port is not None:
                     if not has_port_arg or port is None:
-                        port = int(embedded_port)
+                        port = embedded_port
 
             netloc = hostname
             if port is not None:

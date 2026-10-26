@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Mapping, MutableMapping
 from contextlib import aclosing
-from typing import Any, TypeVar
+from typing import Any
 
 import anyio
 
@@ -15,7 +15,6 @@ RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
 DispatchFunction = Callable[[Request, RequestResponseEndpoint], Awaitable[Response]]
 BodyStreamGenerator = AsyncGenerator[bytes | MutableMapping[str, Any], None]
 AsyncContentStream = AsyncIterable[str | bytes | memoryview | MutableMapping[str, Any]]
-T = TypeVar("T")
 
 
 class _CachedRequest(Request):
@@ -106,6 +105,8 @@ class BaseHTTPMiddleware:
         request = _CachedRequest(scope, receive, send)
         wrapped_receive = request.wrapped_receive
         response_sent = anyio.Event()
+        # Cancelled only after `response_sent` is set, so a receive they cut short returns a disconnect.
+        receive_scopes: set[anyio.CancelScope] = set()
         app_exc: Exception | None = None
         exception_already_raised = False
 
@@ -114,15 +115,12 @@ class BaseHTTPMiddleware:
                 if response_sent.is_set():
                     return {"type": "http.disconnect"}
 
-                async with anyio.create_task_group() as task_group:
-
-                    async def wrap(func: Callable[[], Awaitable[T]]) -> T:
-                        result = await func()
-                        task_group.cancel_scope.cancel()
-                        return result
-
-                    task_group.start_soon(wrap, response_sent.wait)
-                    message = await wrap(wrapped_receive)
+                with anyio.CancelScope() as cancel_scope:
+                    receive_scopes.add(cancel_scope)
+                    try:
+                        message = await wrapped_receive()
+                    finally:
+                        receive_scopes.discard(cancel_scope)
 
                 if response_sent.is_set():
                     return {"type": "http.disconnect"}
@@ -203,6 +201,8 @@ class BaseHTTPMiddleware:
                 response = await self.dispatch_func(request, call_next)
                 await response(scope, wrapped_receive, send)
                 response_sent.set()
+                for cancel_scope in receive_scopes:
+                    cancel_scope.cancel()
                 recv_stream.close()
         if app_exc is not None and not exception_already_raised:
             raise app_exc

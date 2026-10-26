@@ -561,3 +561,73 @@ def test_lifespan_app_subclass() -> None:
         yield
 
     App(lifespan=lifespan)
+
+def test_lifespan_sub_app_propagation(test_client_factory: TestClientFactory) -> None:
+    from starlette.routing import Mount
+
+    events: list[str] = []
+
+    @asynccontextmanager
+    async def sub_lifespan(app: ASGIApp) -> AsyncGenerator[None, None]:
+        events.append("sub_startup")
+        yield
+        events.append("sub_shutdown")
+
+    @asynccontextmanager
+    async def main_lifespan(app: ASGIApp) -> AsyncGenerator[None, None]:
+        events.append("main_startup")
+        yield
+        events.append("main_shutdown")
+
+    sub_app = Starlette(lifespan=sub_lifespan)
+    main_app = Starlette(
+        routes=[Mount("/sub", sub_app)],
+        lifespan=main_lifespan,
+        propagate_lifespan=True,
+    )
+
+    with test_client_factory(main_app):
+        events.append("running")
+
+    assert events == [
+        "main_startup",
+        "sub_startup",
+        "running",
+        "sub_shutdown",
+        "main_shutdown",
+    ]
+
+
+def test_lifespan_sub_app_default_no_propagation(test_client_factory: TestClientFactory) -> None:
+    from starlette.routing import Mount
+
+    events: list[str] = []
+
+    @asynccontextmanager
+    async def sub_lifespan(app: ASGIApp) -> AsyncGenerator[None, None]:
+        events.append("sub_startup")
+        yield
+        events.append("sub_shutdown")
+
+    @asynccontextmanager
+    async def main_lifespan(app: ASGIApp) -> AsyncGenerator[None, None]:
+        events.append("main_startup")
+        yield
+        events.append("main_shutdown")
+
+    sub_app = Starlette(lifespan=sub_lifespan)
+    main_app = Starlette(
+        routes=[Mount("/sub", sub_app)],
+        lifespan=main_lifespan,
+        propagate_lifespan=False,
+    )
+
+    with test_client_factory(main_app):
+        events.append("running")
+
+    assert events == [
+        "main_startup",
+        "running",
+        "main_shutdown",
+    ]
+

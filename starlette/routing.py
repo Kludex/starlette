@@ -11,7 +11,7 @@ from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
-from typing import Any, TypeVar
+from typing import Any, AsyncIterator, TypeVar
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable, parse_host_header
@@ -595,29 +595,44 @@ class Router:
         *,
         middleware: Sequence[Middleware] | None = None,
         max_body_size: int | None = None,
+        propagate_lifespan: bool = False,
     ) -> None:
         self.routes = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
         self.default = self.not_found if default is None else default
+        self.propagate_lifespan = propagate_lifespan
 
+        base_lifespan: Lifespan[Any]
         if lifespan is None:
-            self.lifespan_context: Lifespan[Any] = _DefaultLifespan(self)
-
+            base_lifespan = _DefaultLifespan(self)
         elif inspect.isasyncgenfunction(lifespan):
             warnings.warn(
                 "async generator function lifespans are deprecated, "
                 "use an @contextlib.asynccontextmanager function instead",
                 StarletteDeprecationWarning,
             )
-            self.lifespan_context = asynccontextmanager(lifespan)
+            base_lifespan = asynccontextmanager(lifespan)
         elif inspect.isgeneratorfunction(lifespan):
             warnings.warn(
                 "generator function lifespans are deprecated, use an @contextlib.asynccontextmanager function instead",
                 StarletteDeprecationWarning,
             )
-            self.lifespan_context = _wrap_gen_lifespan_context(lifespan)
+            base_lifespan = _wrap_gen_lifespan_context(lifespan)
         else:
-            self.lifespan_context = lifespan
+            base_lifespan = lifespan
+
+        @asynccontextmanager
+        async def _composed_lifespan(app: Any) -> AsyncIterator[Any]:
+            async with contextlib.AsyncExitStack() as stack:
+                state = await stack.enter_async_context(base_lifespan(app))
+                if self.propagate_lifespan:
+                    for route in self.routes:
+                        sub_router = getattr(getattr(route, "app", None), "router", None)
+                        if sub_router is not None and hasattr(sub_router, "lifespan_context"):
+                            await stack.enter_async_context(sub_router.lifespan_context(route.app))
+                yield state
+
+        self.lifespan_context = _composed_lifespan
 
         self.middleware_stack = self.app
         if middleware:

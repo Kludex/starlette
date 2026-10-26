@@ -29,6 +29,7 @@ class Starlette:
         lifespan: Lifespan[AppType] | None = None,
         *,
         max_body_size: int | None = None,
+        propagate_lifespan: bool = False,
     ) -> None:
         """Initializes the application.
 
@@ -54,7 +55,7 @@ class Starlette:
         """
         self.debug = debug
         self.state = State()
-        self.router = Router(routes, lifespan=lifespan)
+        self.router = Router(routes, lifespan=lifespan, propagate_lifespan=propagate_lifespan)
         self.max_body_size = max_body_size
         self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
         self.user_middleware = [] if middleware is None else list(middleware)

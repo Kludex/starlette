@@ -217,6 +217,13 @@ class URLPath(str):
         path = base_url.path.rstrip("/") + str(self)
         return URL(scheme=scheme, netloc=netloc, path=path)
 
+    def make_relative_url(self, root_path: str = "") -> URLPath:
+        prefix = root_path.rstrip("/")
+        path = str(self)
+        if not path.startswith("/"):
+            path = "/" + path
+        return URLPath(prefix + path, protocol=self.protocol, host=self.host)
+
 
 class Secret:
     """

@@ -109,7 +109,18 @@ class Jinja2Templates:
             request: Request = context["request"]
             return request.url_for(name, **path_params)
 
+        @pass_context
+        def path_for(
+            context: dict[str, Any],
+            name: str,
+            /,
+            **path_params: Any,
+        ) -> str:
+            request: Request = context["request"]
+            return request.path_for(name, **path_params)
+
         env.globals.setdefault("url_for", url_for)
+        env.globals.setdefault("path_for", path_for)
 
     def get_template(self, name: str) -> jinja2.Template:
         return self.env.get_template(name)

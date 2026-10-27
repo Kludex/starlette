@@ -650,6 +650,50 @@ def test_url_for_with_root_path_ending_with_slash(test_client_factory: TestClien
     assert response.json() == {"index": "https://www.example.org/sub_path/"}
 
 
+async def echo_paths(request: Request) -> JSONResponse:
+    return JSONResponse(
+        {
+            "index": str(request.path_for("index")),
+            "submount": str(request.path_for("mount:submount")),
+        }
+    )
+
+
+echo_path_routes = [
+    Route("/", echo_paths, name="index", methods=["GET"]),
+    Mount(
+        "/submount",
+        name="mount",
+        routes=[Route("/", echo_paths, name="submount", methods=["GET"])],
+    ),
+]
+
+
+def test_path_for_with_root_path(test_client_factory: TestClientFactory) -> None:
+    app = Starlette(routes=echo_path_routes)
+    client = test_client_factory(app, base_url="https://www.example.org/", root_path="/sub_path")
+    response = client.get("/sub_path/")
+    assert response.json() == {
+        "index": "/sub_path/",
+        "submount": "/sub_path/submount/",
+    }
+    response = client.get("/sub_path/submount/")
+    assert response.json() == {
+        "index": "/sub_path/",
+        "submount": "/sub_path/submount/",
+    }
+
+
+def test_path_for_with_root_path_ending_with_slash(test_client_factory: TestClientFactory) -> None:
+    def homepage(request: Request) -> JSONResponse:
+        return JSONResponse({"index": str(request.path_for("homepage"))})
+
+    app = Starlette(routes=[Route("/", homepage, name="homepage")])
+    client = test_client_factory(app, base_url="https://www.example.org/", root_path="/sub_path/")
+    response = client.get("/sub_path/")
+    assert response.json() == {"index": "/sub_path/"}
+
+
 def test_standalone_route_matches(
     test_client_factory: TestClientFactory,
 ) -> None:

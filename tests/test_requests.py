@@ -711,3 +711,44 @@ def test_request_url_starlette_context(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     client.get("/home")
     assert url_for == URL("http://testserver/home")
+
+
+def test_request_path_outside_starlette_context(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        request.path_for("index")
+
+    client = test_client_factory(app)
+    with pytest.raises(
+        RuntimeError,
+        match="The `path_for` method can only be used inside a Starlette application or with a router.",
+    ):
+        client.get("/")
+
+
+def test_request_path_starlette_context(test_client_factory: TestClientFactory) -> None:
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.routing import Route
+    from starlette.types import ASGIApp
+
+    path_for = None
+
+    async def homepage(request: Request) -> Response:
+        return PlainTextResponse("Hello, world!")
+
+    class CustomMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            nonlocal path_for
+            request = Request(scope, receive)
+            path_for = request.path_for("homepage")
+            await self.app(scope, receive, send)
+
+    app = Starlette(routes=[Route("/home", homepage)], middleware=[Middleware(CustomMiddleware)])
+
+    client = test_client_factory(app)
+    client.get("/home")
+    assert path_for == "/home"

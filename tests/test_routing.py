@@ -638,6 +638,14 @@ def test_url_for_with_double_mount() -> None:
     app = Starlette(routes=double_mount_routes)
     url = app.url_path_for("mount:static", path="123")
     assert url == "/mount/static/123"
+    url_with_slash = app.url_path_for("mount:static", path="/123")
+    assert url_with_slash == "/mount/static/123"
+
+
+def test_url_path_for_mount_child_route_with_leading_slash() -> None:
+    mount = Mount("/static", app=Router(routes=[Route("/{path:path}", ok, name="child")]), name="static")
+    assert mount.url_path_for("static:child", path="/foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path="foo/bar") == "/static/foo/bar"
 
 
 def test_url_for_with_root_path_ending_with_slash(test_client_factory: TestClientFactory) -> None:

@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from pathlib import Path
 from typing import Any, assert_type
 
@@ -99,6 +100,28 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BOOL_AS_INT", "2")
     with pytest.raises(ValueError):
         config.get("BOOL_AS_INT", cast=bool)
+
+
+def test_config_partial_cast_error() -> None:
+    config = Config(environ={"VALID": "ff", "INVALID": "not-hex"})
+    cast = partial(int, base=16)
+
+    assert config("VALID", cast=cast) == 255
+    with pytest.raises(ValueError, match="Config 'INVALID' has value 'not-hex'. Not a valid partial."):
+        config("INVALID", cast=cast)
+
+
+def test_config_callable_instance_cast_error() -> None:
+    class CastToInt:
+        def __call__(self, value: str) -> int:
+            return int(value)
+
+    config = Config(environ={"VALID": "42"})
+    cast = CastToInt()
+
+    assert config("VALID", cast=cast) == 42
+    with pytest.raises(ValueError, match="Config 'INVALID' has value '\\[\\]'. Not a valid CastToInt."):
+        config("INVALID", cast=cast, default=[])
 
 
 def test_missing_env_file_raises(tmpdir: Path) -> None:

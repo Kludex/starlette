@@ -57,6 +57,14 @@ def test_json_none_response(test_client_factory: TestClientFactory) -> None:
     assert response.content == b"null"
 
 
+def test_response_subclass_media_type() -> None:
+    class CustomResponse(Response):
+        media_type = "application/custom"
+
+    response = CustomResponse("test")
+    assert response.media_type == "application/custom"
+
+
 def test_redirect_response(test_client_factory: TestClientFactory) -> None:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         if scope["path"] == "/":

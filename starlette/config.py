@@ -139,4 +139,5 @@ class Config:
         try:
             return cast(value)
         except (TypeError, ValueError):
-            raise ValueError(f"Config '{key}' has value '{value}'. Not a valid {cast.__name__}.")
+            cast_name = getattr(cast, "__name__", type(cast).__name__)
+            raise ValueError(f"Config '{key}' has value '{value}'. Not a valid {cast_name}.")

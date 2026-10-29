@@ -242,6 +242,7 @@ class CommaSeparatedStrings(Sequence[str]):
     def __init__(self, value: str | Sequence[str]):
         if isinstance(value, str):
             splitter = shlex(value, posix=True)
+            splitter.commenters = ""
             splitter.whitespace = ","
             splitter.whitespace_split = True
             self._items = [item.strip() for item in splitter]

@@ -130,6 +130,19 @@ def test_csv() -> None:
     assert str(csv) == "'localhost', '127.0.0.1', '0.0.0.0'"
 
 
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("https://example.org/#intro, https://example.net/", ["https://example.org/#intro", "https://example.net/"]),
+        ("#first, second", ["#first", "second"]),
+        ("first#, #second", ["first#", "#second"]),
+        ('"first#part", second', ["first#part", "second"]),
+    ],
+)
+def test_csv_preserves_hash_characters(value: str, expected: list[str]) -> None:
+    assert list(CommaSeparatedStrings(value)) == expected
+
+
 def test_url_from_scope() -> None:
     u = URL(scope={"path": "/path/to/somewhere", "query_string": b"abc=123", "headers": []})
     assert u == "/path/to/somewhere?abc=123"

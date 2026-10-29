@@ -60,6 +60,10 @@ def test_url() -> None:
     assert url.replace(hostname="[::1]") == "https://[::1]:8443/path"
     assert url.replace(hostname="[::1]:8080", port=None) == "https://[::1]:8080/path"
     assert url.replace(hostname="example.org:8080", port=None) == "https://example.org:8080/path"
+    assert url.replace(hostname="example.org:8080") == "https://example.org:8080/path"
+    assert url.replace(hostname="example.org:8080", port=9090) == "https://example.org:9090/path"
+    assert url.replace(hostname="[::1]:8080", port=9090) == "https://[::1]:9090/path"
+    assert url.replace(hostname="example.org:notaport") == "https://example.org:notaport:8443/path"
 
     url = URL("http://u:p@host/")
     assert url.replace(hostname="bar") == URL("http://u:p@bar/")
@@ -93,6 +97,12 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/?page=4&search=testing"
     u = u.remove_query_params(["page", "search"])
     assert str(u) == "https://example.org/path/"
+
+    # Multi-valued query parameters (lists and tuples)
+    u = URL("https://example.org/path/")
+    assert str(u.include_query_params(a="b", c=["d", "e"])) == "https://example.org/path/?a=b&c=d&c=e"
+    assert str(u.include_query_params(c=("d", "e"))) == "https://example.org/path/?c=d&c=e"
+    assert str(u.replace_query_params(a="b", c=["d", "e"])) == "https://example.org/path/?a=b&c=d&c=e"
 
 
 def test_hidden_password() -> None:

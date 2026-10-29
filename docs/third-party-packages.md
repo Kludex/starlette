@@ -141,6 +141,14 @@ Serverless ASGI adapter for GCP Cloud Functions.
 An admin panel for SQLAlchemy 2.0 models. It is one ASGI app that you mount into Starlette, FastAPI or
 Litestar, with search, filters, actions, permissions down to single rows and an audit log.
 
+### Starlette AI Chatbot
+
+<a href="https://github.com/asyntai/starlette-ai-chatbot" target="_blank">GitHub</a> |
+<a href="https://asyntai.com/documentation/integrations/starlette/" target="_blank">Documentation</a>
+
+Middleware that adds the Asyntai AI chat assistant to Starlette and FastAPI sites. It inserts the chat
+widget into HTML responses and leaves JSON, compressed responses and the API docs alone.
+
 ## Starlette Bridge
 
 <a href="https://github.com/tarsil/starlette-bridge" target="_blank">GitHub</a> |

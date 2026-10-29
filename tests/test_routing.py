@@ -5,6 +5,7 @@ import functools
 import json
 import uuid
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator
+from pathlib import Path
 from typing import Never, TypedDict
 
 import pytest
@@ -430,6 +431,18 @@ def test_reverse_mount_urls() -> None:
     mounted = Router([Mount("/users", ok, name="users")])
     with pytest.raises(NoMatchFound):
         mounted.url_path_for("users")
+
+
+def test_url_path_for_mount_with_leading_slash_path() -> None:
+    routes = [Route("/{path:path}", endpoint=ok, name="file")]
+    mount = Mount("/static", routes=routes, name="static")
+    assert mount.url_path_for("static:file", path="/foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:file", path=Path("/foo/bar")) == "/static/foo/bar"
+    assert mount.url_path_for("static:file", path="foo/bar") == "/static/foo/bar"
+
+    unnamed_mount = Mount("/static", routes=routes)
+    assert unnamed_mount.url_path_for("file", path="/foo/bar") == "/static/foo/bar"
+    assert unnamed_mount.url_path_for("file", path="foo/bar") == "/static/foo/bar"
 
 
 def test_mount_at_root(test_client_factory: TestClientFactory) -> None:

@@ -436,7 +436,9 @@ class Mount(BaseRoute):
     def url_path_for(self, name: str, /, **path_params: Any) -> URLPath:
         if self.name is not None and name == self.name and "path" in path_params:
             # 'name' matches "<mount_name>".
-            path_params["path"] = path_params["path"].lstrip("/")
+            path_val = path_params["path"]
+            path_str = path_val.as_posix() if hasattr(path_val, "as_posix") else str(path_val)
+            path_params["path"] = path_str.lstrip("/")
             path, remaining_params = replace_params(self.path_format, self.param_convertors, path_params)
             if not remaining_params:
                 return URLPath(path=path)
@@ -451,7 +453,8 @@ class Mount(BaseRoute):
             path_params["path"] = ""
             path_prefix, remaining_params = replace_params(self.path_format, self.param_convertors, path_params)
             if path_kwarg is not None:
-                remaining_params["path"] = path_kwarg
+                path_str = path_kwarg.as_posix() if hasattr(path_kwarg, "as_posix") else str(path_kwarg)
+                remaining_params["path"] = path_str.lstrip("/")
             for route in self.routes or []:
                 try:
                     url = route.url_path_for(remaining_name, **remaining_params)

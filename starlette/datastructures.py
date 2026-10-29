@@ -133,7 +133,7 @@ class URL:
                     hostname = hostname.rsplit(":", 1)[0]
             else:
                 if hostname.startswith("["):
-                    host_part, sep, port_part = hostname.rpartition("]")
+                    host_part, _, port_part = hostname.rpartition("]")
                     if port_part.startswith(":"):
                         hostname, embedded_port = host_part + "]", port_part[1:]
                     else:

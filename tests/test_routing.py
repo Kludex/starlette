@@ -418,6 +418,12 @@ def test_reverse_mount_urls() -> None:
     mounted = Router([Mount("/users", ok, name="users")])
     assert mounted.url_path_for("users", path="/a") == "/users/a"
 
+    # Issue #3686: Mount.url_path_for with child route and leading slash in path
+    files = Router([Route("/{path:path}", ok, name="file")])
+    static_mount = Router([Mount("/static", files, name="static")])
+    assert static_mount.url_path_for("static:file", path="/foo/bar") == "/static/foo/bar"
+    assert static_mount.url_path_for("static:file", path="foo/bar") == "/static/foo/bar"
+
     users = Router([Route("/{username}", ok, name="user")])
     mounted = Router([Mount("/{subpath}/users", users, name="users")])
     assert mounted.url_path_for("users:user", subpath="test", username="tom") == "/test/users/tom"

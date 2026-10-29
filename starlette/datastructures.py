@@ -120,6 +120,7 @@ class URL:
     def replace(self, **kwargs: Any) -> URL:
         if "username" in kwargs or "password" in kwargs or "hostname" in kwargs or "port" in kwargs:
             hostname = kwargs.pop("hostname", None)
+            port_specified = "port" in kwargs
             port = kwargs.pop("port", self.port)
             username = kwargs.pop("username", self.username)
             password = kwargs.pop("password", self.password)
@@ -130,13 +131,23 @@ class URL:
 
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
-            elif ":" in hostname and not hostname.startswith("["):
-                try:
-                    ipaddress.IPv6Address(hostname)
-                except ValueError:
-                    pass
-                else:
-                    hostname = f"[{hostname}]"
+            else:
+                if hostname.startswith("[") and "]:" in hostname:
+                    host_part, _, embedded_port = hostname.rpartition("]:")
+                    hostname = host_part + "]"
+                    if not port_specified or port is None:
+                        port = int(embedded_port)
+                elif ":" in hostname and not hostname.startswith("["):
+                    try:
+                        ipaddress.IPv6Address(hostname)
+                    except ValueError:
+                        h, _, p = hostname.rpartition(":")
+                        if p.isdigit():
+                            hostname = h
+                            if not port_specified or port is None:
+                                port = int(p)
+                    else:
+                        hostname = f"[{hostname}]"
 
             netloc = hostname
             if port is not None:
@@ -154,12 +165,22 @@ class URL:
 
     def include_query_params(self, **kwargs: Any) -> URL:
         params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
-        params.update({str(key): str(value) for key, value in kwargs.items()})
+        for key, value in kwargs.items():
+            if isinstance(value, (list, tuple)):
+                params.setlist(str(key), [str(v) for v in value])
+            else:
+                params[str(key)] = str(value)
         query = urlencode(params.multi_items())
         return self.replace(query=query)
 
     def replace_query_params(self, **kwargs: Any) -> URL:
-        query = urlencode([(str(key), str(value)) for key, value in kwargs.items()])
+        items: list[tuple[str, str]] = []
+        for key, value in kwargs.items():
+            if isinstance(value, (list, tuple)):
+                items.extend((str(key), str(v)) for v in value)
+            else:
+                items.append((str(key), str(value)))
+        query = urlencode(items)
         return self.replace(query=query)
 
     def remove_query_params(self, keys: str | Sequence[str]) -> URL:

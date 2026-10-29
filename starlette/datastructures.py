@@ -136,7 +136,7 @@ class URL:
                     host_part, _, embedded_port = hostname.rpartition("]:")
                     hostname = host_part + "]"
                     if not port_specified or port is None:
-                        port = int(embedded_port)
+                        port = int(embedded_port) if embedded_port.isdigit() else port
                 elif ":" in hostname and not hostname.startswith("["):
                     try:
                         ipaddress.IPv6Address(hostname)

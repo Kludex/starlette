@@ -58,8 +58,8 @@ def test_url() -> None:
 
     url = URL("https://example.org:8443/path")
     assert url.replace(hostname="[::1]") == "https://[::1]:8443/path"
-    assert url.replace(hostname="[::1]:8080", port=None) == "https://[::1]:8080/path"
-    assert url.replace(hostname="example.org:8080", port=None) == "https://example.org:8080/path"
+    assert url.replace(hostname="[::1]:8080", port=None) == "https://[::1]/path"
+    assert url.replace(hostname="example.org:8080", port=None) == "https://example.org/path"
     assert url.replace(hostname="example.org:8080") == "https://example.org:8080/path"
     assert url.replace(hostname="[::1]:8080") == "https://[::1]:8080/path"
     assert url.replace(hostname="example.org:8080", port=9000) == "https://example.org:9000/path"

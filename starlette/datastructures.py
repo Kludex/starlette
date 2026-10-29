@@ -132,20 +132,19 @@ class URL:
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
             elif hostname.startswith("["):
-                if "]" in hostname:
-                    host_part, _, rest = hostname.partition("]")
-                    if rest.startswith(":"):
-                        if not has_explicit_port:
-                            port = None
-                        elif port is not None:
-                            hostname = host_part + "]"
+                host_part, _, rest = hostname.partition("]")
+                if rest.startswith(":"):
+                    if not has_explicit_port:
+                        port = None
+                    else:
+                        hostname = host_part + "]"
             elif ":" in hostname:
                 try:
                     ipaddress.IPv6Address(hostname)
                 except ValueError:
                     if not has_explicit_port:
                         port = None
-                    elif port is not None:
+                    else:
                         hostname = hostname.rsplit(":", 1)[0]
                 else:
                     hostname = f"[{hostname}]"

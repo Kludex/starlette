@@ -28,8 +28,8 @@ from starlette.types import Message, Receive, Scope, Send
 
 
 class Response:
-    media_type = None
-    charset = "utf-8"
+    media_type: str | None = None
+    charset: str = "utf-8"
 
     def __init__(
         self,

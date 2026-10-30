@@ -521,6 +521,17 @@ def test_formdata() -> None:
     assert FormData({"a": "123", "b": "789"}) != {"a": "123", "b": "789"}
 
 
+def test_formdata_equality_with_multiple_uploads() -> None:
+    with io.BytesIO(b"a") as stream_a, io.BytesIO(b"b") as stream_b:
+        file_a = UploadFile(stream_a, filename="a.txt")
+        file_b = UploadFile(stream_b, filename="b.txt")
+        form = FormData([("files", file_a), ("files", file_b), ("name", "x")])
+
+        assert form == FormData(form)
+        assert form == FormData([("name", "x"), ("files", file_a), ("files", file_b)])
+        assert form != FormData([("files", file_b), ("files", file_a), ("name", "x")])
+
+
 @pytest.mark.anyio
 async def test_upload_file_repr() -> None:
     stream = io.BytesIO(b"data")

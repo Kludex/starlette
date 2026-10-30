@@ -146,3 +146,14 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_strips_matching_quotes(tmp_path: Path) -> None:
+    path = tmp_path / ".env"
+    path.write_text('SINGLE=\'say "hi"\'\nDOUBLE="it\'s"\nTRAILING="secret\'"\nUNQUOTED=abc\nQUOTE="\n')
+    config = Config(path)
+    assert config.get("SINGLE") == 'say "hi"'
+    assert config.get("DOUBLE") == "it's"
+    assert config.get("TRAILING") == "secret'"
+    assert config.get("UNQUOTED") == "abc"
+    assert config.get("QUOTE") == '"'

@@ -640,6 +640,17 @@ def test_url_for_with_double_mount() -> None:
     assert url == "/mount/static/123"
 
 
+def test_url_for_with_mount_path_starting_with_slash() -> None:
+    mount = Mount(
+        "/static",
+        name="static",
+        routes=[Route("/{path:path}", stub_app, name="child")],
+    )
+    assert mount.url_path_for("static:child", path="/foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path="foo/bar") == "/static/foo/bar"
+    assert mount.url_path_for("static:child", path=123) == "/static/123"
+
+
 def test_url_for_with_root_path_ending_with_slash(test_client_factory: TestClientFactory) -> None:
     def homepage(request: Request) -> JSONResponse:
         return JSONResponse({"index": str(request.url_for("homepage"))})

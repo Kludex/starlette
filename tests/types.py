@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-import httpx2 as httpx
+import httpx
 
 from starlette.testclient import TestClient
 from starlette.types import ASGIApp

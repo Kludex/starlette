@@ -777,7 +777,9 @@ def test_request_url_path_with_root_path(test_client_factory: TestClientFactory)
             url_path_for = request.url_path_for("users:user_page", username="alice")
             await self.app(scope, receive, send)
 
-    sub_app = Starlette(routes=[Route("/{username}", user_page, name="user_page")], middleware=[Middleware(CustomMiddleware)])
+    sub_app = Starlette(
+        routes=[Route("/{username}", user_page, name="user_page")], middleware=[Middleware(CustomMiddleware)]
+    )
     app = Starlette(routes=[Mount("/users", app=sub_app, name="users")])
 
     client = test_client_factory(app)

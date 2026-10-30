@@ -1266,3 +1266,12 @@ async def test_file_response_multi_range_unexpected_eof(tmp_path: Path) -> None:
             ),
         ):
             await client.get("/", headers={"Range": "bytes=0-2,5-7"})
+
+
+def test_response_subclass_media_type() -> None:
+    class CustomResponse(Response):
+        media_type = "application/custom"
+
+    response = CustomResponse(b"content")
+    assert response.media_type == "application/custom"
+    assert response.headers["content-type"] == "application/custom"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import inspect
 import re
 from collections.abc import Callable
@@ -31,6 +32,12 @@ class EndpointInfo(NamedTuple):
 
 
 _remove_converter_pattern = re.compile(r":\w+}")
+
+
+def _unwrap_partial(endpoint: Callable[..., Any]) -> Callable[..., Any]:
+    while isinstance(endpoint, functools.partial):
+        endpoint = endpoint.func
+    return endpoint
 
 
 class BaseSchemaGenerator:
@@ -70,18 +77,18 @@ class BaseSchemaGenerator:
             elif not isinstance(route, Route) or not route.include_in_schema:
                 continue
 
-            elif inspect.isfunction(route.endpoint) or inspect.ismethod(route.endpoint):
+            elif inspect.isfunction(endpoint := _unwrap_partial(route.endpoint)) or inspect.ismethod(endpoint):
                 path = self._remove_converter(route.path)
                 for method in route.methods or ["GET"]:
                     if method == "HEAD":
                         continue
-                    endpoints_info.append(EndpointInfo(path, method.lower(), route.endpoint))
+                    endpoints_info.append(EndpointInfo(path, method.lower(), endpoint))
             else:
                 path = self._remove_converter(route.path)
                 for method in ["get", "post", "put", "patch", "delete", "options", "query"]:
-                    if not hasattr(route.endpoint, method):
+                    if not hasattr(endpoint, method):
                         continue
-                    func = getattr(route.endpoint, method)
+                    func = getattr(endpoint, method)
                     endpoints_info.append(EndpointInfo(path, method.lower(), func))
 
         return endpoints_info

@@ -29,9 +29,10 @@ middleware = [
 app = Starlette(routes=routes, middleware=middleware)
 ```
 
-Every Starlette application automatically includes two pieces of middleware by default:
+Every Starlette application automatically includes three pieces of middleware by default:
 
 * `ServerErrorMiddleware` - Ensures that application exceptions may return a custom 500 page, or display an application traceback in DEBUG mode. This is *always* the outermost middleware layer.
+* `BackgroundTaskMiddleware` - Runs background tasks after user middleware returns. Mounted applications share the outermost task collection. See [background task execution](background.md#middleware-and-task-execution).
 * `ExceptionMiddleware` - Adds exception handlers, so that particular types of expected exception cases can be associated with handler functions. For example raising `HTTPException(status_code=404)` within an endpoint will end up rendering a custom 404 page.
 
 Middleware is evaluated from top-to-bottom, so the flow of execution in our example
@@ -39,6 +40,7 @@ application would look like this:
 
 * Middleware
     * `ServerErrorMiddleware`
+    * `BackgroundTaskMiddleware`
     * `TrustedHostMiddleware`
     * `HTTPSRedirectMiddleware`
     * `ExceptionMiddleware`

@@ -451,7 +451,9 @@ class Mount(BaseRoute):
             path_params["path"] = ""
             path_prefix, remaining_params = replace_params(self.path_format, self.param_convertors, path_params)
             if path_kwarg is not None:
-                remaining_params["path"] = path_kwarg
+                remaining_params["path"] = (
+                    path_kwarg.lstrip("/") if isinstance(path_kwarg, str) else path_kwarg
+                )
             for route in self.routes or []:
                 try:
                     url = route.url_path_for(remaining_name, **remaining_params)

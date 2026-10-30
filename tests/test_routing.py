@@ -423,6 +423,11 @@ def test_reverse_mount_urls() -> None:
     assert mounted.url_path_for("users:user", subpath="test", username="tom") == "/test/users/tom"
     assert mounted.url_path_for("users", subpath="test", path="/tom") == "/test/users/tom"
 
+    static = Router([Route("/{path:path}", ok, name="file")])
+    mounted_static = Router([Mount("/static", static, name="static")])
+    assert mounted_static.url_path_for("static:file", path="/foo/bar") == "/static/foo/bar"
+    assert mounted_static.url_path_for("static:file", path="foo/bar") == "/static/foo/bar"
+
     mounted = Router([Mount("/users", ok, name="users")])
     with pytest.raises(NoMatchFound):
         mounted.url_path_for("users", path="/a", foo="bar")

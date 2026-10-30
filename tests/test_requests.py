@@ -711,3 +711,75 @@ def test_request_url_starlette_context(test_client_factory: TestClientFactory) -
     client = test_client_factory(app)
     client.get("/home")
     assert url_for == URL("http://testserver/home")
+
+
+def test_request_url_path_outside_starlette_context(test_client_factory: TestClientFactory) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        request.url_path_for("index")
+
+    client = test_client_factory(app)
+    with pytest.raises(
+        RuntimeError,
+        match="The `url_path_for` method can only be used inside a Starlette application or with a router.",
+    ):
+        client.get("/")
+
+
+def test_request_url_path_starlette_context(test_client_factory: TestClientFactory) -> None:
+    from starlette.applications import Starlette
+    from starlette.datastructures import URLPath
+    from starlette.middleware import Middleware
+    from starlette.routing import Route
+    from starlette.types import ASGIApp
+
+    url_path_for = None
+
+    async def homepage(request: Request) -> Response:
+        return PlainTextResponse("Hello, world!")
+
+    class CustomMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            nonlocal url_path_for
+            request = Request(scope, receive)
+            url_path_for = request.url_path_for("homepage")
+            await self.app(scope, receive, send)
+
+    app = Starlette(routes=[Route("/home", homepage)], middleware=[Middleware(CustomMiddleware)])
+
+    client = test_client_factory(app)
+    client.get("/home")
+    assert url_path_for == URLPath("/home")
+
+
+def test_request_url_path_with_root_path(test_client_factory: TestClientFactory) -> None:
+    from starlette.applications import Starlette
+    from starlette.datastructures import URLPath
+    from starlette.middleware import Middleware
+    from starlette.routing import Route, Mount
+    from starlette.types import ASGIApp
+
+    url_path_for = None
+
+    async def user_page(request: Request) -> Response:
+        return PlainTextResponse("User page")
+
+    class CustomMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            nonlocal url_path_for
+            request = Request(scope, receive)
+            url_path_for = request.url_path_for("users:user_page", username="alice")
+            await self.app(scope, receive, send)
+
+    sub_app = Starlette(routes=[Route("/{username}", user_page, name="user_page")], middleware=[Middleware(CustomMiddleware)])
+    app = Starlette(routes=[Mount("/users", app=sub_app, name="users")])
+
+    client = test_client_factory(app)
+    client.get("/users/alice")
+    assert url_path_for == URLPath("/users/alice")

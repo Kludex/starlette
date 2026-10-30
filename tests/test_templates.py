@@ -174,3 +174,18 @@ def test_templates_with_environment(tmpdir: Path, test_client_factory: TestClien
     assert response.text == "<html>Hello, <a href='http://testserver/'>world</a></html>"
     assert response.template.name == "index.html"  # type: ignore
     assert set(response.context.keys()) == {"request"}  # type: ignore
+
+
+def test_templates_url_path_for(tmpdir: Path, test_client_factory: TestClientFactory) -> None:
+    path = os.path.join(tmpdir, "index.html")
+    with open(path, "w") as file:
+        file.write("<html><a href='{{ url_path_for('homepage') }}'>link</a></html>")
+
+    def homepage(request: Request) -> Response:
+        return templates.TemplateResponse(request, "index.html")
+
+    templates = Jinja2Templates(directory=str(tmpdir))
+    app = Starlette(routes=[Route("/home", homepage, name="homepage")])
+    client = test_client_factory(app)
+    response = client.get("/home")
+    assert response.text == "<html><a href='/home'>link</a></html>"

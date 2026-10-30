@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
 import anyio
 
 from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManagerWrapper
-from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
+from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State, URLPath
 from starlette.exceptions import HTTPException
 from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
 from starlette.types import Message, Receive, Scope, Send
@@ -202,6 +202,16 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
             raise RuntimeError("The `url_for` method can only be used inside a Starlette application or with a router.")
         url_path = url_path_provider.url_path_for(name, **path_params)
         return url_path.make_absolute_url(base_url=self.base_url)
+
+    def url_path_for(self, name: str, /, **path_params: Any) -> URLPath:
+        url_path_provider: Router | Starlette | None = self.scope.get("router") or self.scope.get("app")
+        if url_path_provider is None:
+            raise RuntimeError("The `url_path_for` method can only be used inside a Starlette application or with a router.")
+        url_path = url_path_provider.url_path_for(name, **path_params)
+        root_path = self.scope.get("root_path", "")
+        if root_path and not str(url_path).startswith(root_path):
+            return URLPath(root_path.rstrip("/") + str(url_path), protocol=url_path.protocol, host=url_path.host)
+        return url_path
 
 
 async def empty_receive() -> NoReturn:

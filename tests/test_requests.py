@@ -786,3 +786,36 @@ def test_request_url_path_with_root_path(test_client_factory: TestClientFactory)
     client = test_client_factory(app)
     client.get("/users/alice")
     assert url_path_for == URLPath("/users/alice")
+
+
+def test_request_url_path_with_mounted_root_path(test_client_factory: TestClientFactory) -> None:
+    from starlette.applications import Starlette
+    from starlette.datastructures import URLPath
+    from starlette.middleware import Middleware
+    from starlette.routing import Route
+    from starlette.types import ASGIApp
+
+    url_path_for = None
+
+    async def homepage(request: Request) -> Response:
+        return PlainTextResponse("Hello, world!")
+
+    class CustomMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            nonlocal url_path_for
+            request = Request(scope, receive)
+            url_path_for = request.url_path_for("homepage")
+            await self.app(scope, receive, send)
+
+    app = Starlette(
+        routes=[Route("/home", homepage, name="homepage")],
+        middleware=[Middleware(CustomMiddleware)],
+    )
+
+    client = test_client_factory(app, root_path="/mounted")
+    client.get("/home")
+    assert url_path_for == URLPath("/mounted/home")
+

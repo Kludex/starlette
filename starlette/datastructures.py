@@ -135,18 +135,13 @@ class URL:
                 embedded_port = None
                 if hostname.startswith("["):
                     if "]:" in hostname:
-                        host_part, _, port_str = hostname.partition("]:")
+                        host_part, _, embedded_port = hostname.partition("]:")
                         hostname = host_part + "]"
-                        if port_str.isdigit():
-                            embedded_port = port_str
                 elif ":" in hostname:
                     try:
                         ipaddress.IPv6Address(hostname)
                     except ValueError:
-                        host_part, _, port_str = hostname.rpartition(":")
-                        if port_str.isdigit():
-                            hostname = host_part
-                            embedded_port = port_str
+                        hostname, _, embedded_port = hostname.rpartition(":")
                     else:
                         hostname = f"[{hostname}]"
 

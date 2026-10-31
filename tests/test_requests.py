@@ -818,4 +818,3 @@ def test_request_url_path_with_mounted_root_path(test_client_factory: TestClient
     client = test_client_factory(app, root_path="/mounted")
     client.get("/home")
     assert url_path_for == URLPath("/mounted/home")
-

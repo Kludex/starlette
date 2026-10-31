@@ -212,8 +212,7 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
         url_path = url_path_provider.url_path_for(name, **path_params)
         root_path = self.scope.get("app_root_path", self.scope.get("root_path", ""))
         if root_path and not (
-            str(url_path) == root_path.rstrip("/")
-            or str(url_path).startswith(root_path.rstrip("/") + "/")
+            str(url_path) == root_path.rstrip("/") or str(url_path).startswith(root_path.rstrip("/") + "/")
         ):
             return URLPath(
                 root_path.rstrip("/") + str(url_path),

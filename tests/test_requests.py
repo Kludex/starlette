@@ -759,7 +759,7 @@ def test_request_url_path_with_root_path(test_client_factory: TestClientFactory)
     from starlette.applications import Starlette
     from starlette.datastructures import URLPath
     from starlette.middleware import Middleware
-    from starlette.routing import Route, Mount
+    from starlette.routing import Mount, Route
     from starlette.types import ASGIApp
 
     url_path_for = None
@@ -778,7 +778,8 @@ def test_request_url_path_with_root_path(test_client_factory: TestClientFactory)
             await self.app(scope, receive, send)
 
     sub_app = Starlette(
-        routes=[Route("/{username}", user_page, name="user_page")], middleware=[Middleware(CustomMiddleware)]
+        routes=[Route("/{username}", user_page, name="user_page")],
+        middleware=[Middleware(CustomMiddleware)],
     )
     app = Starlette(routes=[Mount("/users", app=sub_app, name="users")])
 

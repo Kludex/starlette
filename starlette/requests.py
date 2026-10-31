@@ -210,9 +210,16 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
                 "The `url_path_for` method can only be used inside a Starlette application or with a router."
             )
         url_path = url_path_provider.url_path_for(name, **path_params)
-        root_path = self.scope.get("root_path", "")
-        if root_path and not str(url_path).startswith(root_path):
-            return URLPath(root_path.rstrip("/") + str(url_path), protocol=url_path.protocol, host=url_path.host)
+        root_path = self.scope.get("app_root_path", self.scope.get("root_path", ""))
+        if root_path and not (
+            str(url_path) == root_path.rstrip("/")
+            or str(url_path).startswith(root_path.rstrip("/") + "/")
+        ):
+            return URLPath(
+                root_path.rstrip("/") + str(url_path),
+                protocol=url_path.protocol,
+                host=url_path.host,
+            )
         return url_path
 
 

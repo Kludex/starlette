@@ -28,7 +28,7 @@ from starlette.types import Message, Receive, Scope, Send
 
 
 class Response:
-    media_type = None
+    media_type: str | None = None
     charset = "utf-8"
 
     def __init__(

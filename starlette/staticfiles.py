@@ -49,9 +49,9 @@ class StaticFiles:
     ) -> None:
         self.directory = directory
         self.packages = packages
-        self.all_directories = self.get_directories(directory, packages)
+        self.all_directories: list[PathLike] = self.get_directories(directory, packages)
         self.html = html
-        self.config_checked = False
+        self.config_checked: bool = False
         self.follow_symlink = follow_symlink
         if check_dir and directory is not None and not os.path.isdir(directory):
             raise RuntimeError(f"Directory '{directory}' does not exist")

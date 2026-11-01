@@ -132,9 +132,9 @@ class FormParser:
 
 
 class MultiPartParser:
-    spool_max_size = 1024 * 1024  # 1MB
+    spool_max_size: int = 1024 * 1024  # 1MB
     """The maximum size of the spooled temporary file used to store file data."""
-    max_part_size = 1024 * 1024  # 1MB
+    max_part_size: int = 1024 * 1024  # 1MB
     """The maximum size of a part in the multipart request."""
 
     def __init__(

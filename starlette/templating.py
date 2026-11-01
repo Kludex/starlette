@@ -18,7 +18,7 @@ try:
     # and fall back to contextfunction,
     # adding a type ignore for mypy to let us access an attribute that may not exist
     if TYPE_CHECKING:
-        pass_context = jinja2.pass_context
+        from jinja2 import pass_context
     else:
         if hasattr(jinja2, "pass_context"):
             pass_context = jinja2.pass_context
@@ -89,10 +89,10 @@ class Jinja2Templates:
         env: jinja2.Environment | None = None,
     ) -> None:
         assert bool(directory) ^ bool(env), "either 'directory' or 'env' arguments must be passed"
-        self.context_processors = context_processors or []
+        self.context_processors: list[Callable[[Request], dict[str, Any]]] = context_processors or []
         if directory is not None:
             loader = jinja2.FileSystemLoader(directory)
-            self.env = jinja2.Environment(loader=loader, autoescape=jinja2.select_autoescape())
+            self.env: jinja2.Environment = jinja2.Environment(loader=loader, autoescape=jinja2.select_autoescape())
         elif env is not None:  # pragma: no branch
             self.env = env
 

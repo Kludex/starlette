@@ -27,7 +27,7 @@ class SessionMiddleware:
         partitioned: bool = False,
     ) -> None:
         self.app = app
-        self.signer = itsdangerous.TimestampSigner(str(secret_key))
+        self.signer: itsdangerous.TimestampSigner = itsdangerous.TimestampSigner(str(secret_key))
         self.session_cookie = session_cookie
         self.max_age = max_age
         self.path = path

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import AsyncGenerator, Iterator, Mapping
+from collections.abc import AsyncGenerator, Callable, Iterator, Mapping
 from contextlib import aclosing
 from http import cookies as http_cookies
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast
@@ -100,7 +100,7 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
     # Don't use the `abc.Mapping.__eq__` implementation.
     # Connection instances should never be considered equal
     # unless `self is other`.
-    __eq__ = object.__eq__
+    __eq__: Callable[[object, object], bool] = object.__eq__
     __hash__ = object.__hash__
 
     @property

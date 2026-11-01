@@ -109,7 +109,7 @@ class AuthenticationBackend:
 
 class AuthCredentials:
     def __init__(self, scopes: Sequence[str] | None = None):
-        self.scopes = [] if scopes is None else list(scopes)
+        self.scopes: list[str] = [] if scopes is None else list(scopes)
 
 
 class BaseUser:

@@ -93,6 +93,9 @@ class WebSocketDenialResponse(  # type: ignore[misc]
 
 
 class WebSocketTestSession:
+    portal: anyio.from_thread.BlockingPortal
+    exit_stack: contextlib.ExitStack
+
     def __init__(
         self,
         app: ASGI3App,
@@ -101,9 +104,9 @@ class WebSocketTestSession:
     ) -> None:
         self.app = app
         self.scope = scope
-        self.accepted_subprotocol = None
+        self.accepted_subprotocol: str | None = None
         self.portal_factory = portal_factory
-        self.extra_headers = None
+        self.extra_headers: list[tuple[bytes, bytes]] | None = None
 
     def __enter__(self) -> Self:
         with contextlib.ExitStack() as stack:
@@ -441,6 +444,9 @@ class TestClient(httpx.Client):
     __test__ = False
     task: Future[None]
     portal: anyio.from_thread.BlockingPortal | None = None
+    stream_send: StapledObjectStream[Message | None]
+    stream_receive: StapledObjectStream[Message]
+    exit_stack: contextlib.ExitStack
 
     def __init__(
         self,
@@ -455,7 +461,7 @@ class TestClient(httpx.Client):
         follow_redirects: bool = True,
         client: tuple[str, int] = ("testclient", 50000),
     ) -> None:
-        self.async_backend = _AsyncBackend(backend=backend, backend_options=backend_options or {})
+        self.async_backend: _AsyncBackend = _AsyncBackend(backend=backend, backend_options=backend_options or {})
         if _is_asgi3(app):
             asgi_app = app
         else:

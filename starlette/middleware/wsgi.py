@@ -92,10 +92,10 @@ class WSGIResponder:
     def __init__(self, app: Callable[..., Any], scope: Scope) -> None:
         self.app = app
         self.scope = scope
-        self.status = None
-        self.response_headers = None
+        self.status: str | None = None
+        self.response_headers: list[tuple[str, str]] | None = None
         self.stream_send, self.stream_receive = anyio.create_memory_object_stream(math.inf)
-        self.response_started = False
+        self.response_started: bool = False
         self.exc_info: Any = None
 
     async def __call__(self, receive: Receive, send: Send) -> None:

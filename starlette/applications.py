@@ -53,11 +53,13 @@ class Starlette:
                 body. The default, `None`, does not limit request body size.
         """
         self.debug = debug
-        self.state = State()
-        self.router = Router(routes, lifespan=lifespan)
+        self.state: State = State()
+        self.router: Router = Router(routes, lifespan=lifespan)
         self.max_body_size = max_body_size
-        self.exception_handlers = {} if exception_handlers is None else dict(exception_handlers)
-        self.user_middleware = [] if middleware is None else list(middleware)
+        self.exception_handlers: dict[Any, ExceptionHandler] = (
+            {} if exception_handlers is None else dict(exception_handlers)
+        )
+        self.user_middleware: list[Middleware] = [] if middleware is None else list(middleware)
         self.middleware_stack: ASGIApp | None = None
 
     def build_middleware_stack(self) -> ASGIApp:

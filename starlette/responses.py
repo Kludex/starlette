@@ -28,8 +28,8 @@ from starlette.types import Message, Receive, Scope, Send
 
 
 class Response:
-    media_type = None
-    charset = "utf-8"
+    media_type: str | None = None
+    charset: str = "utf-8"
 
     def __init__(
         self,
@@ -43,7 +43,7 @@ class Response:
         if media_type is not None:
             self.media_type = media_type
         self.background = background
-        self.body = self.render(content)
+        self.body: bytes | memoryview = self.render(content)
         self.init_headers(headers)
 
     def render(self, content: Any) -> bytes | memoryview:
@@ -176,15 +176,15 @@ class Response:
 
 
 class HTMLResponse(Response):
-    media_type = "text/html"
+    media_type: str | None = "text/html"
 
 
 class PlainTextResponse(Response):
-    media_type = "text/plain"
+    media_type: str | None = "text/plain"
 
 
 class JSONResponse(Response):
-    media_type = "application/json"
+    media_type: str | None = "application/json"
 
     def __init__(
         self,
@@ -240,7 +240,7 @@ class StreamingResponse(Response):
         else:
             self.body_iterator = iterate_in_threadpool(content)
         self.status_code = status_code
-        self.media_type = self.media_type if media_type is None else media_type
+        self.media_type: str | None = self.media_type if media_type is None else media_type
         self.background = background
         self.init_headers(headers)
 
@@ -318,7 +318,7 @@ class FileResponse(Response):
         self.filename = filename
         if media_type is None:
             media_type = guess_type(filename or path)[0] or "application/octet-stream"
-        self.media_type = media_type
+        self.media_type: str | None = media_type
         self.background = background
         self.init_headers(headers)
         self.headers.setdefault("accept-ranges", "bytes")

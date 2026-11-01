@@ -14,7 +14,7 @@ class BackgroundTask:
         self.func = func
         self.args = args
         self.kwargs = kwargs
-        self.is_async = is_async_callable(func)
+        self.is_async: bool = is_async_callable(func)
 
     async def __call__(self) -> None:
         if self.is_async:
@@ -25,7 +25,7 @@ class BackgroundTask:
 
 class BackgroundTasks(BackgroundTask):
     def __init__(self, tasks: Sequence[BackgroundTask] | None = None):
-        self.tasks = list(tasks) if tasks else []
+        self.tasks: list[BackgroundTask] = list(tasks) if tasks else []
 
     def add_task(self, func: Callable[P, Any], *args: P.args, **kwargs: P.kwargs) -> None:
         task = BackgroundTask(func, *args, **kwargs)

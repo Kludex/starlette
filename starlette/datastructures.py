@@ -439,7 +439,7 @@ class UploadFile:
         self.filename = filename
         self.file = file
         self.size = size
-        self.headers = headers or Headers()
+        self.headers: Headers = headers or Headers()
 
         # Capture max size from SpooledTemporaryFile if one is provided. This slightly speeds up future checks.
         # Note 0 means unlimited mirroring SpooledTemporaryFile's __init__

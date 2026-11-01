@@ -56,7 +56,7 @@ class GZipMiddleware:
         self.minimum_size = minimum_size
         self.compresslevel = compresslevel
         self.thread_minimum_size = thread_minimum_size
-        self.exclude_content_types = _normalize_content_types(exclude_content_types)
+        self.exclude_content_types: tuple[str, ...] = _normalize_content_types(exclude_content_types)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":  # pragma: no cover
@@ -91,13 +91,13 @@ class IdentityResponder:
     ) -> None:
         self.app = app
         self.minimum_size = minimum_size
-        self.exclude_content_types = _normalize_content_types(exclude_content_types)
+        self.exclude_content_types: tuple[str, ...] = _normalize_content_types(exclude_content_types)
         self.send: Send = unattached_send
         self.initial_message: Message = {}
-        self.started = False
-        self.content_encoding_set = False
-        self.content_type_is_excluded = False
-        self.partial_response = False
+        self.started: bool = False
+        self.content_encoding_set: bool = False
+        self.content_type_is_excluded: bool = False
+        self.partial_response: bool = False
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         self.send = send

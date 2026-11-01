@@ -204,6 +204,10 @@ class BaseRoute:
 
 
 class Route(BaseRoute):
+    path_regex: Pattern[str]
+    path_format: str
+    param_convertors: dict[str, Convertor[Any]]
+
     def __init__(
         self,
         path: str,
@@ -218,7 +222,7 @@ class Route(BaseRoute):
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
         self.endpoint = endpoint
-        self.name = get_name(endpoint) if name is None else name
+        self.name: str = get_name(endpoint) if name is None else name
         self.include_in_schema = include_in_schema
 
         endpoint_handler = endpoint
@@ -226,7 +230,7 @@ class Route(BaseRoute):
             endpoint_handler = endpoint_handler.func
         if inspect.isfunction(endpoint_handler) or inspect.ismethod(endpoint_handler):
             # Endpoint is function or method. Treat it as `func(request) -> response`.
-            self.app = request_response(endpoint)
+            self.app: ASGIApp = request_response(endpoint)
             if methods is None:
                 methods = ["GET"]
         else:
@@ -240,7 +244,7 @@ class Route(BaseRoute):
             self.app = RequestBodyLimitMiddleware(self.app, max_body_size=max_body_size)
 
         if methods is None:
-            self.methods = None
+            self.methods: set[str] | None = None
         else:
             self.methods = {method.upper() for method in methods}
             if "GET" in self.methods:
@@ -304,6 +308,10 @@ class Route(BaseRoute):
 
 
 class WebSocketRoute(BaseRoute):
+    path_regex: Pattern[str]
+    path_format: str
+    param_convertors: dict[str, Convertor[Any]]
+
     def __init__(
         self,
         path: str,
@@ -315,14 +323,14 @@ class WebSocketRoute(BaseRoute):
         assert path.startswith("/"), "Routed paths must start with '/'"
         self.path = path
         self.endpoint = endpoint
-        self.name = get_name(endpoint) if name is None else name
+        self.name: str = get_name(endpoint) if name is None else name
 
         endpoint_handler = endpoint
         while isinstance(endpoint_handler, functools.partial):
             endpoint_handler = endpoint_handler.func
         if inspect.isfunction(endpoint_handler) or inspect.ismethod(endpoint_handler):
             # Endpoint is function or method. Treat it as `func(websocket)`.
-            self.app = websocket_session(endpoint)
+            self.app: ASGIApp = websocket_session(endpoint)
         else:
             # Endpoint is a class. Treat it as ASGI.
             self.app = endpoint
@@ -370,6 +378,10 @@ class WebSocketRoute(BaseRoute):
 
 
 class Mount(BaseRoute):
+    path_regex: Pattern[str]
+    path_format: str
+    param_convertors: dict[str, Convertor[Any]]
+
     def __init__(
         self,
         path: str,
@@ -382,12 +394,12 @@ class Mount(BaseRoute):
     ) -> None:
         assert path == "" or path.startswith("/"), "Routed paths must start with '/'"
         assert app is not None or routes is not None, "Either 'app=...', or 'routes=' must be specified"
-        self.path = path.rstrip("/")
+        self.path: str = path.rstrip("/")
         if app is not None:
             self._base_app: ASGIApp = app
         else:
             self._base_app = Router(routes=routes)
-        self.app = self._base_app
+        self.app: ASGIApp = self._base_app
         if middleware is not None:
             for cls, args, kwargs in reversed(middleware):
                 self.app = cls(self.app, *args, **kwargs)
@@ -473,6 +485,10 @@ class Mount(BaseRoute):
 
 
 class Host(BaseRoute):
+    host_regex: Pattern[str]
+    host_format: str
+    param_convertors: dict[str, Convertor[Any]]
+
     def __init__(self, host: str, app: ASGIApp, name: str | None = None) -> None:
         assert not host.startswith("/"), "Host must not start with '/'"
         self.host = host
@@ -596,9 +612,9 @@ class Router:
         middleware: Sequence[Middleware] | None = None,
         max_body_size: int | None = None,
     ) -> None:
-        self.routes = [] if routes is None else list(routes)
+        self.routes: list[BaseRoute] = [] if routes is None else list(routes)
         self.redirect_slashes = redirect_slashes
-        self.default = self.not_found if default is None else default
+        self.default: ASGIApp = self.not_found if default is None else default
 
         if lifespan is None:
             self.lifespan_context: Lifespan[Any] = _DefaultLifespan(self)
@@ -619,7 +635,7 @@ class Router:
         else:
             self.lifespan_context = lifespan
 
-        self.middleware_stack = self.app
+        self.middleware_stack: ASGIApp = self.app
         if middleware:
             for cls, args, kwargs in reversed(middleware):
                 self.middleware_stack = cls(self.middleware_stack, *args, **kwargs)

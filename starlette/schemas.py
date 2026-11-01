@@ -16,7 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 
 class OpenAPIResponse(Response):
-    media_type = "application/vnd.oai.openapi"
+    media_type: str | None = "application/vnd.oai.openapi"
 
     def render(self, content: Any) -> bytes:
         assert yaml is not None, "`pyyaml` must be installed to use OpenAPIResponse."

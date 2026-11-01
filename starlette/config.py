@@ -41,7 +41,7 @@ class Environ(MutableMapping[str, str]):
         return len(self._environ)
 
 
-environ = Environ()
+environ: Environ = Environ()
 
 T = TypeVar("T")
 

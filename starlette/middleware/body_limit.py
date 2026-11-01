@@ -50,8 +50,8 @@ class RequestBodyLimitResponder:
         self._receive: Receive | None = None
         self._send: Send | None = None
         self.content_length: int | None = None
-        self.total_size = 0
-        self.response_started = False
+        self.total_size: int = 0
+        self.response_started: bool = False
 
     @property
     def scope(self) -> Scope:

@@ -25,8 +25,8 @@ class TrustedHostMiddleware:
             if pattern.startswith("*") and pattern != "*":
                 assert pattern.startswith("*."), ENFORCE_DOMAIN_WILDCARD
         self.app = app
-        self.allowed_hosts = [pattern.lower() for pattern in allowed_hosts]
-        self.allow_any = "*" in allowed_hosts
+        self.allowed_hosts: list[str] = [pattern.lower() for pattern in allowed_hosts]
+        self.allow_any: bool = "*" in allowed_hosts
         self.www_redirect = www_redirect
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

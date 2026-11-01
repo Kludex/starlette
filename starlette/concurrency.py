@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import warnings
 from collections.abc import AsyncIterator, Callable, Coroutine, Iterable, Iterator
-from typing import ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 import anyio.to_thread
 
@@ -13,7 +13,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-async def run_until_first_complete(*args: tuple[Callable, dict]) -> None:  # type: ignore[type-arg]
+async def run_until_first_complete(*args: tuple[Callable[..., Any], dict[str, Any]]) -> None:
     warnings.warn(
         "run_until_first_complete is deprecated and will be removed in a future version.",
         StarletteDeprecationWarning,

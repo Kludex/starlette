@@ -20,7 +20,7 @@ class WebSocketState(enum.Enum):
 class WebSocketDisconnect(Exception):
     def __init__(self, code: int = 1000, reason: str | None = None) -> None:
         self.code = code
-        self.reason = reason or ""
+        self.reason: str = reason or ""
 
 
 class WebSocketDisconnected(RuntimeError):
@@ -35,8 +35,8 @@ class WebSocket(HTTPConnection[StateT]):
         assert scope["type"] == "websocket"
         self._receive = receive
         self._send = send
-        self.client_state = WebSocketState.CONNECTING
-        self.application_state = WebSocketState.CONNECTING
+        self.client_state: WebSocketState = WebSocketState.CONNECTING
+        self.application_state: WebSocketState = WebSocketState.CONNECTING
 
     async def receive(self) -> Message:
         """
@@ -196,7 +196,7 @@ class WebSocket(HTTPConnection[StateT]):
 class WebSocketClose:
     def __init__(self, code: int = 1000, reason: str | None = None) -> None:
         self.code = code
-        self.reason = reason or ""
+        self.reason: str = reason or ""
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await send({"type": "websocket.close", "code": self.code, "reason": self.reason})

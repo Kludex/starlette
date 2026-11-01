@@ -208,6 +208,75 @@ against the application, although these will only return the URL path.
 url = app.url_path_for("user_detail", username=...)
 ```
 
+!!! note "`app.url_path_for()` ignores the `root_path`"
+    The application doesn't know the ASGI `root_path` until a request arrives. If your app
+    is served under a prefix, use `request.url_for(...).path` instead.
+
+### Paths for links within your site
+
+`request.url_for()` returns an absolute URL, with a scheme and a host. For links to other
+pages of the same site, you only need the path:
+
+```python
+from starlette.responses import RedirectResponse
+
+
+async def login(request):
+    return RedirectResponse(request.url_for("user_detail", username="tom").path)
+```
+
+The path includes the ASGI `root_path`, so it stays correct when a proxy serves your app
+under a prefix, as long as the server sets `root_path` (see the next section). The browser
+resolves it against the address it already used, so the scheme and host can't be wrong.
+
+The same works in templates:
+
+```html
+<link href="{{ url_for('static', path='/css/base.css').path }}" rel="stylesheet" />
+```
+
+!!! note "Routes under `Host` need the full URL"
+    A route inside a [`Host`](#host-based-routing) can live on a different host than the
+    current request. Its path alone would point to the wrong site, so keep the full URL.
+
+### Absolute URLs behind a proxy
+
+Some URLs must be absolute: links in emails, OAuth callbacks, or URLs returned by an API.
+`request.url_for()` builds them from the incoming request:
+
+| Part | Source |
+| --- | --- |
+| Scheme | The ASGI `scheme`, set by the server. |
+| Host | The `Host` header, or the ASGI `server` if the header is missing. |
+| Path prefix | The ASGI `root_path`. |
+
+Behind a reverse proxy, the server sees the connection from the proxy, not from the client.
+To get the public URL, you need all of these:
+
+* The server must trust the `X-Forwarded-Proto` header from the proxy, so the scheme is
+  `https`. With Uvicorn, use `--proxy-headers` and `--forwarded-allow-ips`. See
+  [Proxies and forwarded headers](https://uvicorn.dev/deployment/#proxies-and-forwarded-headers).
+* The proxy must pass the original `Host` header. Uvicorn doesn't read `X-Forwarded-Host`.
+  With nginx, add `proxy_set_header Host $host;`.
+* If the proxy serves your app under a prefix and strips it, the server must set the ASGI
+  `root_path` to that prefix. With Uvicorn, use `--root-path /prefix`.
+
+!!! warning "The client controls the `Host` header"
+    Anyone can send a request with `Host: evil.com`, and `url_for()` will return
+    `http://evil.com/...`. If that URL ends up in a password reset email or a redirect,
+    it sends your users to the attacker. Reject unknown hosts with
+    [`TrustedHostMiddleware`](middleware.md#trustedhostmiddleware) whenever you build
+    absolute URLs. List your domains in `allowed_hosts`, because the default allows every
+    host.
+
+If your public address is fixed, you can skip the `Host` header and set it yourself:
+
+```python
+async def auth(request):
+    callback = request.url_for("auth_callback").replace(scheme="https", netloc="example.com")
+    ...
+```
+
 ## Host-based routing
 
 If you want to use different routes for the same path based on the `Host` header.

@@ -303,8 +303,9 @@ use `allowed_hosts=["*"]` or omit the middleware.
 
 If an incoming request does not validate correctly then a 400 response will be sent.
 
-Use this middleware whenever you build absolute URLs with `request.url_for()`. Those URLs
-use the `Host` header, which the client controls. See
+Use this middleware whenever you build absolute URLs with `request.url_for()`, and list your
+domains in `allowed_hosts`. Those URLs use the `Host` header, which the client controls, and
+the default `allowed_hosts` accepts every host. See
 [Absolute URLs behind a proxy](routing.md#absolute-urls-behind-a-proxy).
 
 ## RequestBodyLimitMiddleware

@@ -226,8 +226,8 @@ async def login(request):
 ```
 
 The path includes the ASGI `root_path`, so it stays correct when a proxy serves your app
-under a prefix. The browser resolves it against the address it already used, so the
-scheme and host can't be wrong.
+under a prefix, as long as the server sets `root_path` (see the next section). The browser
+resolves it against the address it already used, so the scheme and host can't be wrong.
 
 The same works in templates:
 
@@ -251,20 +251,23 @@ Some URLs must be absolute: links in emails, OAuth callbacks, or URLs returned b
 | Path prefix | The ASGI `root_path`. |
 
 Behind a reverse proxy, the server sees the connection from the proxy, not from the client.
-To get the public URL, you need both of these:
+To get the public URL, you need all of these:
 
 * The server must trust the `X-Forwarded-Proto` header from the proxy, so the scheme is
   `https`. With Uvicorn, use `--proxy-headers` and `--forwarded-allow-ips`. See
   [Proxies and forwarded headers](https://uvicorn.dev/deployment/#proxies-and-forwarded-headers).
 * The proxy must pass the original `Host` header. Uvicorn doesn't read `X-Forwarded-Host`.
   With nginx, add `proxy_set_header Host $host;`.
+* If the proxy serves your app under a prefix and strips it, the server must set the ASGI
+  `root_path` to that prefix. With Uvicorn, use `--root-path /prefix`.
 
 !!! warning "The client controls the `Host` header"
     Anyone can send a request with `Host: evil.com`, and `url_for()` will return
     `http://evil.com/...`. If that URL ends up in a password reset email or a redirect,
     it sends your users to the attacker. Reject unknown hosts with
     [`TrustedHostMiddleware`](middleware.md#trustedhostmiddleware) whenever you build
-    absolute URLs.
+    absolute URLs. List your domains in `allowed_hosts`, because the default allows every
+    host.
 
 If your public address is fixed, you can skip the `Host` header and set it yourself:
 

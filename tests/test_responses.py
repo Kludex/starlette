@@ -9,7 +9,7 @@ from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, get_type_hints
 
 import anyio
 import httpx2 as httpx
@@ -1300,3 +1300,17 @@ async def test_file_response_multi_range_unexpected_eof(tmp_path: Path) -> None:
             ),
         ):
             await client.get("/", headers={"Range": "bytes=0-2,5-7"})
+
+
+def test_response_media_type_annotation() -> None:
+    hints = get_type_hints(Response)
+    assert hints["media_type"] == str | None
+
+    class CustomResponse(Response):
+        media_type = "application/custom"
+
+    assert CustomResponse.media_type == "application/custom"
+    assert Response.media_type is None
+
+    response = Response("hello", media_type="text/plain")
+    assert response.media_type == "text/plain"

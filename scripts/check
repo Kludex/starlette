@@ -7,4 +7,5 @@ set -x
 ./scripts/sync-version
 uv run ruff format --check --diff $SOURCE_FILES
 uv run mypy $SOURCE_FILES
+uv run mypy --allow-redefinition-new tests/type_checks
 uv run ruff check $SOURCE_FILES

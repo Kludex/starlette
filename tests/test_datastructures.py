@@ -651,4 +651,3 @@ def test_upload_file_exact_max_mem_size_boundary() -> None:
         # Invariant: exactly equal to max_size must NOT roll to disk
         assert upload._will_roll(1024) is False
         assert upload._will_roll(1025) is True
-

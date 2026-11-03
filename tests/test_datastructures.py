@@ -633,3 +633,22 @@ def test_multidict() -> None:
     assert q.getlist("a") == ["123"]
     q.update([("a", "456")], a="789", b="123")
     assert q == MultiDict([("a", "456"), ("a", "789"), ("b", "123")])
+
+
+def test_mutable_headers_setdefault_return_values() -> None:
+    headers = MutableHeaders()
+    res1 = headers.setdefault("content-type", "application/json")
+    assert res1 == "application/json", "setdefault must return new value"
+
+    res2 = headers.setdefault("Content-Type", "text/plain")
+    assert res2 == "application/json", "setdefault must return existing value case-insensitively"
+
+
+def test_upload_file_exact_max_mem_size_boundary() -> None:
+    with SpooledTemporaryFile(max_size=1024) as f:
+        upload = UploadFile(f)
+
+        # Invariant: exactly equal to max_size must NOT roll to disk
+        assert upload._will_roll(1024) is False
+        assert upload._will_roll(1025) is True
+

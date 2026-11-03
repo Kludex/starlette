@@ -95,6 +95,32 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/"
 
 
+def test_url_multivalue_query_params() -> None:
+    u = URL("https://example.org/path/?page=3")
+    u = u.include_query_params(filter=["active", "verified"])
+    assert str(u) == "https://example.org/path/?page=3&filter=active&filter=verified"
+
+    # tuple support
+    u = u.include_query_params(tags=("python", "fastapi"))
+    assert str(u) == "https://example.org/path/?page=3&filter=active&filter=verified&tags=python&tags=fastapi"
+
+    # replacing multi-values with include_query_params
+    u = u.include_query_params(filter=["archived"])
+    assert str(u) == "https://example.org/path/?page=3&tags=python&tags=fastapi&filter=archived"
+
+    # replace_query_params with list and tuple
+    u = u.replace_query_params(c=["d", "e"], f=("1", "2"))
+    assert str(u) == "https://example.org/path/?c=d&c=e&f=1&f=2"
+
+    # empty sequence removes key
+    u = u.include_query_params(c=[])
+    assert str(u) == "https://example.org/path/?f=1&f=2"
+
+    # remove_query_params cleans all multi-values
+    u = u.remove_query_params("f")
+    assert str(u) == "https://example.org/path/"
+
+
 def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"

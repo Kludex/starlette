@@ -15,17 +15,28 @@ from starlette.websockets import WebSocket
 _P = ParamSpec("_P")
 
 
-def has_required_scope(conn: HTTPConnection, scopes: Sequence[str]) -> bool:
-    for scope in scopes:
-        if scope not in conn.auth.scopes:
-            return False
-    return True
+def has_required_scope(
+    conn: HTTPConnection, 
+    scopes: Sequence[str], 
+    all_scopes: bool = True
+) -> bool:
+    if all_scopes:
+        for scope in scopes:
+            if scope not in conn.auth.scopes:
+                return False
+        return True
+    else:
+        for scope in scopes:
+            if scope in conn.auth.scopes:
+                return True
+        return False
 
 
 def requires(
     scopes: str | Sequence[str],
     status_code: int = 403,
     redirect: str | None = None,
+    all_scopes: bool = True
 ) -> Callable[[Callable[_P, Any]], Callable[_P, Any]]:
     scopes_list = [scopes] if isinstance(scopes, str) else list(scopes)
 
@@ -50,7 +61,7 @@ def requires(
                     f" not '{type(websocket).__name__}'"
                 )
 
-                if not has_required_scope(websocket, scopes_list):
+                if not has_required_scope(websocket, scopes_list, all_scopes):
                     await websocket.close()
                 else:
                     await func(*args, **kwargs)
@@ -66,7 +77,7 @@ def requires(
                     f"Parameter with name 'request' is required to be of type 'Request' not '{type(request).__name__}'"
                 )
 
-                if not has_required_scope(request, scopes_list):
+                if not has_required_scope(request, scopes_list, all_scopes):
                     if redirect is not None:
                         orig_request_qparam = urlencode({"next": str(request.url)})
                         next_url = f"{request.url_for(redirect)}?{orig_request_qparam}"
@@ -85,7 +96,7 @@ def requires(
                     f"Parameter with name 'request' is required to be of type 'Request' not '{type(request).__name__}'"
                 )
 
-                if not has_required_scope(request, scopes_list):
+                if not has_required_scope(request, scopes_list, all_scopes):
                     if redirect is not None:
                         orig_request_qparam = urlencode({"next": str(request.url)})
                         next_url = f"{request.url_for(redirect)}?{orig_request_qparam}"

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from starlette.datastructures import Headers, MutableHeaders
+from starlette.datastructures import MutableHeaders
 from starlette.types import Message, Scope
 
 
@@ -17,10 +17,14 @@ def compressible(initial_message: Message, exclude_content_types: tuple[str, ...
     status = initial_message["status"]
     if status < 200 or status in (204, 205, 206):
         return False
-    headers = Headers(raw=initial_message["headers"])
-    if "content-encoding" in headers:
-        return False
-    media_type = headers.get("content-type", "").partition(";")[0].strip().lower()
+    content_type = b""
+    for key, value in initial_message["headers"]:
+        key = key.lower()
+        if key == b"content-encoding":
+            return False
+        if key == b"content-type" and not content_type:
+            content_type = value
+    media_type = content_type.decode("latin-1").partition(";")[0].strip().lower()
     media_types = {media_type, media_type.partition("/")[0] + "/*"}
     if media_type.startswith("application/grpc+"):
         media_types.add("application/grpc")
@@ -40,18 +44,22 @@ def prepare_response(
     if status < 200 or status in (204, 205):
         return CompressionPlan("identity", False)
 
-    headers = MutableHeaders(raw=initial_message["headers"])
     not_modified = status == 304
     metadata_only = not_modified or scope.get("method") == "HEAD"
-    existing_encoding = headers.get("content-encoding")
     large_enough = False
     if message is not None:
         eligible = eligible and message["type"] == "http.response.body"
         large_enough = len(message.get("body", b"")) >= minimum_size or message.get("more_body", False)
-    if accepts is not None or (eligible and (large_enough or metadata_only)):
-        vary = {value.strip().lower() for value in ",".join(headers.getlist("vary")).split(",")}
-        if not vary.intersection({"*", "accept-encoding"}):
-            headers.add_vary_header("Accept-Encoding")
+    compress = eligible and (large_enough or metadata_only)
+    if accepts is None and not compress:
+        # Without negotiation, an uncompressed response keeps its headers unchanged.
+        return CompressionPlan("identity", not metadata_only)
+
+    headers = MutableHeaders(raw=initial_message["headers"])
+    existing_encoding = headers.get("content-encoding")
+    vary = {value.strip().lower() for value in ",".join(headers.getlist("vary")).split(",")}
+    if not vary.intersection({"*", "accept-encoding"}):
+        headers.add_vary_header("Accept-Encoding")
 
     if existing_encoding is not None:
         accepted = accepts is None or all(accepts(coding.strip().lower()) for coding in existing_encoding.split(","))

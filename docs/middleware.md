@@ -384,8 +384,8 @@ middleware = [
 
 | Argument | Default | Description |
 | --- | --- | --- |
-| `minimum_size` | `500` | Skip non-streaming responses smaller than this many bytes. |
-| `compresslevel` | `3` | Default level for every algorithm. |
+| `minimum_size` | `500` | Skip non-streaming responses smaller than this many bytes, unless the client refuses `identity`. |
+| `compresslevel` | `3` | Default level for the built-in algorithms. |
 | `gzip` | `True` | `True`, `False`, or `{"compresslevel": level}`. |
 | `zstd` | `None` | `None` enables it when installed. `True` or a dict requires it. `False` disables it. |
 | `brotli` | `None` | Same as `zstd`. |
@@ -403,12 +403,13 @@ Zstandard, Brotli, and gzip. If the client accepts none of them and refuses `ide
 `406 Not Acceptable`.
 
 Responses that already have a `Content-Encoding`, partial content (`206`), `http.response.pathsend` responses, and
-excluded content types are sent unchanged. This prevents double encoding, keeps byte ranges valid, and avoids wasting
-CPU on formats that are already compressed or delaying server-sent events.
+excluded content types are never compressed. They are sent unchanged when the client accepts their current encoding,
+and get a `406` otherwise. This prevents double encoding, keeps byte ranges valid, and avoids wasting CPU on formats
+that are already compressed or delaying server-sent events.
 
 ??? info "Compression of streaming responses"
-    Streaming responses are compressed from the first chunk, and each chunk is flushed so the client receives it
-    right away. Many small chunks compress less effectively than a few large ones. Batch the chunks you yield if
+    Streaming responses are compressed from the first chunk. The built-in compressors flush each chunk so the client
+    receives it right away. Custom compressors decide their own buffering. Many small chunks compress less effectively than a few large ones. Batch the chunks you yield if
     you want a better ratio.
 
 ### Custom compressors

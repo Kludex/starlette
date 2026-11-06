@@ -50,19 +50,13 @@ class GZipMiddleware:
             await self.app(scope, receive, send)
             return
 
-        headers = Headers(scope=scope)
-        responder: ASGIApp
-        if "gzip" in headers.get("Accept-Encoding", ""):
-            responder = GZipResponder(
-                self.app,
-                self.minimum_size,
-                compresslevel=self.compresslevel,
-                thread_minimum_size=self.thread_minimum_size,
-                exclude_content_types=self.exclude_content_types,
+        if "gzip" in Headers(scope=scope).get("Accept-Encoding", ""):
+            stream = _GZipStream(self.compresslevel, self.thread_minimum_size)
+            responder = CompressionResponder(
+                self.app, self.minimum_size, self.exclude_content_types, encoding="gzip", compress=stream
             )
         else:
-            responder = IdentityResponder(self.app, self.minimum_size, exclude_content_types=self.exclude_content_types)
-
+            responder = CompressionResponder(self.app, self.minimum_size, self.exclude_content_types)
         await responder(scope, receive, send)
 
 
@@ -124,18 +118,28 @@ class GZipResponder(IdentityResponder):
         super().__init__(app, minimum_size, exclude_content_types=exclude_content_types)
         self.compresslevel = compresslevel
         self.thread_minimum_size = thread_minimum_size
-        self._compressor: GZipCompressor | None = None
+        self.stream = _GZipStream(compresslevel, thread_minimum_size)
 
     async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
-        if len(body) >= self.thread_minimum_size:
-            # Compressing large chunks inline would block the event loop.
-            return await anyio.to_thread.run_sync(self._compress_body, body, more_body, limiter=capacity_limiter())
-        return self._compress_body(body, more_body)
+        return await self.stream(body, more_body)
 
-    def _compress_body(self, body: bytes, more_body: bool) -> bytes:
-        if self._compressor is None:
-            self._compressor = GZipCompressor(self.compresslevel)
-        return self._compressor(body, more_body)
+
+class _GZipStream:
+    def __init__(self, compresslevel: int, thread_minimum_size: int) -> None:
+        self.compresslevel = compresslevel
+        self.thread_minimum_size = thread_minimum_size
+        self.compressor: GZipCompressor | None = None
+
+    async def __call__(self, body: bytes, more_body: bool) -> bytes:
+        # Gzip flushes every chunk, so only a large chunk can block the event loop.
+        if len(body) >= self.thread_minimum_size:
+            return await anyio.to_thread.run_sync(self.compress, body, more_body, limiter=capacity_limiter())
+        return self.compress(body, more_body)
+
+    def compress(self, body: bytes, more_body: bool) -> bytes:
+        if self.compressor is None:
+            self.compressor = GZipCompressor(self.compresslevel)
+        return self.compressor(body, more_body)
 
 
 async def unattached_send(message: Message) -> NoReturn:

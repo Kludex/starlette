@@ -5,6 +5,7 @@ from httpx2 import ASGITransport, AsyncClient
 
 from starlette.middleware.compression import CompressionMiddleware
 from starlette.responses import PlainTextResponse
+from starlette.types import Receive, Scope, Send
 
 pytestmark = pytest.mark.anyio
 
@@ -31,3 +32,15 @@ async def test_excluded_response_variants(headers: dict[str, str]) -> None:
     assert accepted.status_code == 200
     assert rejected.status_code == 406
     assert accepted.headers.get("vary") == rejected.headers["vary"] == "Accept-Encoding"
+
+
+async def test_repeated_vary_headers_are_preserved() -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        headers = [(b"content-type", b"text/plain"), (b"vary", b"Accept-Language"), (b"vary", b"*")]
+        await send({"type": "http.response.start", "status": 200, "headers": headers})
+        await send({"type": "http.response.body", "body": b"x" * 1000})
+
+    async with AsyncClient(transport=ASGITransport(CompressionMiddleware(app)), base_url="http://test") as client:
+        response = await client.get("/", headers={"accept-encoding": "gzip"})
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.headers.get_list("vary") == ["Accept-Language", "*"]

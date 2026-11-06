@@ -354,6 +354,22 @@ def test_stricter_route_rejects_body_read_by_middleware(test_client_factory: Tes
     assert response.status_code == 413
 
 
+def test_application_limit_rejects_body_read_below_middleware(test_client_factory: TestClientFactory) -> None:
+    async def passthrough(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        return await call_next(request)
+
+    app = Starlette(
+        routes=[Route("/", echo, methods=["POST"])],
+        middleware=[Middleware(BaseHTTPMiddleware, dispatch=passthrough)],
+        max_body_size=5,
+    )
+    client = test_client_factory(app)
+
+    response = client.post("/", content=b"123456")
+    assert response.status_code == 413
+    assert response.text == "Content Too Large"
+
+
 def test_multipart_file_counts_towards_limit(test_client_factory: TestClientFactory) -> None:
     async def upload(request: Request) -> PlainTextResponse:
         async with request.form():

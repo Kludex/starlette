@@ -592,6 +592,75 @@ def test_app_receives_http_disconnect_after_sending_if_discarded(
     assert response.text == "Custom"
 
 
+@pytest.mark.anyio
+async def test_pending_receive_returns_http_disconnect_once_response_is_sent() -> None:
+    received: list[Message] = []
+
+    async def downstream_app(scope: Scope, receive: Receive, send: Send) -> None:
+        async with anyio.create_task_group() as task_group:
+            task_group.start_soon(Response(b"data"), scope, receive, send)
+            await receive()
+            received.append(await receive())
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = BaseHTTPMiddleware(downstream_app, dispatch=passthrough)
+    scope = {"type": "http", "method": "GET", "path": "/"}
+    request_received = False
+    sent: list[Message] = []
+
+    async def receive() -> Message:
+        nonlocal request_received
+        if request_received:
+            # This server never reports a disconnect, so only the middleware can end the wait.
+            await anyio.sleep_forever()
+        request_received = True
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    with anyio.fail_after(1):
+        await app(scope, receive, send)
+
+    assert received == [{"type": "http.disconnect"}]
+    assert sent == [
+        {"type": "http.response.start", "status": 200, "headers": [(b"content-length", b"4")]},
+        {"type": "http.response.body", "body": b"data", "more_body": True},
+        {"type": "http.response.body", "body": b"", "more_body": False},
+    ]
+
+
+@pytest.mark.anyio
+async def test_app_sees_client_disconnect_with_is_disconnected() -> None:
+    disconnected: list[bool] = []
+
+    async def downstream_app(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope, receive)
+        await request.body()
+        disconnected.append(await request.is_disconnected())
+        await Response()(scope, receive, send)
+
+    async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        return await call_next(request)
+
+    app = BaseHTTPMiddleware(downstream_app, dispatch=passthrough)
+    scope = {"type": "http", "method": "POST", "path": "/"}
+    messages: list[Message] = [{"type": "http.request", "body": b"", "more_body": False}]
+
+    async def receive() -> Message:
+        # The client has gone, so the server returns the disconnect without waiting.
+        return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        pass
+
+    await app(scope, receive, send)
+
+    assert disconnected == [True]
+
+
 def test_read_request_stream_in_app_after_middleware_calls_stream(
     test_client_factory: TestClientFactory,
 ) -> None:

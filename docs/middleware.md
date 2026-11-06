@@ -338,6 +338,109 @@ it when possible, and always counts the body bytes received from the ASGI server
 This also supports requests without `Content-Length` and prevents an understated
 header from bypassing the limit.
 
+## CompressionMiddleware
+
+Compresses responses with Zstandard, Brotli, or gzip, picking the best encoding the client accepts.
+
+```python
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.compression import CompressionMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+async def homepage(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("Hello, world! " * 1000)
+
+
+app = Starlette(
+    routes=[Route("/", homepage)],
+    middleware=[Middleware(CompressionMiddleware)],
+)
+```
+
+Gzip is always available. Zstandard is in the standard library from Python 3.14. Install the extras for older Python versions or for Brotli:
+
+```shell
+pip install 'starlette[zstd]'
+pip install 'starlette[brotli]'
+```
+
+### Configuration
+
+```python
+middleware = [
+    Middleware(
+        CompressionMiddleware,
+        minimum_size=1000,
+        gzip=False,
+        zstd={"compresslevel": 9},
+        brotli={"compresslevel": 5},
+    )
+]
+```
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `minimum_size` | `500` | Skip non-streaming responses smaller than this many bytes, unless the client refuses `identity`. |
+| `compresslevel` | `3` | Default level for the built-in algorithms. |
+| `gzip` | `True` | `True`, `False`, or `{"compresslevel": level}`. |
+| `zstd` | `None` | `None` enables it when installed. `True` or a dict requires it. `False` disables it. |
+| `brotli` | `None` | Same as `zstd`. |
+| `thread_minimum_size` | `131072` | Compress in a worker thread once a response reaches this many bytes. |
+| `exclude_content_types` | `DEFAULT_EXCLUDED_CONTENT_TYPES` | Content types that are never compressed, as in [`GZipMiddleware`](#gzipmiddleware). |
+| `extra_compressors` | `None` | Map of extra encoding names to [compressor factories](#custom-compressors). |
+
+The default level is low because responses are compressed on every request, unlike static assets.
+Requiring an algorithm that is not installed raises `RuntimeError` when the middleware is created.
+
+### Encoding and exclusions
+
+The middleware uses the encoding with the highest `Accept-Encoding` weight. Ties go to custom encodings, then
+Zstandard, Brotli, and gzip. If the client accepts none of them and refuses `identity`, the response is
+`406 Not Acceptable`.
+
+Responses that already have a `Content-Encoding`, partial content (`206`), `http.response.pathsend` responses, and
+excluded content types are never compressed. They are sent unchanged when the client accepts their current encoding,
+and get a `406` otherwise. This prevents double encoding, keeps byte ranges valid, and avoids wasting CPU on formats
+that are already compressed or delaying server-sent events.
+
+??? info "Compression of streaming responses"
+    Streaming responses are compressed from the first chunk. The built-in compressors flush each chunk so the client
+    receives it right away. Custom compressors decide their own buffering. Many small chunks compress less effectively than a few large ones. Batch the chunks you yield if
+    you want a better ratio.
+
+### Custom compressors
+
+```python
+import zlib
+
+from starlette.middleware.compression import CompressionMiddleware, Compressor
+from starlette.responses import PlainTextResponse
+
+
+def deflate_factory() -> Compressor:
+    compressor = zlib.compressobj(level=3)
+
+    def compress(body: bytes, more_body: bool) -> bytes:
+        mode = zlib.Z_SYNC_FLUSH if more_body else zlib.Z_FINISH
+        return compressor.compress(body) + compressor.flush(mode)
+
+    return compress
+
+
+app = CompressionMiddleware(
+    PlainTextResponse("Hello, world! " * 1000),
+    extra_compressors={"deflate": deflate_factory},
+)
+```
+
+The factory is called once per compressed response, so each response gets its own state.
+The compressor is called with each body chunk and returns the encoded bytes. When `more_body` is `False`, finish the stream.
+Calls may run in a worker thread, one at a time per response.
+
 ## GZipMiddleware
 
 Handles GZip responses for any request that includes `"gzip"` in the `Accept-Encoding` header.

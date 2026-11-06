@@ -25,7 +25,7 @@ from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
 
-async def error_500(request: Request, exc: HTTPException) -> JSONResponse:
+async def error_500(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse({"detail": "Server Error"}, status_code=500)
 
 
@@ -276,6 +276,30 @@ def test_websocket_raise_custom_exception(client: TestClient) -> None:
             "code": status.WS_1013_TRY_AGAIN_LATER,
             "reason": "",
         }
+
+
+def test_exception_handler_types() -> None:
+    def sync_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
+        raise NotImplementedError
+
+    async def websocket_exception(websocket: WebSocket, exc: WebSocketException) -> None:
+        raise NotImplementedError
+
+    app = Starlette()
+    app.add_exception_handler(HTTPException, sync_http_exception)
+    app.add_exception_handler(HTTPException, http_exception)
+    app.add_exception_handler(WebSocketException, websocket_exception)
+    app.add_exception_handler(HTTPException, error_500)
+    app.add_exception_handler(Exception, error_500)
+    app.add_exception_handler(500, error_500)
+
+    app.add_exception_handler(Exception, http_exception)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, websocket_exception)  # type: ignore[arg-type]
+    app.add_exception_handler(500, http_exception)  # type: ignore[arg-type]
+
+    Starlette(exception_handlers={Exception: error_500})
+    Starlette(exception_handlers={HTTPException: http_exception})  # type: ignore[dict-item]
+    Starlette(exception_handlers={WebSocketException: websocket_exception})  # type: ignore[dict-item]
 
 
 def test_middleware(test_client_factory: TestClientFactory) -> None:

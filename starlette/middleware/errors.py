@@ -160,6 +160,17 @@ class ServerErrorMiddleware:
                 response_started = True
             await send(message)
 
+        send_error: OSError | None = None
+
+        async def send_recording_error(message: Message) -> None:
+            nonlocal send_error
+
+            try:
+                await send(message)
+            except OSError as exc:
+                send_error = exc
+                raise
+
         try:
             await self.app(scope, receive, _send)
         except Exception as exc:
@@ -178,7 +189,13 @@ class ServerErrorMiddleware:
                     response = await run_in_threadpool(self.handler, request, exc)  # type: ignore[arg-type]
 
             if not response_started:
-                await response(scope, receive, send)
+                try:
+                    await response(scope, receive, send_recording_error)
+                except OSError as send_exc:
+                    # The client disconnected (ASGI spec 2.4), so raise the original error below.
+                    # Any other OSError comes from the error response itself.
+                    if send_exc is not send_error:
+                        raise
 
             # We always continue to raise the exception.
             # This allows servers to log the error, or allows test clients

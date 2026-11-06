@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import codecs
+import sys
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
@@ -9,6 +10,12 @@ from typing import TYPE_CHECKING
 from urllib.parse import unquote_plus
 
 from starlette.datastructures import FormData, Headers, UploadFile
+from starlette.exceptions import StarletteDeprecationWarning
+
+if sys.version_info >= (3, 13):  # pragma: no cover
+    from warnings import deprecated
+else:  # pragma: no cover
+    from typing_extensions import deprecated
 
 if TYPE_CHECKING:
     import python_multipart as multipart
@@ -29,6 +36,11 @@ else:
         parse_options_header = None
 
 
+@deprecated(
+    "`FormMessage` is deprecated and will be removed in a future version.",
+    category=StarletteDeprecationWarning,
+    stacklevel=2,
+)
 class FormMessage(Enum):
     FIELD_START = 1
     FIELD_NAME = 2
@@ -72,79 +84,51 @@ class FormParser:
         self.stream = stream
         self.max_fields = max_fields
         self.max_part_size = max_part_size
-        self.messages: list[tuple[FormMessage, bytes]] = []
         self._current_field_size = 0
         self._current_fields = 0
+        self._field_name = bytearray()
+        self._field_value = bytearray()
+        self._items: list[tuple[str, str | UploadFile]] = []
 
     def on_field_start(self) -> None:
         self._current_field_size = 0
-        message = (FormMessage.FIELD_START, b"")
-        self.messages.append(message)
+        self._field_name = bytearray()
+        self._field_value = bytearray()
 
     def on_field_name(self, data: bytes, start: int, end: int) -> None:
         self._current_field_size += end - start
         if self._current_field_size > self.max_part_size:
             raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
-        message = (FormMessage.FIELD_NAME, data[start:end])
-        self.messages.append(message)
+        self._field_name += data[start:end]
 
     def on_field_data(self, data: bytes, start: int, end: int) -> None:
         self._current_field_size += end - start
         if self._current_field_size > self.max_part_size:
             raise MultiPartException(f"Field exceeded maximum size of {int(self.max_part_size / 1024)}KB.")
-        message = (FormMessage.FIELD_DATA, data[start:end])
-        self.messages.append(message)
+        self._field_value += data[start:end]
 
     def on_field_end(self) -> None:
         self._current_fields += 1
         if self._current_fields > self.max_fields:
             raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
-        message = (FormMessage.FIELD_END, b"")
-        self.messages.append(message)
-
-    def on_end(self) -> None:
-        message = (FormMessage.END, b"")
-        self.messages.append(message)
+        name = unquote_plus(self._field_name.decode("latin-1"))
+        value = unquote_plus(self._field_value.decode("latin-1"))
+        self._items.append((name, value))
 
     async def parse(self) -> FormData:
-        # Callbacks dictionary.
         callbacks: QuerystringCallbacks = {
             "on_field_start": self.on_field_start,
             "on_field_name": self.on_field_name,
             "on_field_data": self.on_field_data,
             "on_field_end": self.on_field_end,
-            "on_end": self.on_end,
         }
-
-        # Create the parser.
         parser = multipart.QuerystringParser(callbacks)
-        field_name = bytearray()
-        field_value = bytearray()
 
-        items: list[tuple[str, str | UploadFile]] = []
-
-        # Feed the parser with data from the request.
         async for chunk in self.stream:
-            if chunk:
-                parser.write(chunk)
-            else:
-                parser.finalize()
-            messages = list(self.messages)
-            self.messages.clear()
-            for message_type, message_bytes in messages:
-                if message_type == FormMessage.FIELD_START:
-                    field_name = bytearray()
-                    field_value = bytearray()
-                elif message_type == FormMessage.FIELD_NAME:
-                    field_name.extend(message_bytes)
-                elif message_type == FormMessage.FIELD_DATA:
-                    field_value.extend(message_bytes)
-                elif message_type == FormMessage.FIELD_END:
-                    name = unquote_plus(field_name.decode("latin-1"))
-                    value = unquote_plus(field_value.decode("latin-1"))
-                    items.append((name, value))
+            parser.write(chunk)
+        parser.finalize()
 
-        return FormData(items)
+        return FormData(self._items)
 
 
 class MultiPartParser:

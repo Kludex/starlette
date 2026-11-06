@@ -194,7 +194,7 @@ class BaseHTTPMiddleware:
                         break
 
             response = _StreamingResponse(status_code=message["status"], content=body_stream(), info=info)
-            response.raw_headers = message["headers"]
+            response.raw_headers = message.get("headers", [])
             return response
 
         send_stream, recv_stream = anyio.create_memory_object_stream[Message]()

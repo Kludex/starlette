@@ -7,11 +7,13 @@ import re
 import traceback
 import types
 import warnings
-from collections.abc import Awaitable, Callable, Collection, Generator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Collection, Generator, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager
 from enum import Enum
 from re import Pattern
 from typing import Any, TypeVar
+
+import anyio
 
 from starlette._exception_handler import wrap_app_handling_exceptions
 from starlette._utils import get_route_path, is_async_callable, parse_host_header
@@ -23,7 +25,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
-from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
+from starlette.types import ASGIApp, Lifespan, Message, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose
 
 
@@ -583,6 +585,54 @@ class _DefaultLifespan:
         return self
 
 
+@asynccontextmanager
+async def _mounted_lifespan(app: ASGIApp, scope: Scope) -> AsyncIterator[None]:
+    to_app, app_receive = anyio.create_memory_object_stream[Message](1)
+    app_send, from_app = anyio.create_memory_object_stream[Message](1)
+    last_reply: str | None = None
+
+    async def send(message: Message) -> None:
+        nonlocal last_reply
+        if not message["type"].startswith("lifespan."):
+            raise RuntimeError("The mounted app does not support lifespan.")
+        last_reply = message["type"]
+        await app_send.send(message)
+
+    async def run() -> None:
+        with app_send:
+            try:
+                await app(scope, app_receive.receive, send)
+            except Exception:
+                # Apps that fail before replying don't support lifespan; reported failures are raised by the parent.
+                if last_reply is not None and not last_reply.endswith(".failed"):
+                    raise
+
+    async def call(message: Message) -> Message | None:
+        await to_app.send(message)
+        try:
+            return await from_app.receive()
+        except anyio.EndOfStream:
+            return None
+
+    error: Exception | None = None
+    with to_app, app_receive, from_app:
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(run)
+            reply = await call({"type": "lifespan.startup"})
+            if reply is None or reply["type"] != "lifespan.startup.failed":
+                try:
+                    yield
+                except Exception as exc:
+                    # Raised outside the task group so it is not wrapped in an exception group.
+                    error = exc
+                if reply is not None:
+                    reply = await call({"type": "lifespan.shutdown"})
+    if error is not None:
+        raise error
+    if reply is not None and reply["type"].endswith(".failed"):
+        raise RuntimeError(reply.get("message", ""))
+
+
 class Router:
     def __init__(
         self,
@@ -663,9 +713,13 @@ class Router:
                     if "state" not in scope:
                         raise RuntimeError('The server does not support "state" in the lifespan scope.')
                     scope["state"].update(maybe_state)
-                await send({"type": "lifespan.startup.complete"})
-                started = True
-                await receive()
+                async with contextlib.AsyncExitStack() as stack:
+                    for route in self.routes:
+                        if isinstance(route, Mount | Host):
+                            await stack.enter_async_context(_mounted_lifespan(route.app, dict(scope)))
+                    await send({"type": "lifespan.startup.complete"})
+                    started = True
+                    await receive()
         except BaseException:
             exc_text = traceback.format_exc()
             if started:

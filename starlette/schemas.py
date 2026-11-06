@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import inspect
 import re
 from collections.abc import Callable
@@ -66,23 +67,24 @@ class BaseSchemaGenerator:
                     for sub_endpoint in self.get_endpoints(routes)
                 ]
                 endpoints_info.extend(sub_endpoints)
-
-            elif not isinstance(route, Route) or not route.include_in_schema:
                 continue
 
-            elif inspect.isfunction(route.endpoint) or inspect.ismethod(route.endpoint):
-                path = self._remove_converter(route.path)
+            if not isinstance(route, Route) or not route.include_in_schema:
+                continue
+
+            endpoint = route.endpoint
+            while isinstance(endpoint, functools.partial):
+                endpoint = endpoint.func
+            path = self._remove_converter(route.path)
+            if inspect.isfunction(endpoint) or inspect.ismethod(endpoint):
                 for method in route.methods or ["GET"]:
                     if method == "HEAD":
                         continue
-                    endpoints_info.append(EndpointInfo(path, method.lower(), route.endpoint))
+                    endpoints_info.append(EndpointInfo(path, method.lower(), endpoint))
             else:
-                path = self._remove_converter(route.path)
                 for method in ["get", "post", "put", "patch", "delete", "options", "query"]:
-                    if not hasattr(route.endpoint, method):
-                        continue
-                    func = getattr(route.endpoint, method)
-                    endpoints_info.append(EndpointInfo(path, method.lower(), func))
+                    if hasattr(endpoint, method):
+                        endpoints_info.append(EndpointInfo(path, method.lower(), getattr(endpoint, method)))
 
         return endpoints_info
 

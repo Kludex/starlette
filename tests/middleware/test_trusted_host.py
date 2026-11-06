@@ -96,3 +96,10 @@ def test_www_redirect(test_client_factory: TestClientFactory) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.url == "https://www.example.com/"
+
+
+def test_trusted_host_middleware_is_case_insensitive(test_client_factory: TestClientFactory) -> None:
+    app = TrustedHostMiddleware(PlainTextResponse("OK"), allowed_hosts=["Example.com"])
+
+    response = test_client_factory(app).get("/", headers={"host": "example.COM"})
+    assert response.status_code == 200

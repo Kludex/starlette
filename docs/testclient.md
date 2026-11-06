@@ -69,11 +69,11 @@ with open("example.txt", "rb") as f1:
         response = client.post("/form", files=files)
 ```
 
-For more information you can check the `httpx2` [documentation](https://www.python-httpx.org/advanced/).
+For more information you can check the `httpx2` [documentation](https://pydantic.dev/docs/httpx2/advanced/clients/).
 
 By default the `TestClient` will raise any exceptions that occur in the
 application. Occasionally you might want to test the content of 500 error
-responses, rather than allowing client to raise the server exception. In this
+responses, rather than allowing the client to raise the server exception. In this
 case you should use `client = TestClient(app, raise_server_exceptions=False)`.
 
 !!! note
@@ -82,6 +82,43 @@ case you should use `client = TestClient(app, raise_server_exceptions=False)`.
     you will need to use the `TestClient` as a context manager. It will
     not be triggered when the `TestClient` is instantiated. You can learn more about it
     [here](lifespan.md#running-lifespan-in-tests).
+
+### HTTP trailers
+
+The `TestClient` supports the ASGI HTTP trailer extension. Read trailing fields from
+`response.extensions["http.response.trailers"]` after the request completes.
+
+```python
+from starlette.testclient import TestClient
+from starlette.types import Receive, Scope, Send
+
+
+async def app(scope: Scope, receive: Receive, send: Send) -> None:
+    await send({
+        "type": "http.response.start", "status": 200,
+        "headers": [(b"trailer", b"x-result")], "trailers": True,
+    })
+    await send({"type": "http.response.body", "body": b"hello"})
+    await send({"type": "http.response.trailers", "headers": [(b"x-result", b"complete")]})
+
+
+def test_trailers() -> None:
+    response = TestClient(app).get("/", headers={"TE": "trailers"})
+    assert response.content == b"hello"
+    assert response.extensions["http.response.trailers"] == [(b"x-result", b"complete")]
+```
+
+The extension contains a list of raw byte pairs. It preserves field order and duplicates
+across multiple trailer messages. Trailers remain separate from `response.headers`.
+Responses that do not declare trailers have no trailer extension on the result.
+
+With `raise_server_exceptions=True`, invalid trailer ordering or returning without final
+trailers raises an assertion error. With `raise_server_exceptions=False`, the result contains
+only the trailers received before the application failed or returned.
+
+The test transport captures ASGI trailers regardless of `TE` negotiation. It does not emulate
+HTTP/2 framing or concurrent request and response streaming. Use a real server and client
+to verify those transport behaviors.
 
 ### Debug information
 
@@ -278,4 +315,4 @@ async def test_app() -> None:
     For synchronous tests, create and close resources in [lifespan](lifespan.md#lifespan-state)
     and use [`TestClient` as a context manager](lifespan.md#running-lifespan-in-tests).
 
-[httpx2.AsyncClient]: https://www.python-httpx.org/advanced/#calling-into-python-web-apps
+[httpx2.AsyncClient]: https://pydantic.dev/docs/httpx2/advanced/transports/#asgi-transport

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
+from operator import itemgetter
 from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
@@ -34,7 +36,7 @@ class URL:
             assert not components, 'Cannot set both "scope" and "**components".'
             scheme = scope.get("scheme", "http")
             server = scope.get("server", None)
-            path = scope["path"]
+            path = scope["path"].replace("?", "%3F").replace("#", "%23").replace("\\", "%5C")
             query_string = scope.get("query_string", b"")
 
             host_header = None
@@ -59,6 +61,9 @@ class URL:
             if netloc is not None:
                 url = SplitResult(scheme=scheme, netloc=netloc, path=path, query=query, fragment="").geturl()
             else:
+                if path.startswith("//"):
+                    # Without a host, a leading `//` would be parsed as the authority.
+                    path = "/%2F" + path[2:]
                 url = f"{path}?{query}" if query else path
         elif components:
             assert not url, 'Cannot set both "url" and "**components".'
@@ -125,6 +130,13 @@ class URL:
 
                 if hostname and hostname[-1] != "]":
                     hostname = hostname.rsplit(":", 1)[0]
+            elif ":" in hostname and not hostname.startswith("["):
+                try:
+                    ipaddress.IPv6Address(hostname)
+                except ValueError:
+                    pass
+                else:
+                    hostname = f"[{hostname}]"
 
             netloc = hostname
             if port is not None:
@@ -188,6 +200,10 @@ class URLPath(str):
 
     def __new__(cls, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> URLPath:
         assert protocol in ("http", "websocket", "")
+        path = path.replace("\\", "%5C")
+        if path.startswith("//"):
+            # A leading `//` would be parsed as the authority.
+            path = "/%2F" + path[2:]
         return str.__new__(cls, path)
 
     def __init__(self, path: str, protocol: Literal["http", "websocket", ""] = "", host: str = "") -> None:
@@ -319,7 +335,7 @@ class ImmutableMultiDict(Mapping[_KeyType, _CovariantValueType]):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
             return False
-        return sorted(self._list) == sorted(other._list)
+        return sorted(self._list, key=itemgetter(0)) == sorted(other._list, key=itemgetter(0))
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
@@ -663,10 +679,7 @@ class MutableHeaders(Headers):
         self._list.append((append_key, append_value))
 
     def add_vary_header(self, vary: str) -> None:
-        existing = self.get("vary")
-        if existing is not None:
-            vary = ", ".join([existing, vary])
-        self["vary"] = vary
+        self["vary"] = ", ".join([*self.getlist("vary"), vary])
 
 
 class State:

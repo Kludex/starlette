@@ -8,7 +8,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router
 from starlette.testclient import TestClient
-from starlette.types import Message
+from starlette.types import Message, Scope
 from starlette.websockets import WebSocket
 from tests.types import TestClientFactory
 
@@ -49,13 +49,45 @@ def test_http_endpoint_route_method(client: TestClient) -> None:
     response = client.post("/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
-    assert response.headers["allow"] == "GET, QUERY"
+    assert response.headers["allow"] == "GET, HEAD, QUERY"
+    assert client.head("/").status_code == 200
 
 
 def test_http_endpoint_route_query_method(client: TestClient) -> None:
     response = client.request("QUERY", "/")
     assert response.status_code == 200
     assert response.text == "Hello, QUERY!"
+
+
+@pytest.mark.anyio
+async def test_http_endpoint_supports_early_hints() -> None:
+    class Endpoint(HTTPEndpoint):
+        async def get(self, request: Request) -> PlainTextResponse:
+            await request.send_early_hints("</style.css>; rel=preload; as=style")
+            return PlainTextResponse("Hello, world!")
+
+    scope: Scope = {
+        "type": "http",
+        "method": "GET",
+        "extensions": {"http.response.early_hint": {}},
+    }
+    messages: list[Message] = []
+
+    async def receive() -> Message:
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        messages.append(message)
+
+    await Endpoint(scope, receive, send)
+
+    assert messages[0] == {
+        "type": "http.response.early_hint",
+        "links": [b"</style.css>; rel=preload; as=style"],
+    }
+    assert messages[1]["type"] == "http.response.start"
+    assert messages[2]["type"] == "http.response.body"
+    assert messages[2]["body"] == b"Hello, world!"
 
 
 def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: TestClientFactory) -> None:
@@ -72,7 +104,19 @@ def test_http_endpoint_does_not_dispatch_non_verb_method(test_client_factory: Te
     response = client.request("_DO_DELETE", "/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
-    assert response.headers["allow"] == "GET"
+    assert response.headers["allow"] == "GET, HEAD"
+
+
+def test_http_endpoint_allow_header_omits_head_without_get(test_client_factory: TestClientFactory) -> None:
+    class Endpoint(HTTPEndpoint):
+        async def post(self, request: Request) -> PlainTextResponse:
+            return PlainTextResponse("Hello, world!")  # pragma: no cover
+
+    client = test_client_factory(Router(routes=[Route("/", endpoint=Endpoint)]))
+
+    response = client.head("/")
+    assert response.status_code == 405
+    assert response.headers["allow"] == "POST"
 
 
 def test_websocket_endpoint_on_connect(test_client_factory: TestClientFactory) -> None:

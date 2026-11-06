@@ -1,5 +1,4 @@
 import functools
-import sys
 from typing import Any
 from unittest.mock import create_autospec
 
@@ -7,9 +6,6 @@ import pytest
 
 from starlette._utils import create_collapsing_task_group, get_route_path, is_async_callable
 from starlette.types import Scope
-
-if sys.version_info < (3, 11):  # pragma: no cover
-    from exceptiongroup import ExceptionGroup
 
 
 def test_async_func() -> None:

@@ -116,7 +116,9 @@ class Config:
                 if "=" in line and not line.startswith("#"):
                     key, value = line.split("=", 1)
                     key = key.strip()
-                    value = value.strip().strip("\"'")
+                    value = value.strip()
+                    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                        value = value[1:-1]
                     file_values[key] = value
         return file_values
 

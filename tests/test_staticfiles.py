@@ -102,6 +102,7 @@ def test_staticfiles_post(tmpdir: Path, test_client_factory: TestClientFactory) 
 
     response = client.post("/example.txt")
     assert response.status_code == 405
+    assert response.headers["allow"] == "GET, HEAD"
     assert response.text == "Method Not Allowed"
 
 

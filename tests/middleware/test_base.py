@@ -1406,3 +1406,24 @@ async def test_background_task_runs_after_response_sent_with_middleware() -> Non
         "http.response.body",
         "background-done",
     ]
+
+
+def test_error_context_with_nested_middlewares(test_client_factory: TestClientFactory) -> None:
+    class PassthroughMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+            return await call_next(request)
+
+    def exception_from_none(request: Request) -> None:
+        raise Exception("Exception") from None
+
+    app = Starlette(
+        routes=[Route("/", endpoint=exception_from_none)],
+        middleware=[Middleware(PassthroughMiddleware), Middleware(PassthroughMiddleware)],
+    )
+    client = test_client_factory(app)
+
+    with pytest.raises(Exception) as ctx:
+        client.get("/")
+    assert ctx.value.__cause__ is None
+    assert ctx.value.__suppress_context__ is True
+    assert isinstance(ctx.value.__context__, anyio.EndOfStream)

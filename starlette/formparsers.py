@@ -111,8 +111,8 @@ class FormParser:
         self._current_fields += 1
         if self._current_fields > self.max_fields:
             raise MultiPartException(f"Too many fields. Maximum number of fields is {self.max_fields}.")
-        name = unquote_plus(self._field_name.decode("latin-1"))
-        value = unquote_plus(self._field_value.decode("latin-1"))
+        name = unquote_plus(_user_safe_decode(self._field_name, "utf-8"))
+        value = unquote_plus(_user_safe_decode(self._field_value, "utf-8"))
         self._items.append((name, value))
 
     async def parse(self) -> FormData:

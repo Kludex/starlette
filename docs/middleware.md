@@ -920,7 +920,7 @@ If you do want to apply the middleware logic to error responses only on some rou
 * Add a `try/except` block to your middleware and return an error response from there
 * Split up marking and processing into two middlewares, one that gets put on `Mount` which marks the response as needing processing (for example by setting `scope["log-response"] = True`) and another applied to the `Starlette` application that does the heavy lifting.
 
-The `Route`/`WebSocket` class also accepts a `middleware` argument, which allows you to apply middleware to a single route:
+The `Route` and `WebSocketRoute` classes also accept a `middleware` argument, which allows you to apply middleware to a single route:
 
 ```python
 from starlette.applications import Starlette

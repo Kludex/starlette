@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from pathlib import Path
 from typing import Any, assert_type
 
@@ -99,6 +100,13 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BOOL_AS_INT", "2")
     with pytest.raises(ValueError):
         config.get("BOOL_AS_INT", cast=bool)
+
+
+def test_config_cast_without_name() -> None:
+    config = Config(environ={"INVALID": "not-hex"})
+
+    with pytest.raises(ValueError, match="Config 'INVALID' has value 'not-hex'. Not a valid partial."):
+        config("INVALID", cast=partial(int, base=16))
 
 
 def test_missing_env_file_raises(tmpdir: Path) -> None:

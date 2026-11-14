@@ -779,6 +779,40 @@ def test_streaming_response_memoryview(test_client_factory: TestClientFactory) -
 
 
 @pytest.mark.anyio
+async def test_streaming_response_typed_memoryview() -> None:
+    bodies: list[bytes | memoryview] = []
+
+    async def receive() -> Message:
+        await anyio.sleep_forever()
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body" and message["more_body"]:
+            bodies.append(message["body"])
+
+    await StreamingResponse(iter([memoryview(b"01234567").cast("I")]))({"type": "http"}, receive, send)
+    assert len(bodies[0]) == 8
+    assert bytes(bodies[0]) == b"01234567"
+
+
+@pytest.mark.anyio
+async def test_streaming_response_non_contiguous_memoryview() -> None:
+    bodies: list[bytes | memoryview] = []
+
+    async def receive() -> Message:
+        await anyio.sleep_forever()
+        raise NotImplementedError
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body" and message["more_body"]:
+            bodies.append(message["body"])
+
+    await StreamingResponse(iter([memoryview(b"01234567")[::2]]))({"type": "http"}, receive, send)
+    assert memoryview(bodies[0]).contiguous
+    assert bytes(bodies[0]) == b"0246"
+
+
+@pytest.mark.anyio
 async def test_streaming_response_stops_if_receiving_http_disconnect() -> None:
     streamed = 0
 

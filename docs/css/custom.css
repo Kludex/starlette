@@ -62,6 +62,15 @@ a.md-banner__link:focus {
   object-fit: contain;
 }
 
+.md-nav__partners {
+  line-height: 0;
+}
+
+.md-nav__partners img {
+  max-width: 100%;
+  height: auto;
+}
+
 .md-nav__sponsor-cta {
   display: inline-block;
   margin-top: 0.15rem;

@@ -45,6 +45,12 @@ It is production-ready, and gives you the following:
 * Compatible with `asyncio` and `trio` backends.
 * Great overall performance [against independent benchmarks][techempower].
 
+## Sponsors
+
+Help us keep Starlette maintained and sustainable by [becoming a sponsor](https://marcelotryle.com/sponsors/).
+
+[![Sponsors](https://marcelotryle.com/sponsors/logos.svg)](https://marcelotryle.com/sponsors/)
+
 ## Installation
 
 ```shell

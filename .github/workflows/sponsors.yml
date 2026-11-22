@@ -1,0 +1,44 @@
+name: Sponsors
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  credit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: write
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.release.tag_name }}
+      SPONSORS_URL: https://marcelotryle.com/sponsors/list.json
+
+    steps:
+      - name: Credit sponsors in the release notes
+        run: |
+          skip() { echo "::warning::Sponsors not credited: $1"; exit 0; }
+
+          sponsors=$(curl --fail --silent --show-error --location --max-time 30 "$SPONSORS_URL") \
+            || skip "could not fetch the sponsor list"
+          credit=$(jq --raw-output '
+            def clean: gsub("@(?=[[:alnum:]])|#(?=[0-9])|[[:cntrl:]]"; "") | gsub("(?<c>[\\\\`*_~\\[\\]()<>|$])"; "\\\(.c)") | gsub("^\\s+|\\s+$"; "");
+            [
+              (.partners + .supporters)[]
+              | (((.name // "" | clean) | select(. != "")) // (.login // "" | clean)) as $name
+              | select($name != "")
+              | if (.url // "" | test("^https?://[^\\s()<>\\[\\]\\\\\"`]+$")) then "[\($name)](\(.url))" else $name end
+            ] | join(", ")
+          ' <<<"$sponsors") || skip "could not parse the sponsor list"
+          [ -n "$credit" ] || exit 0
+
+          notes=$(gh release view --json body --jq .body -- "$TAG") || skip "could not read the release notes"
+          case "$notes" in *"**Sponsors:**"*) exit 0 ;; esac
+          printf '%s\n\n**Sponsors:** %s\n' "$notes" "$credit" | gh release edit --notes-file - -- "$TAG" \
+            || skip "could not edit the release notes"

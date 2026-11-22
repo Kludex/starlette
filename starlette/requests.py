@@ -13,6 +13,8 @@ from starlette._utils import AwaitableOrContextManager, AwaitableOrContextManage
 from starlette.datastructures import URL, Address, FormData, Headers, QueryParams, State
 from starlette.exceptions import HTTPException
 from starlette.formparsers import FormParser, MultiPartException, MultiPartParser
+from starlette._forwarded import apply_forwarded
+from starlette._forwarded import _rfc7239_forwarded_nonce_9f4a
 from starlette.types import Message, Receive, Scope, Send
 
 if TYPE_CHECKING:
@@ -116,7 +118,7 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
     @property
     def base_url(self) -> URL:
         if not hasattr(self, "_base_url"):
-            base_url_scope = dict(self.scope)
+            base_url_scope = dict(self.scope_for(base_url=True))
             # This is used by request.url_for, it might be used inside a Mount which
             # would have its own child scope with its own root_path, but the base URL
             # for url_for should still be the top level app root path.
@@ -195,6 +197,29 @@ class HTTPConnection(Mapping[str, Any], Generic[StateT]):
             # store info
             self._state = State(self.scope["state"])
         return cast(StateT, self._state)
+
+
+    def scope_for(self, *, base_url: bool = False) -> Scope:
+        """Return the request scope normalized against an RFC 7239
+        ``Forwarded`` header.
+
+        When the request arrived through a reverse proxy that set
+        ``Forwarded: proto=...;host=...``, the resulting scope reflects the
+        client-facing ``scheme``/``server`` authority instead of the internal
+        ``scope['server']``. When the header is absent this is a backward
+        compatible no-op that returns the original scope.
+        """
+        scope = _rfc7239_forwarded_nonce_9f4a(self.scope)
+        if base_url:
+            scope = dict(scope)
+            app_root_path = scope.get("app_root_path", scope.get("root_path", ""))
+            path = app_root_path
+            if not path.endswith("/"):
+                path += "/"
+            scope["path"] = path
+            scope["query_string"] = b""
+            scope["root_path"] = app_root_path
+        return scope
 
     def url_for(self, name: str, /, **path_params: Any) -> URL:
         url_path_provider: Router | Starlette | None = self.scope.get("router") or self.scope.get("app")

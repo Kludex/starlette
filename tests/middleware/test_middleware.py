@@ -4,6 +4,7 @@ import pytest
 
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.compression import CompressionMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -41,9 +42,10 @@ async def passthrough(request: Request, call_next: RequestResponseEndpoint) -> R
     [
         lambda app: SessionMiddleware(app, secret_key="secret"),
         lambda app: GZipMiddleware(app, minimum_size=1),
+        lambda app: CompressionMiddleware(app, minimum_size=1),
         lambda app: BaseHTTPMiddleware(app, dispatch=passthrough),
     ],
-    ids=["session", "gzip", "base"],
+    ids=["session", "gzip", "compression", "base"],
 )
 def test_response_start_without_headers(
     test_client_factory: TestClientFactory, wrap: Callable[[ASGIApp], ASGIApp]

@@ -9,7 +9,7 @@ import pytest
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.gzip import GZipMiddleware, GZipResponder
+from starlette.middleware.gzip import GZipMiddleware, GZipResponder, IdentityResponder
 from starlette.requests import Request
 from starlette.responses import ContentStream, FileResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route
@@ -544,3 +544,44 @@ async def test_gzip_sends_response_start_before_first_body_when_not_compressed()
         await GZipMiddleware(app)(scope, receive, send)
 
     assert [event["type"] for event in events] == ["http.response.start", "http.response.body"]
+
+
+def test_gzip_responder_subclass_can_bypass_compression(test_client_factory: TestClientFactory) -> None:
+    class PassthroughGZipResponder(GZipResponder):
+        passthrough = False
+
+        async def send_with_compression(self, message: Message) -> None:
+            if message["type"] == "http.response.start":
+                self.passthrough = message["status"] == 202
+            if self.passthrough:
+                await self.send(message)
+                return
+            await super().send_with_compression(message)
+
+    def homepage(request: Request) -> PlainTextResponse:
+        return PlainTextResponse("x" * 4000, status_code=int(request.query_params["status"]))
+
+    app = Starlette(routes=[Route("/", endpoint=homepage)])
+    client = test_client_factory(PassthroughGZipResponder(app, minimum_size=500))
+
+    compressed = client.get("/?status=200", headers={"accept-encoding": "gzip"})
+    assert compressed.headers["Content-Encoding"] == "gzip"
+
+    passthrough = client.get("/?status=202", headers={"accept-encoding": "gzip"})
+    assert passthrough.text == "x" * 4000
+    assert "Content-Encoding" not in passthrough.headers
+    assert "Vary" not in passthrough.headers
+
+
+def test_identity_responder_subclass_with_custom_encoding(test_client_factory: TestClientFactory) -> None:
+    class ReversingResponder(IdentityResponder):
+        content_encoding = "reversed"
+
+        async def apply_compression(self, body: bytes, *, more_body: bool) -> bytes:
+            return body[::-1]
+
+    app = ReversingResponder(PlainTextResponse("abc" * 200), minimum_size=500)
+    response = test_client_factory(app).get("/", headers={"accept-encoding": "identity"})
+    assert response.headers["Content-Encoding"] == "reversed"
+    assert response.headers["Content-Length"] == "600"
+    assert response.content == b"cba" * 200

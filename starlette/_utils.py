@@ -108,8 +108,15 @@ async def create_collapsing_task_group() -> AsyncGenerator[anyio.abc.TaskGroup, 
             raise
 
         exc = excs.exceptions[0]
-        context = None if exc.__suppress_context__ else exc.__context__
-        raise exc from exc.__cause__ or context
+        cause = exc.__cause__ or (None if exc.__suppress_context__ else exc.__context__)
+    else:
+        return
+
+    # Raised outside `except` so `exc.__context__` does not point to the group that contains it.
+    try:
+        raise exc from cause
+    finally:
+        del exc, cause
 
 
 def parse_host_header(host_header: str | None) -> ParsedHost | None:

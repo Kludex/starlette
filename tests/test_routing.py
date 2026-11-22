@@ -800,6 +800,129 @@ def test_raise_on_shutdown(test_client_factory: TestClientFactory) -> None:
             pass  # pragma: no cover
 
 
+def test_mounted_app_lifespans(test_client_factory: TestClientFactory) -> None:
+    events: list[str] = []
+
+    def recording_lifespan(name: str) -> Callable[[Starlette], contextlib.AbstractAsyncContextManager[None]]:
+        @contextlib.asynccontextmanager
+        async def lifespan(app: Starlette) -> AsyncIterator[None]:
+            events.append(f"{name} startup")
+            yield
+            events.append(f"{name} shutdown")
+
+        return lifespan
+
+    @contextlib.asynccontextmanager
+    async def users_lifespan(app: Starlette) -> AsyncIterator[dict[str, str]]:
+        events.append("users startup")
+        yield {"users": "ready"}
+        events.append("users shutdown")
+
+    async def users(request: Request) -> PlainTextResponse:
+        return PlainTextResponse(request.state.users)
+
+    users_app = Starlette(routes=[Route("/", users)], lifespan=users_lifespan)
+    admin_app = Starlette(lifespan=recording_lifespan("admin"))
+    api_app = Starlette(lifespan=recording_lifespan("api"))
+    app = Starlette(
+        routes=[
+            Mount("/users", app=users_app),
+            Mount("/nested", routes=[Mount("/admin", app=admin_app)]),
+            Host("api.example.org", app=api_app),
+        ],
+        lifespan=recording_lifespan("root"),
+    )
+
+    with test_client_factory(app) as client:
+        assert events == ["root startup", "users startup", "admin startup", "api startup"]
+        assert client.get("/users/").text == "ready"
+    assert events[4:] == ["api shutdown", "admin shutdown", "users shutdown", "root shutdown"]
+
+
+def test_mounted_apps_without_lifespan_support(test_client_factory: TestClientFactory) -> None:
+    async def raises_on_lifespan(scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["type"] == "http"
+
+    async def returns_on_lifespan(scope: Scope, receive: Receive, send: Send) -> None:
+        pass
+
+    app = Router(
+        routes=[
+            Mount("/response", app=PlainTextResponse("hello, world")),
+            Mount("/raises", app=raises_on_lifespan),
+            Mount("/returns", app=returns_on_lifespan),
+        ]
+    )
+
+    with test_client_factory(app) as client:
+        assert client.get("/response").text == "hello, world"
+
+
+def test_mounted_app_returns_after_startup(test_client_factory: TestClientFactory) -> None:
+    async def mounted(scope: Scope, receive: Receive, send: Send) -> None:
+        await receive()
+        await send({"type": "lifespan.startup.complete"})
+
+    app = Router(routes=[Mount("/mounted", app=mounted)])
+
+    with test_client_factory(app):
+        pass
+
+
+def test_mounted_app_startup_failure_shuts_down_started_apps(test_client_factory: TestClientFactory) -> None:
+    shutdown_complete = False
+
+    @contextlib.asynccontextmanager
+    async def healthy_lifespan(app: Starlette) -> AsyncIterator[None]:
+        nonlocal shutdown_complete
+        yield
+        shutdown_complete = True
+
+    @contextlib.asynccontextmanager
+    async def failing_lifespan(app: Starlette) -> AsyncIterator[None]:
+        raise RuntimeError("Mounted startup failed")
+        yield  # pragma: no cover
+
+    app = Router(
+        routes=[
+            Mount("/healthy", app=Starlette(lifespan=healthy_lifespan)),
+            Mount("/failing", app=Starlette(lifespan=failing_lifespan)),
+        ]
+    )
+
+    with pytest.raises(RuntimeError, match="Mounted startup failed"):
+        with test_client_factory(app):
+            raise AssertionError("Should not be called")  # pragma: no cover
+    assert shutdown_complete
+
+
+def test_mounted_app_shutdown_failure(test_client_factory: TestClientFactory) -> None:
+    @contextlib.asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncIterator[None]:
+        yield
+        raise RuntimeError("Mounted shutdown failed")
+
+    app = Router(routes=[Mount("/mounted", app=Starlette(lifespan=lifespan))])
+
+    with pytest.raises(RuntimeError, match="Mounted shutdown failed"):
+        with test_client_factory(app):
+            pass
+
+
+def test_mounted_app_crash_after_startup(test_client_factory: TestClientFactory) -> None:
+    async def mounted(scope: Scope, receive: Receive, send: Send) -> None:
+        await receive()
+        await send({"type": "lifespan.startup.complete"})
+        raise ValueError("Mounted app crashed")
+
+    app = Router(routes=[Mount("/mounted", app=mounted)])
+
+    with pytest.raises(ExceptionGroup) as exc_info:
+        with test_client_factory(app):
+            pass  # pragma: no cover
+    assert exc_info.group_contains(ValueError, match="Mounted app crashed")
+
+
 def test_partial_async_endpoint(test_client_factory: TestClientFactory) -> None:
     test_client = test_client_factory(app)
     response = test_client.get("/partial")

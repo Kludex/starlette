@@ -139,6 +139,51 @@ app = Starlette(lifespan=lifespan, routes=[WebSocketRoute("/ws", websocket_endpo
     - [@python/typing#discussions/1457](https://github.com/python/typing/discussions/1457)
     - [@Kludex/starlette#pull/3036](https://github.com/Kludex/starlette/pull/3036)
 
+## Mounted Applications
+
+Applications mounted with `Mount` or `Host` run their own lifespan.
+
+```python
+import contextlib
+
+from starlette.applications import Starlette
+from starlette.routing import Mount
+
+
+@contextlib.asynccontextmanager
+async def admin_lifespan(app):
+    print("Admin startup")
+    yield
+    print("Admin shutdown")
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    print("Root startup")
+    yield
+    print("Root shutdown")
+
+
+admin = Starlette(lifespan=admin_lifespan)
+app = Starlette(routes=[Mount("/admin", app=admin)], lifespan=lifespan)
+```
+
+The parent lifespan starts first, then each mounted application in route order. Shutdown runs in reverse
+order. This is the same nesting as `async with` blocks, so a mounted application can rely on resources the
+parent opened.
+
+Each mounted application runs the ASGI lifespan protocol in its own task, inside a task group owned by the
+parent. A mounted application that fails to start stops the whole startup, and the ones already started are
+shut down.
+
+State yielded by a mounted application is merged into the same lifespan `state`, so its requests can read it.
+
+Mounted applications that do not support lifespan, like `StaticFiles`, are skipped.
+
+!!! warning "Remove manual lifespan forwarding"
+    If your parent lifespan already enters a mounted application's lifespan by hand, remove that code.
+    Otherwise, the mounted lifespan runs twice.
+
 ## Running lifespan in tests
 
 You should use `TestClient` as a context manager, to ensure that the lifespan is called.

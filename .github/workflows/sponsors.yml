@@ -28,7 +28,7 @@ jobs:
           sponsors=$(curl --fail --silent --show-error --location --max-time 30 "$SPONSORS_URL") \
             || skip "could not fetch the sponsor list"
           credit=$(jq --raw-output '
-            def clean: gsub("[@#[:cntrl:]]"; "") | gsub("(?<c>[\\\\`*_~\\[\\]()<>|$])"; "\\\(.c)") | gsub("^\\s+|\\s+$"; "");
+            def clean: gsub("@(?=[[:alnum:]])|#(?=[0-9])|[[:cntrl:]]"; "") | gsub("(?<c>[\\\\`*_~\\[\\]()<>|$])"; "\\\(.c)") | gsub("^\\s+|\\s+$"; "");
             [
               (.partners + .supporters)[]
               | (((.name // "" | clean) | select(. != "")) // (.login // "" | clean)) as $name

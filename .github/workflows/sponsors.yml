@@ -27,12 +27,13 @@ jobs:
           warn() { echo "::warning::$1"; }
 
           notes=$(gh release view --json body --jq .body -- "$TAG") || { warn "Could not read the release notes"; exit 0; }
-          case "$notes" in *"**Sponsors:**"*) exit 0 ;; esac
           original=$notes
           case "$notes" in "$HELP"*) ;; *) notes=$(printf '%s\n\n%s' "$HELP" "$notes") ;; esac
 
           credit=""
-          if sponsors=$(curl --fail --silent --show-error --location --max-time 30 "$SPONSORS_URL"); then
+          if [[ $notes == *"**Sponsors:**"* ]]; then
+            : # Already credited.
+          elif sponsors=$(curl --fail --silent --show-error --location --max-time 30 "$SPONSORS_URL"); then
             credit=$(jq --raw-output '
               def clean: gsub("@(?=[[:alnum:]])|#(?=[0-9])|[[:cntrl:]]"; "") | gsub("(?<c>[\\\\`*_~\\[\\]()<>|$])"; "\\\(.c)") | gsub("^\\s+|\\s+$"; "");
               [

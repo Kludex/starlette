@@ -19,26 +19,31 @@ jobs:
       GH_REPO: ${{ github.repository }}
       TAG: ${{ github.event.release.tag_name }}
       SPONSORS_URL: https://marcelotryle.com/sponsors/list.json
+      HELP: "> This project needs your help! [Let's make this project sustainable together](https://marcelotryle.com/blog/sponsorship-fund-2027/)"
 
     steps:
-      - name: Credit sponsors in the release notes
+      - name: Add the sponsorship header and the sponsor credits to the release notes
         run: |
-          skip() { echo "::warning::Sponsors not credited: $1"; exit 0; }
+          warn() { echo "::warning::$1"; }
 
-          sponsors=$(curl --fail --silent --show-error --location --max-time 30 "$SPONSORS_URL") \
-            || skip "could not fetch the sponsor list"
-          credit=$(jq --raw-output '
-            def clean: gsub("@(?=[[:alnum:]])|#(?=[0-9])|[[:cntrl:]]"; "") | gsub("(?<c>[\\\\`*_~\\[\\]()<>|$])"; "\\\(.c)") | gsub("^\\s+|\\s+$"; "");
-            [
-              (.partners + .supporters)[]
-              | (((.name // "" | clean) | select(. != "")) // (.login // "" | clean)) as $name
-              | select($name != "")
-              | if (.url // "" | test("^https?://[^\\s()<>\\[\\]\\\\\"`]+$")) then "[\($name)](\(.url))" else $name end
-            ] | join(", ")
-          ' <<<"$sponsors") || skip "could not parse the sponsor list"
-          [ -n "$credit" ] || exit 0
+          notes=$(gh release view --json body --jq .body -- "$TAG") || { warn "Could not read the release notes"; exit 0; }
+          case "$notes" in "$HELP"*) exit 0 ;; esac
 
-          notes=$(gh release view --json body --jq .body -- "$TAG") || skip "could not read the release notes"
-          case "$notes" in *"**Sponsors:**"*) exit 0 ;; esac
-          printf '%s\n\n**Sponsors:** %s\n' "$notes" "$credit" | gh release edit --notes-file - -- "$TAG" \
-            || skip "could not edit the release notes"
+          credit=""
+          if sponsors=$(curl --fail --silent --show-error --location --max-time 30 "$SPONSORS_URL"); then
+            credit=$(jq --raw-output '
+              def clean: gsub("@(?=[[:alnum:]])|#(?=[0-9])|[[:cntrl:]]"; "") | gsub("(?<c>[\\\\`*_~\\[\\]()<>|$])"; "\\\(.c)") | gsub("^\\s+|\\s+$"; "");
+              [
+                (.partners + .supporters)[]
+                | (((.name // "" | clean) | select(. != "")) // (.login // "" | clean)) as $name
+                | select($name != "")
+                | if (.url // "" | test("^https?://[^\\s()<>\\[\\]\\\\\"`]+$")) then "[\($name)](\(.url))" else $name end
+              ] | join(", ")
+            ' <<<"$sponsors") || { warn "Sponsors not credited: could not parse the sponsor list"; credit=""; }
+          else
+            warn "Sponsors not credited: could not fetch the sponsor list"
+          fi
+          [ -z "$credit" ] || notes=$(printf '%s\n\n**Sponsors:** %s' "$notes" "$credit")
+
+          printf '%s\n\n%s\n' "$HELP" "$notes" | gh release edit --notes-file - -- "$TAG" \
+            || warn "Could not edit the release notes"

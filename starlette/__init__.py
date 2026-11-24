@@ -1,1 +1,1 @@
-__version__ = "1.10.0"
+from starlette._version import __version__ as __version__

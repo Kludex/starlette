@@ -12,3 +12,4 @@ venv*/
 .python-version
 build/
 dist/
+starlette/_version.py

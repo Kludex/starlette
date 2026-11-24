@@ -27,7 +27,9 @@ jobs:
           warn() { echo "::warning::$1"; }
 
           notes=$(gh release view --json body --jq .body -- "$TAG") || { warn "Could not read the release notes"; exit 0; }
-          case "$notes" in "$HELP"*) exit 0 ;; esac
+          case "$notes" in *"**Sponsors:**"*) exit 0 ;; esac
+          original=$notes
+          case "$notes" in "$HELP"*) ;; *) notes=$(printf '%s\n\n%s' "$HELP" "$notes") ;; esac
 
           credit=""
           if sponsors=$(curl --fail --silent --show-error --location --max-time 30 "$SPONSORS_URL"); then
@@ -45,5 +47,5 @@ jobs:
           fi
           [ -z "$credit" ] || notes=$(printf '%s\n\n**Sponsors:** %s' "$notes" "$credit")
 
-          printf '%s\n\n%s\n' "$HELP" "$notes" | gh release edit --notes-file - -- "$TAG" \
+          [ "$notes" = "$original" ] || printf '%s\n' "$notes" | gh release edit --notes-file - -- "$TAG" \
             || warn "Could not edit the release notes"

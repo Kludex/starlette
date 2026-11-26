@@ -282,6 +282,16 @@ def test_url_path_for_with_double_slash_path() -> None:
     assert router.url_path_for("catchall", path="\\example.org/a") == "/%5Cexample.org/a"
 
 
+def test_url_path_for_with_placeholder_like_value() -> None:
+    route = Route("/{category}/{id}", endpoint=homepage, name="route")
+    assert route.url_path_for("route", category="{id}", id="42") == "/{id}/42"
+
+
+def test_url_path_for_mount_keeps_missing_params() -> None:
+    mount = Mount("/{tenant}", routes=[Route("/users", endpoint=homepage, name="users")])
+    assert mount.url_path_for("users") == "/{tenant}/users"
+
+
 def test_url_for() -> None:
     assert app.url_path_for("homepage").make_absolute_url(base_url="https://example.org") == "https://example.org/"
     assert (

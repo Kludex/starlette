@@ -116,7 +116,9 @@ class Config:
                 if "=" in line and not line.startswith("#"):
                     key, value = line.split("=", 1)
                     key = key.strip()
-                    value = value.strip().strip("\"'")
+                    value = value.strip()
+                    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                        value = value[1:-1]
                     file_values[key] = value
         return file_values
 
@@ -137,4 +139,5 @@ class Config:
         try:
             return cast(value)
         except (TypeError, ValueError):
-            raise ValueError(f"Config '{key}' has value '{value}'. Not a valid {cast.__name__}.")
+            cast_name = getattr(cast, "__name__", type(cast).__name__)
+            raise ValueError(f"Config '{key}' has value '{value}'. Not a valid {cast_name}.")

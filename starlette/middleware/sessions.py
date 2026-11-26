@@ -61,6 +61,7 @@ class SessionMiddleware:
         async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
                 session: Session = scope["session"]
+                message.setdefault("headers", [])
                 headers = MutableHeaders(scope=message)
                 if session.accessed:
                     headers.add_vary_header("Cookie")

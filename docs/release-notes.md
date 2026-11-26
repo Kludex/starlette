@@ -2,6 +2,29 @@
 toc_depth: 2
 ---
 
+## 1.10.0 (October 24, 2026)
+
+#### Changed
+
+* Compare multidicts such as `FormData` and `QueryParams` by key while keeping the order of values under a repeated key, so `FormData` with repeated uploads no longer raises `TypeError`. `QueryParams("a=1&a=2")` and `QueryParams("a=2&a=1")` are no longer equal [#3619](https://github.com/Kludex/starlette/pull/3619).
+* Build URL-encoded form fields in the parser callbacks, lowering memory and CPU usage for forms with many fields [#3724](https://github.com/Kludex/starlette/pull/3724).
+* Compare `Match` members by identity during routing [#3665](https://github.com/Kludex/starlette/pull/3665) and [#3722](https://github.com/Kludex/starlette/pull/3722).
+
+#### Deprecated
+
+* Deprecate `starlette.formparsers.FormMessage`, which is no longer used [#3724](https://github.com/Kludex/starlette/pull/3724).
+
+#### Fixed
+
+* Parse the last URL-encoded form field when the request stream ends without an empty chunk [#3599](https://github.com/Kludex/starlette/pull/3599).
+* Keep path parameter values that look like another placeholder in `url_path_for()` [#3725](https://github.com/Kludex/starlette/pull/3725).
+* Default omitted `http.response.start` headers in `BaseHTTPMiddleware`, `GZipMiddleware` and `SessionMiddleware` instead of raising `KeyError` [#3721](https://github.com/Kludex/starlette/pull/3721).
+* Clear the traceback of handled exceptions, so reused exception instances no longer keep per-request objects alive [#3205](https://github.com/Kludex/starlette/pull/3205).
+* Strip only one pair of matching outer quotes from `Config` env file values [#3720](https://github.com/Kludex/starlette/pull/3720).
+* Strip `root_path` from `PATH_INFO` only at a path segment boundary in `WSGIMiddleware` [#3718](https://github.com/Kludex/starlette/pull/3718).
+* Report NaN and infinity correctly in `FloatConvertor.to_string()` [#3716](https://github.com/Kludex/starlette/pull/3716).
+* Ignore `Range` on requests other than `GET` and `HEAD` in `FileResponse` [#3679](https://github.com/Kludex/starlette/pull/3679).
+
 ## 1.9.0 (October 18, 2026)
 
 #### Changed

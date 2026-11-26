@@ -61,5 +61,7 @@ def wrap_app_handling_exceptions(app: ASGIApp, conn: Request | WebSocket) -> ASG
                 response = await run_in_threadpool(handler, conn, exc)  # type: ignore[arg-type]
             if response is not None:
                 await response(scope, receive, sender)
+            # Reused exception instances accumulate tracebacks across requests.
+            exc.__traceback__ = None
 
     return wrapped_app

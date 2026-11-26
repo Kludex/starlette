@@ -51,9 +51,11 @@ It is production-ready, and gives you the following:
 
 ## Sponsorship
 
-Help us keep Starlette maintained and sustainable by [becoming a sponsor](https://github.com/sponsors/Kludex).
+Help us keep Starlette maintained and sustainable by [becoming a sponsor](https://marcelotryle.com/sponsors/).
 
 **Current sponsors:**
+
+[![Sponsors](https://marcelotryle.com/sponsors/logos.svg)](https://marcelotryle.com/sponsors/)
 
 <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; margin: 1rem 0;">
     <a href="https://fastapi.tiangolo.com">

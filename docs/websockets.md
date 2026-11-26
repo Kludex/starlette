@@ -71,7 +71,7 @@ Use `websocket.send_json(data, mode="binary")` to send JSON over binary data fra
 May raise `starlette.websockets.WebSocketDisconnect()`.
 
 JSON messages default to being received over text data frames, from version 0.10.0 onwards.
-Use `websocket.receive_json(data, mode="binary")` to receive JSON over binary data frames.
+Use `websocket.receive_json(mode="binary")` to receive JSON over binary data frames.
 
 ### Iterating data
 

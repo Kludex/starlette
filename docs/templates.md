@@ -45,6 +45,16 @@ For example, we can link to static files from within our HTML templates:
 <link href="{{ url_for('static', path='/css/bootstrap.min.css') }}" rel="stylesheet" />
 ```
 
+`url_for` returns an absolute URL built from the incoming request. Behind a proxy, that URL
+can have the wrong scheme or host. For links within your site, use its `path` instead:
+
+```html
+<link href="{{ url_for('static', path='/css/bootstrap.min.css').path }}" rel="stylesheet" />
+```
+
+See [Paths for links within your site](routing.md#paths-for-links-within-your-site) and
+[Absolute URLs behind a proxy](routing.md#absolute-urls-behind-a-proxy).
+
 If you want to use [custom filters][jinja2], you will need to update the `env`
 property of `Jinja2Templates`:
 

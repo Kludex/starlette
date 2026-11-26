@@ -95,6 +95,27 @@ def test_url_query_params() -> None:
     assert str(u) == "https://example.org/path/"
 
 
+def test_url_append_query_params() -> None:
+    u = URL("https://example.org/path/")
+    u = u.append_query_params([("category", "cat1"), ("category", "cat2")])
+    assert str(u) == "https://example.org/path/?category=cat1&category=cat2"
+    u = u.append_query_params({"page": 4})
+    assert str(u) == "https://example.org/path/?category=cat1&category=cat2&page=4"
+    u = u.append_query_params(MultiDict([("filter", "new"), ("filter", "popular")]))
+    assert str(u) == "https://example.org/path/?category=cat1&category=cat2&page=4&filter=new&filter=popular"
+
+
+def test_url_append_query_params_preserves_existing_query() -> None:
+    u = URL("https://example.org/path/?flag&q=hello%20world&&invalid=%FF")
+    u = u.append_query_params([("category", "books")])
+    assert str(u) == "https://example.org/path/?flag&q=hello%20world&&invalid=%FF&category=books"
+
+
+def test_url_append_empty_query_params() -> None:
+    u = URL("https://example.org/path/?")
+    assert str(u.append_query_params({})) == "https://example.org/path/?"
+
+
 def test_hidden_password() -> None:
     u = URL("https://example.org/path/to/somewhere")
     assert repr(u) == "URL('https://example.org/path/to/somewhere')"
@@ -519,6 +540,17 @@ def test_formdata() -> None:
     assert FormData(form) == form
     assert FormData({"a": "123", "b": "789"}) == FormData([("a", "123"), ("b", "789")])
     assert FormData({"a": "123", "b": "789"}) != {"a": "123", "b": "789"}
+
+
+def test_formdata_equality_with_multiple_uploads() -> None:
+    with io.BytesIO(b"a") as stream_a, io.BytesIO(b"b") as stream_b:
+        file_a = UploadFile(stream_a, filename="a.txt")
+        file_b = UploadFile(stream_b, filename="b.txt")
+        form = FormData([("files", file_a), ("files", file_b), ("name", "x")])
+
+        assert form == FormData(form)
+        assert form == FormData([("name", "x"), ("files", file_a), ("files", file_b)])
+        assert form != FormData([("files", file_b), ("files", file_a), ("name", "x")])
 
 
 @pytest.mark.anyio

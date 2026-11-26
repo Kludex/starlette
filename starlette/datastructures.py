@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, MutableMapping, Sequence, ValuesView
+from operator import itemgetter
 from shlex import shlex
 from typing import Any, BinaryIO, Literal, NamedTuple, TypeVar, cast
 from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit
@@ -150,6 +151,14 @@ class URL:
 
         components = self.components._replace(**kwargs)
         return self.__class__(components.geturl())
+
+    def append_query_params(self, params: Mapping[Any, Any] | Iterable[tuple[Any, Any]]) -> URL:
+        params = MultiDict(params)
+        appended = urlencode([(str(key), str(value)) for key, value in params.multi_items()])
+        if not appended:
+            return self
+        separator = "&" if self.query and not self.query.endswith("&") else ""
+        return self.replace(query=f"{self.query}{separator}{appended}")
 
     def include_query_params(self, **kwargs: Any) -> URL:
         params = MultiDict(parse_qsl(self.query, keep_blank_values=True))
@@ -326,7 +335,7 @@ class ImmutableMultiDict(Mapping[_KeyType, _CovariantValueType]):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
             return False
-        return sorted(self._list) == sorted(other._list)
+        return sorted(self._list, key=itemgetter(0)) == sorted(other._list, key=itemgetter(0))
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__

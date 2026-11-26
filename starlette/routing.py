@@ -95,17 +95,22 @@ def replace_params(
     param_convertors: dict[str, Convertor[Any]],
     path_params: dict[str, str],
 ) -> tuple[str, dict[str, str]]:
-    for key, value in list(path_params.items()):
-        if "{" + key + "}" in path:
-            convertor = param_convertors[key]
-            value = convertor.to_string(value)
-            path = path.replace("{" + key + "}", value)
-            path_params.pop(key)
-    return path, path_params
+    if not path_params:
+        return path, path_params
+    parts = PARAM_FORMAT_REGEX.split(path)
+    for i in range(1, len(parts), 2):
+        key = parts[i]
+        if key in path_params:
+            parts[i] = param_convertors[key].to_string(path_params.pop(key))
+        else:
+            parts[i] = "{" + key + "}"
+    return "".join(parts), path_params
 
 
 # Match parameters in URL paths, eg. '{param}', and '{param:int}'
 PARAM_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
+# Match parameters in path formats, eg. '{param}'
+PARAM_FORMAT_REGEX = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)}")
 
 
 def compile_path(
@@ -185,7 +190,7 @@ class BaseRoute:
         within a Router, but could be useful for some tooling and minimal apps.
         """
         match, child_scope = self.matches(scope)
-        if match == Match.NONE:
+        if match is Match.NONE:
             if scope["type"] == "http":
                 response = PlainTextResponse("Not Found", status_code=404)
                 await response(scope, receive, send)
@@ -693,12 +698,12 @@ class Router:
             # Determine if any route matches the incoming scope,
             # and hand over to the matching route if found.
             match, child_scope = route.matches(scope)
-            if match == Match.FULL:
+            if match is Match.FULL:
                 scope["route"] = route
                 scope.update(child_scope)
                 await route.handle(scope, receive, send)
                 return
-            elif match == Match.PARTIAL and partial is None:
+            elif match is Match.PARTIAL and partial is None:
                 partial = route
                 partial_scope = child_scope
 
@@ -721,7 +726,7 @@ class Router:
 
             for route in self.routes:
                 match, child_scope = route.matches(redirect_scope)
-                if match != Match.NONE:
+                if match is not Match.NONE:
                     redirect_url = URL(scope=redirect_scope)
                     response = RedirectResponse(url=str(redirect_url))
                     await response(scope, receive, send)

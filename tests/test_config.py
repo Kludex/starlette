@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from pathlib import Path
 from typing import Any, assert_type
 
@@ -101,6 +102,13 @@ def test_config(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         config.get("BOOL_AS_INT", cast=bool)
 
 
+def test_config_cast_without_name() -> None:
+    config = Config(environ={"INVALID": "not-hex"})
+
+    with pytest.raises(ValueError, match="Config 'INVALID' has value 'not-hex'. Not a valid partial."):
+        config("INVALID", cast=partial(int, base=16))
+
+
 def test_missing_env_file_raises(tmpdir: Path) -> None:
     path = os.path.join(tmpdir, ".env")
 
@@ -146,3 +154,14 @@ def test_config_with_encoding(tmpdir: Path) -> None:
     path.write_text("MESSAGE=Hello 世界\n", encoding="utf-8")
     config = Config(path, encoding="utf-8")
     assert config.get("MESSAGE") == "Hello 世界"
+
+
+def test_config_strips_matching_quotes(tmp_path: Path) -> None:
+    path = tmp_path / ".env"
+    path.write_text('SINGLE=\'say "hi"\'\nDOUBLE="it\'s"\nTRAILING="secret\'"\nUNQUOTED=abc\nQUOTE="\n')
+    config = Config(path)
+    assert config.get("SINGLE") == 'say "hi"'
+    assert config.get("DOUBLE") == "it's"
+    assert config.get("TRAILING") == "secret'"
+    assert config.get("UNQUOTED") == "abc"
+    assert config.get("QUOTE") == '"'

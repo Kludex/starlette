@@ -28,7 +28,7 @@ from starlette.types import Message, Receive, Scope, Send
 
 
 class Response:
-    media_type = None
+    media_type: str | None = None
     charset = "utf-8"
 
     def __init__(
@@ -253,7 +253,9 @@ class StreamingResponse(Response):
     async def stream_response(self, send: Send) -> None:
         await send({"type": "http.response.start", "status": self.status_code, "headers": self.raw_headers})
         async for chunk in self.body_iterator:
-            if not isinstance(chunk, bytes | memoryview):
+            if isinstance(chunk, memoryview):
+                chunk = chunk.cast("B") if chunk.c_contiguous else chunk.tobytes()
+            elif not isinstance(chunk, bytes):
                 chunk = chunk.encode(self.charset)
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
 

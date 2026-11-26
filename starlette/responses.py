@@ -288,12 +288,18 @@ class StreamingResponse(Response):
             aclose = getattr(self.body_iterator, "aclose", None)
             if aclose is not None:
                 with anyio.CancelScope(shield=True):
-                    await aclose()
+                    try:
+                        await aclose()
+                    except Exception:
+                        pass  # don't let a close error replace the exception in flight
             raise
         else:
             aclose = getattr(self.body_iterator, "aclose", None)
             if aclose is not None:
-                await aclose()
+                try:
+                    await aclose()
+                except Exception:
+                    pass  # don't let a close error skip the background task
 
         if self.background is not None:
             await self.background()

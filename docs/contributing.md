@@ -144,24 +144,21 @@ message under the coverage report:
 
 *This section is targeted at Starlette maintainers.*
 
-Before releasing a new version, create a pull request that includes:
-
-- **An update to the changelog**:
-    - We follow the format from [keepachangelog](https://keepachangelog.com/en/1.0.0/).
-    - [Compare](https://github.com/Kludex/starlette/compare/) `main` with the tag of the latest release, and list all entries that are of interest to our users:
-        - Things that **must** go in the changelog: added, changed, deprecated or removed features, and bug fixes.
-        - Things that **should not** go in the changelog: changes to documentation, tests or tooling.
-        - Try sorting entries in descending order of impact / importance.
-        - Keep it concise and to-the-point. 🎯
-- **A version bump**: see `__version__.py`.
-
-For an example, see [#1600](https://github.com/Kludex/starlette/pull/1600).
-
-Once the release PR is merged, create a
-[new release](https://github.com/Kludex/starlette/releases/new) including:
+The version comes from the Git tag, so a release needs no pull request. Create a
+[new release](https://github.com/Kludex/starlette/releases/new) from `main` including:
 
 - Tag version like `0.13.3`.
 - Release title `Version 0.13.3`
-- Description copied from the changelog.
+- **A description with the release notes**, in the shape of [1.10.0](https://github.com/Kludex/starlette/releases/tag/1.10.0):
+    - [Compare](https://github.com/Kludex/starlette/compare/) `main` with the tag of the latest release, and cover every change that is of interest to our users:
+        - Things that **must** go in the release notes: added, changed, deprecated or removed features, and bug fixes.
+        - Things that **should not** go in the release notes: changes to documentation, tests or tooling.
+    - Open with a short paragraph on what the release is about and when users will notice it, followed by the install command pinned to the new version.
+    - Group the changes under headings named after their outcome, with the most important theme first.
+    - Start each entry with the user-visible outcome in bold, link its pull request, and explain what now behaves differently.
+    - End with a `Full changelog` link that compares the previous tag with the new one.
 
 Once created this release will be automatically uploaded to PyPI.
+
+Release notes live only in [GitHub Releases](https://github.com/Kludex/starlette/releases).
+`CHANGELOG.md` is kept for history up to 1.10.0 and is no longer updated.

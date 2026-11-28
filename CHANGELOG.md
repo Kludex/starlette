@@ -1,6 +1,6 @@
----
-toc_depth: 2
----
+# Changelog
+
+Release notes after 1.10.0 are on [GitHub Releases](https://github.com/Kludex/starlette/releases).
 
 ## 1.10.0 (October 24, 2026)
 
@@ -358,7 +358,7 @@ async def homepage(request: Request[State]):
     reveal_type(client)  # Revealed type is 'httpx.AsyncClient'
 ```
 
-See [Accessing State](lifespan.md#accessing-state) for more details.
+See [Accessing State](https://starlette.dev/lifespan/#accessing-state) for more details.
 
 ## 0.51.0 (January 10, 2026)
 
@@ -871,7 +871,7 @@ https://github.com/Kludex/starlette/security/advisories/GHSA-v5gw-mw7f-84px
 ## 0.26.0 (March 9, 2023)
 
 ### Added
-* Support [lifespan state](lifespan.md) [#2060](https://github.com/Kludex/starlette/pull/2060),
+* Support [lifespan state](https://starlette.dev/lifespan/) [#2060](https://github.com/Kludex/starlette/pull/2060),
   [#2065](https://github.com/Kludex/starlette/pull/2065) and [#2064](https://github.com/Kludex/starlette/pull/2064).
 
 ### Changed
